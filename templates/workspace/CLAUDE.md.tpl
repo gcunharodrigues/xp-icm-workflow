@@ -93,6 +93,15 @@ ADRs criados em fase 02 são L4 nascente; após commit em `{{BASE_BRANCH}}` vira
 
 Conteúdo em português. Identificadores de código, paths, comandos em inglês.
 
+### 8. Superpowers via summary, não Skill tool
+
+Skills `superpowers:*` (brainstorming, executing-plans, test-driven-development, debugging, etc.) NÃO devem ser invocadas via `Skill` tool durante o ciclo ICM.
+
+- **Usar:** sumários em `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/` (200tok cada). Aplicar princípios inline.
+- **Escape hatch:** invocação real só com aprovação humana explícita por turno (humano escreve "ok, dispara superpowers:X").
+- **Por quê:** brainstorm/discovery vive em `stages/01_discovery/`. TDD/debug viram instruções dentro de cada L2. ICM governa o ciclo via filesystem; superpowers como skill paralela quebra atomicidade L1↔outputs e bypassa governance.
+- **Bootstrap pendente sem args:** perguntar OU inferir profile/tier. NUNCA pular pra fluxo livre superpowers.
+
 ## Read order para qualquer agente
 
 1. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md` (este arquivo, L0)

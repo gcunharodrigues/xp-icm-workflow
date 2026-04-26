@@ -53,6 +53,80 @@ EXIT   →  Skill SAI. Sessão nova retoma via L1+L2.
 
 A skill **não persiste** durante o ciclo. Não é orquestradora. Não invoca outras skills no runtime do projeto. É um *project starter* curto.
 
+**Anti-superpowers (regra inegociável):** durante o bootstrap, NUNCA invoque `Skill` tool com `superpowers:*` (brainstorming, executing-plans, writing-plans, test-driven-development, debugging, requesting-code-review, etc.). Discovery/brainstorm pertencem ao `stages/01_discovery/` do workspace. TDD/debug viram instruções inline em cada L2. Sumários (200tok cada) ficam em `workspaces/NNN-slug/_references/superpowers-summary/` como referência. Escape hatch: invocação real só com aprovação humana explícita por turno.
+
+---
+
+## Intent inference (prompt sem args)
+
+User pode invocar `/xp-icm-workflow` com **descrição livre** em vez de args (ex: "criar skill que extrai design system de URL"). Protocolo:
+
+1. **NÃO disparar `superpowers:*`** (vide regra acima). Discovery vive no workspace.
+2. **Inferir profile/tier do prompt** (heurísticas):
+
+   | Sinal no prompt | Profile inferido |
+   |---|---|
+   | "skill", "agente", "subagent", "LLM tool" | `agent_ia` |
+   | "lib", "SDK", "framework", "package" | `framework_library` |
+   | "CLI", "comando", "ferramenta linha de comando" | `cli_tool` |
+   | "página web", "componente React/Vue", "UI" | `app_web_frontend` |
+   | "API", "backend", "endpoint", "microservice" | `app_web_backend` |
+   | "dashboard", "BI", "analytics" | `dashboard` |
+   | "EDA", "notebook", "análise de dados" | `data_analysis` |
+   | "treinar modelo", "ML pipeline", "fine-tune" | `ml_project` |
+   | "artigo", "paper", "post técnico" | `technical_article` |
+   | "POC", "spike", "experimento descartável" | `experiment` |
+
+   **Tier default:** `development`. Ajustar pra `experimental` se for POC/spike, `production` se app já em produção, `tool` se uso interno desktop.
+
+3. **Confirmar com humano** menu curto:
+
+   ```
+   Inferido: profile=<X> tier=<Y> workspace-name=<slug>
+   [a] confirma   [b] corrige   [c] cancela
+   ```
+
+   Aceita OU corrige. Pendências de discovery (Qs abertas) devem ficar pra próxima sessão; **NÃO** entre em diálogo Q&A pré-bootstrap (isso é território do `01_discovery`).
+
+4. **Executar bootstrap** com args confirmados (`bash scripts/bootstrap.sh --profile X --tier Y --workspace-name slug`).
+
+5. **Escrever seed inicial** pra próxima sessão em `workspaces/NNN-slug/stages/01_discovery/_seed.md`:
+
+   ```markdown
+   ---
+   layer: L4-seed
+   stage: 01_discovery
+   created_by: bootstrap
+   created_at: <ISO8601>
+   ---
+
+   # Seed — input pré-discovery
+
+   ## Intenção do user (literal)
+   <prompt original do user, citado>
+
+   ## Inferência feita no bootstrap
+   - Profile: <X>  Why: <heurística>
+   - Tier: <Y>  Why: <heurística>
+
+   ## Decisões/contexto já capturados (se houver)
+   - <Q1, Q2, ... feitas no diálogo de bootstrap, com escolhas e tradeoffs>
+
+   ## Recursos externos referenciados
+   - <repos, URLs, papers citados pelo user, com summary curto se já fetchados>
+
+   ## Pendências pra 01_discovery
+   - <Qs ainda sem resposta — ex: output format, dependências>
+   ```
+
+   Esse arquivo é input declarado no `Inputs` do `stages/01_discovery/CONTEXT.md` (L2). Próxima sessão lê e parte dele em vez de zero.
+
+6. **Commit do seed** atomicamente com bootstrap (pre-commit hook valida prefixo `workspace NNN: bootstrap seed`).
+
+7. **SAIR.** Resumo final inclui: workspace path, branch, próximos passos, e linha **"Seed pré-discovery em stages/01_discovery/_seed.md"**.
+
+**Quando NÃO inferir:** se o prompt é ambíguo ou o user quer escolher manualmente (sinais: "ajuda escolher", "quais opções", "explica diferenças"), pular passo 2 e ir direto pro menu interativo do `bootstrap.sh` (passo 3 com tabela completa).
+
 ---
 
 ## Division of Responsibilities
@@ -176,6 +250,8 @@ Permissions allowlist sugerida em `system-requirements.md`.
 - Re-invocar `/xp-icm-workflow` em workspace existente — só pra criar novos. Para retomar, abra sessão nova; ela lê L1.
 - Editar L1 (`CONTEXT.md`) manualmente sem entender o schema — use `scripts/recovery-wizard.py` se precisar reconstruir.
 - Editar L4 outputs commitados (decisions.md, ADRs) sem nova versão ou superseding — vide `_config/icm-conventions.md`.
+- **Invocar `superpowers:*` skills durante bootstrap** (brainstorming, writing-plans, executing-plans, test-driven-development, debugging, etc.). Brainstorm vive em `stages/01_discovery/`. TDD/debug viram instruções dentro de cada L2. Sumários em `_references/superpowers-summary/` (200tok cada) servem como referência. Bypass via Skill tool quebra atomicidade L1↔outputs.
+- **Diálogo Q&A pré-bootstrap em vez de bootstrappar.** Quando user invoca a skill com descrição livre, infira profile/tier (vide "Intent inference"), confirme com menu curto, bootstrappe, e mande pendências pro `_seed.md` do `01_discovery`. NÃO conduzir discovery completa antes de criar workspace.
 
 ---
 
