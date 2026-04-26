@@ -1,11 +1,16 @@
 #!/usr/bin/env bash
 #
-# git-hook-installer.sh — instala pre-commit hook do workspace ICM.
+# git-hook-installer.sh — instala hooks ICM (pre-commit + commit-msg).
 #
-# Idempotente:
-#   - Se hook já existe e diff = 0 vs template, skip (no-op).
-#   - Se hook existe e diff != 0, faz backup .bak.<timestamp> e overwrite.
-#   - Se hook ausente, copia template direto.
+# Idempotente por hook:
+#   - Se ja existe e diff = 0 vs template, skip (no-op).
+#   - Se existe e diff != 0, faz backup .bak.<timestamp> e overwrite.
+#   - Se ausente, copia template direto.
+#
+# Por que 2 hooks: stages canonicos do git separam file checks
+# (pre-commit) de msg validation (commit-msg). Pre-commit nao ve a
+# msg do commit atual — ler COMMIT_EDITMSG retorna msg do anterior.
+# Detalhes em references/git-hooks.md.
 #
 # Uso:
 #   bash scripts/git-hook-installer.sh <project_root>
@@ -20,7 +25,7 @@ fi
 project_root="$1"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
 skill_root="$(dirname "$script_dir")"
-template="$skill_root/templates/.git-hooks/pre-commit"
+templates_dir="$skill_root/templates/.git-hooks"
 
 if [ ! -d "$project_root" ]; then
   echo "ERROR: project_root nao existe: $project_root" >&2
@@ -39,32 +44,43 @@ case "$git_dir" in
   *)   git_dir_abs="$project_root/$git_dir" ;;
 esac
 
-if [ ! -f "$template" ]; then
-  echo "ERROR: template nao encontrado: $template" >&2
-  exit 1
-fi
+hooks_dir="$git_dir_abs/hooks"
+mkdir -p "$hooks_dir"
 
-target="$git_dir_abs/hooks/pre-commit"
-target_dir="$(dirname "$target")"
+# Lista canonica de hooks gerenciados pela skill
+HOOKS="pre-commit commit-msg"
 
-mkdir -p "$target_dir"
+ts="$(date -u +%Y%m%dT%H%M%SZ)"
+status_overall=0
 
-if [ -f "$target" ]; then
-  if cmp -s "$template" "$target"; then
-    echo "OK    pre-commit hook ja instalado e atualizado (no-op)"
-    exit 0
+for hook in $HOOKS; do
+  template="$templates_dir/$hook"
+  target="$hooks_dir/$hook"
+
+  if [ ! -f "$template" ]; then
+    echo "ERROR: template nao encontrado: $template" >&2
+    status_overall=1
+    continue
   fi
-  ts="$(date -u +%Y%m%dT%H%M%SZ)"
-  backup="${target}.bak.${ts}"
-  cp "$target" "$backup"
-  echo "WARN  hook existente difere do template. Backup: $backup"
-fi
 
-cp "$template" "$target"
-chmod +x "$target"
+  if [ -f "$target" ]; then
+    if cmp -s "$template" "$target"; then
+      echo "OK    $hook ja instalado e atualizado (no-op)"
+      continue
+    fi
+    backup="${target}.bak.${ts}"
+    cp "$target" "$backup"
+    echo "WARN  $hook existente difere do template. Backup: $backup"
+  fi
 
-if [ ! -x "$target" ]; then
-  echo "WARN  chmod +x nao aplicou (filesystem nao suporta?). Hook copiado mas pode nao executar." >&2
-fi
+  cp "$template" "$target"
+  chmod +x "$target"
 
-echo "OK    pre-commit hook instalado em $target"
+  if [ ! -x "$target" ]; then
+    echo "WARN  chmod +x nao aplicou em $hook (filesystem nao suporta?). Hook copiado mas pode nao executar." >&2
+  fi
+
+  echo "OK    $hook instalado em $target"
+done
+
+exit "$status_overall"

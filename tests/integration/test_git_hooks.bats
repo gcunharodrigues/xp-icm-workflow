@@ -1,12 +1,18 @@
 #!/usr/bin/env bats
 # Integration tests para templates/.git-hooks/pre-commit.
 #
+# Pre-commit valida APENAS file checks (atomicidade L1<->outputs,
+# reject src edits, skip rebase). Validacao de mensagem foi movida
+# pra commit-msg hook (test_commit_msg_hook.bats) por causa do
+# timing canonico do git: pre-commit roda ANTES de COMMIT_EDITMSG
+# ser persistido.
+#
 # CI-only via Ubuntu runner (bats nao roda em Windows local).
 # Execucao: bats tests/integration/test_git_hooks.bats
 #
-# Estrategia: cada teste cria repo git temporario, copia o hook, faz stage de
-# arquivos especificos, simula mensagem de commit em .git/COMMIT_EDITMSG, e
-# invoca o hook diretamente. Verifica exit code + stderr.
+# Estrategia: cada teste cria repo git temporario, copia o hook, faz
+# stage de arquivos especificos e invoca o hook diretamente. Verifica
+# exit code + stderr.
 
 setup() {
     SKILL_ROOT="$(cd "$(dirname "$BATS_TEST_FILENAME")/../.." && pwd)"
@@ -35,10 +41,8 @@ teardown() {
     rm -rf "$TMP_REPO"
 }
 
-# Helper: roda o hook diretamente em determinada branch + mensagem
+# Helper: roda o hook diretamente
 run_hook() {
-    local msg="$1"
-    printf '%s' "$msg" > .git/COMMIT_EDITMSG
     run .git/hooks/pre-commit
 }
 
@@ -46,11 +50,10 @@ run_hook() {
 
 @test "non-workspace branch passes regardless of staged files" {
     git checkout -q -b feature/random
-    echo "x" > src/foo.txt
     mkdir -p src
     echo "x" > src/foo.txt
     git add src/foo.txt
-    run_hook "anything goes"
+    run_hook
     [ "$status" -eq 0 ]
 }
 
@@ -61,62 +64,50 @@ run_hook() {
     mkdir -p src
     echo "x" > src/foo.py
     git add src/foo.py
-    run_hook "workspace 042: edit src"
+    run_hook
     [ "$status" -eq 1 ]
     [[ "$output" == *"File offendor"* ]]
     [[ "$output" == *"src/foo.py"* ]]
 }
 
-# 3. workspace branch + staged dentro do workspace + CONTEXT.md staged + msg correta --> accept
+# 3. workspace branch + staged dentro do workspace + CONTEXT.md staged --> accept
 
-@test "workspace branch accepts staged in workspace dir with correct msg and CONTEXT" {
+@test "workspace branch accepts staged in workspace dir with CONTEXT.md staged" {
     git checkout -q -b workspace/042-feat-auth
     mkdir -p workspaces/042-feat-auth/stages/02/output
     echo "ctx" > workspaces/042-feat-auth/CONTEXT.md
     echo "out" > workspaces/042-feat-auth/stages/02/output/plan.md
     git add workspaces/042-feat-auth/CONTEXT.md
     git add workspaces/042-feat-auth/stages/02/output/plan.md
-    run_hook "workspace 042: stage 02 outputs"
+    run_hook
     [ "$status" -eq 0 ]
 }
 
-# 4. workspace branch com msg sem prefix --> reject ---------------------------
+# 4. ADR staged sem CONTEXT.md tambem aceita (excecao R5.4) -------------------
 
-@test "workspace branch rejects commit msg without 'workspace NNN:' prefix" {
-    git checkout -q -b workspace/042-feat-auth
-    mkdir -p workspaces/042-feat-auth
-    echo "ctx" > workspaces/042-feat-auth/CONTEXT.md
-    git add workspaces/042-feat-auth/CONTEXT.md
-    run_hook "fix: bad message"
-    [ "$status" -eq 1 ]
-    [[ "$output" == *"workspace 042:"* ]]
-}
-
-# 5. workspace branch + ADR sem prefix mas com (workspace NNN  --> accept ----
-
-@test "workspace branch accepts ADR commit without prefix when '(workspace NNN ' present" {
+@test "workspace branch accepts ADR-only staged without CONTEXT.md" {
     git checkout -q -b workspace/042-feat-auth
     mkdir -p docs/decisions
     echo "adr" > docs/decisions/0001-some-decision.md
     git add docs/decisions/0001-some-decision.md
-    run_hook "docs(adr): record decision (workspace 042 design)"
+    run_hook
     [ "$status" -eq 0 ]
 }
 
-# 6. outputs staged sem CONTEXT.md staged --> reject --------------------------
+# 5. outputs staged sem CONTEXT.md staged --> reject --------------------------
 
 @test "workspace branch rejects stage outputs staged without CONTEXT.md" {
     git checkout -q -b workspace/042-feat-auth
     mkdir -p workspaces/042-feat-auth/stages/02/output
     echo "out" > workspaces/042-feat-auth/stages/02/output/plan.md
     git add workspaces/042-feat-auth/stages/02/output/plan.md
-    run_hook "workspace 042: stage 02 outputs"
+    run_hook
     [ "$status" -eq 1 ]
     [[ "$output" == *"Atomicidade"* ]]
     [[ "$output" == *"CONTEXT.md"* ]]
 }
 
-# 7. Durante rebase --> exit 0 sempre -----------------------------------------
+# 6. Durante rebase --> exit 0 sempre -----------------------------------------
 
 @test "hook skips during rebase-merge in progress" {
     git checkout -q -b workspace/042-feat-auth
@@ -124,7 +115,7 @@ run_hook() {
     mkdir -p src
     echo "x" > src/foo.py
     git add src/foo.py
-    run_hook "anything during rebase"
+    run_hook
     [ "$status" -eq 0 ]
 }
 
@@ -134,6 +125,19 @@ run_hook() {
     mkdir -p src
     echo "x" > src/foo.py
     git add src/foo.py
-    run_hook "anything during rebase"
+    run_hook
+    [ "$status" -eq 0 ]
+}
+
+# 7. Pre-commit NAO valida msg (movida pra commit-msg hook) -------------------
+
+@test "pre-commit ignores msg content (validation moved to commit-msg)" {
+    git checkout -q -b workspace/042-feat-auth
+    mkdir -p workspaces/042-feat-auth
+    echo "ctx" > workspaces/042-feat-auth/CONTEXT.md
+    git add workspaces/042-feat-auth/CONTEXT.md
+    # COMMIT_EDITMSG com msg ruim NAO afeta pre-commit
+    printf '%s' "anything garbage" > .git/COMMIT_EDITMSG
+    run_hook
     [ "$status" -eq 0 ]
 }

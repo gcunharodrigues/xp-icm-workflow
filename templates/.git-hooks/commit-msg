@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+# xp-icm-workflow — commit-msg hook
+#
+# Valida prefix da mensagem em workspace branches.
+#
+# Stage canonico do git: commit-msg recebe path do COMMIT_EDITMSG
+# como $1 com a msg JA escrita pelo user. Pre-commit NAO ve msg
+# atual (bug v1: lia msg do commit anterior).
+#
+# Regras (R2.3, R5.4):
+#
+#   1. Branches que nao casam ^workspace/[0-9]{3}- passam livremente.
+#   2. Skip durante rebase/merge.
+#   3. Em workspace/NNN-slug:
+#      a) Msg deve comecar com "workspace NNN: <descricao>".
+#      b) Excecao ADR: commits que tocam docs/decisions/*.md podem
+#         mencionar "(workspace NNN " no corpo em vez do prefix.
+#
+# Anti-bypass: NUNCA use --no-verify; corrija a mensagem.
+
+set -euo pipefail
+
+# 1. Receber path do COMMIT_EDITMSG -------------------------------------------
+
+msg_file="${1:-}"
+if [ -z "$msg_file" ] || [ ! -f "$msg_file" ]; then
+    # Sem arquivo de msg, deixa git tratar
+    exit 0
+fi
+
+# 2. Skip durante rebase/merge ------------------------------------------------
+
+git_dir="$(git rev-parse --git-dir 2>/dev/null || echo .git)"
+if [ -d "${git_dir}/rebase-merge" ] || [ -d "${git_dir}/rebase-apply" ]; then
+    exit 0
+fi
+
+# 3. Detectar branch ----------------------------------------------------------
+
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+
+if ! printf '%s' "$branch" | grep -Eq '^workspace/[0-9]{3}-'; then
+    exit 0
+fi
+
+ws_full="${branch#workspace/}"
+ws_id="${ws_full%%-*}"
+
+# 4. Ler msg ------------------------------------------------------------------
+
+# Strip linhas de comentario (git scissor) e linhas em branco do final
+commit_msg="$(cat "$msg_file" 2>/dev/null || true)"
+# Remove linhas que comecam com '#' (comentarios git)
+msg_clean="$(printf '%s' "$commit_msg" | sed '/^#/d')"
+msg_first_line="$(printf '%s' "$msg_clean" | head -n 1)"
+
+expected_prefix="workspace ${ws_id}: "
+adr_marker="(workspace ${ws_id} "
+
+# 5. Detectar staged ADR (excecao R5.4) ---------------------------------------
+
+staged="$(git diff --cached --name-only --diff-filter=ACMR || true)"
+has_adr_staged=0
+while IFS= read -r f; do
+    case "$f" in
+        docs/decisions/*.md) has_adr_staged=1; break ;;
+    esac
+done <<EOF
+$staged
+EOF
+
+# 6. Validar prefix -----------------------------------------------------------
+
+prefix_ok=0
+if printf '%s' "$msg_first_line" | grep -Eq "^workspace ${ws_id}: "; then
+    prefix_ok=1
+fi
+
+adr_ok=0
+if [ "$has_adr_staged" -eq 1 ] && printf '%s' "$msg_clean" | grep -qF "$adr_marker"; then
+    adr_ok=1
+fi
+
+if [ "$prefix_ok" -eq 0 ] && [ "$adr_ok" -eq 0 ]; then
+    cat >&2 <<EOM
+ERROR: mensagem de commit em workspace/${ws_full} deve comecar com:
+  ${expected_prefix}<descricao curta>
+
+Sua mensagem comecou com:
+  ${msg_first_line}
+
+Sugestao: reescreva como
+  ${expected_prefix}${msg_first_line}
+
+Excecao: commits que tocam docs/decisions/*.md podem mencionar
+"${adr_marker}<descricao>)" no corpo em vez do prefix.
+
+NUNCA use --no-verify; corrija a mensagem.
+EOM
+    exit 1
+fi
+
+exit 0

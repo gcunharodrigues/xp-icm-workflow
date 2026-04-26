@@ -1,56 +1,70 @@
-# Git hooks — pre-commit (xp-icm-workflow)
+# Git hooks — pre-commit + commit-msg (xp-icm-workflow)
 
-Hook bash POSIX que enforca isolamento entre workspace ICM e src do projeto pai. Distribuido como template em `templates/.git-hooks/pre-commit`. Instalado por workspace (Wave 2 entrega `scripts/git-hook-installer.sh`).
+Dois hooks bash POSIX que enforcam isolamento entre workspace ICM e src do projeto pai. Distribuidos como templates em `templates/.git-hooks/{pre-commit,commit-msg}`. Instalados em conjunto pelo `scripts/git-hook-installer.sh` (Wave 2) ou pelo `bootstrap.py` (`_install_hooks`).
 
-## Proposito
+## Por que 2 hooks (split canonico)
 
-Workspace ICM produz tudo dentro de `workspaces/NNN-slug/`. Edicao de codigo-fonte real do projeto (pasta `src/`, `tests/`, etc.) acontece em estagio 04 via subagentes de implementacao, em branches separadas. O hook impede:
+Stages do git separam responsabilidades por timing:
 
-1. Que branch de workspace acidentalmente edite `src/` (fora do escopo).
-2. Que commit em workspace branch nao siga convencao de mensagem (rastreabilidade R2.3).
-3. Que outputs de estagio sejam commitados sem atualizar `CONTEXT.md` raiz (atomicidade L1<->outputs).
+| Stage | Quando roda | O que ve | O que valida (skill) |
+|---|---|---|---|
+| `pre-commit` | ANTES de `COMMIT_EDITMSG` ser persistido | Staged files apenas | File checks + atomicidade L1<->outputs |
+| `commit-msg` | DEPOIS user fornecer msg, recebe path em `$1` | Msg atual no arquivo | Prefix da mensagem |
 
-Sem o hook, falhas silenciosas: workspace branches "vazariam" mudancas em src/, history de CONTEXT.md ficaria desincronizado de outputs, mensagens de commit nao identificariam o workspace.
+**Bug v1 (fixado):** versao inicial concentrava tudo em `pre-commit`, incluindo leitura de `.git/COMMIT_EDITMSG` para validar prefix. Mas `pre-commit` roda ANTES de git escrever a msg atual no arquivo — entao validava msg do commit ANTERIOR (ou empty no primeiro). Workaround temporario foi instalar hook depois dos commits do bootstrap, mas isso so protegia o bootstrap; commits futuros do user permaneciam validando msg stale. Fix: split em 2 stages canonicos.
 
-## Regras (resumo executavel)
+**Anti-pattern:** NUNCA leia `COMMIT_EDITMSG` em `pre-commit`. Se precisa validar msg, use `commit-msg` que recebe path em `$1`.
+
+## Pre-commit — file checks
 
 ### R1 — Skip em rebase/merge
 
-Se `.git/rebase-merge/` ou `.git/rebase-apply/` existe -> hook retorna `exit 0` imediatamente. Razao: durante rebase, o git mexe em commits historicos que ja passaram pelo hook; revalidar quebraria o rebase.
+Se `.git/rebase-merge/` ou `.git/rebase-apply/` existe -> `exit 0`. Razao: durante rebase, git mexe em commits historicos que ja passaram pelo hook; revalidar quebra rebase automatico do lead na fase 04.
 
 ### R2 — Branch nao-workspace passa livre
 
-Regex: `^workspace/[0-9]{3}-`. Se branch atual nao casa -> `exit 0`. Razao: hook so se aplica a workspace branches; trabalho normal em `main`, `feat/*`, etc. nao e afetado.
+Regex: `^workspace/[0-9]{3}-`. Se branch atual nao casa -> `exit 0`. Trabalho em `main`, `feat/*`, `wave-NNN-N/*` nao e afetado.
 
 ### R3 — Reject src edits
 
 Em workspace branch, todo staged file deve estar em:
 
 - `workspaces/NNN-slug/...` (escopo do workspace), OU
-- `docs/decisions/*.md` (ADRs sao L3 globais e podem ser tocados em qualquer estagio).
+- `docs/decisions/*.md` (ADRs sao L3 globais).
 
-Qualquer outro caminho (`src/`, `tests/`, raiz) -> reject com:
+Outros caminhos (`src/`, `tests/`, raiz) -> reject:
 
 ```
 ERROR: branch workspace/NNN-slug pode tocar APENAS workspaces/NNN-slug/* ou docs/decisions/*.md.
 File offendor: <path>
-Pra editar src/, faca checkout em base_branch primeiro.
-NUNCA use --no-verify; corrija o conteudo.
 ```
 
-**Valido:**
-- `workspaces/042-feat-auth/CONTEXT.md`
-- `workspaces/042-feat-auth/stages/02/output/plan.md`
-- `docs/decisions/0042-auth-strategy.md`
+**Valido:** `workspaces/042-feat-auth/CONTEXT.md`, `workspaces/042-feat-auth/stages/02/output/plan.md`, `docs/decisions/0042-auth-strategy.md`
 
-**Invalido:**
-- `src/auth/middleware.py`
-- `tests/test_auth.py`
-- `README.md` (raiz)
+**Invalido:** `src/auth/middleware.py`, `tests/test_auth.py`, `README.md` (raiz)
 
-### R4 — Prefixo de mensagem (R2.3)
+### R4 — Atomicidade L1<->outputs
 
-Linha 1 da mensagem deve casar:
+Se algum staged file casa `workspaces/NNN-slug/stages/<NN>/output/...` E `workspaces/NNN-slug/CONTEXT.md` NAO esta staged -> reject:
+
+```
+ERROR: outputs do estagio <NN> staged sem update de CONTEXT.md.
+Atomicidade L1<->outputs requerida.
+```
+
+Razao: cada output novo precisa rastro em `history` e `last_transition` do CONTEXT.md raiz. Output sem state = sessoes futuras nao retomam corretamente.
+
+## Commit-msg — msg validation
+
+### R5 — Skip nos casos triviais
+
+- `$1` ausente ou arquivo inexistente -> `exit 0`.
+- Branch nao-workspace -> `exit 0`.
+- Rebase/merge em andamento -> `exit 0`.
+
+### R6 — Prefixo de mensagem (R2.3)
+
+Linha 1 da mensagem (ignorando linhas `#` de comentario do git) deve casar:
 
 ```
 ^workspace [0-9]{3}: 
@@ -60,87 +74,86 @@ Exemplo valido: `workspace 042: discovery completa`.
 
 Exemplo invalido: `feat: add auth` -> reject com sugestao de reescrita.
 
-### R5 — Excecao ADR (R5.4)
+### R7 — Excecao ADR (R5.4)
 
-Se algum staged file casa `docs/decisions/*.md` E mensagem de commit contem a substring literal `(workspace NNN ` (parenteses + numero do workspace + espaco), aceita mesmo sem prefix de R4.
+Se algum staged file casa `docs/decisions/*.md` E mensagem contem substring literal `(workspace NNN ` (parenteses + numero + espaco), aceita mesmo sem prefix R6.
 
-Razao: ADRs as vezes nasceram em outro contexto e estao sendo refinados em workspace; a marca `(workspace NNN ...)` no corpo basta para rastreabilidade.
+Razao: ADRs as vezes nasceram em outro contexto e sao refinados em workspace; o marker `(workspace NNN ...)` no corpo basta para rastreabilidade.
 
 **Valido:** `docs(adr): record decision (workspace 042 design)`
 
-**Invalido:** `docs(adr): record decision` -> reject (nem prefix nem marker).
-
-### R6 — Atomicidade L1<->outputs
-
-Se algum staged file casa `workspaces/NNN-slug/stages/<NN>/output/...` E `workspaces/NNN-slug/CONTEXT.md` NAO esta staged -> reject com:
-
-```
-ERROR: outputs do estagio <NN> staged sem update de CONTEXT.md.
-Atomicidade L1<->outputs requerida. Stage CONTEXT.md tambem.
-```
-
-Razao: cada output novo precisa ter rastro em `history` e `last_transition` do `CONTEXT.md` raiz. Se o commit tem so o output mas nao o estado, sessoes futuras nao retomam corretamente.
+**Invalido:** `docs(adr): record decision` (nem prefix nem marker).
 
 ## Padroes regex exatos (R6.4)
 
-| Regra | Regex / Glob |
-|---|---|
-| Branch workspace | `^workspace/[0-9]{3}-` |
-| Workspace ID extraction | `${branch#workspace/}` -> split em primeiro `-` |
-| Mensagem prefix | `^workspace [0-9]{3}: ` |
-| ADR file glob | `docs/decisions/*.md` |
-| ADR mensagem marker | substring literal `(workspace NNN ` |
-| Stage output glob | `workspaces/<NNN-slug>/stages/<NN>/output/*` |
-| Rebase markers | `.git/rebase-merge/` ou `.git/rebase-apply/` |
+| Regra | Regex / Glob | Hook |
+|---|---|---|
+| Branch workspace | `^workspace/[0-9]{3}-` | ambos |
+| Workspace ID extraction | `${branch#workspace/}` split em primeiro `-` | ambos |
+| Mensagem prefix | `^workspace [0-9]{3}: ` | commit-msg |
+| ADR file glob | `docs/decisions/*.md` | ambos |
+| ADR mensagem marker | substring literal `(workspace NNN ` | commit-msg |
+| Stage output glob | `workspaces/<NNN-slug>/stages/<NN>/output/*` | pre-commit |
+| Rebase markers | `.git/rebase-merge/` ou `.git/rebase-apply/` | ambos |
+| Comment lines (msg) | `^#` | commit-msg (strip antes parse) |
 
 ## Como instalar
 
-Wave 2 entregara `scripts/git-hook-installer.sh` que:
+`scripts/git-hook-installer.sh <project_root>` instala AMBOS hooks idempotentemente:
 
-1. Copia `templates/.git-hooks/pre-commit` para `.git/hooks/pre-commit` do projeto pai.
-2. Faz `chmod +x`.
-3. Idempotente — se ja instalado, sobrescreve apos confirmar via diff.
+```bash
+bash scripts/git-hook-installer.sh /caminho/do/projeto
+```
 
-Ate la, instalacao manual:
+Comportamento por hook:
+- Ausente: copia template, `chmod +x`.
+- Presente + igual: no-op.
+- Presente + diff: backup `.bak.<UTC-ts>`, overwrite, `chmod +x`.
+
+`bootstrap.py::_install_hooks(project_root, skill_root)` faz o mesmo via Python (chamado pelo `bootstrap.sh`/`bootstrap.py` ao final do bootstrap).
+
+Manual:
 
 ```bash
 cp <skill-root>/templates/.git-hooks/pre-commit .git/hooks/pre-commit
-chmod +x .git/hooks/pre-commit
+cp <skill-root>/templates/.git-hooks/commit-msg .git/hooks/commit-msg
+chmod +x .git/hooks/pre-commit .git/hooks/commit-msg
 ```
 
 ## Bypass via `--no-verify` e anti-pattern
 
-`git commit --no-verify` pula o hook. **Nao use.** Razoes:
+`git commit --no-verify` pula AMBOS hooks. **Nao use.** Razoes:
 
 - Quebra atomicidade L1<->outputs -> sessoes futuras nao retomam.
 - Permite vazar src edits para workspace branches -> historico bagunca.
 - Mensagens sem prefix -> rastreabilidade perdida.
 
-Se o hook esta rejeitando algo que voce acredita ser legitimo:
+Se hook rejeita algo que voce acredita ser legitimo:
 
 1. Leia a mensagem de erro completa — sugere correcao especifica.
-2. Se acredita que e bug do hook, abra issue no repositorio da skill em vez de bypassar.
-3. ADR + commits cross-cutting tem excecao R5 documentada acima.
+2. Se acredita que e bug do hook, abra issue em vez de bypass.
+3. ADRs + commits cross-cutting tem excecao R7 documentada acima.
 
 ## Excecoes documentadas
 
 | Cenario | Comportamento |
 |---|---|
-| Branches que nao casam `^workspace/NNN-` | Hook nao faz nada |
-| Rebase em progresso | Hook nao faz nada |
-| ADR (`docs/decisions/*.md`) | Liberado em qualquer workspace branch |
-| ADR + msg com `(workspace NNN ` | Aceita sem prefix R4 |
+| Branches que nao casam `^workspace/NNN-` | Ambos hooks no-op |
+| Rebase em progresso | Ambos hooks no-op |
+| ADR (`docs/decisions/*.md`) | Liberado em workspace branch (pre-commit R3) |
+| ADR + msg com `(workspace NNN ` | Aceita sem prefix R6 (commit-msg R7) |
+| `commit-msg` chamado sem `$1` | exit 0 (deixa git tratar) |
 
 ## Testes
 
-- `tests/integration/test_git_hooks.bats` — integration tests via bats. CI-only (Ubuntu runner). Cobertura:
-  1. Branch nao-workspace passa
-  2. Reject src edit
-  3. Aceita workspace + msg correta + CONTEXT.md staged
-  4. Reject msg sem prefix
-  5. Aceita ADR sem prefix com `(workspace NNN `
-  6. Reject outputs sem CONTEXT.md
-  7. Skip durante rebase-merge
-  8. Skip durante rebase-apply
+- `tests/integration/test_git_hooks.bats` — pre-commit (file checks). Cobre R1-R4.
+- `tests/integration/test_commit_msg_hook.bats` — commit-msg (msg validation). Cobre R5-R7 + regression do bug v1 (msg ATUAL via `$1`, nao stale do anterior).
 
-Bats nao roda em Windows local; testes serao executados no CI (GitHub Actions Ubuntu) configurado em Wave 3.
+CI-only via Ubuntu runner; bats nao roda em Windows local. Wave 6 configura GitHub Actions com badge.
+
+## Changelog
+
+| Versao | Mudanca |
+|---|---|
+| v1 (Wave 2 inicial) | Hook unico `pre-commit` com file checks + msg validation. **Bug:** msg validation usava `.git/COMMIT_EDITMSG` que pre-commit le stale (msg do commit anterior). Workaround temporario: instalar hook depois dos commits do bootstrap. |
+| v2 (Wave 2 fix) | Split em `pre-commit` (file checks) + `commit-msg` (msg validation). `commit-msg` recebe path em `$1` com msg atual, validacao correta. Regression test em `test_commit_msg_hook.bats`. |

@@ -3,6 +3,13 @@
 #
 # Enforce isolation entre workspace e src do projeto pai.
 #
+# IMPORTANTE: validacao de mensagem fica em .git/hooks/commit-msg
+# (NAO aqui). Pre-commit roda ANTES de COMMIT_EDITMSG ser persistido,
+# entao ler msg neste stage retorna a msg do commit ANTERIOR (bug
+# original v1 do hook). Stages canonicos do git:
+#   pre-commit  → file/atomicidade checks (sem msg)
+#   commit-msg  → msg validation (recebe path em $1)
+#
 # Regras (R2.3, R3.3, R3.10, R5.4):
 #
 #   1. Skip durante rebase/merge em andamento.
@@ -10,9 +17,7 @@
 #   3. Em branches workspace/NNN-slug:
 #      a) Reject se algum staged file esta fora de workspaces/NNN-slug/
 #         (exceto ADRs em docs/decisions/*.md).
-#      b) Reject se mensagem de commit nao comeca com "workspace NNN: "
-#         (exceto commits de ADR contendo "(workspace NNN " no corpo).
-#      c) Reject se outputs de stages/<NN>/output sao staged sem que
+#      b) Reject se outputs de stages/<NN>/output sao staged sem que
 #         workspaces/NNN-slug/CONTEXT.md tambem esteja staged
 #         (atomicidade L1 <-> outputs).
 #
@@ -83,60 +88,7 @@ EOM
     exit 1
 fi
 
-# 6. Validar mensagem de commit (R2.3 + R5.4 ADR exception) -------------------
-
-commit_msg_file="${git_dir}/COMMIT_EDITMSG"
-commit_msg=""
-if [ -f "$commit_msg_file" ]; then
-    commit_msg="$(cat "$commit_msg_file" 2>/dev/null || true)"
-fi
-
-# Detectar staged ADR para regra de excecao
-has_adr_staged=0
-while IFS= read -r f; do
-    case "$f" in
-        docs/decisions/*.md) has_adr_staged=1; break ;;
-    esac
-done <<EOF
-$staged
-EOF
-
-# Padrao normal: linha 1 comeca com "workspace NNN: "
-expected_prefix="workspace ${ws_id}: "
-adr_marker="(workspace ${ws_id} "
-
-msg_first_line="$(printf '%s' "$commit_msg" | head -n 1)"
-
-prefix_ok=0
-if printf '%s' "$msg_first_line" | grep -Eq "^workspace ${ws_id}: "; then
-    prefix_ok=1
-fi
-
-adr_ok=0
-if [ "$has_adr_staged" -eq 1 ] && printf '%s' "$commit_msg" | grep -qF "$adr_marker"; then
-    adr_ok=1
-fi
-
-if [ "$prefix_ok" -eq 0 ] && [ "$adr_ok" -eq 0 ]; then
-    cat >&2 <<EOM
-ERROR: mensagem de commit em workspace/${ws_full} deve comecar com:
-  ${expected_prefix}<descricao curta>
-
-Sua mensagem comecou com:
-  ${msg_first_line}
-
-Sugestao: reescreva como
-  ${expected_prefix}${msg_first_line}
-
-Excecao: commits que tocam docs/decisions/*.md podem mencionar
-"${adr_marker}<descricao>)" no corpo em vez do prefix.
-
-NUNCA use --no-verify; corrija o conteudo.
-EOM
-    exit 1
-fi
-
-# 7. Atomicidade L1 <-> outputs -----------------------------------------------
+# 6. Atomicidade L1 <-> outputs -----------------------------------------------
 
 # Se algum staged file esta em workspaces/NNN-slug/stages/<NN>/output/*,
 # entao workspaces/NNN-slug/CONTEXT.md deve estar staged tambem.

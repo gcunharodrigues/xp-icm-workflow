@@ -411,35 +411,56 @@ def _save_profile_effective(
     )
 
 
-def _install_pre_commit_hook(project_root: Path, skill_root: Path) -> None:
-    """Idempotente: instala templates/.git-hooks/pre-commit em .git/hooks/.
+_MANAGED_HOOKS: tuple[str, ...] = ("pre-commit", "commit-msg")
+
+
+def _install_hooks(project_root: Path, skill_root: Path) -> None:
+    """Idempotente: instala todos hooks ICM em .git/hooks/.
+
+    Hooks gerenciados (stages canonicos):
+      - pre-commit: file/atomicidade checks
+      - commit-msg: validacao de prefix da msg (recebe COMMIT_EDITMSG em $1)
+
+    Pre-commit nao pode validar msg porque roda ANTES de
+    COMMIT_EDITMSG ser persistido — leria msg do commit anterior.
+    Bug original v1, fixado via split.
 
     Se ja existe e diff != 0, faz backup .bak.<timestamp> e overwrite.
     Em caso de erro de IO (Windows file-in-use, etc), warning e segue.
     """
-    src = skill_root / "templates" / ".git-hooks" / "pre-commit"
-    if not src.exists():
-        sys.stderr.write(f"warning: hook fonte ausente: {src}\n")
-        return
     dst_dir = project_root / ".git" / "hooks"
-    dst = dst_dir / "pre-commit"
     try:
         dst_dir.mkdir(parents=True, exist_ok=True)
-        if dst.exists():
-            current = dst.read_bytes()
-            new = src.read_bytes()
-            if current == new:
-                return
-            ts = _now_iso().replace(":", "").replace("-", "")
-            backup = dst.with_suffix(f".bak.{ts}")
-            shutil.copy2(dst, backup)
-        shutil.copy2(src, dst)
-        try:
-            os.chmod(dst, 0o755)
-        except OSError:
-            pass
     except OSError as exc:
-        sys.stderr.write(f"warning: falha ao instalar pre-commit hook: {exc}\n")
+        sys.stderr.write(f"warning: nao foi possivel criar {dst_dir}: {exc}\n")
+        return
+
+    for hook in _MANAGED_HOOKS:
+        src = skill_root / "templates" / ".git-hooks" / hook
+        if not src.exists():
+            sys.stderr.write(f"warning: hook fonte ausente: {src}\n")
+            continue
+        dst = dst_dir / hook
+        try:
+            if dst.exists():
+                current = dst.read_bytes()
+                new = src.read_bytes()
+                if current == new:
+                    continue
+                ts = _now_iso().replace(":", "").replace("-", "")
+                backup = dst.with_suffix(f".bak.{ts}")
+                shutil.copy2(dst, backup)
+            shutil.copy2(src, dst)
+            try:
+                os.chmod(dst, 0o755)
+            except OSError:
+                pass
+        except OSError as exc:
+            sys.stderr.write(f"warning: falha ao instalar hook {hook}: {exc}\n")
+
+
+# Backward-compat alias (testes ou call sites antigos)
+_install_pre_commit_hook = _install_hooks
 
 
 def _commit_scaffold(
@@ -587,10 +608,10 @@ def bootstrap(
     _commit_context_sha(project_root, workspace)
     final_sha = _run_git(["rev-parse", "HEAD"], cwd=project_root).stdout.strip()
 
-    # Hook instalado por ULTIMO: protege commits futuros do usuario sem
-    # interferir nos commits atomicos do bootstrap (cujo COMMIT_EDITMSG seria
-    # lido stale pelo hook).
-    _install_pre_commit_hook(project_root, skill_root)
+    # Hooks instalados por ULTIMO: protegem commits futuros do usuario sem
+    # interferir nos commits atomicos do bootstrap. Pre-commit + commit-msg
+    # juntos cobrem file checks e msg validation respectivamente.
+    _install_hooks(project_root, skill_root)
 
     return {
         "workspace": workspace,
