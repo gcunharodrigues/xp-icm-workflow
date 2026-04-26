@@ -31,6 +31,7 @@ Reconnaissance inicial do projeto. Detecta tipo de workspace (greenfield, existi
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/brainstorming-200tok.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
+| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. Em stage 00 só existe se workspace foi spawn de fase 08 saída C (workspace herdado). |
 
 ## Não Lê (negative constraint)
 
@@ -107,3 +108,57 @@ Skills formais (escape hatch): `superpowers:brainstorming`, `superpowers:writing
 - **Humano:** revisa `output/recon-report.md`. Confirma "este recon-report está correto? prosseguir 01?" antes de transitar.
 - **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`.
 - **Aprovação para transitar:** humano explicitamente aprova; sub_stage vira `00_completed` no commit que registra a aprovação.
+
+## End of stage handoff (1-stage-1-sessão)
+
+Ao concluir este estágio, sessão deve:
+
+1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
+   - `sub_stage = 00_completed`
+   - `status = COMPLETED_AWAITING_HUMAN` (ou `IN_PROGRESS` se transição automática pro próximo stage)
+   - `last_transition.from = 00_completed`
+   - `last_transition.to = 01_in_progress` (ou conforme `next_stage` do frontmatter)
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note}`
+
+2. **Renderizar `_kickoff.md`** no stage seguinte:
+   - Path: `<workspace>/stages/01_discovery/_kickoff.md`
+   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
+   - Corpo: prev_outputs com summary + prev_decisions + pending pra próximo stage
+
+3. **Commit atômico** (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+   ```
+   workspace <NNN>: stage 00 completo + kickoff stage 01
+   ```
+   Files no commit: outputs do stage atual + L1 + `_kickoff.md` do próximo.
+
+4. **Imprimir KICKOFF block verbal** pro user (copy-paste). Template (substitua placeholders):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Stage 00 (recon) COMPLETO — workspace <NNN-slug>
+
+   Workspace atualizado em commit <sha>:
+     - L1: stage_atual=01, sub_stage=01_in_progress
+     - Outputs: <lista>
+     - Kickoff: stages/01_discovery/_kickoff.md gerado
+
+   🔄 KICKOFF próxima sessão — copy/paste:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Continuar workspace <NNN-slug> no estágio 01 (discovery).
+
+   Read order:
+     workspaces/<NNN-slug>/CLAUDE.md
+     workspaces/<NNN-slug>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/01_discovery/CONTEXT.md
+     workspaces/<NNN-slug>/stages/01_discovery/_kickoff.md
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Encerre esta sessão (Ctrl+D ou /exit) e abra nova sessão Claude
+   no project_root, depois cole o prompt acima.
+   ```
+
+5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
+
+Detalhes em `<skill_root>/references/session-handoff-protocol.md`.

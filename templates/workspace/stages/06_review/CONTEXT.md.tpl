@@ -33,6 +33,7 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/requesting-code-review-200tok.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/receiving-code-review-200tok.md | L3 | sim |
+| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 
 ## Não Lê (negative constraint)
 
@@ -135,3 +136,65 @@ Skills formais (escape hatch): `superpowers:requesting-code-review`, `superpower
 - **Humano:** revisa `output/review-report.md`. Se sem P0/P1, aprova "OK para 07?". Se P0/P1, aprova fix loop (transição automática a 04).
 - **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`.
 - **Aprovação para transitar:** humano aprova explicitamente; sub_stage vira `06_completed` no commit que registra a aprovação. Loopback ao 04 não exige gate humano formal — basta o reviewer ter classificado P0/P1, o L1 transita automaticamente.
+
+## End of stage handoff (1-stage-1-sessão)
+
+Ao concluir este estágio, sessão deve:
+
+1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
+   - `sub_stage = 06_completed` (ou `04_wave_<N+1>_in_progress` se loopback por P0/P1 — nesse caso `stage_atual = 04` também)
+   - `status = COMPLETED_AWAITING_HUMAN` (sem P0/P1) ou `IN_PROGRESS` (loopback ao 04)
+   - `last_transition.from = 06_completed` (ou `06_in_progress` se loopback)
+   - `last_transition.to = 07_in_progress` (sem P0/P1, conforme `next_stage`) **OU** `04_wave_<N+1>_in_progress` (loopback)
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note}`
+
+2. **Renderizar `_kickoff.md`** no destino seguinte:
+   - Sem P0/P1: `<workspace>/stages/07_merge/_kickoff.md`
+   - Loopback (P0/P1): `<workspace>/stages/04_implementation_waves/_kickoff.md` (com `prev_outputs` incluindo `p0-p1-issues.md` + nota de fix loop em `pending_for_this_stage`)
+   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
+   - Corpo: prev_outputs com summary + prev_decisions + pending pra próxima sessão
+
+3. **Commit atômico** (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+   ```
+   workspace <NNN>: stage 06 completo + kickoff stage 07
+   ```
+   ou (loopback):
+   ```
+   workspace <NNN>: stage 06 fix loop + kickoff wave <N+1>
+   ```
+   Files no commit: outputs do stage atual + L1 + `_kickoff.md` do próximo.
+
+4. **Imprimir KICKOFF block verbal** pro user (copy-paste). Template (substitua placeholders — variante sem P0/P1 OU variante loopback):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Stage 06 (review) COMPLETO — workspace <NNN-slug>
+   (ou: 🔁 Stage 06 LOOPBACK ao 04 — P0/P1 detectados)
+
+   Workspace atualizado em commit <sha>:
+     - L1: stage_atual=07, sub_stage=07_in_progress
+       (ou: stage_atual=04, sub_stage=04_wave_<N+1>_in_progress)
+     - Outputs: <lista>
+     - Kickoff: <path do _kickoff.md gerado>
+
+   🔄 KICKOFF próxima sessão — copy/paste:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Continuar workspace <NNN-slug> no estágio 07 (merge).
+   (ou: Continuar workspace <NNN-slug> no estágio 04 (implementation_waves) — wave <N+1> de fix.)
+
+   Read order:
+     workspaces/<NNN-slug>/CLAUDE.md
+     workspaces/<NNN-slug>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/<stage-dir>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/<stage-dir>/_kickoff.md
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Encerre esta sessão (Ctrl+D ou /exit) e abra nova sessão Claude
+   no project_root, depois cole o prompt acima.
+   ```
+
+5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
+
+Detalhes em `<skill_root>/references/session-handoff-protocol.md`.

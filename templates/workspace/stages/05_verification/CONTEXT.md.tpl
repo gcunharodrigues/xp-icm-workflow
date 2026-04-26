@@ -27,6 +27,7 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 | 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/ | L4 | sim |
 | 7 | {{PROJECT_ROOT}}/docs/decisions/ | L3 | sim — sample-check (3 ADRs aleatórios) |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/verification-before-completion-200tok.md | L3 | sim |
+| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 
 ## Não Lê (negative constraint)
 
@@ -91,3 +92,57 @@ Skill formal: `superpowers:verification-before-completion` (escape hatch).
 - **Humano:** revisa `verification-report.md`, aceita PASS ou CONDITIONAL, ou requisita volta à fase 04 se FAIL.
 - **Automático (CI):** CI global roda + pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`.
 - **Aprovação para transitar:** humano aprova explicitamente; sub_stage vira `05_completed` no próximo commit.
+
+## End of stage handoff (1-stage-1-sessão)
+
+Ao concluir este estágio, sessão deve:
+
+1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
+   - `sub_stage = 05_completed`
+   - `status = COMPLETED_AWAITING_HUMAN` (ou `IN_PROGRESS` se transição automática pro próximo stage)
+   - `last_transition.from = 05_completed`
+   - `last_transition.to = 06_in_progress` (ou conforme `next_stage` do frontmatter)
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note}`
+
+2. **Renderizar `_kickoff.md`** no stage seguinte:
+   - Path: `<workspace>/stages/06_review/_kickoff.md`
+   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
+   - Corpo: prev_outputs com summary + prev_decisions + pending pra próximo stage
+
+3. **Commit atômico** (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+   ```
+   workspace <NNN>: stage 05 completo + kickoff stage 06
+   ```
+   Files no commit: outputs do stage atual + L1 + `_kickoff.md` do próximo.
+
+4. **Imprimir KICKOFF block verbal** pro user (copy-paste). Template (substitua placeholders):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Stage 05 (verification) COMPLETO — workspace <NNN-slug>
+
+   Workspace atualizado em commit <sha>:
+     - L1: stage_atual=06, sub_stage=06_in_progress
+     - Outputs: <lista>
+     - Kickoff: stages/06_review/_kickoff.md gerado
+
+   🔄 KICKOFF próxima sessão — copy/paste:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Continuar workspace <NNN-slug> no estágio 06 (review).
+
+   Read order:
+     workspaces/<NNN-slug>/CLAUDE.md
+     workspaces/<NNN-slug>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/06_review/CONTEXT.md
+     workspaces/<NNN-slug>/stages/06_review/_kickoff.md
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Encerre esta sessão (Ctrl+D ou /exit) e abra nova sessão Claude
+   no project_root, depois cole o prompt acima.
+   ```
+
+5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
+
+Detalhes em `<skill_root>/references/session-handoff-protocol.md`.

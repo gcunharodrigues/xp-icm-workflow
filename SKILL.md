@@ -4,9 +4,9 @@ description: Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto
 type: rigid
 ---
 
-# xp-icm-workflow v3.0.0-beta1
+# xp-icm-workflow v3.0.0-beta3
 
-> **Skill é parteira, não orquestradora.** Bootstrap one-shot cria a estrutura. Filesystem governa o ciclo. Sessões novas leem L0+L1+L2 e trabalham.
+> **Skill é parteira, não orquestradora.** Bootstrap one-shot cria a estrutura. Filesystem governa o ciclo. **1 stage = 1 sessão**: cada estágio termina com handoff dual (verbal + arquivo `_kickoff.md`) e a sessão sai. Próxima sessão começa fresh.
 
 > **Base teórica:** Interpretable Context Methodology (VanClief & McDermott, 2025) — substitui orquestração por framework por estrutura de sistema de arquivos. Pastas numeradas representam estágios; arquivos markdown carregam prompts e contexto. Ver `references/icm-paper-summary.md`.
 
@@ -206,18 +206,29 @@ Detalhes da matriz em `templates/_config/profile-matrix.md` (10 × 4 = 40 combos
 
 ---
 
-## After bootstrap — what happens next
+## After bootstrap — 1 stage = 1 sessão (canonical)
 
-A skill **sai**. Próximos passos são responsabilidade do humano:
+A skill **sai**. Próximos passos seguem protocolo **1-stage-1-sessão** (supersede Q3 batched do plan v1; vide `references/session-handoff-protocol.md`):
 
-1. **Abrir sessão nova** com Claude no project_root.
+1. **User abre sessão nova** Claude no project_root.
 2. Sessão lê automaticamente:
    - `workspaces/NNN-slug/CLAUDE.md` (L0, identidade)
    - `workspaces/NNN-slug/CONTEXT.md` (L1, state machine)
    - `workspaces/NNN-slug/stages/<stage_atual>/CONTEXT.md` (L2, instruções do estágio)
-3. Sessão executa o estágio conforme L2 instrui.
-4. Ao transicionar: atualiza L1 + commit atômico (pre-commit hook valida).
-5. Próxima sessão repete o ciclo.
+   - `workspaces/NNN-slug/stages/<stage_atual>/_kickoff.md` se gerado pela sessão anterior
+3. Sessão executa o estágio conforme L2.
+4. **Fim do stage:** sessão atualiza L1, gera `_kickoff.md` no próximo stage, commita atomicamente, imprime KICKOFF block verbal pro user, **SAI**.
+5. User abre nova sessão, cola prompt do KICKOFF, repete o ciclo.
+
+**Trade-off aceito:** cada stage paga 1 cache miss (~2-3k tokens warm-up) em troca de context fresh + token spend total não-linear menor. Empírico: batched B+D do beta1/beta2 cresceu contexto além do alvo de 2-8k por L2; 1-stage-1-sessão fica dentro.
+
+**Stage 04 exceção (decisão 2a):** cada wave = 1 sessão lead (sub-waves dentro da mesma sessão). Lead gera kickoff entre waves no mesmo stage 04 ou pra stage 05 ao final.
+
+**Stage 07 terminal:** não gera kickoff. Stage 08 (feedback intake) é manual.
+
+**Stage 08 saídas:** A close → `COMPLETED` sem kickoff; B restart phase X → kickoff pro stage X com `iteration++`; C spawn → instrução pro user invocar `/xp-icm-workflow` novo.
+
+**Migração beta1/beta2 (decisão 4B):** workspaces existentes em batched mode continuam batched; sem conversão forçada. Apenas workspaces criados via `/xp-icm-workflow` pós-beta3 usam 1-stage-1-sessão.
 
 **Recovery:** se sessão crashar mid-estágio → próxima sessão dispara `scripts/recovery-wizard.py` automaticamente via pre-flight check do L2. Detecta 6 tipos de inconsistência (R2.7) e propõe ações.
 
@@ -260,7 +271,8 @@ Permissions allowlist sugerida em `system-requirements.md`.
 | Doc | Conteúdo |
 |---|---|
 | `references/state-machine-schema.md` | Schema completo L1 (yaml frontmatter + history append-only) |
-| `references/git-hooks.md` | Pre-commit hook: regras 1-6, padrões regex, anti-bypass |
+| `references/session-handoff-protocol.md` | **1 stage = 1 sessão**: handoff dual, schema `_kickoff.md`, anti-patterns |
+| `references/git-hooks.md` | Pre-commit + commit-msg hooks: regras, padrões regex, anti-bypass |
 | `references/recovery-wizard.md` | 6 inconsistências detectadas + ações A/B/C |
 | `references/changelog.md` | Versões da skill |
 | `references/v2.4-snapshot/` | Snapshot da v2.4 anterior (pra referência histórica) |

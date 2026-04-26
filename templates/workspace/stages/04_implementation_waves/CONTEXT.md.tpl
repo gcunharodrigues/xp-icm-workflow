@@ -37,6 +37,7 @@ Execução paralela em waves. Lead session orquestra um Agent Team de teammates 
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/test-driven-development-200tok.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/subagent-driven-development-200tok.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md | L3 | sim |
+| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 
 ## Não Lê (negative constraint)
 
@@ -131,3 +132,67 @@ Skill formal: `superpowers:test-driven-development` + `superpowers:subagent-driv
 - **Humano:** aprova transição da última wave para estágio 05; responde menu A/B/C de stop points; resolve conflict de rebase quando ocorre.
 - **Automático (CI):** pre-commit hook valida prefixo de commit (`wave-{{WORKSPACE}}-<N>/<task>` em código, `workspace/{{WORKSPACE}}` em state); CI global roda após rebase de cada wave; auto-QA Akita validado por wave-reviewer.
 - **Aprovação para transitar:** wave fecha automaticamente quando rebase + CI global verde + wave-summary escrito. Última wave precisa de aprovação humana explícita para transitar para estágio 05.
+
+## End of stage handoff (1-stage-1-sessão)
+
+**Stage 04 exception (wave-aware):** cada wave = 1 sessão lead. Lead encerra wave gerando kickoff para próxima wave (mesmo stage 04, sub_stage `04_wave_<N+1>_in_progress`) OU para stage 05 (após última wave). Sub-waves (subdivisões dentro de uma wave) NÃO disparam kickoff — lead persiste através das sub-waves dentro da mesma sessão.
+
+Ao concluir esta wave (ou o estágio inteiro se for última wave), sessão deve:
+
+1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
+   - `sub_stage = 04_wave_<N>_completed`
+   - `status = COMPLETED_AWAITING_HUMAN` (ou `IN_PROGRESS` se transição automática pra próxima wave / stage)
+   - `last_transition.from = 04_wave_<N>_completed`
+   - `last_transition.to = 04_wave_<N+1>_in_progress` (se houver mais waves) **OU** `05_in_progress` (se última wave — conforme `next_stage` do frontmatter)
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{at, event: "stage_transition" | "wave_completed", from, to, commit_sha, note}`
+
+2. **Renderizar `_kickoff.md`** no destino seguinte:
+   - Próxima wave: `<workspace>/stages/04_implementation_waves/_kickoff.md` (overwrite — `stage_target = 04`, com `wave_target` no corpo apontando wave <N+1>)
+   - Última wave → stage 05: `<workspace>/stages/05_verification/_kickoff.md`
+   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
+   - Corpo: prev_outputs com summary (task reports + wave-summary) + prev_decisions + pending pra próxima sessão (próxima wave ou stage 05)
+
+3. **Commit atômico** (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+   ```
+   workspace <NNN>: wave <N> completa + kickoff wave <N+1>
+   ```
+   ou (última wave):
+   ```
+   workspace <NNN>: stage 04 completo + kickoff stage 05
+   ```
+   Files no commit: outputs da wave + L1 + `_kickoff.md` do próximo.
+
+4. **Imprimir KICKOFF block verbal** pro user (copy-paste). Template (substitua placeholders — variante wave-em-andamento OU stage-completo):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Wave <N> COMPLETA (stage 04) — workspace <NNN-slug>
+   (ou: ✅ Stage 04 COMPLETO — workspace <NNN-slug> — última wave)
+
+   Workspace atualizado em commit <sha>:
+     - L1: stage_atual=04, sub_stage=04_wave_<N+1>_in_progress
+       (ou: stage_atual=05, sub_stage=05_in_progress)
+     - Outputs: <task reports + wave-summary>
+     - Kickoff: <path do _kickoff.md gerado>
+
+   🔄 KICKOFF próxima sessão — copy/paste:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Continuar workspace <NNN-slug> no estágio 04 (implementation_waves) — wave <N+1>.
+   (ou: Continuar workspace <NNN-slug> no estágio 05 (verification).)
+
+   Read order:
+     workspaces/<NNN-slug>/CLAUDE.md
+     workspaces/<NNN-slug>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/<stage-dir>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/<stage-dir>/_kickoff.md
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Encerre esta sessão (Ctrl+D ou /exit) e abra nova sessão Claude
+   no project_root, depois cole o prompt acima.
+   ```
+
+5. **SAIR** da sessão. NÃO continuar pra próxima wave / próximo stage na mesma sessão.
+
+Detalhes em `<skill_root>/references/session-handoff-protocol.md`.

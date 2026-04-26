@@ -4,6 +4,49 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.0.0-beta3 — 1-stage-1-sessão + handoff dual (2026-04-26)
+
+### Why beta3
+
+Beta1/beta2 usavam sessões batched (Q3 do plan v1: design 00+01+02 numa só, closing 05+06+07 numa só). Em uso real, contexto cresceu além do alvo de 2-8k por L2. Token spend total não-linear vs número de sub_stages na batch.
+
+User sinalizou ganho empírico em **context fresh** > custo de cache miss. Decisão revisada: **1 stage = 1 sessão** (decisão A1, supersede Q3-A do plan v1). Cada stage paga 1 cache miss (~2-3k tokens warm-up) em troca de context enxuto + token spend total menor.
+
+### Mudanças
+
+- **`references/session-handoff-protocol.md` (NOVO):** doc canonical do protocolo "1 stage = 1 sessão". Schema `_kickoff.md` (L4-kickoff layer), atomicidade do commit handoff, anti-patterns. Stage 04 mantém wave-aware (1 sessão lead por wave; sub-waves dentro da mesma sessão). Stage 07 terminal (não gera kickoff). Stage 08 saídas A/B/C.
+- **`templates/workspace/stages/_kickoff.md.tpl` (NOVO):** template kickoff genérico com placeholders.
+- **`scripts/handoff.py` (NOVO):** `render_kickoff`, `write_kickoff`, `extract_kickoff_metadata`, `validate_kickoff_present`. CLI mode pra debug. 25 unit tests + snapshot fixture.
+- **9 L2 templates atualizados:** cada `templates/workspace/stages/<NN>_<name>/CONTEXT.md.tpl` ganhou linha `_kickoff.md` na tabela Inputs (condicional) + nova seção "End of stage handoff" com checklist + KICKOFF block verbal pro user. Stages 04, 07, 08 com customizações específicas. +541 linhas total.
+- **`SKILL.md`:** seção "After bootstrap" reescrita com protocolo 1-stage-1-sessão. Trade-off cache miss vs context fresh documentado.
+
+### Migração beta1/beta2 (decisão 4B)
+
+**Sem migração forçada.** Workspaces criados antes do beta3 continuam em batched mode (legacy). Apenas workspaces criados pós-beta3 usam 1-stage-1-sessão.
+
+### Tests
+
+527 passed (+25 novos). Coverage 82%. Bats CI-only.
+
+---
+
+## v3.0.0-beta2 — Hook fix + intent inference + anti-superpowers (2026-04-26)
+
+### Why beta2
+
+Beta1 carregava bug crítico no pre-commit hook: lia `.git/COMMIT_EDITMSG` em pre-commit stage, mas git só persiste msg DEPOIS do hook passar. Hook validava msg do commit ANTERIOR (ou empty no primeiro). Workaround temporário (instalar hook depois dos commits do bootstrap) só protegia o bootstrap; commits futuros do user permaneciam validando msg stale.
+
+### Mudanças
+
+- **fix(hooks) — `0afcba7`:** split em 2 stages canônicos. `pre-commit` mantém file checks + atomicidade L1↔outputs. `commit-msg` (NOVO) recebe path em `$1` com msg atual; valida prefix + exceção ADR. Installer + bootstrap atualizados. Regression test garante msg ATUAL via `$1`.
+- **feat(skill) — `77348b7`:** SKILL.md "Intent inference" com heurísticas profile/tier (10 mappings) + menu confirm + seed inicial em `stages/01_discovery/_seed.md`. Anti-superpowers rule (inegociável) refletida no L0 (rule 8).
+
+### Tests
+
+502 passed. Coverage 83%.
+
+---
+
 ## v3.0.0-beta1 — Reescrita completa (2026-04-26)
 
 > Filesystem é o programa. Skill é parteira, não orquestradora.

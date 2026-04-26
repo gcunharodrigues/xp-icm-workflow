@@ -27,6 +27,7 @@ Finaliza o ciclo: integra a `workspace_branch` rebased em `base_branch` (geralme
 | 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/output/review-report.md | L4 | sim |
 | 5 | {{PROJECT_ROOT}}/.git/config | L3 | sim (read-only — qual remote, qual base_branch) |
 | 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/finishing-branch-200tok.md | L3 | sim |
+| 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 
 ## Não Lê (negative constraint)
 
@@ -108,3 +109,32 @@ Skill formal (escape hatch): `superpowers:finishing-a-development-branch`.
 - **Humano:** escolhe A/B/C no menu de merge; confirma o merge-report ao final.
 - **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`. Pós-merge, CI da `base_branch` valida o estado integrado.
 - **Aprovação para transitar:** humano confirma merge-report; sub_stage vira `07_completed` e `status: COMPLETED` no commit que registra a confirmação.
+
+## End of stage handoff (1-stage-1-sessão)
+
+**Stage 07 terminal:** NÃO gera `_kickoff.md` para stage 08. Stage 08 (feedback intake) é manual: humano dispara depois de uso real, não automaticamente.
+
+Final do stage 07:
+- L1: `status = COMPLETED`, `sub_stage = 07_completed`
+  - `last_transition.from = 07_in_progress`
+  - `last_transition.to = 07_completed`
+  - `last_transition.at = <ISO 8601 UTC now>`
+  - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note}`
+- Commit atômico (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+  ```
+  workspace <NNN>: stage 07 completo (workspace COMPLETED)
+  ```
+  Files no commit: `output/merge-report.md` + L1.
+- Print pro user:
+  ```
+  ✅ Workspace <NNN-slug> COMPLETED.
+
+  Próximos passos opcionais:
+  - Após uso real, dispare manualmente: /xp-icm-workflow feedback <NNN>
+    (cria sessão stage 08 feedback intake)
+  - Caso contrário, workspace fica em estado COMPLETED.
+  ```
+- Branch workspace pode ser arquivada (vide R3.4 do plan).
+- SAIR da sessão.
+
+Detalhes em `<skill_root>/references/session-handoff-protocol.md`.

@@ -34,6 +34,7 @@ Gate de iteração universal do ciclo ICM. Disparado MANUAL pelo humano após us
 | 11 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: append apenas em saída A |
 | 12 | {{LOGS_ROOT}} | L3 | condicional: opcional — sample dos últimos 30 dias se L0 declara `logs_root` ≠ null |
 | 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-fase08.md | L3 | sim (protocolo literal — cópia local da reference) |
+| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. Em stage 08 normalmente AUSENTE — humano dispara manualmente após uso real, não há sessão anterior automática. |
 
 **Nota sobre `{{LOGS_ROOT}}`:** placeholder resolvido pelo bootstrap a partir do campo `logs_root` do L0. Se `logs_root: null` (greenfield, texto, skill), bootstrap substitui por marcador inerte e o input é skipped no pre-flight. Se `logs_root` é path real, sessão samplea os últimos 30 dias.
 
@@ -117,3 +118,110 @@ Esta é a cópia local (no workspace) da reference canônica `references/feedbac
 - **Humano:** dispara a fase 08 manualmente (nunca automático). Responde os 4 blocos de feedback inline. Escolhe A/B/C no menu (pode discordar da recomendação).
 - **Automático (CI):** pre-commit hook valida atomicidade L1 ↔ outputs ↔ `docs/lessons.md` (em saída A). Pre-commit valida que `output-iteration-<N>/` (saída B) só é criado em commits com prefixo `intake:` ou `feedback:`.
 - **Aprovação para transitar:** humano explicita escolha A/B/C; sub_stage transita conforme escolha no commit que registra a decisão. Saída A e C levam `status: COMPLETED`; saída B leva a fase X com `status: IN_PROGRESS` e `iteration: N+1`.
+
+## End of stage handoff (1-stage-1-sessão)
+
+**Stage 08 saídas (Q12 do plan):**
+
+- **A — Close:** workspace `COMPLETED`. Sessão sai SEM gerar kickoff.
+- **B — Restart phase X:** L1 `iteration++`, `stage_atual=X`, `sub_stage=X_in_progress`. GERAR kickoff em `stages/<X>_<name>/_kickoff.md` herdando outputs anteriores em `prev_outputs` + history append. Imprime KICKOFF verbal pra próxima sessão.
+- **C — Spawn novo workspace:** NÃO gera kickoff (workspace novo é outro). Imprime instrução pro user invocar `/xp-icm-workflow` novo (skill nova faz bootstrap herdando lessons+ADRs do parent via `--spawn-from <NNN>`).
+
+Detalhamento por saída:
+
+### Saída A — Close
+
+1. **Atualizar L1**:
+   - `sub_stage = 08_decided_A`
+   - `status = COMPLETED`
+   - `last_transition.from = 08_in_progress`
+   - `last_transition.to = 08_decided_A`
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "saida A close"}`
+2. Append lições novas (de "QUE LIÇÃO TIRAR") em `{{PROJECT_ROOT}}/docs/lessons.md` respeitando frontmatter strict.
+3. Commit atômico (pre-commit valida atomicidade L1↔outputs↔lessons; commit-msg prefix `intake:` ou `feedback:`):
+   ```
+   intake: workspace <NNN> close (saida A) + lessons append
+   ```
+4. Print pro user: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md.`
+5. **NÃO gerar `_kickoff.md`.** SAIR da sessão.
+
+### Saída B — Restart phase X
+
+1. Validar `X ∈ {01, 02, 03, 04, 05, 06, 07}` (recusar `00` e `08`).
+2. Mover outputs antigos: `stages/<XX>/output/` → `stages/<XX>/output-iteration-<N>/` (N = iteration ANTES do incremento).
+3. **Atualizar L1**:
+   - `iteration = N+1`
+   - `stage_atual = <XX>`
+   - `sub_stage = <XX>_in_progress` (ou `04_wave_1_in_progress` se X=04)
+   - `status = IN_PROGRESS`
+   - `last_transition.from = 08_in_progress`
+   - `last_transition.to = <XX>_in_progress`
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{at, event: "iteration_increment", from: "08_in_progress", to: "<XX>_in_progress", commit_sha, note: "saida B restart fase X"}`
+4. **Renderizar `_kickoff.md`** em `<workspace>/stages/<XX>_<name>/_kickoff.md`:
+   - `prev_outputs` herda do `intake-report.md` (sumário das lições + 4 blocos de feedback)
+   - `pending_for_this_stage`: pontos do feedback que motivaram o restart
+   - Use `python scripts/handoff.py render`
+5. Commit atômico (prefix `intake:` ou `feedback:`):
+   ```
+   intake: workspace <NNN> restart fase <XX> (saida B, iteration <N+1>) + kickoff
+   ```
+   Files no commit: `intake-report.md` + L1 + outputs movidos pra `output-iteration-<N>/` + `_kickoff.md` do stage X.
+6. **Imprimir KICKOFF block verbal** pro user (copy-paste):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   🔁 Stage 08 SAÍDA B — restart fase <XX> — workspace <NNN-slug>
+
+   Workspace atualizado em commit <sha>:
+     - L1: stage_atual=<XX>, sub_stage=<XX>_in_progress, iteration=<N+1>
+     - Outputs antigos movidos: stages/<XX>/output-iteration-<N>/
+     - Kickoff: stages/<XX>_<name>/_kickoff.md gerado
+
+   🔄 KICKOFF próxima sessão — copy/paste:
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Continuar workspace <NNN-slug> no estágio <XX> (<name>) — iteração <N+1>.
+
+   Read order:
+     workspaces/<NNN-slug>/CLAUDE.md
+     workspaces/<NNN-slug>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/<XX>_<name>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/<XX>_<name>/_kickoff.md
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+   Encerre esta sessão (Ctrl+D ou /exit) e abra nova sessão Claude
+   no project_root, depois cole o prompt acima.
+   ```
+7. SAIR da sessão.
+
+### Saída C — Spawn novo workspace
+
+1. **Atualizar L1**:
+   - `sub_stage = 08_decided_C`
+   - `status = COMPLETED`
+   - `spawn_to = <slug-novo-workspace>`
+   - `last_transition.from = 08_in_progress`
+   - `last_transition.to = 08_decided_C`
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "saida C spawn"}`
+2. Commit atômico:
+   ```
+   intake: workspace <NNN> close + spawn <slug-novo> (saida C)
+   ```
+3. **NÃO gerar `_kickoff.md`** (workspace novo é outro; bootstrap acontece em sessão separada).
+4. Print pro user — instrução explícita pra colar em sessão nova:
+
+   ```
+   ✅ Workspace <NNN-slug> CLOSED + SPAWN registrado (saída C).
+
+   Próximo passo (humano, sessão nova):
+
+     /xp-icm-workflow project-root={{PROJECT_ROOT}} spawn_from={{WORKSPACE}}
+
+   Bootstrap do novo workspace acontece em sessão dedicada — herda
+   lessons+ADRs do parent via --spawn-from.
+   ```
+5. SAIR da sessão.
+
+Detalhes em `<skill_root>/references/session-handoff-protocol.md`.

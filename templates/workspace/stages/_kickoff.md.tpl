@@ -1,0 +1,43 @@
+---
+layer: L4-kickoff
+stage_target: "{{STAGE_TARGET}}"
+stage_target_name: "{{STAGE_TARGET_NAME}}"
+generated_by: "session ending stage {{PREV_STAGE}}"
+generated_at: "{{GENERATED_AT}}"
+generator_commit_sha: "{{GENERATOR_COMMIT_SHA}}"
+prev_stage: "{{PREV_STAGE}}"
+prev_outputs: {{PREV_OUTPUTS_YAML}}
+prev_decisions_summary: |
+  {{PREV_DECISIONS_SUMMARY_INDENTED}}
+pending_for_this_stage: {{PENDING_YAML}}
+---
+
+# Kickoff — Stage {{STAGE_TARGET}} {{STAGE_TARGET_NAME}} (workspace {{WORKSPACE}})
+
+## Read order (paths absolutos)
+
+1. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md`
+2. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`
+3. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/{{STAGE_TARGET_DIR}}/CONTEXT.md`
+4. Este arquivo (`stages/{{STAGE_TARGET_DIR}}/_kickoff.md`)
+5. Inputs declarados pelo L2 do stage atual
+
+## Estado entregue pela sessão anterior
+
+{{PREV_STATE_PROSE}}
+
+## O que esta sessão deve fazer
+
+{{NEXT_TASKS_PROSE}}
+
+## KICKOFF block (verbal — copy-paste pro user)
+
+```
+Continuar workspace {{WORKSPACE}} no estágio {{STAGE_TARGET}} ({{STAGE_TARGET_NAME}}).
+
+Read order:
+  workspaces/{{WORKSPACE}}/CLAUDE.md
+  workspaces/{{WORKSPACE}}/CONTEXT.md
+  workspaces/{{WORKSPACE}}/stages/{{STAGE_TARGET_DIR}}/CONTEXT.md
+  workspaces/{{WORKSPACE}}/stages/{{STAGE_TARGET_DIR}}/_kickoff.md
+```
