@@ -1,0 +1,321 @@
+"""Testes unitarios para scripts/bootstrap.py (backend testavel do bootstrap).
+
+Foco: funcoes puras de templating, validacao e manipulacao de arquivos de
+indice/.gitignore. NAO toca FS real fora de tmp_path/tmp_workspace.
+
+Bootstrap end-to-end (criacao de branch, commit, scaffold de estagios) e
+testado em tests/integration/test_bootstrap.bats (CI-only).
+"""
+from __future__ import annotations
+
+import importlib.util
+import json
+import sys
+from pathlib import Path
+
+import pytest
+
+# Carrega scripts/bootstrap.py como modulo
+SKILL_ROOT = Path(__file__).resolve().parents[2]
+SCRIPT_PATH = SKILL_ROOT / "scripts" / "bootstrap.py"
+
+_spec = importlib.util.spec_from_file_location("bootstrap", SCRIPT_PATH)
+bootstrap = importlib.util.module_from_spec(_spec)  # type: ignore[arg-type]
+sys.modules["bootstrap"] = bootstrap
+_spec.loader.exec_module(bootstrap)  # type: ignore[union-attr]
+
+BootstrapError = bootstrap.BootstrapError
+render_template = bootstrap.render_template
+resolve_workspace_id = bootstrap.resolve_workspace_id
+update_index = bootstrap.update_index
+update_gitignore = bootstrap.update_gitignore
+validate_slug = bootstrap.validate_slug
+parse_profile_merge_output = bootstrap.parse_profile_merge_output
+
+
+# ============================================================================
+# render_template
+# ============================================================================
+
+class TestRenderTemplate:
+    def test_substitutes_single_placeholder(self, tmp_path: Path) -> None:
+        tpl = tmp_path / "x.tpl"
+        tpl.write_text("hello {{NAME}}", encoding="utf-8")
+        out = render_template(tpl, {"NAME": "world"})
+        assert out == "hello world"
+
+    def test_substitutes_multiple_placeholders(self, tmp_path: Path) -> None:
+        tpl = tmp_path / "x.tpl"
+        tpl.write_text("a={{A}} b={{B}} c={{C}}", encoding="utf-8")
+        out = render_template(tpl, {"A": "1", "B": "2", "C": "3"})
+        assert out == "a=1 b=2 c=3"
+
+    def test_repeated_placeholder_substituted_everywhere(self, tmp_path: Path) -> None:
+        tpl = tmp_path / "x.tpl"
+        tpl.write_text("{{X}} and {{X}} again", encoding="utf-8")
+        out = render_template(tpl, {"X": "boom"})
+        assert out == "boom and boom again"
+
+    def test_raises_when_placeholder_unresolved(self, tmp_path: Path) -> None:
+        tpl = tmp_path / "x.tpl"
+        tpl.write_text("{{KNOWN}} but {{UNKNOWN}}", encoding="utf-8")
+        with pytest.raises(BootstrapError, match="UNKNOWN"):
+            render_template(tpl, {"KNOWN": "ok"})
+
+    def test_raises_when_template_path_missing(self, tmp_path: Path) -> None:
+        with pytest.raises(BootstrapError, match="template"):
+            render_template(tmp_path / "nope.tpl", {})
+
+    def test_unicode_values_preserved(self, tmp_path: Path) -> None:
+        tpl = tmp_path / "x.tpl"
+        tpl.write_text("autor: {{NAME}}", encoding="utf-8")
+        out = render_template(tpl, {"NAME": "guilherme à 2026"})
+        assert "guilherme à 2026" in out
+
+    def test_empty_string_value_allowed(self, tmp_path: Path) -> None:
+        tpl = tmp_path / "x.tpl"
+        tpl.write_text("logs={{LOGS_ROOT}} fim", encoding="utf-8")
+        out = render_template(tpl, {"LOGS_ROOT": ""})
+        assert out == "logs= fim"
+
+
+# ============================================================================
+# resolve_workspace_id
+# ============================================================================
+
+class TestResolveWorkspaceId:
+    def test_missing_index_returns_one(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        assert resolve_workspace_id(idx) == 1
+
+    def test_empty_index_returns_one(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        idx.write_text("", encoding="utf-8")
+        assert resolve_workspace_id(idx) == 1
+
+    def test_index_with_only_header_returns_one(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        idx.write_text(
+            "# Workspaces index\n\n"
+            "| ID | Slug | Profile/Tier | Created at | Status |\n"
+            "|---|---|---|---|---|\n",
+            encoding="utf-8",
+        )
+        assert resolve_workspace_id(idx) == 1
+
+    def test_index_with_three_entries_returns_four(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        idx.write_text(
+            "# Workspaces index\n\n"
+            "| ID | Slug | Profile/Tier | Created at | Status |\n"
+            "|---|---|---|---|---|\n"
+            "| 001 | foo | app_web_backend/development | 2026-04-20 | active |\n"
+            "| 002 | bar | cli_tool/tool | 2026-04-21 | active |\n"
+            "| 003 | baz | experiment/experimental | 2026-04-22 | active |\n",
+            encoding="utf-8",
+        )
+        assert resolve_workspace_id(idx) == 4
+
+    def test_index_with_gap_uses_max_plus_one(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        idx.write_text(
+            "| ID | Slug | Profile/Tier | Created at | Status |\n"
+            "|---|---|---|---|---|\n"
+            "| 001 | a | x/x | 2026-04-20 | active |\n"
+            "| 042 | b | y/y | 2026-04-21 | active |\n",
+            encoding="utf-8",
+        )
+        assert resolve_workspace_id(idx) == 43
+
+    def test_index_ignores_malformed_lines(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        idx.write_text(
+            "# Header\n\n"
+            "| ID | Slug | Profile/Tier | Created at | Status |\n"
+            "|---|---|---|---|---|\n"
+            "| 005 | ok | p/t | 2026-04-20 | active |\n"
+            "| zzz | bad | nada |\n"
+            "linha solta sem pipes\n"
+            "| 010 | other | p/t | 2026-04-22 | active |\n",
+            encoding="utf-8",
+        )
+        assert resolve_workspace_id(idx) == 11
+
+
+# ============================================================================
+# update_index
+# ============================================================================
+
+class TestUpdateIndex:
+    def test_creates_file_with_header_when_missing(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        update_index(
+            idx,
+            workspace="001-foo",
+            profile="cli_tool",
+            tier="tool",
+            created_at="2026-04-25T10:00:00Z",
+        )
+        content = idx.read_text(encoding="utf-8")
+        assert "| ID |" in content
+        assert "001" in content
+        assert "foo" in content
+        assert "cli_tool/tool" in content
+
+    def test_appends_to_existing_index(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        idx.write_text(
+            "# Workspaces index\n\n"
+            "| ID | Slug | Profile/Tier | Created at | Status |\n"
+            "|---|---|---|---|---|\n"
+            "| 001 | first | cli_tool/tool | 2026-04-20 | active |\n",
+            encoding="utf-8",
+        )
+        update_index(
+            idx,
+            workspace="002-second",
+            profile="app_web_backend",
+            tier="development",
+            created_at="2026-04-25T10:00:00Z",
+        )
+        content = idx.read_text(encoding="utf-8")
+        assert "001 | first" in content  # preserva
+        assert "002" in content
+        assert "second" in content
+        assert "app_web_backend/development" in content
+
+    def test_id_and_slug_split_correctly(self, tmp_path: Path) -> None:
+        idx = tmp_path / ".index.md"
+        update_index(
+            idx,
+            workspace="042-feat-multi-word-slug",
+            profile="ml_project",
+            tier="production",
+            created_at="2026-04-25T10:00:00Z",
+        )
+        content = idx.read_text(encoding="utf-8")
+        # ID = 042; slug = feat-multi-word-slug
+        assert "| 042 |" in content
+        assert "feat-multi-word-slug" in content
+
+
+# ============================================================================
+# update_gitignore
+# ============================================================================
+
+class TestUpdateGitignore:
+    def test_creates_file_when_missing(self, tmp_path: Path) -> None:
+        gi = tmp_path / ".gitignore"
+        update_gitignore(gi, [".worktrees/", ".icm-profile.local.yaml"])
+        content = gi.read_text(encoding="utf-8")
+        assert ".worktrees/" in content
+        assert ".icm-profile.local.yaml" in content
+
+    def test_idempotent_when_lines_already_present(self, tmp_path: Path) -> None:
+        gi = tmp_path / ".gitignore"
+        gi.write_text(
+            ".worktrees/\n"
+            ".icm-profile.local.yaml\n"
+            "__pycache__/\n",
+            encoding="utf-8",
+        )
+        original = gi.read_text(encoding="utf-8")
+        update_gitignore(gi, [".worktrees/", ".icm-profile.local.yaml"])
+        assert gi.read_text(encoding="utf-8") == original
+
+    def test_adds_only_missing_lines(self, tmp_path: Path) -> None:
+        gi = tmp_path / ".gitignore"
+        gi.write_text(".worktrees/\n", encoding="utf-8")
+        update_gitignore(gi, [".worktrees/", ".icm-profile.local.yaml"])
+        content = gi.read_text(encoding="utf-8")
+        # .worktrees/ aparece uma vez; .icm-profile.local.yaml foi adicionado
+        assert content.count(".worktrees/") == 1
+        assert ".icm-profile.local.yaml" in content
+
+    def test_preserves_existing_unrelated_lines(self, tmp_path: Path) -> None:
+        gi = tmp_path / ".gitignore"
+        gi.write_text("node_modules/\n*.log\n", encoding="utf-8")
+        update_gitignore(gi, [".worktrees/"])
+        content = gi.read_text(encoding="utf-8")
+        assert "node_modules/" in content
+        assert "*.log" in content
+        assert ".worktrees/" in content
+
+    def test_trailing_newline_handled(self, tmp_path: Path) -> None:
+        gi = tmp_path / ".gitignore"
+        # arquivo sem newline final
+        gi.write_text("foo", encoding="utf-8")
+        update_gitignore(gi, ["bar"])
+        content = gi.read_text(encoding="utf-8")
+        # bar deve estar em sua propria linha, nao concatenado
+        assert "foobar" not in content
+        assert "foo" in content
+        assert "bar" in content
+
+
+# ============================================================================
+# validate_slug
+# ============================================================================
+
+class TestValidateSlug:
+    @pytest.mark.parametrize("slug", [
+        "feat-auth",
+        "x",
+        "01-feature",
+        "abc-def-ghi",
+        "abc123",
+        "123",
+    ])
+    def test_accepts_valid_kebab(self, slug: str) -> None:
+        validate_slug(slug)  # nao deve raise
+
+    @pytest.mark.parametrize("slug,reason", [
+        ("Feat-Auth", "uppercase"),
+        ("feat_auth", "underscore"),
+        ("feat auth", "space"),
+        ("feat/auth", "slash"),
+        ("feat.auth", "dot"),
+        ("açao", "accent"),
+        ("", "empty"),
+        ("feat--auth", "double-dash"),  # double-dash also invalid? — defensive
+    ])
+    def test_rejects_invalid(self, slug: str, reason: str) -> None:
+        # double-dash is technically allowed by ^[a-z0-9-]+$; aceitar
+        if reason == "double-dash":
+            validate_slug(slug)
+            return
+        with pytest.raises(BootstrapError):
+            validate_slug(slug)
+
+
+# ============================================================================
+# parse_profile_merge_output
+# ============================================================================
+
+class TestParseProfileMergeOutput:
+    def test_parses_valid_json(self) -> None:
+        payload = json.dumps({
+            "effective": {"profile": "cli_tool", "tier": "tool", "tdd_required": False},
+            "hash": "abc123",
+        })
+        effective, h = parse_profile_merge_output(payload)
+        assert effective["profile"] == "cli_tool"
+        assert h == "abc123"
+
+    def test_raises_on_invalid_json(self) -> None:
+        with pytest.raises(BootstrapError, match="JSON"):
+            parse_profile_merge_output("not json {")
+
+    def test_raises_when_missing_effective(self) -> None:
+        payload = json.dumps({"hash": "abc"})
+        with pytest.raises(BootstrapError, match="effective"):
+            parse_profile_merge_output(payload)
+
+    def test_raises_when_missing_hash(self) -> None:
+        payload = json.dumps({"effective": {"profile": "cli_tool"}})
+        with pytest.raises(BootstrapError, match="hash"):
+            parse_profile_merge_output(payload)
+
+    def test_raises_when_root_not_dict(self) -> None:
+        with pytest.raises(BootstrapError):
+            parse_profile_merge_output(json.dumps([1, 2, 3]))

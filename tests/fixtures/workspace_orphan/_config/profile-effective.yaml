@@ -1,0 +1,18 @@
+# Profile effective merged — fixture com conteudo real
+# Hash recomputado != "0000..." declarado no CONTEXT.md (HASH_MISMATCH).
+profile_base: app_web_backend
+tier: development
+caps:
+  parallel_teammates_max: 3
+  wave_max_tasks: 8
+loop_policy:
+  iteration_max: 3
+mandatory_phases:
+  - 00_recon
+  - 01_discovery
+  - 02_design
+  - 03_wave_planner
+  - 04_implementation
+  - 05_verification
+  - 06_review
+  - 07_merge

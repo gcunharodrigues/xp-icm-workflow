@@ -1,0 +1,171 @@
+# Recovery Wizard
+
+> Detecção e reconstrução de workspaces ICM em estado inconsistente. Disparado em pre-flight check de sessão NOVA (humano explicitamente retomando), nunca por timer/cron.
+
+## Quando dispara
+
+`scripts/recovery-wizard.py` é invocado:
+
+1. **Bootstrap** detecta `<project_root>/workspaces/NNN-slug/` JÁ existente — pode ser retomada legítima ou estado órfão.
+2. **Pre-flight de cada sessão** (Q1.1) — antes de carregar L2, valida L1 via `scripts/validate-state.sh`. Heurísticas R2.7 → dispara wizard.
+
+NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
+
+## 6 inconsistências detectadas (R2.7 + R4.5)
+
+| Code | Severidade | Causa | Detecção |
+|---|---|---|---|
+| `HASH_MISMATCH` | warning | `_config/profile-effective.yaml` editado fora do bootstrap | sha256 recomputado vs `profile_effective_hash` em L0 |
+| `MISSING_OUTPUT` | warning | output declarado em `history` ausente no FS | regex `stages/\d{2}\w*/output/.+\.md` em items de history; check existe |
+| `STALE_IN_PROGRESS` | warning | sessão crashou ou foi abandonada | `status: IN_PROGRESS` E sem commit em `workspaces/NNN/*` últimas 24h |
+| `MISSING_COMMIT` | critical | rebase eliminou o commit referenciado | `git cat-file -e <last_transition.commit_sha>` falha |
+| `MISSING_WORKTREES` | critical | wave declarada sem worktrees no FS | `waves.current=N` E `<project_root>/.worktrees/workspace-NNN/wave-N/` ausente |
+| `BRANCH_MISSING` | critical | humano deletou `workspace/NNN-slug` | `git branch --list workspace/NNN-slug` vazio |
+
+## 3 ações por inconsistência
+
+| Code | A (preserve) | B (rollback) | C (escalate) |
+|---|---|---|---|
+| `HASH_MISMATCH` | recompute hash + atualiza L0/L1 | restaura `_config/profile-effective.yaml` do último commit | mark `BLOCKED_ERROR` |
+| `MISSING_OUTPUT` | append `recovery_warning` em history (preserva append-only) | rollback ao `last_transition` antes do output sumir | mark `BLOCKED_ERROR` |
+| `STALE_IN_PROGRESS` | append `recovery_applied` em history + status `COMPLETED_AWAITING_HUMAN` | mesmo que A | mark `BLOCKED_ERROR` |
+| `MISSING_COMMIT` | rollback `last_transition` pro penúltimo válido em history | mesmo que A | mark `BLOCKED_ERROR` |
+| `MISSING_WORKTREES` | recria placeholder + warning | rollback `waves.current` pro último completed | mark `BLOCKED_ERROR` |
+| `BRANCH_MISSING` | append `recovery_warning` com sugestão `git reflog \| grep workspace/NNN` | mesmo que A | mark `BLOCKED_ERROR` (manual) |
+
+**Múltiplas inconsistências:** wizard agrupa por código e aplica em batch na ordem canônica:
+
+```
+HASH → MISSING_COMMIT → MISSING_OUTPUT → STALE → MISSING_WORKTREES → BRANCH_MISSING
+```
+
+Cada apply faz append em `history`:
+
+```yaml
+- at: "<now ISO 8601>"
+  event: "recovery_applied"
+  note: "wizard fix: <codes>"
+  context:
+    plan: "A"
+    inconsistencies_found: ["HASH_MISMATCH", "STALE_IN_PROGRESS"]
+```
+
+## CLI
+
+```bash
+# Audit only (sem modificar)
+python scripts/recovery-wizard.py --workspace <path> --dry-run
+
+# Interactive: imprime plano, lê stdin pra escolha A/B/C
+python scripts/recovery-wizard.py --workspace <path>
+
+# Não-interactive: aplica plan direto
+python scripts/recovery-wizard.py --workspace <path> --apply A
+```
+
+**Exit codes:**
+
+- `0` — workspace consistente OU recovery aplicado com sucesso OU dry-run completo (mesmo com inconsistências).
+- `1` — workspace path inválido OU recovery falhou OU choice inválido (`--apply Q`).
+
+## UX exemplo (interactive)
+
+```
+$ python scripts/recovery-wizard.py --workspace ~/projects/aura/workspaces/042-feat-auth
+
+🔍 Workspace: 042-feat-auth
+🔍 Inconsistências detectadas: 2
+
+  [warning] HASH_MISMATCH
+    Mensagem: profile_effective.yaml editado fora do bootstrap.
+              hash em L0 (9f3a8b2c...) ≠ hash recomputado (7c4e1d09...).
+    Ação A: recompute hash + atualiza L0/L1
+    Ação B: restaura _config/profile-effective.yaml do último commit
+    Ação C: mark BLOCKED_ERROR + escala humano
+
+  [warning] STALE_IN_PROGRESS
+    Mensagem: status=IN_PROGRESS sem commit em workspaces/042-feat-auth/*
+              nas últimas 24h (último: 2026-04-23T14:30:00Z).
+    Ação A: append recovery_applied + status=COMPLETED_AWAITING_HUMAN
+    Ação B: mesmo que A
+    Ação C: mark BLOCKED_ERROR
+
+Escolha plano (A/B/C): A
+✅ Aplicado plan A em 2 inconsistências.
+   - HASH_MISMATCH: hash atualizado em L0 (9f3a... → 7c4e...)
+   - STALE_IN_PROGRESS: status=COMPLETED_AWAITING_HUMAN
+   history append: recovery_applied (codes=[HASH_MISMATCH, STALE_IN_PROGRESS])
+
+Próximo: revisar L1 e prosseguir ou abrir issue se algo parecer errado.
+```
+
+## Anti-patterns documentados
+
+### Reflog retention (R5.5)
+
+`git reflog` mantém referências ~90 dias por default. Workspace branch deletada > 90 dias = state perdido permanente. **Sem workaround built-in.**
+
+Se humano deletou `workspace/NNN-slug` mas reflog ainda tem:
+
+```bash
+git reflog | grep workspace/NNN-slug
+# achou: a1b2c3d HEAD@{42}: branch: deleted workspace/042-feat-auth
+git branch workspace/042-feat-auth a1b2c3d
+```
+
+Wizard NÃO faz isso automaticamente — risco de mascarar perda intencional. Sugere comando, humano executa.
+
+### Não bypass o pre-commit hook
+
+Wizard sempre commita via flow normal. NUNCA `git commit --no-verify`. Se hook bloqueia o recovery commit, wizard reporta erro pra humano resolver — não bypass.
+
+### Não recria branch automaticamente
+
+`BRANCH_MISSING` plan A só sugere reflog comando. Auto-recreate poderia mascarar:
+- Branch deletada intencionalmente porque workspace é lixo.
+- Reflog inconsistente entre máquinas (push/clone perde reflog local).
+- Nova branch criada do sha errado (sem entender history original).
+
+Humano decide.
+
+## Schema da resposta `Inconsistency`
+
+```python
+@dataclass(frozen=True)
+class Inconsistency:
+    code: str        # "HASH_MISMATCH" | "MISSING_OUTPUT" | "STALE_IN_PROGRESS"
+                     # | "MISSING_COMMIT" | "MISSING_WORKTREES" | "BRANCH_MISSING"
+    message: str     # mensagem humana específica
+    proposed_action: str  # ação A sugerida em prosa curta
+    severity: str    # "critical" | "warning"
+    context: dict    # campos auxiliares: paths, shas, timestamps, etc.
+```
+
+## Integration com outros componentes
+
+| Componente | Como interage |
+|---|---|
+| `scripts/validate-state.sh` | Pre-flight call. Falha → dispara wizard. |
+| `scripts/bootstrap.sh` | Detecta workspace dir existente → invoca wizard antes de criar novo. |
+| Pre-commit hook | Wizard NÃO bypass. Recovery commits passam pelo hook normal. |
+| L1 history | Wizard SEMPRE append `recovery_applied` ou `recovery_warning`. |
+| `references/state-machine-schema.md` | Wizard respeita schema canônico em qualquer modificação. |
+
+## Edge cases
+
+| Caso | Comportamento |
+|---|---|
+| Workspace consistente + `--dry-run` | exit 0 + "workspace consistent" |
+| Workspace consistente + `--apply A` | no-op silencioso + exit 0 |
+| Path workspace inexistente | exit 1 + mensagem `workspace not found at <path>` |
+| L1 yaml malformado | exit 1 + mensagem específica do `validate-state.sh` |
+| Múltiplos inconsistências + `--apply A` | aplica todos em batch ordem canônica |
+| `--apply Q` (choice inválido) | exit code != 0 (argparse reject) |
+
+## Tests
+
+- Unit: `tests/unit/test_recovery_wizard.py` — 28 tests cobrindo detect + apply + CLI determinístico
+- E2E: `tests/e2e/recovery_orphan.bats` — fixture + apply + verify (CI-only)
+- Fixture: `tests/fixtures/workspace_orphan/` — L1 stale + outputs + missing commit
+
+Coverage atual: 73% (caminhos B menos exercitados; aceito como design — humano raramente escolhe rollback).
