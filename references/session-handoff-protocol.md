@@ -145,27 +145,78 @@ Stage 04 = **1 sessão lead por wave**. Wave 1 termina, lead handoff pra próxim
 
 Após última wave: handoff normal pra stage 05.
 
-## Stage 07 (merge) — terminal
+## Stage 07 (merge) → 08 — transição automática
 
-Stage 07 NÃO gera kickoff pra stage 08. Stage 08 (feedback intake) é manual: humano dispara depois de uso real, não automático. Final do 07:
+Stage 07 **NÃO é terminal**. Após merge confirmado, sessão transita imediatamente para stage 08 com `status: COMPLETED_AWAITING_HUMAN` e gera `_kickoff.md` em `stages/08_feedback_intake/`. Workspace fica vivo aguardando humano voltar com feedback livre após uso real do projeto (sem prazo).
+
+L1 final do 07:
+```
+sub_stage = 07_completed → imediatamente → 08_in_progress
+stage_atual = 08
+status = COMPLETED_AWAITING_HUMAN
+```
+
+History append 2 eventos: `stage_transition 07_in_progress→07_completed` + `stage_transition 07_completed→08_in_progress`.
+
+KICKOFF block 07→08 (sem menu A/B/C — sessão 08 inferirá pela intenção do feedback):
 
 ```
-✅ Workspace 042-feat-auth COMPLETED.
+✅ Stage 07 (merge) COMPLETO — workspace 042-feat-auth
 
-Próximos passos opcionais:
-- Após uso real, dispare manualmente: /xp-icm-workflow feedback 042
-  (cria sessão stage 08 feedback intake)
-- Caso contrário, workspace fica em estado COMPLETED.
+Workspace transitou pra stage 08 (feedback intake) em status
+COMPLETED_AWAITING_HUMAN. Workspace fica vivo até você voltar
+com feedback após uso real do projeto.
+
+🔄 KICKOFF próxima sessão (DEPOIS de uso real, sem prazo):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Continuar workspace 042-feat-auth no estágio 08 (feedback_intake).
+
+Read order:
+  workspaces/042-feat-auth/CLAUDE.md
+  workspaces/042-feat-auth/CONTEXT.md
+  workspaces/042-feat-auth/stages/08_feedback_intake/CONTEXT.md
+  workspaces/042-feat-auth/stages/08_feedback_intake/_kickoff.md
+
+Cole o feedback livre — sessão 08 lê outputs, infere intenção
+(bug fix → restart fase X, feature nova → spawn workspace,
+tudo OK → close), confirma com você antes de executar.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+## Stage 08 (feedback intake) — terminal real
+
+Workspace só fecha (`status: COMPLETED`) em uma das 3 saídas do stage 08, decididas pela **inferência de intenção do feedback livre** do humano (sem menu A/B/C explícito). Sessão 08 mapeia heurísticas do feedback → A/B/C, calcula confidence, mini-confirma com humano antes executar.
+
+**Saídas:**
+
+- **A — Close:** workspace `COMPLETED`. Lições registradas em `docs/lessons.md`. Sessão sai SEM gerar kickoff.
+  - Sinais inferência: "tudo ok", "encerrar", "sem feedback", silêncio.
+
+- **B — Restart fase X:** L1 `iteration++`, `stage_atual=X`, `sub_stage=X_in_progress`. Mapping bug→stage canônico (testes→05, código→04, design→02, etc.). GERA kickoff pra stage X. Imprime KICKOFF verbal.
+  - Sinais inferência: "bug em X", "quebrou Y", "regressão", menção explícita a stage.
+
+- **C — Spawn novo workspace:** L1 `status=COMPLETED`, `spawn_to=<slug-novo>`. Imprime instrução pro user invocar `/xp-icm-workflow project-root=<X> spawn_from=<NNN>` em sessão nova. NÃO gera kickoff (workspace novo = outro).
+  - Sinais inferência: "pivotar", "novo projeto", "feature grande nova", mudança de profile/tier.
+
+Heurísticas detalhadas no L2 do stage 08 (`stages/08_feedback_intake/CONTEXT.md` seção "Inferência de intenção"). Confidence < 0.6 → sessão pergunta clarificação curta antes inferir.
+
+Mini-confirm template (1 menu único):
+
+```
+Entendi: <saída inferida em prosa, 1-2 frases>
+
+[s] confirma e executa
+[n] cancela, pergunta de novo
+[edit] descreva o ajuste
 ```
 
 L1 status final = `COMPLETED`. Branch workspace pode ser arquivada (vide R3.4).
 
-## Stage 08 (feedback intake) — também 1 sessão
+## Stage 08 disparo
 
-Quando user dispara manualmente, abre 1 sessão dedicada ao stage 08. Saída produz uma das 3 ações canônicas (Q12 do plan):
-- A) Close → workspace COMPLETED, sessão sai sem kickoff.
-- B) Restart phase X → kickoff pra stage X com `iteration++`.
-- C) Spawn novo workspace → kickoff é instrução pro user invocar `/xp-icm-workflow` novo (não arquivo).
+User volta abrindo nova sessão (cole prompt do KICKOFF block do stage 07). Não há comando especial — o protocolo "1 stage = 1 sessão" trata stage 08 igual aos outros, exceto que **a entrada é feedback livre** em vez de seguir L2 num fluxo determinístico.
+
+Tempo entre 07→08: indefinido. Workspace fica em `COMPLETED_AWAITING_HUMAN` enquanto user usa o projeto na vida real.
 
 ## Anti-patterns
 

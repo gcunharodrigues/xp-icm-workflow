@@ -220,7 +220,7 @@ def test_l2_output_files_match_outputs_section(stage: str):
         ("04", "05"),
         ("05", "06"),
         ("06", "07"),
-        ("07", None),
+        ("07", "08"),
         ("08", None),
     ],
 )

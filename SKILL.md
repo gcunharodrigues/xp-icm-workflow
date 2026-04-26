@@ -4,7 +4,7 @@ description: Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto
 type: rigid
 ---
 
-# xp-icm-workflow v3.0.0-beta3
+# xp-icm-workflow v3.0.0-beta4
 
 > **Skill é parteira, não orquestradora.** Bootstrap one-shot cria a estrutura. Filesystem governa o ciclo. **1 stage = 1 sessão**: cada estágio termina com handoff dual (verbal + arquivo `_kickoff.md`) e a sessão sai. Próxima sessão começa fresh.
 
@@ -224,9 +224,12 @@ A skill **sai**. Próximos passos seguem protocolo **1-stage-1-sessão** (supers
 
 **Stage 04 exceção (decisão 2a):** cada wave = 1 sessão lead (sub-waves dentro da mesma sessão). Lead gera kickoff entre waves no mesmo stage 04 ou pra stage 05 ao final.
 
-**Stage 07 terminal:** não gera kickoff. Stage 08 (feedback intake) é manual.
+**Stage 07 → 08 transição automática:** após merge confirmado, sessão transita imediatamente pra stage 08 com `status: COMPLETED_AWAITING_HUMAN`. Workspace fica vivo aguardando humano voltar com feedback livre após uso real (sem prazo). Gera kickoff pra 08.
 
-**Stage 08 saídas:** A close → `COMPLETED` sem kickoff; B restart phase X → kickoff pro stage X com `iteration++`; C spawn → instrução pro user invocar `/xp-icm-workflow` novo.
+**Stage 08 terminal real (saídas inferidas pela intenção do feedback):** humano cola feedback livre na sessão 08 (sem menu A/B/C cru); sessão **infere** A/B/C autonomamente via heurísticas e mini-confirma antes executar.
+- **A close** → workspace `COMPLETED` + lições em `docs/lessons.md` (sinais: "tudo ok", silêncio).
+- **B restart fase X** → `iteration++`, kickoff pro stage X (mapping: bug em testes → 05, código → 04, design → 02, etc.).
+- **C spawn** → workspace fecha + instrução pro user invocar `/xp-icm-workflow spawn_from=<NNN>` em sessão nova (sinais: "pivotar", "novo projeto").
 
 **Migração beta1/beta2 (decisão 4B):** workspaces existentes em batched mode continuam batched; sem conversão forçada. Apenas workspaces criados via `/xp-icm-workflow` pós-beta3 usam 1-stage-1-sessão.
 

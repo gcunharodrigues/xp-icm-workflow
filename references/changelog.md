@@ -4,6 +4,45 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.0.0-beta4 — 07→08 transição automática + 08 inferência de intenção (2026-04-26)
+
+### Why beta4
+
+User identificou bug semântico no beta3: stage 07 fechava workspace como `COMPLETED` sem transição automática pra stage 08, deixando feedback intake como ato manual desconectado do fluxo principal. Stage 08 ficava órfão; humano precisava lembrar de disparar manualmente. Decisão revisada:
+
+- Stage 07 **não é terminal**. Transita imediatamente pra 08 após merge confirmado.
+- Stage 08 = terminal real. Workspace fica em `COMPLETED_AWAITING_HUMAN` aguardando humano voltar com feedback livre após uso real do projeto (sem prazo).
+- Stage 08 **infere intenção** do feedback livre (sem menu A/B/C cru). Mini-confirm antes executar.
+
+### Mudanças
+
+- **`templates/workspace/stages/07_merge/CONTEXT.md.tpl`:**
+  - `next_stage: null` → `next_stage: "08"`.
+  - Process passo 7 atualizado: transita 07_completed → imediatamente 08_in_progress + status COMPLETED_AWAITING_HUMAN.
+  - Process passo 8 NOVO: render `_kickoff.md` em `stages/08_feedback_intake/`.
+  - End-of-stage handoff substituído: KICKOFF block 07→08 sem menu A/B/C, instruções "abra nova sessão DEPOIS de uso real, cole feedback livre".
+
+- **`templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl`:**
+  - Pre-flight ajustado: aceita `status: COMPLETED_AWAITING_HUMAN` com `sub_stage: 08_in_progress` (transição automática vinda de 07).
+  - Process passo 4 substituído: "feedback livre do humano" em vez de "4 blocos guiados".
+  - Process passo 5 NOVO: **inferência de intenção** com heurísticas mapping → A/B/C + confidence score + clarificação se < 0.6.
+  - Process passo 6 NOVO: mini-confirm `[s/n/edit]` em vez de menu A/B/C cru.
+  - Seção "Inferência de intenção (heurísticas canônicas)" NOVA: mapping bug→stage X, sinais por saída, confidence, mini-confirm template.
+
+- **`references/session-handoff-protocol.md`:** seção "Stage 07 terminal" reescrita pra "Stage 07 → 08 transição automática". Nova seção "Stage 08 terminal real" cobrindo saídas A/B/C inferidas. Stage 08 disparo: nova sessão normal (sem comando especial).
+
+- **`SKILL.md`:** header bump beta3 → beta4. Seção "After bootstrap" atualizada: stage 07 → 08 automático; stage 08 saídas inferidas.
+
+### Tests
+
+527 passed mantido (templates não têm tests diretos; mudanças semânticas não afetam handoff.py / state machine schema).
+
+### Migração
+
+Workspaces beta3 já criados que estão em status COMPLETED após 07: nenhuma ação automática necessária. Se user quiser disparar feedback intake, basta editar L1 manualmente: `stage_atual=08`, `sub_stage=08_in_progress`, `status=COMPLETED_AWAITING_HUMAN`. Workspaces beta1/beta2 continuam legacy batched (decisão 4B).
+
+---
+
 ## v3.0.0-beta3 — 1-stage-1-sessão + handoff dual (2026-04-26)
 
 ### Why beta3

@@ -10,12 +10,12 @@ applicable_stop_points:
   - "prod_migration"
 output_files:
   - "output/merge-report.md"
-next_stage: null
+next_stage: "08"
 ---
 
 # Estágio 07 — merge (L2)
 
-Finaliza o ciclo: integra a `workspace_branch` rebased em `base_branch` (geralmente `main`), opcionalmente abre PR ou cria tag de release. Decisão "merge direto / PR / tag-only" é menu humano. Após executar, workspace transita para `status: COMPLETED` — fim do ciclo principal. A fase 08 (feedback intake) é disparada manualmente pelo humano semanas/meses depois, com workspace já fechado.
+Finaliza ciclo de implementação: integra a `workspace_branch` rebased em `base_branch` (geralmente `main`), opcionalmente abre PR ou cria tag de release. Decisão "merge direto / PR / tag-only" é menu humano. Após executar, workspace transita automaticamente para **stage 08 (feedback intake)** com `status: COMPLETED_AWAITING_HUMAN` — workspace fica "vivo" aguardando o humano voltar com feedback após uso real do projeto. Workspace SÓ fecha (status `COMPLETED`) quando stage 08 decide saída A (close).
 
 ## Inputs (lê SOMENTE estes, na ordem)
 
@@ -61,8 +61,9 @@ Finaliza o ciclo: integra a `workspace_branch` rebased em `base_branch` (geralme
    - B: push da branch + `gh pr create` com link para review-report.
    - C: `git tag -a v<X>.<Y>.<Z>` + push de tag.
 6. **Escrever `output/merge-report.md`:** decisão tomada (A/B/C), comandos executados, commit_sha resultante (merge commit, PR URL, ou tag), status do CI pós-merge se aplicável.
-7. **Atualizar L1:** `sub_stage: "07_completed"`, `status: COMPLETED`. Append `history` evento `stage_transition` `from: 06_completed` `to: 07_completed` com `commit_sha` do merge/tag/PR. Commit atômico.
-8. **Gate humano final:** humano confirma o merge-report. Workspace fica em `status: COMPLETED` e arquivado. Fase 08 só roda se humano disparar manualmente depois.
+7. **Atualizar L1:** `sub_stage: "07_completed"`, depois transita imediatamente `stage_atual: "08"`, `sub_stage: "08_in_progress"`, `status: COMPLETED_AWAITING_HUMAN` (workspace ativo aguardando feedback humano). Append `history` 2 eventos: `stage_transition from:07_in_progress to:07_completed` + `stage_transition from:07_completed to:08_in_progress`. Commit atômico.
+8. **Render `_kickoff.md` em stage 08** com prev_outputs (merge-report) + prev_decisions_summary (merge feito + commit_sha). Próxima sessão (disparada quando user voltar com feedback) lê este kickoff.
+9. **Gate humano final do merge:** humano confirma merge-report. Workspace transita pra 08 (não fecha como COMPLETED — fechamento só em stage 08-A).
 
 ## Outputs
 
@@ -72,20 +73,23 @@ Finaliza o ciclo: integra a `workspace_branch` rebased em `base_branch` (geralme
 
 Enum válido: `07_in_progress`, `07_completed`.
 
-Transição IN_PROGRESS → COMPLETED dispara quando:
+Transição IN_PROGRESS → 07_completed dispara quando:
 - `output/merge-report.md` existe.
 - Decisão humana A/B/C executada com sucesso (commit_sha registrado em merge-report).
 - Humano confirmou via gate.
 
-`next_stage: null` — estágio 07 é o último estágio do ciclo principal. Não há transição automática para 08; a fase 08 é disparada manualmente pelo humano em sessão futura.
+Imediatamente após `07_completed`, sessão TRANSITA para stage 08 (`stage_atual: "08"`, `sub_stage: "08_in_progress"`, `status: COMPLETED_AWAITING_HUMAN`). Workspace fica vivo aguardando feedback humano após uso real. Workspace só fecha (`status: COMPLETED`) quando stage 08 saída A (close) é decidida.
+
+`next_stage: "08"` — estágio 07 transita automaticamente para 08 (feedback intake).
 
 ## Status canônicos disponíveis neste estágio
 
 - `IN_PROGRESS` — preparando merge, aguardando escolha humana A/B/C.
-- `COMPLETED_AWAITING_HUMAN` — merge-report escrito, humano confirma fechamento do workspace.
+- `COMPLETED_AWAITING_HUMAN` — merge feito, sessão transitou pra stage 08; workspace aguardando feedback humano após uso real.
 - `BLOCKED_STOP_POINT` — `irreversible` ou `prod_migration` disparou; menu A/B/C aguardando resposta.
 - `BLOCKED_ERROR` — review-report indicava P0/P1, working tree sujo, rebase falhou, ou push rejeitado.
-- `COMPLETED` — workspace fechado; ciclo principal encerrado.
+
+`COMPLETED` NÃO é setado neste stage — fechamento definitivo só ocorre em stage 08 saída A (close).
 
 ## Stop points aplicáveis
 
@@ -112,29 +116,58 @@ Skill formal (escape hatch): `superpowers:finishing-a-development-branch`.
 
 ## End of stage handoff (1-stage-1-sessão)
 
-**Stage 07 terminal:** NÃO gera `_kickoff.md` para stage 08. Stage 08 (feedback intake) é manual: humano dispara depois de uso real, não automaticamente.
+Ao concluir este estágio, sessão deve:
 
-Final do stage 07:
-- L1: `status = COMPLETED`, `sub_stage = 07_completed`
-  - `last_transition.from = 07_in_progress`
-  - `last_transition.to = 07_completed`
-  - `last_transition.at = <ISO 8601 UTC now>`
-  - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note}`
-- Commit atômico (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
-  ```
-  workspace <NNN>: stage 07 completo (workspace COMPLETED)
-  ```
-  Files no commit: `output/merge-report.md` + L1.
-- Print pro user:
-  ```
-  ✅ Workspace <NNN-slug> COMPLETED.
+1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
+   - Primeira transição: `sub_stage = 07_completed`
+   - Segunda transição imediata: `stage_atual = "08"`, `sub_stage = 08_in_progress`, `status = COMPLETED_AWAITING_HUMAN`
+   - `last_transition.from = 07_completed`
+   - `last_transition.to = 08_in_progress`
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append 2 eventos: `stage_transition 07_in_progress→07_completed` + `stage_transition 07_completed→08_in_progress`
 
-  Próximos passos opcionais:
-  - Após uso real, dispare manualmente: /xp-icm-workflow feedback <NNN>
-    (cria sessão stage 08 feedback intake)
-  - Caso contrário, workspace fica em estado COMPLETED.
-  ```
-- Branch workspace pode ser arquivada (vide R3.4 do plan).
-- SAIR da sessão.
+2. **Renderizar `_kickoff.md` em `stages/08_feedback_intake/_kickoff.md`** via `python scripts/handoff.py render`. Campos:
+   - `prev_outputs`: `output/merge-report.md` (path + summary "merge feito A/B/C, commit_sha=X")
+   - `prev_decisions_summary`: linha curta com decisão A/B/C + commit/tag/PR resultante
+   - `pending_for_this_stage`: ["aguardar feedback humano após uso real do projeto", "interpretar intenção pra A/B/C"]
+
+3. **Commit atômico** (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+   ```
+   workspace <NNN>: stage 07 completo + transita pra 08 (awaiting feedback)
+   ```
+   Files no commit: `output/merge-report.md` + L1 + `stages/08_feedback_intake/_kickoff.md`.
+
+4. **Imprimir KICKOFF block verbal** pro user. Texto canônico (sem menu A/B/C — sessão 08 inferirá pela intenção do feedback):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Stage 07 (merge) COMPLETO — workspace <NNN-slug>
+
+   Workspace transitou pra stage 08 (feedback intake) em status
+   COMPLETED_AWAITING_HUMAN. Workspace fica vivo até você voltar
+   com feedback após uso real do projeto.
+
+   Workspace atualizado em commit <sha>:
+     - L1: stage_atual=08, sub_stage=08_in_progress
+     - Outputs: stages/07_merge/output/merge-report.md
+     - Kickoff: stages/08_feedback_intake/_kickoff.md gerado
+
+   🔄 KICKOFF próxima sessão (DEPOIS de uso real, sem prazo):
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   Continuar workspace <NNN-slug> no estágio 08 (feedback_intake).
+
+   Read order:
+     workspaces/<NNN-slug>/CLAUDE.md
+     workspaces/<NNN-slug>/CONTEXT.md
+     workspaces/<NNN-slug>/stages/08_feedback_intake/CONTEXT.md
+     workspaces/<NNN-slug>/stages/08_feedback_intake/_kickoff.md
+
+   Cole o feedback livre — sessão 08 lê outputs, infere intenção
+   (bug fix → restart fase X, feature nova → spawn workspace,
+   tudo OK → close), confirma com você antes de executar.
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+5. **SAIR** da sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.

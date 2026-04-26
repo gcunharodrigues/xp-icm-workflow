@@ -15,7 +15,7 @@ next_stage: null
 
 # Estágio 08 — feedback_intake (L2)
 
-Gate de iteração universal do ciclo ICM. Disparado MANUAL pelo humano após uso real do output do workspace (semanas/meses após `07_completed`). Coleta logs (se `logs_root` declarado), feedback humano em 4 blocos e top-N error patterns. Resultado: menu A/B/C com 3 saídas — A) close workspace + lições em `docs/lessons.md`, B) restart fase X (X ∈ 01..07) com `iteration++`, C) spawn novo workspace via humano colando comando em sessão nova. NÃO faz código novo — apenas analisa e transiciona estado. Protocolo literal em `_references/runtime/feedback-intake-fase08.md`.
+Gate de iteração universal do ciclo ICM. Workspace transita pra cá automaticamente após stage 07 e fica em `COMPLETED_AWAITING_HUMAN` aguardando humano voltar com feedback livre após uso real do projeto (semanas/meses sem prazo). Quando humano abre nova sessão e cola feedback livre (texto solto, sem menu), sessão **infere intenção** e mapeia pra uma das 3 saídas: A) close workspace + lições em `docs/lessons.md`, B) restart fase X (X ∈ 01..07) com `iteration++`, C) spawn novo workspace via humano colando comando em sessão nova. Sessão confirma a inferência com humano antes de executar (mini-menu s/n/ajusta). Coleta logs (se `logs_root` declarado), extrai 4 blocos do feedback livre, calcula top-N error patterns. NÃO faz código novo — apenas analisa, infere e transita estado. Protocolo literal em `_references/runtime/feedback-intake-fase08.md`.
 
 ## Inputs (lê SOMENTE estes, na ordem)
 
@@ -57,25 +57,38 @@ Gate de iteração universal do ciclo ICM. Disparado MANUAL pelo humano após us
 
 ## Process
 
-1. **Pre-flight — pré-condição obrigatória:** L1 deve declarar `status: COMPLETED` (fase 07 já encerrou, ou fase 08 anterior decidiu A/C). Se status ∈ {`IN_PROGRESS`, `BLOCKED_*`, `COMPLETED_AWAITING_HUMAN`} → recusar com mensagem "workspace ainda não foi concluído (fase 07). Termine o ciclo principal antes de rodar feedback intake." Se status indefinido/inconsistente → stop point 11 `workspace_corrupt` (raro, mas possível).
-2. **Setar sub_stage `08_in_progress`** + `status: IN_PROGRESS` no L1 (sai de `COMPLETED` enquanto a sessão decide). Append `history` evento `stage_transition` `from: 07_completed` (ou `08_decided_X` se reabertura) `to: 08_in_progress`.
+1. **Pre-flight — pré-condição obrigatória:** L1 deve declarar `stage_atual: "08"` com `sub_stage: 08_in_progress` (transição automática vinda de stage 07) e `status: COMPLETED_AWAITING_HUMAN`. Se status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → workspace inconsistente (recovery wizard). Se `stage_atual ≠ 08` → recusar com "workspace ainda não chegou em 08 (termine 07 primeiro)". Se status indefinido → stop point 11 `workspace_corrupt`.
+2. **Setar `status: IN_PROGRESS`** no L1 (sai de `COMPLETED_AWAITING_HUMAN` enquanto sessão trabalha). Append `history` evento `feedback_session_started`.
 3. **Coleta de logs** (somente se `logs_root` ≠ null em L0): sampleia últimos 30 dias de `{{LOGS_ROOT}}`. Se path inacessível/vazio, anota "logs vazios/inacessíveis" e segue.
-4. **Coleta de feedback humano em 4 blocos** (sessão pergunta inline; valida que cada bloco tem ≥1 frase substantiva):
-   - O QUE FUNCIONOU
-   - O QUE NÃO FUNCIONOU
-   - QUAL DOR PERSISTE
-   - QUE LIÇÃO TIRAR
-5. **Análise top-N error patterns:** agrupa logs + feedback em ≤5 padrões com `frequencia`, `impacto` (low/medium/high/critical) e `evidencia`. Aceita 0-2 padrões se logs vazios e feedback curto.
-6. **Escrever `output/intake-report.md`** com seções fixas: Logs sample, Feedback humano (4 blocos), Top-N patterns (tabela), Recomendação (saída sugerida + justificativa).
-7. **Menu A/B/C ao humano** (no chat, com recomendação destacada):
-   - **A) Close workspace.** Append lições novas (extraídas de QUE LIÇÃO TIRAR) em `{{PROJECT_ROOT}}/docs/lessons.md` respeitando frontmatter strict (id, date, tags, severity). Set `sub_stage: 08_decided_A`, `status: COMPLETED`. Workspace arquivado.
-   - **B) Restart fase X (`iteration++`).** Validar X ∈ {`01`, `02`, `03`, `04`, `05`, `06`, `07`} — recusar `00` (use saída C para mudar `project_root`/tipo) e `08` (não faz sentido restart no próprio gate). Mover outputs antigos: `stages/<XX>/output/` → `stages/<XX>/output-iteration-<N>/` (N = iteration ANTES do incremento). Set `iteration: N+1`, `stage_atual: <XX>`, `sub_stage: <XX>_in_progress`, `status: IN_PROGRESS`. Append `history` evento `iteration_increment`. Sessão sai; próxima sessão retoma na fase X com lições do intake-report.
-   - **C) Spawn novo workspace.** UX: NÃO bootstrappa o novo automaticamente. Set `sub_stage: 08_decided_C`, `status: COMPLETED`, `spawn_to: <slug-novo-workspace>`. Imprime mensagem com comando para humano colar em sessão nova: `/xp-icm-workflow project-root={{PROJECT_ROOT}} spawn_from={{WORKSPACE}}`. Sessão atual termina. Bootstrap do novo acontece em sessão separada.
-8. **Commit atômico** (pre-commit hook valida atomicidade L1 ↔ outputs ↔ lessons; prefixo `intake:` ou `feedback:`).
+4. **Receber feedback livre do humano:** humano cola feedback como texto solto (não menu, não 4 blocos guiados). Sessão valida ≥1 frase substantiva. Em silêncio prolongado / mensagem vazia explicíta tipo "tudo certo, encerra" → considera intenção A close.
+5. **Inferência de intenção (sessão decide A/B/C autonomamente):** aplicar heurísticas abaixo. Se múltiplas categorias matcham, prioridade: B > C > A (correção pontual ganha de pivô; pivô ganha de close). Se ambíguo, sessão pergunta clarificação curta antes de prosseguir.
+
+   | Sinal no feedback livre | Saída inferida | Detalhamento |
+   |---|---|---|
+   | "bug em X", "quebra", "erro", "não funciona", "regressão", "fail", "crashou" | **B** restart | Mapeia stage do bug: testes/CI → 05, código → 04, design errado → 02, requisitos errados → 01, review missou → 06, merge → 07 |
+   | "tudo ok", "funcionando", "encerrar", "fechar projeto", "concluído", "sem feedback", silêncio | **A** close | Workspace arquivado + lições |
+   | "novo projeto", "pivotar", "mudar direção", "feature grande nova", "outro workspace", "começar do zero com X aprendido" | **C** spawn | Workspace fecha + spawn instruction |
+   | "extensão pequena", "iterar mais", "voltar a fase Y", explícita menção a stage por número/nome | **B** com X explícito | Stage extraído da menção |
+   | Mistura "bug + feature nova" | preferir **B** primeiro (corrige bug); user pode disparar 08 de novo depois pra C | |
+
+6. **Mini-confirm com humano** (1 menu único, sem A/B/C cru):
+   ```
+   Entendi: <saída inferida em prosa>
+   Ex: "restart fase 02 design pra revisar contrato API"
+   Ex: "spawn workspace novo pra feature billing"
+   Ex: "close workspace, tudo ok"
+
+   [s] confirma   [n] cancela e pergunta de novo   [edit] descreva o que ajusta
+   ```
+7. **Análise top-N error patterns:** agrupa logs + feedback em ≤5 padrões com `frequencia`, `impacto` (low/medium/high/critical) e `evidencia`. Aceita 0-2 padrões se logs vazios e feedback curto.
+8. **Extrair 4 blocos do feedback livre** (parsing pra audit, não pergunta inline): O QUE FUNCIONOU / O QUE NÃO FUNCIONOU / QUAL DOR PERSISTE / QUE LIÇÃO TIRAR. Aceita blocos vazios (não força preenchimento).
+9. **Escrever `output/intake-report.md`** com seções fixas: Logs sample, Feedback livre (literal), 4 blocos extraídos, Top-N patterns (tabela), Inferência (saída + heurística disparada + confiança), Decisão final (após mini-confirm).
+10. **Executar saída confirmada** conforme seções "Saída A/B/C" abaixo.
+11. **Commit atômico** (pre-commit hook valida atomicidade L1 ↔ outputs ↔ lessons; prefixo `intake:` ou `feedback:`).
 
 ## Outputs
 
-- `output/intake-report.md` — relatório de intake: logs sample (ou n/a), feedback humano em 4 blocos, top-N error patterns (tabela), recomendação de saída (A/B/C) com justificativa.
+- `output/intake-report.md` — relatório de intake: logs sample (ou n/a), feedback livre (literal), 4 blocos extraídos, top-N error patterns (tabela), inferência (heurística disparada + confiança), decisão final pós-confirm humano.
 
 ## Sub_stage transitions
 
@@ -101,9 +114,68 @@ Transições:
 
 ## Stop points aplicáveis
 
-`applicable_stop_points: []` — fase 08 NÃO dispara stop points por design. É análise + decisão direta A/B/C; não há trade-off arquitetural a escalar. Stops detectados durante o uso do output do workspace rolam para o próximo workspace via saída C (ou para o restart via saída B).
+`applicable_stop_points: []` — fase 08 NÃO dispara stop points por design. É análise + inferência + decisão direta A/B/C; não há trade-off arquitetural a escalar. Stops detectados durante o uso do output do workspace rolam para o próximo workspace via saída C (ou para o restart via saída B).
 
 A única exceção é o stop point 11 `workspace_corrupt`, que pode aparecer no pre-flight se o estado do workspace está inconsistente — mas esse é tratado como erro de pré-condição, não como stop point regular do estágio.
+
+## Inferência de intenção (heurísticas canônicas)
+
+Mapping detalhado feedback livre → saída A/B/C. Ordem de prioridade quando múltiplos matches: **B > C > A**.
+
+### Saída B (restart fase X) — sinais
+
+- Palavras-chave: "bug", "quebra", "erro", "fail", "regressão", "crashou", "não funciona", "errado", "missed", "passou batido"
+- Frases: "preciso corrigir X", "voltar a Y", "refazer Z"
+- Menção explícita de stage/fase por número (`fase 02`, `stage 4`) ou nome (`design`, `review`, `verification`, etc.)
+
+**Mapping bug → stage X:**
+
+| Tipo de bug | X inferido |
+|---|---|
+| Falha em testes / CI / regressão automatizada | 05 verification |
+| Bug em runtime / código quebrado / lógica errada | 04 implementation_waves |
+| Code smell, design ruim que passou no review, dimensão 7-fold faltou | 06 review |
+| Plano errado / arquitetura inadequada / ADR equivocado | 02 design |
+| Wave plan errada / DAG ruim / dependências mal mapeadas | 03 wave_planner |
+| Requisitos faltando / discovery superficial / faltou pergunta | 01 discovery |
+| Merge com problema / push em branch errada / tag errada | 07 merge |
+| Reconhecimento incompleto (raro — geralmente prefere C) | NÃO permite restart de 00; se intenção é mudar tipo/project_root, vira C |
+
+### Saída C (spawn novo workspace) — sinais
+
+- Palavras-chave: "pivotar", "mudar direção", "novo projeto", "outro workspace", "feature grande nova", "começar do zero", "este aprendizado vai pra outro"
+- Frases: "esse projeto serviu pra X mas agora preciso Y diferente", "evolução para fora do escopo"
+- Mudança de profile/tier/project_root → sempre C
+
+### Saída A (close) — sinais
+
+- Palavras-chave: "tudo ok", "funcionando", "encerrar", "fechar", "concluído", "sem feedback", "nada a relatar"
+- Silêncio do humano após pergunta direta
+- Mensagem curta neutra tipo "ok"
+
+### Confidence score
+
+Sessão computa `confidence` (0.0-1.0) baseado em:
+- Quantidade de sinais matchados (mais sinais → maior confiança)
+- Especificidade (`fase 02` > `tem bug`)
+- Univocidade (sem mistura de categorias)
+
+Se `confidence < 0.6`, sessão pergunta clarificação curta. Se `≥ 0.6`, segue pra mini-confirm.
+
+### Mini-confirm template
+
+```
+Entendi: <saída inferida em prosa, 1-2 frases>
+
+Exemplos:
+  - "Restart fase 02 design pra revisar contrato API (bug em endpoints)"
+  - "Spawn workspace novo pra feature billing (escopo fora do atual)"
+  - "Close workspace — tudo ok, lições registradas"
+
+[s] confirma e executa
+[n] cancela, pergunta de novo
+[edit] descreva o ajuste (ex: "na verdade restart fase 03, não 02")
+```
 
 ## Skill superpowers de referência
 
