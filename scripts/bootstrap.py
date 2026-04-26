@@ -366,8 +366,33 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path) -> None:
         shutil.copy2(matrix_src, config_dir / "profile-matrix.md")
 
     refs_dir = workspace_dir / "_references"
-    (refs_dir / "superpowers-summary").mkdir(parents=True)
-    (refs_dir / "runtime").mkdir(parents=True)
+    sp_dst = refs_dir / "superpowers-summary"
+    sp_dst.mkdir(parents=True)
+    sp_src = skill_root / "templates" / "_references" / "superpowers-summary"
+    if sp_src.is_dir():
+        for f in sp_src.iterdir():
+            if f.is_file() and f.suffix == ".md":
+                shutil.copy2(f, sp_dst / f.name)
+
+    runtime_dst = refs_dir / "runtime"
+    runtime_dst.mkdir(parents=True)
+    # Copia subset de references/ que sao consumidos em runtime pelos teammates
+    # (R2.5 do plan). Skill formal em references/ continua sendo a fonte; workspace
+    # ganha copia self-contained pra continuar trabalhando se skill mudar.
+    runtime_refs = (
+        "agent-team-protocol.md",
+        "wave-planner-algorithm.md",
+        "state-machine-schema.md",
+        "recovery-wizard.md",
+        "stop-points-canonical.md",
+        "4-block-contract-template.md",
+        "feedback-intake-fase08.md",
+    )
+    refs_src = skill_root / "references"
+    for fname in runtime_refs:
+        src = refs_src / fname
+        if src.is_file():
+            shutil.copy2(src, runtime_dst / fname)
 
 
 def _save_profile_effective(

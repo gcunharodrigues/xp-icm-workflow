@@ -1,47 +1,174 @@
-# Superpowers Skills Mapping
+# Superpowers Mapping — xp-icm-workflow v3.0.0-beta1
 
-Tabela completa de qual skill do superpowers usar em cada situação dentro do xp-icm-workflow.
+> **Versão:** v3.0.0-beta1
+> **Skill:** `xp-icm-workflow`
+> **Propósito:** documento canônico de como o `xp-icm-workflow` v3 **usa** as skills do plugin `superpowers`. Versão v3 inverte a relação v2.4: superpowers viram **referências sumarizadas**, não invocações no runtime. Skill formal só por escape hatch.
 
----
-
-## Mapeamento por Estágio
-
-| Estágio ICM | Skill do Superpowers | Quando invocar | Contexto a passar |
-|---|---|---|---|
-| 01 Discovery | `superpowers:brainstorming` | Sempre que o projeto é novo ou há ambiguidade no escopo | 4 blocos da Phase 1 + referências em `_config/` |
-| 02 Design & Planning | `superpowers:writing-plans` | Após discovery aprovado, ou quando a tarefa veio com escopo claro | Discovery output + decisões pendentes |
-| 03 Implementation | `superpowers:subagent-driven-development` | **Sempre** (toda implementação é delegada a subagentes) | Plano + convenções + ADRs relevantes (scoping restrito) |
-| 03 Implementation | `/xp-workflow` (executado POR subagentes, não pela orquestradora) | Dentro de cada subagent no Estágio 03 | Plano (seção da task) + ADRs relevantes + tech_debt + conventions (escopo restrito à task). `docs/lessons.md` é lido pela orquestradora para extrair lições aplicáveis e injetar no prompt do subagent — subagents não leem `lessons.md` diretamente |
-| 04 Verification | `superpowers:verification-before-completion` | Antes de declarar "pronto" | Implementation report + plano + ADRs (orquestradora lê reports, skill lê código-fonte) |
-| 05 Code Review | `superpowers:requesting-code-review` | Após verification aprovada | Implementation report + verification report + plano + decisões + tech_debt (orquestradora lê reports, skill lê código-fonte) |
-| 05 Code Review | `superpowers:receiving-code-review` | Se houver feedback externo | Feedback + contexto do review |
-| 06 Merge & Delivery | `superpowers:finishing-a-development-branch` | Após review aprovado | Verification report + review report |
+> **Decisão de origem:** §4.7 do plan `reescrever-a-skill-zazzy-wirth.md` + §4.10 (tabela de mudanças v2.4 → v3, linha "Skills superpowers").
 
 ---
 
-## Mapeamento por Situação Transversal
+## 1. Filosofia (mudança vs v2.4)
 
-| Situação | Skill | Quando |
+| Aspecto | v2.4 | v3.0.0-beta1 |
 |---|---|---|
-| Bug, teste falhando, output inesperado | `superpowers:systematic-debugging` | Quando um estágio falha ou produz output inesperado |
-| Feature nova, componente novo, mudança de comportamento | `superpowers:brainstorming` | Antes de implementar qualquer feature não-trivial |
-| Plano de implementação para tarefa multi-step | `superpowers:writing-plans` | Antes de escrever código |
-| Múltiplas tasks independentes | `superpowers:subagent-driven-development` | **Sempre** no Estágio 03 (toda implementação é delegada). Fora do Estágio 03, quando o plano tem 2+ tasks sem dependência entre si |
-| Código pronto, testes passando | `superpowers:verification-before-completion` | Antes de commit ou PR |
-| Revisão de código antes de merge | `superpowers:requesting-code-review` | Após verificação |
-| Recebendo feedback de review | `superpowers:receiving-code-review` | Quando feedback externo chega |
-| Branch pronta para integrar | `superpowers:finishing-a-development-branch` | Quando tudo está aprovado |
-| Criando nova skill | `superpowers:writing-skills` | Quando o usuário pede para criar/editar skills |
-| Feature ou bugfix com TDD | `superpowers:test-driven-development` | Antes de escrever implementação |
-| Trabalho em branch isolado | `superpowers:using-git-worktrees` | Quando precisa isolamento do workspace atual |
+| Forma de uso | `Skill({skill: "superpowers:writing-plans"})` invocada no runtime | Sumário 200tok pré-copiado em `<workspace>/_references/superpowers-summary/` |
+| Quem carrega | Orquestradora (skill sempre ativa durante o ciclo) | Bootstrap copia 1× no início; sessões leem como L3 estável |
+| Custo de tokens por estágio | ~3k SKILL.md + referências on-demand | ~200tok do sumário (15× menos) |
+| Atualização | Sempre carrega versão upstream atual | Snapshot copiado; sync manual via Wave 8 (futura) |
+| Escape hatch | n/a (sempre invoca) | Sessão pode `Skill({skill:"superpowers:<X>"})` se complexidade exige; logado em L1 history |
+
+**Por que mudou.** `xp-icm-workflow` v3 é parteira one-shot, não orquestradora. Filesystem governa o ciclo via L0/L1/L2. Skills carregadas dinamicamente conflitam com o princípio "sessão lê só o que está declarado em Inputs". Sumários 200tok cabem em L3 estável; cada estágio referencia 1-2 sumários no L2 §11. Skill formal continua disponível, mas é fallback consciente.
 
 ---
 
-## Regras de Invocação
+## 2. Mapeamento canônico estágio ↔ skill ↔ sumário
 
-1. **Uma skill por vez por estágio.** Não invocar duas skills no mesmo estágio simultaneamente (exceto implementation com subagents). No Estágio 03, `subagent-driven-development` é SEMPRE invocado pela orquestradora, e `/xp-workflow` roda DENTRO dos subagentes.
-2. **A orquestradora decide QUANDO carregar.** A skill especializada executa suas regras internas. Conflitos: skill especializada vence no seu escopo.
-3. **Context scoping se aplica a skills também.** Quando invocar uma skill do superpowers, passar SOMENTE o contexto listado na Inputs table do estágio, não o workspace inteiro.
-4. **Princípio de Delegação: a orquestradora NUNCA lê código-fonte diretamente.** Nos Estágios 03, 04 e 05, a orquestradora lê SOMENTE relatórios compactos (`reports/task-*.md` individuais dos subagents paralelos, `implementation-report.md` consolidado, `verification-report.md`, `review-report.md`, `plan.md`, `decisions.md`). O código-fonte é lido SOMENTE por skills especializadas internamente (verification, code review) ou por subagentes.
-5. **Subagentes recebem contexto mais restrito que a orquestradora.** Ver seção "Context Scoping para Subagentes" e "Protocolo de Delegação" no SKILL.md principal.
-6. **Nunca pular a ordem de leitura.** Layer 0 → 1 → 2 → 3 → 4, sempre.
+Tabela autoritativa. Espelho do mapeamento em `references/stage-templates.md` §11. Em caso de divergência, `stage-templates.md` é fonte da verdade (o L2 do estágio é quem determina o que a sessão lê).
+
+| Estágio | Slug | Skill superpowers principal | Sumário 200tok |
+|---|---|---|---|
+| 00 | `recon` | `brainstorming` + `writing-plans` (light) | `brainstorming-200tok.md`, `writing-plans-200tok.md` |
+| 01 | `discovery` | `brainstorming` | `brainstorming-200tok.md` |
+| 02 | `design` | `writing-plans` | `writing-plans-200tok.md` |
+| 03 | `wave_planner` | `dispatching-parallel-agents` | `dispatching-parallel-agents-200tok.md` |
+| 04 | `implementation_waves` | `test-driven-development` + `subagent-driven-development` | `test-driven-development-200tok.md`, `subagent-driven-development-200tok.md` |
+| 05 | `verification` | `verification-before-completion` | `verification-before-completion-200tok.md` |
+| 06 | `review` | `requesting-code-review` + `receiving-code-review` | `requesting-code-review-200tok.md`, `receiving-code-review-200tok.md` |
+| 07 | `merge` | `finishing-a-development-branch` | `finishing-a-development-branch-200tok.md` |
+| 08 | `feedback_intake` | (nenhuma direta) | usa `references/feedback-intake-fase08.md` local |
+| transversal | qualquer estágio com bug | `systematic-debugging` | `systematic-debugging-200tok.md` |
+
+### 2.1 Skills auxiliares (não mapeadas a estágio fixo)
+
+| Skill | Onde aparece | Sumário |
+|---|---|---|
+| `using-git-worktrees` | fase 04 (lead spawn) — referência operacional | `using-git-worktrees-200tok.md` |
+| `writing-skills` | fora do ciclo ICM (Guilherme criando/editando skills) | n/a — não copiado para workspace |
+
+---
+
+## 3. Os 10 sumários 200tok pré-copiados
+
+Bootstrap copia em `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/`. Origem dos templates: `C:\Users\guicr\.claude\skills\xp-icm-workflow\templates\_references\superpowers-summary\`.
+
+| # | Arquivo | Cobre estágio(s) |
+|---|---|---|
+| 1 | `brainstorming-200tok.md` | 00, 01 |
+| 2 | `writing-plans-200tok.md` | 00 (light), 02 |
+| 3 | `dispatching-parallel-agents-200tok.md` | 03 |
+| 4 | `test-driven-development-200tok.md` | 04 |
+| 5 | `subagent-driven-development-200tok.md` | 04 |
+| 6 | `verification-before-completion-200tok.md` | 04 (CI gates), 05 |
+| 7 | `requesting-code-review-200tok.md` | 06 |
+| 8 | `receiving-code-review-200tok.md` | 06 |
+| 9 | `finishing-a-development-branch-200tok.md` | 07 |
+| 10 | `systematic-debugging-200tok.md` | transversal — qualquer estágio com bug |
+| 11 | `using-git-worktrees-200tok.md` | 04 (auxiliar) |
+
+> Notar: lista efetiva tem 11 arquivos. O plan §7 lista 10 explicitamente; o 11º (`using-git-worktrees`) entrou como auxiliar operacional do lead na fase 04 (referenciado em `agent-team-protocol.md` §2.2). Wave 5 da reescrita materializa os arquivos.
+
+### 3.1 Schema obrigatório do sumário
+
+Todo `<X>-200tok.md` tem header padronizado:
+
+```markdown
+---
+source_skill: superpowers:<X>
+source_version: <semver da skill upstream>
+summarized_at: <ISO 8601 date>
+target_tokens: 200
+actual_tokens: <int>   # validado em CI ≤250
+---
+
+# <Skill X> — sumário 200tok
+
+## Quando usar
+<1 parágrafo>
+
+## Passos canônicos
+1. ...
+2. ...
+
+## Sinais de "invoque skill formal"
+- <gatilho 1>
+- <gatilho 2>
+```
+
+CI valida `actual_tokens ≤ 250` (margem de 25% sobre alvo).
+
+---
+
+## 4. Sincronização vs upstream
+
+Sumários são **snapshots**. Quando a skill upstream muda no plugin `superpowers`, o sumário fica desatualizado. Mitigação:
+
+1. **Header `source_version`:** todo sumário declara a versão da skill upstream da qual foi sumarizado.
+2. **Wave 8 da reescrita (futura):** agente revisor lê diff entre `source_version` declarado e versão atual da skill upstream; gera task de update se houver mudança semântica relevante.
+3. **Drift policy:** sumário com >2 versões de defasagem dispara warning no bootstrap (`scripts/check-runtime.sh` checa via metadados de `~/.claude/plugins/superpowers/`).
+
+A skill `xp-icm-workflow` **não** sincroniza automaticamente — sync é decisão manual do mantenedor.
+
+---
+
+## 5. Escape hatch — invocação real da skill formal
+
+Quando o sumário 200tok é **insuficiente** para a complexidade do que a sessão está fazendo, a sessão pode invocar a skill formal via `Skill({skill: "superpowers:<X>"})`. Casos típicos:
+
+- Discovery (estágio 01) com domínio inédito — sumário de `brainstorming` não cobre nuance do problema.
+- Bug na fase 04 que sumário de `systematic-debugging` não desbloqueia.
+- Review (estágio 06) com feedback denso onde `receiving-code-review` cru ajuda mais do que sumário.
+
+### 5.1 Protocolo obrigatório
+
+Sessão que invoca skill formal **DEVE** registrar em L1 `history`:
+
+```yaml
+- at: "<ISO 8601 UTC>"
+  event: "skill_escape_hatch"
+  skill: "superpowers:<X>"
+  stage: "<NN>"
+  reason: "<1-2 frases sobre por que o sumário não bastou>"
+  outcome: "resolved" | "escalated_to_human"
+```
+
+Sem o registro, escape hatch é silencioso e quebra audit. Pre-commit hook valida que commits de sessão com `skill_escape_hatch` no diff têm prefixo `workspace:` ou `feedback:`.
+
+### 5.2 Rate limit informal
+
+Se um workspace tem ≥3 `skill_escape_hatch` para a **mesma skill**, é sinal de que o sumário 200tok está mal calibrado. Disparar tarefa de revisão do sumário (Wave 8) ou escalar para mantenedor da skill `xp-icm-workflow`.
+
+---
+
+## 6. Resolução de conflito superpowers ↔ ICM
+
+Quando uma instrução do sumário superpowers conflita com regra do ICM (L0/L1/L2 do workspace):
+
+1. **L0/L1/L2 vencem.** Skill é layer 4 na priority order de `SKILL.md` §Instruction Priority.
+2. **Sessão registra divergência** em comentário no output do estágio (não bloqueia).
+3. **Se conflito é estrutural** (ex: skill diz "leia src/", L2 diz "não leia src/"), abrir tarefa de revisão do sumário — provável bug de tradução.
+
+---
+
+## 7. Manutenção dos sumários
+
+Para criar/atualizar um sumário 200tok, ver `references/extending-skill.md` §"Adding a superpower summary". Resumo do fluxo:
+
+1. Ler skill upstream em `~/.claude/plugins/superpowers/skills/<X>/SKILL.md`.
+2. Sumarizar em ≤250 tokens com schema §3.1.
+3. Atualizar `source_version` para versão atual.
+4. Adicionar entry em `tests/unit/test_summary_format.py` (verifica schema + tokens).
+5. Commit no skill repo (não no workspace de usuário).
+
+---
+
+## 8. Referências cruzadas
+
+| Doc | Conteúdo |
+|---|---|
+| `references/stage-templates.md` §11 | Mapeamento estágio ↔ skill canônico (autoritativo) |
+| `references/extending-skill.md` | Como adicionar/atualizar sumários |
+| `references/changelog.md` | Histórico de versão do mapping |
+| `references/v2.4-snapshot/superpowers-mapping.md` | Versão anterior (referência histórica) |
+| `templates/_references/superpowers-summary/` | Templates dos 11 sumários |
+| `SKILL.md` §Instruction Priority | Priority order completa (1-5) |

@@ -319,3 +319,68 @@ class TestParseProfileMergeOutput:
     def test_raises_when_root_not_dict(self) -> None:
         with pytest.raises(BootstrapError):
             parse_profile_merge_output(json.dumps([1, 2, 3]))
+
+
+# ============================================================================
+# _scaffold_workspace_dirs (copia summaries + runtime references)
+# ============================================================================
+
+class TestScaffoldWorkspaceDirs:
+    """Verifica que scaffold copia summaries 200tok + runtime refs do skill_root."""
+
+    def test_creates_all_9_stage_dirs(self, tmp_path: Path) -> None:
+        ws = tmp_path / "workspaces" / "001-foo"
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        for s in bootstrap.STAGES:
+            assert (ws / "stages" / s).is_dir()
+
+    def test_creates_config_dir_with_profile_matrix(self, tmp_path: Path) -> None:
+        ws = tmp_path / "workspaces" / "001-foo"
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        assert (ws / "_config" / "profile-matrix.md").is_file()
+
+    def test_copies_all_10_superpowers_summaries(self, tmp_path: Path) -> None:
+        ws = tmp_path / "workspaces" / "001-foo"
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        sp_dir = ws / "_references" / "superpowers-summary"
+        assert sp_dir.is_dir()
+        expected = {
+            "brainstorming-200tok.md",
+            "writing-plans-200tok.md",
+            "dispatching-parallel-agents-200tok.md",
+            "test-driven-development-200tok.md",
+            "subagent-driven-development-200tok.md",
+            "verification-before-completion-200tok.md",
+            "requesting-code-review-200tok.md",
+            "receiving-code-review-200tok.md",
+            "finishing-a-development-branch-200tok.md",
+            "systematic-debugging-200tok.md",
+        }
+        actual = {p.name for p in sp_dir.iterdir() if p.is_file()}
+        assert expected.issubset(actual), f"missing: {expected - actual}"
+
+    def test_copies_runtime_references(self, tmp_path: Path) -> None:
+        ws = tmp_path / "workspaces" / "001-foo"
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        runtime_dir = ws / "_references" / "runtime"
+        assert runtime_dir.is_dir()
+        expected = {
+            "agent-team-protocol.md",
+            "wave-planner-algorithm.md",
+            "state-machine-schema.md",
+            "recovery-wizard.md",
+            "stop-points-canonical.md",
+            "4-block-contract-template.md",
+            "feedback-intake-fase08.md",
+        }
+        actual = {p.name for p in runtime_dir.iterdir() if p.is_file()}
+        assert expected.issubset(actual), f"missing: {expected - actual}"
+
+    def test_summary_files_have_expected_frontmatter(self, tmp_path: Path) -> None:
+        ws = tmp_path / "workspaces" / "001-foo"
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        sp_dir = ws / "_references" / "superpowers-summary"
+        sample = (sp_dir / "brainstorming-200tok.md").read_text(encoding="utf-8")
+        assert sample.startswith("---")
+        assert "source_skill:" in sample
+        assert "source_version:" in sample
