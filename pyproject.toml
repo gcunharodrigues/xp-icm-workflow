@@ -1,0 +1,15 @@
+[tool.pytest.ini_options]
+# Workaround para envs com pytest-playwright instalado globalmente: conflito de --browser
+addopts = "-p no:playwright"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+
+[tool.coverage.run]
+source = ["scripts"]
+omit = ["*/tests/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false

@@ -1,0 +1,185 @@
+#!/usr/bin/env bash
+# xp-icm-workflow — pre-commit hook
+#
+# Enforce isolation entre workspace e src do projeto pai.
+#
+# Regras (R2.3, R3.3, R3.10, R5.4):
+#
+#   1. Skip durante rebase/merge em andamento.
+#   2. Branches que nao casam ^workspace/[0-9]{3}- passam livremente.
+#   3. Em branches workspace/NNN-slug:
+#      a) Reject se algum staged file esta fora de workspaces/NNN-slug/
+#         (exceto ADRs em docs/decisions/*.md).
+#      b) Reject se mensagem de commit nao comeca com "workspace NNN: "
+#         (exceto commits de ADR contendo "(workspace NNN " no corpo).
+#      c) Reject se outputs de stages/<NN>/output sao staged sem que
+#         workspaces/NNN-slug/CONTEXT.md tambem esteja staged
+#         (atomicidade L1 <-> outputs).
+#
+# Anti-bypass: NUNCA use --no-verify; corrija o conteudo.
+
+set -euo pipefail
+
+# 1. Skip durante rebase/merge ------------------------------------------------
+
+git_dir="$(git rev-parse --git-dir 2>/dev/null || echo .git)"
+if [ -d "${git_dir}/rebase-merge" ] || [ -d "${git_dir}/rebase-apply" ]; then
+    exit 0
+fi
+
+# 2. Detectar branch ----------------------------------------------------------
+
+branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
+
+# Branches que nao seguem padrao workspace/NNN-slug passam livremente.
+if ! printf '%s' "$branch" | grep -Eq '^workspace/[0-9]{3}-'; then
+    exit 0
+fi
+
+# 3. Extrair workspace ID e slug ----------------------------------------------
+
+# branch = workspace/NNN-slug; extrair NNN e prefix completo NNN-slug
+ws_full="${branch#workspace/}"          # NNN-slug
+ws_id="${ws_full%%-*}"                  # NNN (3 digitos)
+ws_dir="workspaces/${ws_full}"          # workspaces/NNN-slug
+
+# 4. Coletar staged files -----------------------------------------------------
+
+# --diff-filter=ACMR = adicionados, copiados, modificados, renomeados (nao deletados)
+staged="$(git diff --cached --name-only --diff-filter=ACMR || true)"
+
+if [ -z "$staged" ]; then
+    # nada staged — nao temos o que validar; deixar git lidar
+    exit 0
+fi
+
+# 5. Reject src edits (R3.3) --------------------------------------------------
+
+offending=""
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    # ADR liberado: docs/decisions/*.md
+    case "$f" in
+        docs/decisions/*.md) continue ;;
+    esac
+    # Dentro do workspace? — liberado
+    case "$f" in
+        "${ws_dir}/"*) continue ;;
+    esac
+    # Caso contrario, fora de escopo
+    offending="$f"
+    break
+done <<EOF
+$staged
+EOF
+
+if [ -n "$offending" ]; then
+    cat >&2 <<EOM
+ERROR: branch workspace/${ws_full} pode tocar APENAS workspaces/${ws_full}/* ou docs/decisions/*.md.
+File offendor: ${offending}
+Pra editar src/, faca checkout em base_branch primeiro.
+NUNCA use --no-verify; corrija o conteudo.
+EOM
+    exit 1
+fi
+
+# 6. Validar mensagem de commit (R2.3 + R5.4 ADR exception) -------------------
+
+commit_msg_file="${git_dir}/COMMIT_EDITMSG"
+commit_msg=""
+if [ -f "$commit_msg_file" ]; then
+    commit_msg="$(cat "$commit_msg_file" 2>/dev/null || true)"
+fi
+
+# Detectar staged ADR para regra de excecao
+has_adr_staged=0
+while IFS= read -r f; do
+    case "$f" in
+        docs/decisions/*.md) has_adr_staged=1; break ;;
+    esac
+done <<EOF
+$staged
+EOF
+
+# Padrao normal: linha 1 comeca com "workspace NNN: "
+expected_prefix="workspace ${ws_id}: "
+adr_marker="(workspace ${ws_id} "
+
+msg_first_line="$(printf '%s' "$commit_msg" | head -n 1)"
+
+prefix_ok=0
+if printf '%s' "$msg_first_line" | grep -Eq "^workspace ${ws_id}: "; then
+    prefix_ok=1
+fi
+
+adr_ok=0
+if [ "$has_adr_staged" -eq 1 ] && printf '%s' "$commit_msg" | grep -qF "$adr_marker"; then
+    adr_ok=1
+fi
+
+if [ "$prefix_ok" -eq 0 ] && [ "$adr_ok" -eq 0 ]; then
+    cat >&2 <<EOM
+ERROR: mensagem de commit em workspace/${ws_full} deve comecar com:
+  ${expected_prefix}<descricao curta>
+
+Sua mensagem comecou com:
+  ${msg_first_line}
+
+Sugestao: reescreva como
+  ${expected_prefix}${msg_first_line}
+
+Excecao: commits que tocam docs/decisions/*.md podem mencionar
+"${adr_marker}<descricao>)" no corpo em vez do prefix.
+
+NUNCA use --no-verify; corrija o conteudo.
+EOM
+    exit 1
+fi
+
+# 7. Atomicidade L1 <-> outputs -----------------------------------------------
+
+# Se algum staged file esta em workspaces/NNN-slug/stages/<NN>/output/*,
+# entao workspaces/NNN-slug/CONTEXT.md deve estar staged tambem.
+output_offender=""
+output_stage=""
+context_md_path="${ws_dir}/CONTEXT.md"
+
+context_staged=0
+while IFS= read -r f; do
+    if [ "$f" = "$context_md_path" ]; then
+        context_staged=1
+    fi
+done <<EOF
+$staged
+EOF
+
+while IFS= read -r f; do
+    [ -z "$f" ] && continue
+    case "$f" in
+        "${ws_dir}/stages/"*/output/*)
+            # Extrair NN de stages/NN/output/...
+            rest="${f#${ws_dir}/stages/}"
+            stage_n="${rest%%/*}"
+            output_offender="$f"
+            output_stage="$stage_n"
+            break
+            ;;
+    esac
+done <<EOF
+$staged
+EOF
+
+if [ -n "$output_offender" ] && [ "$context_staged" -eq 0 ]; then
+    cat >&2 <<EOM
+ERROR: outputs do estagio ${output_stage} staged sem update de CONTEXT.md.
+File: ${output_offender}
+Atomicidade L1<->outputs requerida. Stage CONTEXT.md tambem:
+  git add ${context_md_path}
+
+NUNCA use --no-verify; corrija o conteudo.
+EOM
+    exit 1
+fi
+
+# Tudo certo
+exit 0
