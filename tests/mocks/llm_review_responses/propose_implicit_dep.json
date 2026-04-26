@@ -1,0 +1,26 @@
+{
+  "verdict": "PROPOSE_CHANGES",
+  "issues": [
+    {
+      "type": "implicit_dep",
+      "from": "task-a",
+      "to": "task-b",
+      "reason": "task-b usa schema migrado por task-a",
+      "severity": "error"
+    },
+    {
+      "type": "ambiguous_footprint",
+      "from": "task-c",
+      "to": "task-d",
+      "reason": "ambas tocam src/auth/ sem intersecao exata; LLM confirma separacao mas sugere wave-merge",
+      "severity": "warning"
+    }
+  ],
+  "proposed_dag_changes": [
+    {
+      "action": "add_dep",
+      "from": "task-a",
+      "to": "task-b"
+    }
+  ]
+}
