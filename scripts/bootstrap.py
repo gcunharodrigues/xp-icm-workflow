@@ -205,6 +205,89 @@ def parse_profile_merge_output(json_str: str) -> tuple[dict[str, Any], str]:
 
 
 # ============================================================================
+# Stop points: derivacao de placeholders + render do bloco custom
+# ============================================================================
+
+def derive_stop_point_placeholders(effective: dict[str, Any]) -> dict[str, str]:
+    """Extrai dict[str, str] com TIER_PAID_MODE/TIER_PAID_THRESHOLD_BRL/
+    TIER_OVER_ENG_MODE/TIER_PII_MODE a partir de `stop_points_calibration` no
+    profile efetivo.
+
+    Schema esperado (vem de profile-merge.py):
+        stop_points_calibration:
+          item_5: {mode: warning|hard, limite_mensal_BRL: int}
+          item_7: {mode: warning|hard}
+          item_8: {mode: warning|hard|hard+DPO}
+
+    Raise BootstrapError se chaves obrigatorias ausentes.
+    """
+    cal = effective.get("stop_points_calibration")
+    if not isinstance(cal, dict):
+        raise BootstrapError(
+            "profile efetivo sem 'stop_points_calibration' (esperado dict)"
+        )
+
+    def _required(key: str, sub: str) -> Any:
+        item = cal.get(key)
+        if not isinstance(item, dict):
+            raise BootstrapError(
+                f"stop_points_calibration.{key} ausente ou nao-dict"
+            )
+        if sub not in item:
+            raise BootstrapError(
+                f"stop_points_calibration.{key}.{sub} ausente"
+            )
+        return item[sub]
+
+    return {
+        "TIER_PAID_MODE": str(_required("item_5", "mode")),
+        "TIER_PAID_THRESHOLD_BRL": str(_required("item_5", "limite_mensal_BRL")),
+        "TIER_OVER_ENG_MODE": str(_required("item_7", "mode")),
+        "TIER_PII_MODE": str(_required("item_8", "mode")),
+    }
+
+
+def render_custom_stop_points_block(
+    custom_stops: list[dict[str, Any]] | None,
+    tier: str,
+) -> str:
+    """Renderiza bloco markdown com custom stop points para o template.
+
+    `custom_stops` segue schema de `_config/profile-matrix.md` -> custom_stop_points:
+        - id: str (nao-vazio)
+          description: str (nao-vazio)
+          threshold: dict[tier_name -> mode_str]
+
+    Se lista vazia/None: retorna "(nenhum custom stop point declarado pelo workspace)".
+    Caso contrario: para cada custom stop, secao `### custom: <id>` + descricao
+    + threshold para o tier corrente (ou "n/a" se tier nao tem entry no threshold).
+    """
+    if not custom_stops:
+        return "(nenhum custom stop point declarado pelo workspace)"
+
+    lines: list[str] = []
+    for sp in custom_stops:
+        if not isinstance(sp, dict):
+            raise BootstrapError(f"custom_stop_point invalido (nao-dict): {sp!r}")
+        sp_id = sp.get("id")
+        sp_desc = sp.get("description")
+        sp_thresh = sp.get("threshold") or {}
+        if not sp_id or not sp_desc:
+            raise BootstrapError(
+                f"custom_stop_point requer 'id' e 'description' nao-vazios: {sp!r}"
+            )
+        threshold_for_tier = sp_thresh.get(tier, "n/a") if isinstance(sp_thresh, dict) else "n/a"
+        lines.append(f"### custom: {sp_id}")
+        lines.append("")
+        lines.append(str(sp_desc))
+        lines.append("")
+        lines.append(f"Threshold tier `{tier}`: `{threshold_for_tier}`")
+        lines.append("")
+
+    return "\n".join(lines).rstrip() + "\n"
+
+
+# ============================================================================
 # Helpers de orquestracao (cobertos por bats integration)
 # ============================================================================
 
@@ -442,6 +525,20 @@ def bootstrap(
     # Volta o sentinel para `{{BOOTSTRAP_COMMIT_SHA}}` literal; patch depois
     context_md = context_md.replace("PENDING", "{{BOOTSTRAP_COMMIT_SHA}}")
     (workspace_dir / "CONTEXT.md").write_text(context_md, encoding="utf-8")
+
+    # Stop points: render template _config/stop-points.md com placeholders
+    # de tier (TIER_PAID_MODE etc) + bloco de custom stop points.
+    sp_placeholders = derive_stop_point_placeholders(effective)
+    custom_block = render_custom_stop_points_block(
+        effective.get("custom_stop_points"),
+        tier=tier,
+    )
+    sp_template_vars = dict(placeholders)
+    sp_template_vars.update(sp_placeholders)
+    sp_template_vars["CUSTOM_STOP_POINTS_BLOCK"] = custom_block
+    sp_tpl = skill_root / "templates" / "_config" / "stop-points.md"
+    sp_rendered = render_template(sp_tpl, sp_template_vars)
+    (workspace_dir / "_config" / "stop-points.md").write_text(sp_rendered, encoding="utf-8")
 
     # Profile efetivo persistido para validate-state
     _save_profile_effective(workspace_dir, effective, profile_hash)

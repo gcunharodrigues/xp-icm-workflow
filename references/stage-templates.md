@@ -1,435 +1,412 @@
-# Stage Templates — xp-icm-workflow
+# Stage Templates — Spec Canônico L2 (xp-icm-workflow v3.0.0-beta1)
 
-Templates prontos para arquivos-raiz do workspace e para `stages/XX_nome/CONTEXT.md`. Copiar, colar e adaptar no Phase 0 (Bootstrap, passo 0.4-0.6) ou quando adicionar estágios customizados.
+> **Propósito:** define o **schema obrigatório** dos 9 templates L2 em `templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl`. Cada L2 é um *contrato de estágio*: declara o que o agente lê, processa e escreve quando aquele estágio está ativo.
 
-Templates de estágio incluem as **sete seções obrigatórias**: Estado, Skill, Inputs, Process, Outputs, Verify, Review Gate.
+> **Status:** spec. L2 templates concretos são gerados na Wave 3 da reescrita da skill (paralelizável). Toda alteração de schema aqui obriga regenerar os 9 .tpl + atualizar `tests/unit/test_l2_templates.py`.
 
-Convenção de prefixo usada nas Inputs:
-- `[L3:cfg]` — Layer 3, internalizar como restrição (receita/config)
-- `[L4:in]` — Layer 4, processar como input (ingrediente)
+> **Não confundir:** este doc é spec do **template** L2. O `.tpl` resultante carrega placeholders `{{PROJECT_ROOT}}` e `{{WORKSPACE}}` que o bootstrap resolve. O resultado materializado em `<project_root>/workspaces/<NNN-slug>/stages/<NN>_<slug>/CONTEXT.md` é o L2 efetivo lido por sessões.
 
 ---
 
-## Template: `CLAUDE.md` raiz do workspace (Layer 0 — Identidade)
+## Os 9 estágios
 
-Gerado no Passo 0.4-0.6 do Bootstrap. Define identidade do workspace, stack, regras. Todo agente que entrar no workspace lê este arquivo PRIMEIRO.
+| NN | Nome (slug)              | Resumo 1 frase |
+|----|--------------------------|----------------|
+| 00 | `recon`                  | Reconnaissance do projeto/repositório: detecta stack, branch, ADRs e lessons existentes; gera baseline para os estágios seguintes. |
+| 01 | `discovery`              | Brainstorming guiado: público, requisitos funcionais/não-funcionais, alternativas, MVP IN/OUT, riscos, métricas. |
+| 02 | `design`                 | Plano arquitetural + ADRs formais; modelagem de dados, contratos de API, divisão em tasks com 4-block contract. |
+| 03 | `wave_planner`           | Constrói DAG de tasks, agrupa em waves respeitando cap de teammates e dependências; LLM review subagent assina o plano. |
+| 04 | `implementation_waves`   | Execução paralela via Agent Teams em git worktrees; lead orquestra spawn/mailbox/rebase sequencial; uma sub-stage por wave. |
+| 05 | `verification`           | Verificação técnica do que foi entregue: CI, cobertura, conformidade ao plano e aos ADRs; PASS/CONDITIONAL/FAIL. |
+| 06 | `review`                 | Code review nas 7 dimensões (correctness, security, tests, design, standards, readability, performance) + recebimento de feedback. |
+| 07 | `merge`                  | Finaliza branch: merge direto, PR, tag de release ou cleanup; atualiza lessons/tech_debt; fecha o ciclo de entrega. |
+| 08 | `feedback_intake`        | Pós-uso real: 3 saídas — A) close workspace, B) restart fase X (`iteration++`), C) spawn novo workspace herdando lessons+ADRs. |
 
-```markdown
-# Workspace: <nome-do-projeto>
+---
 
-## Identidade
-- **Slug:** <kebab-case-sem-acentos>
-- **Data de criação:** YYYY-MM-DD
-- **Tipo de projeto:** <website / app / api / agent-ia / dashboard / article / outro>
-- **Business impact tier:** <experimental / tool / development / production>
-- **Stack:** <linguagem + framework + banco + runtime>
+## Schema obrigatório do L2 template
 
-## Objetivo (1 parágrafo)
-<Descrição em PT do que este projeto faz e para quem.>
+Todo `stages/<NN>_<slug>/CONTEXT.md.tpl` DEVE conter as 12 seções abaixo, **na ordem**. Test parser falha se faltar qualquer uma.
 
-## Estrutura de Pastas do Workspace
-- `CLAUDE.md` — este arquivo (L0: identidade)
-- `CONTEXT.md` — estado atual e roteamento (L1)
-- `stages/XX_nome/` — pastas numeradas, 1 por estágio (L2 contrato + L3 refs + L4 outputs)
-- `_config/` — convenções e regras estáveis (L3: FÁBRICA)
-- `docs/` — decisões, lessons, tech_debt (vinculado ao projeto pai)
+### 1. YAML frontmatter
 
-## Regras de Prioridade (para este workspace)
-1. Instruções do usuário (CLAUDE.md projeto pai, AGENTS.md, mensagens diretas) — vencem.
-2. `/xp-icm-workflow` — orquestração.
-3. Skills especializadas (`/xp-workflow`, `superpowers:*`) — vencem no escopo delas.
-4. Default system prompt — perde.
-
-## Ordem de Leitura Obrigatória
-Todo agente ao entrar neste workspace lê, nesta ordem:
-1. Este arquivo (L0)
-2. `CONTEXT.md` raiz (L1)
-3. `stages/XX/CONTEXT.md` do estágio atual (L2)
-4. SOMENTE os arquivos listados na Inputs table do estágio (L3 e L4)
-
-Nunca pular esta ordem. Nunca ler arquivos fora da Inputs table.
-
-## Regras Específicas deste Workspace
-<Adicionar regras específicas do projeto se houver — ex: "conteúdo em PT-BR", "API usa FastAPI", "banco é SQLite".>
+```yaml
+---
+layer: L2
+stage: "<NN>"                              # string "00".."08"
+stage_name: "<slug>"                       # ∈ {recon, discovery, design, wave_planner, implementation_waves, verification, review, merge, feedback_intake}
+sub_stage_enum:                            # lista canônica do estágio (ver §Sub_stage enum)
+  - "<NN>_in_progress"
+  - "<NN>_completed"
+applicable_stop_points:                    # lista de IDs de stop-points-canonical.md aplicáveis aqui
+  - "<sp_id>"
+output_files:                              # paths relativos a stage dir
+  - "output/<file>.md"
+next_stage: "<MM>"                         # próximo estágio padrão; null se 08 ou se profile pula
+---
 ```
 
----
+**Campos obrigatórios:** `layer`, `stage`, `stage_name`, `sub_stage_enum`, `applicable_stop_points`, `output_files`, `next_stage`. Todos validados pelo parser de Round 2.
 
-## Template: `CONTEXT.md` raiz do workspace (Layer 1 — Estado e Roteamento)
+**Regra:** `stage_name` em snake_case sem prefixo numérico (o número está em `stage`). `sub_stage_enum` bate **exatamente** com `references/state-machine-schema.md` §Sub-stage enum.
 
-Gerado no Passo 0.4-0.6 do Bootstrap. **Atualizado ao final de cada estágio** via Stage Transition Checklist: append no histórico + atualizar campo `STAGE` para apontar ao PRÓXIMO estágio como `IN_PROGRESS` (ou `COMPLETED` se for o último). É o arquivo de estado que permite retomada de sessão.
+### 2. Título + propósito (1 parágrafo)
 
 ```markdown
-# Contexto do Workspace <slug>
+# Estágio {{STAGE_NN}} — {{STAGE_NAME}} (L2)
 
-## Estado Atual
-- **STAGE:** 00_BOOTSTRAP
-- **STATUS:** IN_PROGRESS
-- **Atualizado em:** YYYY-MM-DD
-
-## Histórico de Estágios Completados
-<!-- Append 1 linha por estágio completado, com data, status e outputs -->
-<!-- Formato: | YYYY-MM-DD | 01_discovery | COMPLETED | discovery.md | -->
-
-| Data | Estágio | Status | Outputs |
-|---|---|---|---|
-| | | | |
-
-## Roteamento
-Fluxo configurado (dos templates ICM):
-01_discovery → 02_design → 03_implementation → 04_verification → 05_review → 06_merge
-
-## Retomada
-Ao retomar este workspace em sessão futura:
-1. Ler este arquivo primeiro para saber em qual estágio parou (ver `STAGE` acima).
-2. Seguir o Layer Loading Protocol: L0 → L1 (este) → L2 → L3 → L4.
-3. Ler SOMENTE os arquivos listados na Inputs table do estágio atual.
-
-**Se este arquivo estiver corrompido ou sem STAGE:** inferir o estado pela existência de arquivos em `stages/XX/output/`. Último estágio com output completo = completado; próximo sem output = atual.
+<1 parágrafo: o que este estágio entrega ao workspace, em linguagem direta. Sem floreio.>
 ```
 
----
+### 3. Tabela `Inputs (lê SOMENTE estes, na ordem)`
 
-## Template: Estágio 01 (Discovery)
+Formato literal §4.11 do plan. Mínimo 3 linhas (L0, L1, L2 do estágio). Estágios subsequentes acrescentam outputs anteriores e ADRs/conventions.
 
 ```markdown
-# Estágio 01: Discovery
+## Inputs (lê SOMENTE estes, na ordem)
 
-## Estado
-- **STATUS:** IN_PROGRESS / COMPLETED
-- **Data:** (preencher ao completar)
-- **Outputs:** (preencher ao completar)
+| # | Path | Layer | Obrigatório? |
+|---|------|-------|--------------|
+| 1 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md | L0 | sim |
+| 2 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | sim |
+| 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<NN>_<slug>/CONTEXT.md | L2 | sim |
+| 4 | <path estágio-específico>                         | L3/L4 | sim/condicional |
+| ... | ...                                            | ...   | ... |
+```
 
-## Skill a Invocar
-superpowers:brainstorming
+**Placeholders:** apenas `{{PROJECT_ROOT}}` e `{{WORKSPACE}}` (Jinja-style). Bootstrap resolve. Nunca usar `../../`.
 
-## Inputs
-- [L4:in] Nenhum — ideia veio do prompt inicial
-- [L3:cfg] `_config/project-brief.md` — brief inicial (se houver)
-- IGNORAR: outputs de estágios subsequentes, ADRs (não existem ainda)
+**Marcação `condicional`:** linha cuja obrigatoriedade depende de profile/tier (ex.: `tech_debt.md` só se `tech_debt_tracking: true`). Coluna deve dizer `condicional: <regra>`.
+
+### 4. Seção `Não Lê (negative constraint)`
+
+Lista negativa explícita. Agente recusa ler diretórios/arquivos fora da Inputs e fora da pista declarada aqui.
+
+```markdown
+## Não Lê (negative constraint)
+
+- {{PROJECT_ROOT}}/src/, {{PROJECT_ROOT}}/tests/   (exceções: <listadas>)
+- ADRs não listados no plan.md desta wave
+- Outputs de outros estágios além dos declarados em Inputs
+- {{PROJECT_ROOT}}/docs/lessons.md (lições já vêm pré-injetadas pelo lead, se aplicável)
+```
+
+### 5. Read order
+
+Numerado, preserva ordem da Inputs. Reforça Layer Loading Protocol.
+
+```markdown
+## Read order
+
+1. L0 — identidade
+2. L1 — state machine
+3. L2 (este arquivo) — instruções do estágio
+4..N. Demais paths da Inputs, na ordem da tabela
+```
+
+### 6. Process
+
+Passos do estágio em formato numerado. Cada passo pequeno e verificável. Inclui:
+
+- Verificação pre-flight (existência dos paths Inputs).
+- Skill superpowers a invocar (ver §11).
+- Decisões que disparam stop point.
+- Ponto onde sub_stage transita para `<NN>_completed`.
+- Atualização de L1 + commit atômico.
+
+### 7. Outputs esperados
+
+Paths **relativos a `stages/<NN>/output/`**. Igual ao campo `output_files` do frontmatter. Cada item descreve conteúdo mínimo (1 frase).
+
+```markdown
+## Outputs
+
+- `output/<file>.md` — <descrição mínima do conteúdo>
+- `output/reports/<...>` (se aplicável)
+```
+
+### 8. Sub_stage transitions
+
+Lista enums válidos do estágio (puxados de `state-machine-schema.md`) + regra textual da transição IN_PROGRESS → COMPLETED.
+
+```markdown
+## Sub_stage transitions
+
+Enum válido: <lista de sub_stage_enum do frontmatter>
+
+Transição IN_PROGRESS → COMPLETED dispara quando:
+- Todos os outputs declarados em §Outputs existem no FS.
+- Verify (§6 Process passo X) passou.
+- Humano aprovou (gate de §12) — quando aplicável.
+```
+
+Estágio 04 documenta sub_stages dinâmicos `04_wave_<N>_in_progress` / `04_wave_<N>_completed`. Estágio 08 documenta os 4 terminais `08_decided_A/B/C` além de `08_in_progress`.
+
+### 9. Status que pode setar
+
+Subset dos 5 canônicos de `references/state-machine-schema.md`.
+
+```markdown
+## Status canônicos disponíveis neste estágio
+
+- `IN_PROGRESS` — trabalho ativo.
+- `COMPLETED_AWAITING_HUMAN` — outputs prontos, aguarda gate humano.
+- `BLOCKED_STOP_POINT` — menu A/B/C disparado (ver §10).
+- `BLOCKED_ERROR` — runtime/CI/rebase falhou.
+- `COMPLETED` — APENAS estágio 07 (saída) ou 08 saída A.
+```
+
+Estágios 00–06 nunca setam `COMPLETED` (terminal de workspace). Estágios 03 e 06 podem omitir `BLOCKED_ERROR` se profile pula.
+
+### 10. Stop points aplicáveis
+
+Referência canônica a `references/stop-points-canonical.md` (escrito em paralelo). Lista IDs aplicáveis ao estágio.
+
+```markdown
+## Stop points aplicáveis
+
+Catálogo canônico em `references/stop-points-canonical.md`. IDs disparáveis aqui:
+
+- `sp_<id>` — <1 linha do que dispara>
+- ...
+
+Disparo: agente pausa, escreve menu A/B/C no output, atualiza L1 `status: BLOCKED_STOP_POINT`. Humano responde, sessão retoma com `IN_PROGRESS`.
+```
+
+Catálogo canônico em `references/stop-points-canonical.md` define os 12 IDs e thresholds por tier. L2 do estágio cita SOMENTE IDs canônicos. Mapeamento autoritativo:
+
+| Estágio | Stop points aplicáveis (IDs canônicos) |
+|---|---|
+| 00 recon | `workspace_corrupt`, `profile_mismatch` |
+| 01 discovery | `stack`, `external_api`, `paid_service`, `pii` |
+| 02 design | `stack`, `db`, `new_dep`, `paid_service`, `irreversible`, `over_eng`, `pii`, `adr_drift` |
+| 03 wave_planner | (nenhum — wave-planner é determinístico) |
+| 04 implementation_waves | `new_dep`, `irreversible`, `over_eng`, `prod_migration`, `adr_drift` |
+| 05 verification | (nenhum — falha CI é `BLOCKED_ERROR`, não stop point) |
+| 06 review | `over_eng`, `pii`, `adr_drift` |
+| 07 merge | `irreversible`, `prod_migration` |
+| 08 feedback_intake | (nenhum — saídas A/B/C são decisão direta) |
+
+### 11. Skill superpowers de referência
+
+Aponta o sumário 200tok a consultar. Path absoluto via placeholder; arquivos serão criados na Wave 5 da skill — paths são contratos.
+
+```markdown
+## Skill superpowers de referência
+
+Sumário 200tok: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/<X>-200tok.md`
+
+Skill formal: `superpowers:<nome>` (escape hatch — invocação real só se complexidade justifica).
+```
+
+#### Mapeamento estágio ↔ skill superpowers
+
+| Estágio | Skill superpowers principal | Sumário 200tok |
+|---|---|---|
+| 00 recon | `brainstorming` + `writing-plans` (light) | `brainstorming-200tok.md` |
+| 01 discovery | `brainstorming` | `brainstorming-200tok.md` |
+| 02 design | `writing-plans` | `writing-plans-200tok.md` |
+| 03 wave_planner | `dispatching-parallel-agents` | `dispatching-parallel-agents-200tok.md` |
+| 04 implementation_waves | `test-driven-development` + `subagent-driven-development` | `tdd-200tok.md`, `subagent-dd-200tok.md` |
+| 05 verification | `verification-before-completion` | `verification-200tok.md` |
+| 06 review | `requesting-code-review` + `receiving-code-review` | `requesting-code-review-200tok.md` |
+| 07 merge | `finishing-a-development-branch` | `finishing-branch-200tok.md` |
+| 08 feedback_intake | (nenhuma direta) | usa `references/feedback-intake-fase08.md` local |
+
+### 12. Gates
+
+Declara explicitamente quem libera o estágio.
+
+```markdown
+## Gates
+
+- **Humano:** <quando exige aprovação humana ou edição de output>
+- **Automático (CI):** <linters, testes, hooks que precisam estar verdes>
+- **Aprovação para transitar:** <regra exata para sub_stage IN_PROGRESS → COMPLETED>
+```
+
+Estágio 04 referencia gate composto: peer review subagent + wave-reviewer + rebase verde.
+
+---
+
+## Sub_stage enum por estágio (canônico)
+
+Réplica de `references/state-machine-schema.md` §Sub-stage enum. Frontmatter de cada L2 deve bater **exatamente** com a coluna correspondente.
+
+| Estágio | Valores válidos |
+|---|---|
+| 00 Recon | `00_in_progress`, `00_completed` |
+| 01 Discovery | `01_in_progress`, `01_completed` |
+| 02 Design | `02_in_progress`, `02_completed` |
+| 03 Wave Planner | `03_in_progress`, `03_completed` |
+| 04 Implementation Waves | `04_wave_<N>_in_progress`, `04_wave_<N>_completed` (N inteiro positivo) |
+| 05 Verification | `05_in_progress`, `05_completed` |
+| 06 Review | `06_in_progress`, `06_completed` |
+| 07 Merge | `07_in_progress`, `07_completed` |
+| 08 Feedback Intake | `08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C` |
+
+**Regra de prefixo:** `sub_stage` SEMPRE começa com prefixo `<stage>_`. Mismatch dispara Recovery Wizard inconsistência (ver `references/state-machine-schema.md` §R2.7).
+
+---
+
+## Estágios pulados por profile
+
+Fonte: `templates/_config/profile-matrix.md`. Skill resolve `stages_skipped` no merge profile + tier + override e materializa SOMENTE os L2s não-pulados.
+
+| Profile | `stages_skipped` |
+|---|---|
+| `experiment` | `["03", "05", "06", "08"]` (todos os tiers) |
+| `technical_article` | `["03"]` (todos os tiers) |
+| Demais 8 profiles | `[]` |
+
+Override local em `.icm-profile.local.yaml` pode adicionar/remover (sujeito a `confirm_unsafe` para gates críticos). L1 declara `stages_skipped` final no `_config/profile-effective.yaml`; bootstrap NÃO cria pastas dos estágios pulados.
+
+**Quando estágio é pulado:** L1 não pula transições — `next_stage` do L2 anterior aponta direto ao próximo estágio NÃO-pulado. Ex: em `experiment`, `next_stage` do estágio 02 design é `04` (pula 03).
+
+---
+
+## Validação automatizada (Round 2)
+
+`tests/unit/test_l2_templates.py` parseia cada `templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl` e valida:
+
+1. **Frontmatter parseável** (PyYAML strict load) e contém os 7 campos obrigatórios.
+2. **`sub_stage_enum`** bate exatamente com `references/state-machine-schema.md` §Sub-stage enum (exceção: estágio 04 valida regex `^04_wave_<int>_(in_progress|completed)$`).
+3. **Placeholders Jinja**: somente `{{PROJECT_ROOT}}` e `{{WORKSPACE}}`. Qualquer outro placeholder (`{{...}}`) → falha. Verifica que ambos são substituíveis (re.findall encontra ≥1 ocorrência cada — exceto estágio 00 que pode não usar `WORKSPACE` em paths além dos default L0/L1/L2).
+4. **Tabela Inputs presente** com cabeçalho exato `## Inputs (lê SOMENTE estes, na ordem)` e ≥3 linhas de dados (L0, L1, L2 mínimo) — parser conta linhas de tabela após o cabeçalho.
+5. **Seção `## Não Lê (negative constraint)`** presente com ≥1 item.
+6. **`output_files` do frontmatter** bate com paths citados na seção `## Outputs` (set equality).
+7. **`applicable_stop_points`** ⊆ IDs declarados em `references/stop-points-canonical.md` (carrega catálogo, faz `issubset`).
+8. **`next_stage`** ∈ {`"00".."08"`, `null`}; null exclusivo do estágio 08.
+9. **Skill 200tok path** referenciado em §11 existe como string (arquivo real só na Wave 5 — teste só checa formato do path).
+
+Falha em qualquer item → CI bloqueia merge da wave.
+
+---
+
+## Exemplo concreto — L2 estágio 02 design (placeholders resolvidos)
+
+Workspace fictício: `042-feat-auth`, `project_root=/repo/aura-luz-api`, profile `app_web_backend`, tier `development`.
+
+```markdown
+---
+layer: L2
+stage: "02"
+stage_name: "design"
+sub_stage_enum:
+  - "02_in_progress"
+  - "02_completed"
+applicable_stop_points:
+  - "stack"
+  - "db"
+  - "new_dep"
+  - "paid_service"
+  - "irreversible"
+  - "over_eng"
+  - "pii"
+  - "adr_drift"
+output_files:
+  - "output/plan.md"
+  - "output/decisions.md"
+next_stage: "03"
+---
+
+# Estágio 02 — design (L2)
+
+Produz plano arquitetural executável + ADRs formais. Cada decisão não-trivial vira menu A/B/C. Saída alimenta o Wave Planner (estágio 03) com tasks contendo 4-block contract, files touched e ADRs aplicáveis.
+
+## Inputs (lê SOMENTE estes, na ordem)
+
+| # | Path | Layer | Obrigatório? |
+|---|------|-------|--------------|
+| 1 | /repo/aura-luz-api/workspaces/042-feat-auth/CLAUDE.md | L0 | sim |
+| 2 | /repo/aura-luz-api/workspaces/042-feat-auth/CONTEXT.md | L1 | sim |
+| 3 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/02_design/CONTEXT.md | L2 | sim |
+| 4 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/01_discovery/output/discovery.md | L4 | sim |
+| 5 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/00_recon/output/baseline.md | L4 | sim |
+| 6 | /repo/aura-luz-api/docs/decisions/ | L3 | condicional: ler ADRs já existentes referenciados em discovery.md |
+| 7 | /repo/aura-luz-api/docs/tech_debt.md | L3 | condicional: tier ≠ experimental |
+| 8 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/icm-conventions.md | L3 | sim |
+| 9 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/stop-points.md | L3 | sim |
+| 10 | /repo/aura-luz-api/workspaces/042-feat-auth/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
+
+## Não Lê (negative constraint)
+
+- /repo/aura-luz-api/src/, /repo/aura-luz-api/tests/
+- ADRs em /repo/aura-luz-api/docs/decisions/ NÃO referenciados em discovery.md
+- Outputs de estágios 03+ (não existem ainda)
+- /repo/aura-luz-api/docs/lessons.md (lead injetará lições relevantes na fase 04)
+
+## Read order
+
+1. L0 — /repo/aura-luz-api/workspaces/042-feat-auth/CLAUDE.md
+2. L1 — /repo/aura-luz-api/workspaces/042-feat-auth/CONTEXT.md
+3. L2 — este arquivo
+4. discovery.md (entrada principal)
+5. baseline.md (recon)
+6. ADRs listados em discovery
+7. tech_debt.md (se tier permitir)
+8. icm-conventions.md, stop-points.md, sumário writing-plans
 
 ## Process
-1. Ler Layers 0→1→2 em ordem.
-2. Carregar SOMENTE os inputs listados acima.
-3. Invocar `Skill({skill: "superpowers:brainstorming"})`.
-4. Explorar:
-   - Público-alvo e necessidades
-   - Requisitos funcionais (o que o sistema faz)
-   - Requisitos não-funcionais (performance, segurança, escala)
-   - Alternativas de solução (menu se houver tradeoffs)
-   - MVP: IN vs OUT nesta primeira versão
-   - Riscos e restrições
-   - Métricas de sucesso
-5. Sintetizar em markdown estruturado.
+
+1. Pre-flight: validar todos os paths Inputs existem; sub_stage `02_in_progress`.
+2. Ler em ordem; consultar sumário 200tok writing-plans.
+3. Para cada decisão arquitetural não-trivial, montar menu A/B/C com recomendação.
+4. Disparar stop point se: mudança de stack, modelagem nova, API pública nova, dependência nova, serviço pago, decisão irreversível, over-engineering detectado.
+5. Escrever ADRs formais em /repo/aura-luz-api/docs/decisions/NNNN-<slug>.md (fonte da verdade).
+6. Escrever output/plan.md: tasks com 4-block contract (O QUE / COMO / NÃO QUERO / VALIDAÇÃO), files touched, ADRs aplicáveis, requires_peer_review.
+7. Escrever output/decisions.md: INDEX (título + slug + status) — não duplica ADR.
+8. Verify: cada requisito do MVP do discovery aparece em ≥1 task do plan OU está deferred com justificativa.
+9. Atualizar L1: sub_stage `02_completed`, status `COMPLETED_AWAITING_HUMAN`, append history. Commit atômico (pre-commit hook valida).
 
 ## Outputs
-- `output/discovery.md` com:
-  - Resumo executivo (3-5 frases)
-  - Requisitos funcionais (lista)
-  - Requisitos não-funcionais (lista)
-  - Alternativas consideradas (se houver menu)
-  - Definição de MVP (escopo desta entrega)
-  - Riscos e mitigações
-  - Métricas de validação
 
-## Verify
-- Consistência interna: requisitos funcionais cobrem o MVP definido.
-- Alternativas consideradas são mutualmente exclusivas.
-- Critério: cada requisito funcional do MVP aparece no resumo executivo.
+- `output/plan.md` — plano com tasks 4-block, DAG de dependências, files touched, ADRs aplicáveis por task.
+- `output/decisions.md` — INDEX dos ADRs criados (título + slug + status).
 
-## Review Gate
-- Humano lê `output/discovery.md` e edita se necessário.
-- Se humano faz edições recorrentes, sugerir atualizar `_config/project-brief.md` ou este `CONTEXT.md`.
-- Aplicar Stage Transition Checklist antes de prosseguir.
+## Sub_stage transitions
+
+Enum válido: `02_in_progress`, `02_completed`.
+
+Transição IN_PROGRESS → COMPLETED dispara quando:
+- output/plan.md e output/decisions.md existem.
+- Cada requisito MVP do discovery está coberto por ≥1 task ou explicitamente deferred.
+- ADRs novos commitados em /repo/aura-luz-api/docs/decisions/.
+- Humano aprovou via gate (status `COMPLETED_AWAITING_HUMAN` → humano responde).
+
+## Status canônicos disponíveis neste estágio
+
+- `IN_PROGRESS` — escrevendo plano/ADRs.
+- `COMPLETED_AWAITING_HUMAN` — outputs prontos, humano revisa.
+- `BLOCKED_STOP_POINT` — menu A/B/C aguardando resposta.
+- `BLOCKED_ERROR` — pre-commit hook rejeitou ou path Input ausente.
+
+## Stop points aplicáveis
+
+Catálogo canônico em `references/stop-points-canonical.md`. IDs disparáveis no estágio 02 design:
+
+- `stack` — troca de linguagem/framework/runtime vs ADR vigente.
+- `db` — engine ou schema design novo.
+- `new_dep` — npm/pip/cargo nova no manifesto (license/maintenance/size).
+- `paid_service` — SaaS recorrente (calibrado por tier: warning R$50 / hard R$200/500/1000).
+- `irreversible` — drop table, migração destrutiva.
+- `over_eng` — 3+ camadas de abstração novas sem requisito (warning experimental/tool, hard development/production).
+- `pii` — LGPD, dados sensíveis (warning experimental, hard tool/development, hard+DPO production).
+- `adr_drift` — proposta diverge de ADR existente sem superseding declarado.
+
+## Skill superpowers de referência
+
+Sumário 200tok: `/repo/aura-luz-api/workspaces/042-feat-auth/_references/superpowers-summary/writing-plans-200tok.md`
+
+Skill formal: `superpowers:writing-plans` (escape hatch).
+
+## Gates
+
+- **Humano:** revisa output/plan.md e ADRs; aprova ou requisita ajustes.
+- **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/042-feat-auth`.
+- **Aprovação para transitar:** humano explicitamente aprova (input em sessão); automaticamente vira `02_completed` no próximo commit.
 ```
 
 ---
 
-## Template: Estágio 02 (Design & Planning)
-
-```markdown
-# Estágio 02: Design & Planning
-
-## Estado
-- **STATUS:** IN_PROGRESS / COMPLETED
-- **Data:** (preencher ao completar)
-- **Outputs:** (preencher ao completar)
-
-## Skill a Invocar
-superpowers:writing-plans
-
-## Inputs
-- [L4:in] `../01_discovery/output/discovery.md` — seção Requisitos MVP e Alternativas; IGNORAR seção Métricas
-- [L3:cfg] `../../_config/xp-conventions.md` — restrição de estilo e convenções
-- [L3:cfg] `../../docs/tech_debt.md` — padrões a evitar
-- IGNORAR: ADRs de outros projetos, outputs de estágios 03+
-
-## Process
-1. Ler Layers 0→1→2 em ordem.
-2. Carregar SOMENTE os inputs listados acima. L3 como restrição, L4 como input.
-3. Invocar `Skill({skill: "superpowers:writing-plans"})`.
-4. Criar plano detalhado com:
-   - Decisões arquiteturais (menu se não-trivial)
-   - Modelagem de dados (tabelas, schemas, collections)
-   - Contratos de API (endpoints, request/response)
-   - Divisão em steps/sub-tasks
-   - Estimativa de steps
-   - Stop points obrigatórios
-5. Registrar decisões em formato ADR em `../../docs/decisions/NNNN-slug.md` (fonte da verdade).
-6. Gerar `output/decisions.md` como **INDEX** (títulos e slugs; não duplicar conteúdo).
-
-## Stop Points Obrigatórios
-Parar e apresentar menu se houver:
-- Mudança de stack/framework/banco
-- Modelagem de dados nova
-- API pública nova
-- Nova dependência
-- Novo serviço pago recorrente
-- Decisão difícil de reverter
-
-## Outputs
-- `output/plan.md` — plano completo
-- `output/decisions.md` — INDEX de decisões (títulos/slugs/status)
-- `../../docs/decisions/NNNN-slug.md` — ADR formal (fonte da verdade)
-
-## Verify
-- Consistência entre `output/plan.md` e `../01_discovery/output/discovery.md`: cada requisito do MVP aparece no plano OU está explicitamente deferred.
-- `output/decisions.md` referencia todos os ADRs criados.
-- Critério: cada requisito funcional do discovery é coberto por pelo menos 1 step no plano.
-
-## Review Gate
-- Humano revisa o plano e as decisões.
-- Se humano ajusta profundidade/formato do plano, atualizar este `CONTEXT.md` ou `_config/project-rules.md`.
-- Aplicar Stage Transition Checklist antes de prosseguir.
-```
-
----
-
-## Template: Estágio 03 (Implementation)
-
-```markdown
-# Estágio 03: Implementation
-
-## Estado
-- **STATUS:** IN_PROGRESS / COMPLETED
-- **Data:** (preencher ao completar)
-- **Outputs:** (preencher ao completar)
-
-## Skill (orquestradora)
-superpowers:subagent-driven-development (SEMPRE — toda implementação é delegada)
-
-## Skill (por subagent)
-/xp-workflow
-
-> **Princípio de Delegação:** A orquestradora NUNCA escreve código nem lê código-fonte diretamente. Toda implementação é delegada a subagentes que executam `/xp-workflow` internamente. A orquestradora lê SOMENTE os `output/reports/task-*.md` individuais (escritos por cada subagent) e/ou o `implementation-report.md` consolidado — L4 compacto. Isso mantém a janela de contexto enxuta e alinha com o princípio ICM de context scoping.
-
-## Inputs (orquestradora lê SOMENTE estes — NÃO lê src/ ou tests/)
-- [L4:in] `../02_design/output/plan.md` — preparar prompts de delegação
-- [L4:in] `../02_design/output/decisions.md` — sumário para escopo dos subagentes
-- [L3:cfg] `../../docs/decisions/` — SOMENTE ADRs listados no plan; IGNORAR demais
-- [L3:cfg] `../../docs/tech_debt.md` — padrões a evitar
-- [L3:cfg] `../../docs/lessons.md` — lições a aplicar
-- [L3:cfg] `../../_config/xp-conventions.md` — convenções de código
-- NÃO LER (orquestradora): `src/`, `tests/`, qualquer código-fonte
-- IGNORAR: `../01_discovery/output/` (já consumido pelo Estágio 02)
-
-## Process
-1. Ler Layers 0→1→2 em ordem.
-2. Carregar SOMENTE os inputs listados acima. L3 como restrição, L4 como input.
-3. Analisar o plano para identificar tasks independentes vs dependentes.
-4. Delegar CADA task para um subagent via `Skill({skill: "superpowers:subagent-driven-development"})`.
-5. Cada subagent recebe SOMENTE (ver Protocolo de Delegação no SKILL.md principal):
-   - Caminho relativo ao workspace
-   - Seção relevante do plano e decisões
-   - ADRs relevantes à sua task APENAS
-   - Convenções e tech_debt
-   - Regras explícitas de Stop Point
-6. Subagentes executam `/xp-workflow` internamente (TDD, CI Gate, Pair Check). Cada subagent escreve em `output/reports/task-<slug>.md` (arquivo próprio, sem race).
-7. Após todos os subagentes completarem: orquestradora lê **SOMENTE** os `output/reports/task-*.md` individuais e consolida em `output/implementation-report.md` (ou delega a um subagent "consolidator").
-8. Se qualquer task-report indica falha: invocar `superpowers:systematic-debugging` ou delegar correção para novo subagent com escopo limitado.
-
-## Outputs
-- Código em `src/` do projeto pai (escrito pelos subagentes)
-- Testes em `tests/` do projeto pai (escritos pelos subagentes)
-- `output/reports/task-<slug>.md` — 1 arquivo por subagent (escrito pelos subagentes paralelos sem race)
-- `output/implementation-report.md` — consolidação dos reports individuais (escrito pela orquestradora ou subagent "consolidator" após todos completarem)
-- `../../docs/lessons.md` atualizado (pelos subagentes)
-- `../../docs/tech_debt.md` atualizado se aplicável
-
-## Verify
-- Consistência entre `output/implementation-report.md` (consolidado) e `../02_design/output/plan.md`: cada step do plano foi implementado ou explicitamente deferred.
-- Cada `output/reports/task-<slug>.md` indica CI Gate verde, sem secrets hardcoded.
-- Critério: cobertura de testes atende ao plano, todos os CI gates passaram conforme reportado em todos os task-reports.
-- **NÃO verificar inspecionando código-fonte** — confiar nos reports e nos CI gates dos subagentes.
-
-## Review Gate
-- Orquestradora lê SOMENTE os `reports/task-*.md` individuais e/ou `implementation-report.md` consolidado (nunca o código-fonte).
-- Humano revisa o código diretamente no repositório (ou confia no CI + pair check dos subagentes).
-- Se humano consistentemente corrige o mesmo padrão, sugerir atualizar `_config/xp-conventions.md` ou este `CONTEXT.md`.
-- Aplicar Stage Transition Checklist antes de prosseguir.
-```
-
----
-
-## Template: Estágio 04 (Verification)
-
-```markdown
-# Estágio 04: Verification
-
-## Estado
-- **STATUS:** IN_PROGRESS / COMPLETED
-- **Data:** (preencher ao completar)
-- **Outputs:** (preencher ao completar)
-
-## Skill a Invocar
-superpowers:verification-before-completion
-
-> **Princípio de Delegação aplicado:** Orquestradora lê `implementation-report.md` para saber O QUE foi feito, não COMO. Verificação técnica (inspeção de código, CI gates, testes) é responsabilidade do skill de verificação. Orquestradora compara report contra plano e ADRs.
-
-## Inputs (orquestradora lê SOMENTE estes — NÃO lê src/ ou tests/)
-- [L4:in] `../03_implementation/output/implementation-report.md` — verificar o que foi implementado
-- [L4:in] `../02_design/output/plan.md` — comparar report contra plano
-- [L3:cfg] `../../docs/decisions/` — SOMENTE ADRs referenciados no plano
-- [L3:cfg] `../../_config/xp-conventions.md` — restrição de convenções
-- NÃO LER (orquestradora): `src/`, `tests/`, código-fonte. Inspeção é feita pelo skill de verificação.
-- IGNORAR: `../01_discovery/output/`
-
-## Process
-1. Ler Layers 0→1→2 em ordem.
-2. Carregar SOMENTE os inputs listados acima.
-3. Ler `../03_implementation/output/implementation-report.md`.
-4. Ler `../02_design/output/plan.md` para saber o que deveria ter sido implementado.
-5. Ler ADRs relevantes para verificar conformidade arquitetural.
-6. Invocar `Skill({skill: "superpowers:verification-before-completion"})` — este skill lê o código-fonte diretamente.
-7. Verificar:
-   - O implementation-report cobre todos os itens do plano?
-   - Os ADRs foram respeitados (conforme reportado)?
-   - O 4-block de validação foi atendido?
-   - CI Gate verde, sem secrets hardcoded (conforme reportado)
-
-## Outputs
-- `output/verification-report.md`
-- Status: PASS / CONDITIONAL / FAIL
-
-## Verify
-- Cross-stage: cada requisito do `../01_discovery/output/discovery.md` é coberto pelo plano e reportado como implementado.
-- `output/verification-report.md` não contradiz `../03_implementation/output/implementation-report.md`.
-- Critério: zero P0 issues, CI verde, cobertura atende ao 4-block de validação.
-
-## Review Gate
-- Humano revisa relatório.
-- Se FAIL: retornar ao Estágio 03.
-- Se PASS/CONDITIONAL: prosseguir para Estágio 05.
-- Se verificação encontrou padrão recorrente de falha, sugerir atualizar `stages/03_implementation/CONTEXT.md` ou `_config/xp-conventions.md`.
-- Aplicar Stage Transition Checklist antes de prosseguir.
-```
-
----
-
-## Template: Estágio 05 (Code Review)
-
-```markdown
-# Estágio 05: Code Review
-
-## Estado
-- **STATUS:** IN_PROGRESS / COMPLETED
-- **Data:** (preencher ao completar)
-- **Outputs:** (preencher ao completar)
-
-## Skill Principal
-superpowers:requesting-code-review
-
-## Skill (se feedback externo)
-superpowers:receiving-code-review
-
-> **Princípio de Delegação aplicado:** Orquestradora lê relatórios compactos (`implementation-report.md`, `verification-report.md`, `plan.md`), não código-fonte. O skill de code review lê o código internamente.
-
-## Inputs (orquestradora lê SOMENTE estes — NÃO lê src/ ou tests/)
-- [L4:in] `../03_implementation/output/implementation-report.md` — saber o que foi implementado
-- [L4:in] `../04_verification/output/verification-report.md` — saber se passou nos gates
-- [L4:in] `../02_design/output/plan.md` — comparar implementação contra plano
-- [L4:in] `../02_design/output/decisions.md` — sumário de decisões
-- [L3:cfg] `../../docs/decisions/` — SOMENTE ADRs referenciados no plano
-- [L3:cfg] `../../docs/tech_debt.md` — identificar novos débitos
-- NÃO LER (orquestradora): `src/`, `tests/`, código-fonte
-- IGNORAR: `../01_discovery/output/`
-
-## Process
-1. Ler Layers 0→1→2 em ordem.
-2. Carregar SOMENTE os inputs listados acima.
-3. Ler implementation-report, verification-report, plan, decisions (L4).
-4. Ler ADRs formais e tech_debt (L3).
-5. Invocar `Skill({skill: "superpowers:requesting-code-review"})` — este skill lê o código-fonte diretamente.
-6. Reviewer compara implementação contra:
-   - Plano do Estágio 02
-   - ADRs formais
-   - Convenções do `/xp-workflow`
-   - 4-block de validação
-7. Dimensões: correctness, security, test quality, design, standards, readability, performance.
-8. Se houver feedback externo: invocar `Skill({skill: "superpowers:receiving-code-review"})`.
-
-## Outputs
-- `output/review-report.md`
-- Lista de ajustes (se houver)
-- `../../docs/tech_debt.md` atualizado se novos débitos foram identificados
-
-## Verify
-- `output/review-report.md` cobre todas as 7 dimensões.
-- Cada P0 issue é rastreável a um requisito no plano ou ADR.
-- Critério: zero P0 blocking, P1 documentados em `tech_debt.md`.
-
-## Review Gate
-- Humano aprova ajustes ou decide ignorar.
-- Se houver ajustes P0/P1: aplicar Fix Loop Protocol (ver SKILL.md principal).
-- Se review identificou padrão sistêmico, sugerir atualizar `_config/xp-conventions.md` ou `stages/03_implementation/CONTEXT.md`.
-- Aplicar Stage Transition Checklist antes de prosseguir.
-```
-
----
-
-## Template: Estágio 06 (Merge & Delivery)
-
-```markdown
-# Estágio 06: Merge & Delivery
-
-## Estado
-- **STATUS:** IN_PROGRESS / COMPLETED
-- **Data:** (preencher ao completar)
-- **Outputs:** (preencher ao completar)
-
-## Skill a Invocar
-superpowers:finishing-a-development-branch
-
-## Inputs
-- [L4:in] `../05_review/output/review-report.md` — considerar ajustes finais
-- [L4:in] `../04_verification/output/verification-report.md` — confirmar status PASS
-- IGNORAR: outputs de estágios 01-03. Para contexto arquitetural, ler SOMENTE ADRs relevantes.
-
-## Process
-1. Ler Layers 0→1→2 em ordem.
-2. Carregar SOMENTE os inputs listados acima.
-3. Confirmar status PASS no `verification-report.md` antes de prosseguir.
-4. Considerar ajustes finais do `review-report.md`.
-5. Invocar `Skill({skill: "superpowers:finishing-a-development-branch"})`.
-6. Apresentar menu:
-   - Opção A: Merge direto (se branch isolada, CI verde)
-   - Opção B: Pull Request (se repo compartilhado)
-   - Opção C: Tag de release (se production tier)
-   - Opção D: Cleanup de branches temporárias
-7. Executar escolha do humano.
-8. Atualizar `docs/lessons.md` e `docs/tech_debt.md`.
-
-## Outputs
-- `output/delivery-report.md`
-- Branch integrada ou PR criado
-
-## Verify
-- `../04_verification/output/verification-report.md` tem status PASS.
-- `../05_review/output/review-report.md` não tem P0 pendentes.
-- Critério: CI verde, P0 resolvidos, delivery-report completo.
-
-## Review Gate
-- Humano confirma satisfação.
-- Marcar workspace como completo.
-- Aplicar Stage Transition Checklist final.
-```
+## Fim do spec
