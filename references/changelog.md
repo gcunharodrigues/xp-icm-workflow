@@ -4,6 +4,108 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.0.0-beta1 — Reescrita completa (2026-04-26)
+
+> Filesystem é o programa. Skill é parteira, não orquestradora.
+
+### Resumo
+
+Reescrita end-to-end em 7 waves. Skill v2.4 (orquestradora persistente, 1 main + N subagents, 6 estágios) substituída por arquitetura ICM v3 (parteira one-shot + filesystem governa ciclo + 9 estágios + Agent Teams + Wave Planner LLM review + Recovery Wizard). v2.4 preservada em `references/v2.4-snapshot/` (snapshot histórico imutável).
+
+### Why v3
+
+**Problemas estruturais detectados em v2.4:**
+
+- **B1**: Path absoluto vazado (orquestradora perdia CWD em fronteiras de subagent → escrevia em diretório errado).
+- **B2**: Paths relativos `../../` confundiam subagents.
+- **B3**: Stop points em subagent sem protocolo de retorno bem definido.
+- **B6**: Sync barreira frouxa em fase de implementação paralela.
+- **V3**: Skills superpowers invocadas dentro de cada estágio carregavam ~2-5k tok cada, inflando contexto.
+- **Conflito de regras**: subagent rodando `/xp-workflow` dentro de estágio 03 batia com protocolo ICM.
+
+**Decisões norteadoras:**
+
+1. Filesystem é o programa, skill é só bootstrap.
+2. Uma fase = uma sessão nova (cache prompt 5min Anthropic).
+3. Skills superpowers viram referências (sumários 200tok), não invocações.
+4. 4-block contract obrigatório por task.
+5. Profile + Tier no L0 calibram rigor (10 profiles × 4 tiers = 40 combos).
+6. Mandatory stop points + menu A/B/C padronizado em todo estágio com decisão.
+7. Dev↔QA loop formal via auto-QA Akita 15-item.
+8. Waves de paralelismo só onde for safe (DAG por file footprint).
+9. Git worktrees por teammate (race mitigation física).
+10. Reconnaissance Phase antes de tudo.
+11. Feedback intake universal fase 08 (não só production).
+12. Self-revision DROPADA — skill é parteira, não runtime evolutivo.
+
+### Breaking Changes
+
+- **CLI**: `/xp-icm-workflow` agora exige `profile=` e `tier=` (com fallback interativo). Sem default `app_web_backend`+`development`.
+- **Estrutura de pastas**: 9 estágios (00 recon → 08 feedback intake) substituem os 6 da v2.4 (00 bootstrap → 06 merge). Numeração e nomes mudaram.
+- **Branches**: agora 3 tipos — `<base_branch>` (código), `workspace/NNN-slug` (state-only), `wave-NNN-N/<task-slug>` (código wave). v2.4 só tinha 1.
+- **State machine L1**: yaml frontmatter strict (PyYAML safe_load) com `sub_stage` enum específico por estágio. Schema validado em pre-flight.
+- **Pre-commit hook**: instalado por padrão. Bloqueia bypass `--no-verify` e valida atomicidade L1↔outputs + prefixos.
+- **Skills superpowers**: NÃO invocadas em runtime. Substituídas por sumários 200tok pré-copiados em `<workspace>/_references/superpowers-summary/`. Escape hatch via `Skill()` exige registro `event: skill_escape_hatch` em L1 history.
+- **ADRs**: ciclo de vida formalizado — nascem em estágio 02, vão pra `<project_root>/docs/decisions/`, edição direta proibida (use superseding ADR).
+- **Self-revision**: removida. v2.4 tinha Phase 7 (self-revision conversational); v3 dropa.
+
+### What's New (Waves 1-6)
+
+| Wave | Entregue |
+|---|---|
+| 1 — Foundations | Schema state-machine L1 com sub_stage enum por estágio; 4 scripts deterministic (profile-merge, lessons-match, wave-planner-script, validate_state); pre-commit hook bash POSIX com 6 regras; templates L0/L1; profile-matrix 10×4; pyproject.toml com workaround pytest-playwright. |
+| 2 — Bootstrap + Recovery | SKILL.md reescrita (parteira one-shot); bootstrap.sh + bootstrap.py com greenfield/existing/external_repo; recovery-wizard.py detectando 6 inconsistências R2.7+R4.5 com 3 ações A/B/C; git-hook-installer.sh idempotente. |
+| 3 — Stage Templates + L2 | 9 L2 templates (00..08) com schema canônico (frontmatter + Inputs + Não Lê + sub_stage enum + applicable_stop_points); 4 references (stage-templates, stop-points-canonical 12 itens, 4-block-contract + ciclo TDD 7 passos + Akita 15-item, feedback-intake-fase08 com 3 saídas A/B/C); workspace stop-points.md resolvido por tier. |
+| 4 — Agent Teams + Wave Planner LLM | references/wave-planner-algorithm.md (DAG + LLM review subagent R2.4); references/agent-team-protocol.md (spawn worktrees + mailbox + sync barreira + mid-wave reduce + peer-reviewer ad-hoc); scripts/wave-planner-llm-review.py com modo mock (`--mock-response`); scripts/agent-team-protocol.py wrapper helpers (Windows-safe filenames). |
+| 5 — Superpowers summaries | 10 sumários 200tok em `templates/_references/superpowers-summary/` (brainstorming, writing-plans, dispatching-parallel-agents, TDD, subagent-DD, verification, requesting-review, receiving-review, finishing-branch, debugging); references/superpowers-mapping.md, xp-workflow-integration.md, example-run.md reescritas; bootstrap.py copia summaries + 7 runtime refs pra workspace. |
+| 6 — CI + Smoke | `.github/workflows/test-skill.yml` (Ubuntu Python 3.13 + bats); tests/run.sh com flags `--ci` e `--no-bats`; README badges; references/smoke-manual-checklist.md (10 itens canônicos pré-release). |
+
+### Suite stats finais
+
+- **502 tests verde** (100% Python 3.13 Windows + Linux CI).
+- **Coverage 83%** total. Scripts puros 87-96%. Bootstrap 49% (orchestration cobre via bats e2e). Recovery 73%.
+- **Bats CI-only**: integration (test_git_hooks, test_bootstrap, test_worktrees) + e2e (recovery_orphan, greenfield_full, existing_repo, external_repo).
+- **Hypothesis property-based**: state-machine + wave-planner DAG (preserva deps, sub_waves respeitam cap).
+- **Mocks LLM**: 3 fixtures em `tests/mocks/llm_review_responses/` (approve_clean, propose_implicit_dep, invalid_verdict).
+
+### Migration Guide v2.4 → v3
+
+**Workspaces v2.4 existentes**: NÃO migram automaticamente. Estratégia recomendada:
+
+1. Workspace v2.4 termina ciclo atual (chega a `STAGE: COMPLETED`).
+2. Para nova feature: bootstrappar workspace v3 do zero com `/xp-icm-workflow profile=X tier=Y`.
+3. Lessons coletadas em `docs/lessons.md` migram automaticamente (formato compatível).
+4. ADRs em `docs/decisions/` migram automaticamente (mesmo formato).
+5. v2.4 snapshot preservado em `references/v2.4-snapshot/` para arqueologia.
+
+**CLI mapping**:
+
+| v2.4 | v3 |
+|---|---|
+| `/xp-icm-workflow` (sem args) | `/xp-icm-workflow profile=<X> tier=<Y>` (obrigatório) |
+| `STAGE: 03_implementation` | `stage_atual: "04"` + `sub_stage: "04_wave_<N>_in_progress"` |
+| Subagent spawn ad-hoc | Agent Team na fase 04 (lead + N teammates em git worktrees) |
+| Skills superpowers invocadas inline | Sumários 200tok pré-copiados (escape hatch via L1 history) |
+
+**Conventions stáveis** (não mudaram entre v2.4 e v3):
+
+- Layer Loading Protocol (L0 → L1 → L2 → L3 → L4).
+- ADR formato (Context / Decision / Consequences / Status).
+- Edit-source principle.
+- Português Brasil pra conteúdo, inglês pra identificadores.
+
+### Critérios de promoção v3.0.0-beta1 → v3.0.0
+
+Documentados em `references/smoke-manual-checklist.md`:
+
+- ✅ Suite formal: ≥80% coverage críticos, ≥60% resto. CI verde 7 dias consecutivos.
+- ✅ ≥3 projetos reais usaram v3.0.0-beta1 sem regressão grave.
+- ✅ Comparação $: v3 ≤ 60% v2.4 em ≥3 projetos.
+- ✅ 10 itens smoke checklist PASS em ≥3 projetos.
+- ✅ Lessons coletadas em `docs/lessons.md` da própria skill (futura wave 8 manutenção).
+
+---
+
 ## v2.4.0 — Refactor de concisão + correções adversariais
 
 ### Refactor estrutural (concisão sem perda)
