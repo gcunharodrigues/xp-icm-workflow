@@ -265,3 +265,65 @@ Pre-flight check da próxima sessão:
 4. Continua com L2 do stage atual.
 
 `scripts/handoff.py` (Wave 2/3 fix) implementa render + validação. Tests em `tests/unit/test_handoff.py`.
+
+## Mid-Session Context Checkpoint (anti-compact)
+
+### Problema
+
+Context window compacta arquivos de governança (L0, L1, L2, kickoff) lidos no início da sessão. Agente perde instruções críticas — branches, protocolo TDD, read order, stop points. Resultado: agent ignora ICM e opera fora do protocolo.
+
+### Regra: checkpoint após cada task completa
+
+Em **stage 04 (implementation waves)**, após cada task completar (passo 7 COMPLETE do ciclo TDD), o lead DEVE:
+
+1. **Atualizar `_kickoff.md`** com progresso cumulativo — adicionar `prev_outputs` da task completada, atualizar `pending_for_this_stage`.
+2. **Atualizar L1** (`CONTEXT.md`) se houve transição de sub_stage.
+3. **Commit intermediário** (opcional se dentro da mesma wave, obrigatório entre waves).
+
+### Regra: re-leitura quando contexto degradar
+
+Se durante a sessão o agente perceber sinais de degradação de contexto:
+
+- Repete instruções já presentes em arquivos
+- Pergunta coisas que L0/L1/L2 já explicam
+- Opera fora do protocolo (ignora stop points, pula ciclo TDD, não usa Agent Teams)
+- Não lembra o branch correto ou a wave atual
+
+O agente DEVE parar imediatamente e executar **context refresh**:
+
+1. Re-ler L0 (`CLAUDE.md`), L1 (`CONTEXT.md`), L2 (`stages/<stage>/CONTEXT.md`).
+2. Re-ler `_kickoff.md`.
+3. Se contexto já está >75% (estimativa heurística): executar handoff antecipado — atualizar `_kickoff.md` e L1, commitar, imprimir KICKOFF block, e SAIR da sessão.
+4. Se contexto parece <75% mas degradado: continuar após re-leitura.
+
+### Regra: Agent Teams obrigatório em waves com 2+ tasks
+
+Em **stage 04**, quando a wave tem 2 ou mais tasks, o lead DEVE usar Agent Teams (subagents paralelos em worktrees isolados) conforme `agent-team-protocol.md`. Rodar todas as tasks sequencialmente em sessão única é **anti-pattern** que amplifica context pressure e ignora o paralelismo do protocolo.
+
+Cap por tier (Q17):
+- experimental: 2 teammates
+- tool: 3 teammates
+- development: 5 teammates
+- production: 5 teammates
+
+### Template: mid-wave _kickoff.md update
+
+Após cada task completa, anexar ao `_kickoff.md`:
+
+```yaml
+prev_outputs:
+  - path: "stages/04_implementation_waves/output/wave-N/task-slug.md"
+    summary: "descrição da task completada (N tests, ruff verde)"
+```
+
+E atualizar `pending_for_this_stage` removendo tasks completadas.
+
+### Anti-patterns
+
+#### Continuar sessão após perder governança
+
+Se o agente perdeu L0/L1/L2 do contexto e não executou refresh, operações subsequentes provavelmente violam o protocolo (branch errada, skip de TDD, sem stop points). Prevenir é melhor que remediar — checkpoint após cada task completa.
+
+#### Fazer wave inteira sem Agent Teams
+
+Em waves com 2+ tasks, cada task DEVE ter seu próprio teammate em worktree isolado. Lead orquestra, não executa. Sessão única sequencial é permitida APENAS quando wave tem 1 task (skip exception F2 do agent-team-protocol).
