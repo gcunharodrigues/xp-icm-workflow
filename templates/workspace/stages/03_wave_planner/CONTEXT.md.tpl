@@ -26,6 +26,8 @@ Roda o wave-planner determinístico em cima do `plan.md` da fase 02 design. Cons
 | 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml | L3 | sim |
 | 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/dispatching-parallel-agents-200tok.md | L3 | sim |
 | 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
+| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
 
 ## Não Lê (negative constraint)
 
@@ -42,7 +44,9 @@ Roda o wave-planner determinístico em cima do `plan.md` da fase 02 design. Cons
 4. plan.md (entrada principal — schema 4-block + Files touched + Depends on)
 5. profile-effective.yaml (cap por tier/profile)
 6. dispatching-parallel-agents-200tok.md (sumário superpowers)
-7. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/_kickoff.md (se existe — handoff do estágio 02)
+7. session-handoff-protocol.md (handoff final do estágio)
+8. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
+9. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/_kickoff.md (se existe — handoff do estágio 02)
 
 ## Process
 

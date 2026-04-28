@@ -32,6 +32,8 @@ Brainstorming guiado com o humano. Refina escopo via clarification iterativa, ma
 | 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/brainstorming-200tok.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
+| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
 
 ## Não Lê (negative constraint)
 
@@ -50,7 +52,9 @@ Brainstorming guiado com o humano. Refina escopo via clarification iterativa, ma
 6. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md
 7. {{PROJECT_ROOT}}/docs/lessons.md (se existe)
 8. Sumário superpowers brainstorming-200tok
-9. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/_kickoff.md (se existe — handoff do estágio 00)
+9. session-handoff-protocol.md (handoff final do estágio)
+10. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
+11. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/_kickoff.md (se existe — handoff do estágio 00)
 
 ## Process
 

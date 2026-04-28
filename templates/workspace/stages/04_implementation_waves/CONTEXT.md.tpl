@@ -41,6 +41,8 @@ Execução paralela em waves. Lead session orquestra subagentes via Agent tool r
 | 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
 | 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/subagent-protocol.md | L3 | sim |
 | 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
+| 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
 
 ## Não Lê (negative constraint)
 
@@ -63,7 +65,9 @@ Execução paralela em waves. Lead session orquestra subagentes via Agent tool r
 10. xp-conventions.md (Clean Code gates, naming, tamanho, docstrings — fonte do Akita itens 4-10)
 11. stop-points.md (thresholds calibrados por tier para new_dep, irreversible, over_eng, prod_migration, adr_drift)
 12. subagent-protocol.md (spawn via Agent tool, plan approval, mid-wave reduce — protocolo de orquestração dos subagentes)
-13. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/_kickoff.md (se existe — handoff do estágio 03)
+13. session-handoff-protocol.md (handoff final do estágio)
+14. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
+15. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/_kickoff.md (se existe — handoff do estágio 03)
 
 ## Process
 

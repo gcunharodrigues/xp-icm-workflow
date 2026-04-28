@@ -35,6 +35,8 @@ Gate de iteração universal do ciclo ICM. Workspace transita pra cá automatica
 | 12 | {{LOGS_ROOT}} | L3 | condicional: opcional — sample dos últimos 30 dias se L0 declara `logs_root` ≠ null |
 | 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-fase08.md | L3 | sim (protocolo literal — cópia local da reference) |
 | 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. Em stage 08 normalmente AUSENTE — humano dispara manualmente após uso real, não há sessão anterior automática. |
+| 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio (saída B gera kickoff) |
+| 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/recovery-wizard.md | L3 | condicional: referenciado no pre-flight se workspace inconsistente |
 
 **Nota sobre `{{LOGS_ROOT}}`:** placeholder resolvido pelo bootstrap a partir do campo `logs_root` do L0. Se `logs_root: null` (greenfield, texto, skill), bootstrap substitui por marcador inerte e o input é skipped no pre-flight. Se `logs_root` é path real, sessão samplea os últimos 30 dias.
 
@@ -54,7 +56,9 @@ Gate de iteração universal do ciclo ICM. Workspace transita pra cá automatica
 5. Outputs anteriores (sample-check existência por estágio que rodou — respeita `stages_skipped` do profile)
 6. {{LOGS_ROOT}} (sample 30 dias, se aplicável)
 7. {{PROJECT_ROOT}}/docs/lessons.md (somente leitura aqui — append acontece em saída A)
-8. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md (se existe — handoff do estágio 07)
+8. session-handoff-protocol.md (handoff final do estágio — saída B gera kickoff)
+9. recovery-wizard.md (protocolo de recovery se workspace inconsistente no pre-flight)
+10. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md (se existe — handoff do estágio 07)
 
 ## Process
 

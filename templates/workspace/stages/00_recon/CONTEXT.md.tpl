@@ -33,6 +33,9 @@ Reconnaissance inicial do projeto. Detecta tipo de workspace (greenfield, existi
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
 | 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. Em stage 00 só existe se workspace foi spawn de fase 08 saída C (workspace herdado). |
 | 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_seed.md | L4-seed | condicional: gerado pelo bootstrap da skill. Presente quando user invocou `/xp-icm-workflow` com descrição livre (intenção inferida). Contém intenção original, profile/tier inferidos e pendências. |
+| 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
+| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
+| 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/state-machine-schema.md | L3 | condicional: referenciado no pre-flight §R2.7 |
 
 ## Não Lê (negative constraint)
 
@@ -52,8 +55,11 @@ Reconnaissance inicial do projeto. Detecta tipo de workspace (greenfield, existi
 7. {{PROJECT_ROOT}}/docs/decisions/ (índice de ADRs — listing only)
 8. {{PROJECT_ROOT}}/docs/lessons.md (se existe; herança de fase 08 saída C ou iteração anterior)
 9. Sumários superpowers (brainstorming + writing-plans 200tok)
-10. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_seed.md (se existe — intenção pré-recon do bootstrap)
-11. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_kickoff.md (se existe — handoff de fase 08 saída B)
+10. session-handoff-protocol.md (handoff final do estágio)
+11. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
+12. state-machine-schema.md (validação de integridade §R2.7)
+13. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_seed.md (se existe — intenção pré-recon do bootstrap)
+14. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_kickoff.md (se existe — handoff de fase 08 saída B)
 
 ## Process
 

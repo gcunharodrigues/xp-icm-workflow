@@ -41,6 +41,9 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 | 12 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: existe se herdou ou foi acumulada |
 | 13 | {{PROJECT_ROOT}}/docs/tech_debt.md | L3 | condicional: existe se há débito declarado em iterações anteriores |
 | 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
+| 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
+| 17 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/wave-planner-algorithm.md | L3 | condicional: referenciado no mapeamento discovery → tasks técnicas |
 
 ## Não Lê (negative constraint)
 
@@ -62,8 +65,11 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 8. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md (schema obrigatório das tasks)
 9. Sumário superpowers writing-plans-200tok
 10. xp-conventions.md (naming, file limits, docstrings — fonte das constraints que plan.md declara por task)
-11. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md (se existe — handoff do estágio 01)
-12. {{PROJECT_ROOT}}/docs/lessons.md + tech_debt.md (se existem)
+11. session-handoff-protocol.md (handoff final do estágio)
+12. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
+13. wave-planner-algorithm.md (estrutura de DAG e waves — referência para design de tasks)
+14. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md (se existe — handoff do estágio 01)
+15. {{PROJECT_ROOT}}/docs/lessons.md + tech_debt.md (se existem)
 
 ## Process
 

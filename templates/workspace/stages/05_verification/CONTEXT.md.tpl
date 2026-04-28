@@ -29,6 +29,8 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/verification-before-completion-200tok.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
+| 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
 
 ## Não Lê (negative constraint)
 
@@ -47,7 +49,9 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 7. ADRs sample (3 aleatórios) — verificar citação em ≥1 task report
 8. verification-before-completion-200tok.md (sumário)
 9. xp-conventions.md — naming, file limits, docstrings (baseline para verification)
-10. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md (se existe — handoff do estágio 04)
+10. session-handoff-protocol.md (handoff final do estágio)
+11. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
+12. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md (se existe — handoff do estágio 04)
 
 ## Process
 

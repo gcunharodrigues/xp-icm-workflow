@@ -35,6 +35,8 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/requesting-code-review-200tok.md | L3 | sim |
 | 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/receiving-code-review-200tok.md | L3 | sim |
 | 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
+| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
 
 ## Não Lê (negative constraint)
 
@@ -55,8 +57,10 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
 8. stop-points.md (thresholds por tier para over_eng, pii, adr_drift)
 9. tech_debt.md existente (se presente — para evitar duplicação)
 10. Sumários superpowers (requesting + receiving code review)
-11. Files touched declarados em plan.md tasks (somente esses, não árvore inteira)
-12. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md (se existe — handoff do estágio 05)
+11. session-handoff-protocol.md (handoff final do estágio)
+12. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
+13. Files touched declarados em plan.md tasks (somente esses, não árvore inteira)
+14. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md (se existe — handoff do estágio 05)
 
 ## Process
 
