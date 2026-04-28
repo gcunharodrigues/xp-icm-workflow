@@ -1,6 +1,6 @@
 # 4-Block Contract Template + Ciclo TDD 7 Passos
 
-> **Versão:** v3.0.0-beta1
+> **Versão:** v3.0.0-beta5
 > **Skill:** `xp-icm-workflow`
 > **Propósito:** Define o contrato 4-block obrigatório por task no `plan.md` (output da fase 02 design, consumido pelas fases 03 wave_planner e 04 implementation_waves) **e** o ciclo TDD canônico de 7 passos que todo subagente executa por task. Inclui o auto-QA Akita (checklist 15-item) aplicado no passo 6 e o cap de 3 voltas que dispara escalonamento ao lead.
 
@@ -85,12 +85,14 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 |---|---|---|
 | 4-block | Designer (fase 02) | Subagente (fase 04) |
 | Depends on | Designer (fase 02) | Wave-planner (DAG aresta explícita) |
-| Files touched | Designer; refinado wave-planner | Lead (boundary da branch) |
+| Files touched | Designer; refinado wave-planner | Lead (boundary da branch); Wave-planner (valida ≥1 arquivo de teste por task com código funcional) |
 | ADRs aplicáveis | Designer | Subagente (read order) |
 | Lições críticas | Wave-planner (Q10 match) | Subagente (audit pré-RED) |
 | Conventions extras | Designer (raro) | Subagente |
 | Tech debt paydown | Designer | Subagente (declara em commit) |
 | Requires_peer_review | Wave-planner (regra Q6) | Lead (decide spawn QA-pair) |
+
+**Regra `Files touched` — test file obrigatório:** toda task que toca código funcional (`src/`, `app/`, `lib/`, etc.) deve declarar ≥1 arquivo de teste correspondente (`tests/`, `*.test.*`, `*_test.*`, `spec/`, etc.). Wave-planner valida esta regra no pré-voo do DAG; task sem arquivo de teste = `BLOCKED_ERROR` antes de alocar wave. Exceções: tasks declaradas como `doc-only` ou `config-only` em `Conventions extras` são isentas da regra.
 
 ---
 
@@ -148,9 +150,9 @@ Fonte autoritativa dos critérios de estilo (itens 4-10): `_config/xp-convention
 
 | # | Item | Foco |
 |---|---|---|
-| 1 | Tests cobrem golden path? | Cobertura |
-| 2 | Tests cobrem edge cases relevantes (empty input, boundary, error)? | Cobertura |
-| 3 | Tests não-flaky (sem `sleep` arbitrário, sem ordem implícita)? | Confiabilidade |
+| 1 | Tests cobrem golden path? **Evidência obrigatória:** nome do arquivo de teste + nome do test case que exercita o caminho principal do bloco VALIDAÇÃO. Backend: ≥1 unit + ≥1 integration. Frontend: ≥1 component test com render + interação. Agent IA: ≥1 golden output comparison. ML: ≥1 pipeline smoke test. | Cobertura |
+| 2 | Tests cobrem edge cases relevantes (empty input, boundary, error)? **Evidência obrigatória:** listar cada edge case do bloco VALIDAÇÃO e confirmar test case correspondente. Coverage report mostra ≥ threshold declarado em `plan.md §Test Strategy`. Para agent_ia: seed fixo para reprodutibilidade. | Cobertura |
+| 3 | Tests não-flaky? **Evidência obrigatória:** rodar suite 3× consecutivos sem alteração de estado e registrar resultado (`3/3 verde`). Para agent_ia e ml_project: registrar seed/fixture usado. Sem `sleep` arbitrário, sem ordem implícita entre tests. | Confiabilidade |
 | 4 | Clean code re-ranqueado (Akita): nomes claros, fluxo linear, abstrações justificadas? | Estilo |
 | 5 | Tipos explícitos em fronteiras (params, returns, exports)? | Estilo |
 | 6 | Functions 4-20 linhas (excede só com justificativa)? | Estilo |

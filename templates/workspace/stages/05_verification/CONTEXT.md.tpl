@@ -34,24 +34,10 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/, {{PROJECT_ROOT}}/tests/ (CI já testou; verification consulta resultado, não relê fonte)
+- {{PROJECT_ROOT}}/src/ (código-fonte; CI já compilou/lint/type-checked)
+- {{PROJECT_ROOT}}/tests/ — exceção: coverage report e lista de arquivos de teste existentes são verificados nos passos 4.5 e 4.6 abaixo via `git ls-files` + cobertura do CI, sem ler conteúdo de tests
 - Outputs de estágios 00, 01, 06+ do mesmo workspace
 - {{PROJECT_ROOT}}/docs/lessons.md, {{PROJECT_ROOT}}/docs/tech_debt.md (escopo do review fase 06)
-
-## Read order
-
-1. L0 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md
-2. L1 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md
-3. L2 — este arquivo
-4. plan.md — entregáveis declarados por task
-5. wave-plan.md — waves executadas e branches geradas
-6. stages/04/output/ — task reports + wave summaries
-7. ADRs sample (3 aleatórios) — verificar citação em ≥1 task report
-8. verification-before-completion-200tok.md (sumário)
-9. xp-conventions.md — naming, file limits, docstrings (baseline para verification)
-10. session-handoff-protocol.md (handoff final do estágio)
-11. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
-12. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md (se existe — handoff do estágio 04)
 
 ## Process
 
@@ -59,6 +45,16 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 2. **Listar entregáveis declarados:** parseia plan.md por task → `Files touched` + outputs documentais. Junta com tasks executadas em wave-plan.md.
 3. **Verificar existência FS:** para cada arquivo declarado, conferir `git ls-files` em `{{BASE_BRANCH}}` pós-merge das waves (ou em workspace branch + waves rebased). Diff entrega vs entregue.
 4. **Rodar CI global localmente** OU consultar status do CI remoto se disponível. Captura: lint, type-check, tests, coverage.
+4.5 **Auditar cobertura:** ler coverage report gerado pelo CI (arquivo `coverage.xml`, `.coverage`, `lcov.info`, `coverage/coverage-summary.json` ou equivalente — localização declarada em `plan.md §Test Strategy`). Extrair coverage % de linhas/branches. Comparar com `test_specs.coverage_threshold` do `_config/profile-effective.yaml`. Resultado:
+   - ≥ threshold → PASS neste item.
+   - < threshold AND tier ∈ {experimental, tool} → CONDITIONAL (warning no report, não bloqueia).
+   - < threshold AND tier ∈ {development, production} → FAIL (bloqueia transição para stage 06; status `BLOCKED_ERROR`).
+   - Coverage report ausente AND `tdd_required: true` → FAIL.
+4.6 **Sample-check tipos de teste:** selecionar 3 tasks aleatórias do `wave-plan.md`. Para cada:
+   - Verificar que os arquivos de teste declarados em `Files touched` do `plan.md` existem no FS via `git ls-files`.
+   - Verificar que o tipo de teste (unit/integration/e2e/component/eval) bate com `test_specs.test_types_required` do profile efetivo.
+   - Registrar no report: task slug, arquivo esperado, arquivo encontrado (✅/⚠️), tipo de teste declarado vs encontrado.
+   - ≥2/3 tasks com arquivos corretos → PASS; 1/3 → CONDITIONAL; 0/3 → FAIL.
 5. **Sample-check ADRs:** seleciona 3 ADRs aleatórios de `{{PROJECT_ROOT}}/docs/decisions/`. Para cada, faz `grep` no diretório `stages/04/output/` por menção (slug do ADR ou número). ≥1 menção = ok; 0 menções = warning no report.
 6. **Escrever `output/verification-report.md`:** seções `Entregáveis (declarado vs entregue)`, `CI Status`, `Sample ADRs`, `Sumário PASS/CONDITIONAL/FAIL`.
 7. Se CI global falhou OU entregáveis ausentes → `status: BLOCKED_ERROR`, registrar em `history`. Humano resolve (volta fase 04 com `iteration++` ou corrige manualmente).
@@ -66,7 +62,7 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 
 ## Outputs
 
-- `output/verification-report.md` — relatório técnico: entregáveis declarado-vs-entregue, status CI (lint/type/tests/coverage), sample-check ADRs, veredito PASS/CONDITIONAL/FAIL.
+- `output/verification-report.md` — relatório técnico: entregáveis declarado-vs-entregue, status CI (lint/type/tests/coverage), **auditoria de cobertura** (% vs threshold do profile), **sample-check tipos de teste** (3 tasks × arquivo declarado vs entregue), sample-check ADRs, veredito PASS/CONDITIONAL/FAIL.
 
 ## Sub_stage transitions
 

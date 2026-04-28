@@ -135,6 +135,139 @@ def _tier_defaults(tier: str) -> dict[str, Any]:
 
 
 # ============================================================================
+# test_specs por profile+tier (derivado; nao configuravel via override)
+# ============================================================================
+
+def _test_specs(profile: str, tier: str) -> dict[str, Any]:
+    """Retorna test_specs calculados para o par profile+tier.
+
+    Nao e configuravel via overrides — e derivado deterministicamente.
+    Stage 02 design usa estes valores para definir a Test Strategy do plan.md.
+    Stage 05 verification usa coverage_threshold e test_types_required para auditar.
+    """
+    threshold_by_tier = {
+        "experimental": 0,
+        "tool": 60,
+        "development": 80,
+        "production": 90,
+    }
+    base_threshold = threshold_by_tier[tier]
+
+    if profile == "experiment":
+        return {
+            "test_types_required": [],
+            "coverage_threshold": 0,
+            "test_location": "tests/",
+            "note": "experiment — no test requirements enforced",
+        }
+
+    if profile == "technical_article":
+        return {
+            "test_types_required": ["unit"] if tier != "experimental" else [],
+            "coverage_threshold": 0,
+            "test_location": "tests/",
+            "note": "article — unit tests for embedded code snippets only if executable",
+        }
+
+    if profile == "app_web_backend":
+        return {
+            "test_types_required": ["unit", "integration"],
+            "coverage_threshold": base_threshold,
+            "test_location": "tests/",
+            "http_integration": True,
+            "db_integration": True,
+        }
+
+    if profile == "app_web_frontend":
+        e2e_required = tier in ("development", "production")
+        visual_regression = tier == "production"
+        a11y_testing = tier in ("development", "production")
+        return {
+            "test_types_required": (
+                ["unit", "component", "e2e"] if e2e_required else ["unit", "component"]
+            ),
+            "coverage_threshold": base_threshold,
+            "test_location": "src/",
+            "component_testing": True,
+            "e2e_required": e2e_required,
+            "visual_regression": visual_regression,
+            "a11y_testing": a11y_testing,
+        }
+
+    if profile == "dashboard":
+        return {
+            "test_types_required": ["unit", "integration"],
+            "coverage_threshold": base_threshold,
+            "test_location": "tests/",
+            "http_integration": True,
+            "db_integration": True,
+        }
+
+    if profile == "data_analysis":
+        return {
+            "test_types_required": ["unit"],
+            "coverage_threshold": min(base_threshold, 70),
+            "test_location": "tests/",
+            "note": "transformation functions unit-tested; notebooks excluded from coverage",
+        }
+
+    if profile == "ml_project":
+        model_regression = tier in ("development", "production")
+        return {
+            "test_types_required": (
+                ["unit", "pipeline", "model_eval"] if model_regression else ["unit", "pipeline"]
+            ),
+            "coverage_threshold": min(base_threshold, 70),
+            "test_location": "tests/",
+            "pipeline_testing": True,
+            "model_regression": model_regression,
+        }
+
+    if profile == "agent_ia":
+        eval_required = tier in ("development", "production")
+        return {
+            "test_types_required": (
+                ["unit_tools", "integration_prompt", "eval"]
+                if eval_required
+                else ["unit_tools", "integration_prompt"]
+            ),
+            "coverage_threshold": min(base_threshold, 70),
+            "test_location": "tests/",
+            "deterministic_tools_only": True,
+            "eval_strategy": "golden_output_similarity" if eval_required else None,
+            "eval_threshold": 0.85 if eval_required else None,
+            "note": "LLM outputs non-deterministic; tool calls are unit-testable; prompts tested via eval",
+        }
+
+    if profile == "cli_tool":
+        return {
+            "test_types_required": ["unit", "integration"],
+            "coverage_threshold": base_threshold,
+            "test_location": "tests/",
+            "subprocess_testing": True,
+            "note": "integration = subprocess calls with stdin/stdout capture and tempdir fixtures",
+        }
+
+    if profile == "framework_library":
+        # Libraries need higher coverage: they are reused by unknown consumers.
+        lib_threshold = min(base_threshold + 10, 100)
+        return {
+            "test_types_required": ["unit", "integration"],
+            "coverage_threshold": lib_threshold,
+            "test_location": "tests/",
+            "public_api_coverage": True,
+            "note": "coverage +10% vs tier default; public API 100% unit required",
+        }
+
+    # Fallback generico (nao deve ocorrer com profiles canonicos)
+    return {
+        "test_types_required": ["unit"],
+        "coverage_threshold": base_threshold,
+        "test_location": "tests/",
+    }
+
+
+# ============================================================================
 # Profile-specific overrides aplicados sobre os defaults de tier
 # ============================================================================
 
@@ -276,6 +409,7 @@ def merge_profile(
     effective = _apply_profile_rules(profile, tier, base)
     effective["profile"] = profile
     effective["tier"] = tier
+    effective["test_specs"] = _test_specs(profile, tier)
 
     if override_path is not None:
         override = _load_override(Path(override_path))

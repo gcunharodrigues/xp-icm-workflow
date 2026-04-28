@@ -1,6 +1,6 @@
 # Wave Planner Algorithm — Spec Canônico
 
-> **Versão:** v3.0.0-beta1
+> **Versão:** v3.0.0-beta5
 > **Skill:** `xp-icm-workflow`
 > **Estágio:** `03 wave_planner`
 > **Path resolution:** caminhos `scripts/` neste documento referem-se a `<SKILL_DIR>/scripts/`, onde `SKILL_DIR` está definido em L0 (`CLAUDE.md`).
@@ -41,12 +41,17 @@ Cada task é parseada do `plan.md` conforme `references/4-block-contract-templat
 | Campo | Origem no plan.md | Uso no Wave Planner |
 |---|---|---|
 | `slug` | header `## Task <slug>:` (kebab-case) | nó do DAG |
-| `files_touched` | seção `### Files touched` | aresta por conflito |
+| `files_touched` | seção `### Files touched` | aresta por conflito; validação de test file obrigatório |
 | `depends_on` | seção `### Depends on` (opcional) | aresta explícita |
 | `peer_review` | `### Requires_peer_review` | metadata (não afeta DAG) |
 | `adrs` | `### ADRs aplicáveis` | metadata |
+| `conventions_extras` | `### Conventions extras` | metadata; `doc-only`/`config-only` isenta da regra de test file |
 
-**Regras:** slug duplicado → erro. Slug fora de kebab-case → erro. Dep apontando para slug inexistente → erro.
+**Regras de parsing:**
+- Slug duplicado → erro.
+- Slug fora de kebab-case → erro.
+- Dep apontando para slug inexistente → erro.
+- **Regra de test file obrigatório:** toda task cujo `files_touched` contém arquivos em padrões de código (`src/`, `app/`, `lib/`, `pkg/`, extensões `.py`, `.ts`, `.js`, `.go`, `.rb`, `.rs`, `.java`, `.kt`, `.cs`) **deve** declarar ≥1 arquivo de teste correspondente (padrões reconhecidos: `tests/`, `test_*.py`, `*_test.py`, `*.test.ts`, `*.spec.ts`, `*.test.js`, `*.spec.js`, `spec/`, `__tests__/`). Violação → `BLOCKED_ERROR` com mensagem `test file missing for task <slug>`. Exceção: `Conventions extras` contém `doc-only` ou `config-only` → isenção automática.
 
 ---
 
@@ -149,7 +154,7 @@ Wave Planner aplica o JSON:
 - **APPROVE** → frontmatter `llm_review: APPROVE`, segue para gate humano.
 - **PROPOSE_CHANGES** → aplica diff → re-roda determinístico → loop até `APPROVE` ou cap 2 ciclos (E2). 3ª iteração diverge → escala humano com diffs (`llm_review_iterations: 2 (max reached, human decided)`).
 
-**Skip threshold:** waves com ≤2 tasks pulam LLM review (custo > benefício). Counter `llm_review_skipped_count` em L1 incrementa.
+**Skip threshold:** waves com ≤2 tasks pulam LLM review (custo > benefício). Script `wave-planner-llm-review.py` incrementa counter `llm_review_skipped_count` em L1 quando skip ocorre (flag `--workspace-context <L1-CONTEXT.md>`).
 
 **Mockable:** pytest mocka Task tool com fixtures JSON em `tests/mocks/llm_review_responses/` — CI roda sem custo de tokens.
 

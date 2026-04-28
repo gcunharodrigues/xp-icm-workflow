@@ -42,6 +42,47 @@ operacional; este documento existe para revisão e onboarding.
 | `stop_points_calibration.item_7` (over-eng.)     | warning         | warning         | hard                  | hard                        |
 | `stop_points_calibration.item_8` (PII/LGPD)      | warning         | hard            | hard                  | hard+DPO                    |
 | `stages_skipped` (default)  | `[]`                 | `[]`                  | `[]`                  | `[]`                        |
+| `test_specs.coverage_threshold` | 0 (sem mínimo)  | 60                    | 80                    | 90                          |
+
+## test_specs por profile
+
+Campo `test_specs` é calculado por `scripts/profile-merge.py` com base em profile + tier.
+**Não está na lista de `overrides` permitidos** — é derivado, não configurável via `.icm-profile.local.yaml`.
+
+### Estrutura de `test_specs`
+
+```yaml
+test_specs:
+  test_types_required: []         # lista: unit, integration, e2e, component, eval, pipeline, model_eval
+  coverage_threshold: 0           # int % (linhas/branches); 0 = sem mínimo
+  test_location: "tests/"         # convenção de localização de arquivos de teste
+  http_integration: false         # backend: deve testar endpoints HTTP reais
+  db_integration: false           # backend: deve testar contra DB real/test
+  component_testing: false        # frontend: deve usar component testing (RTL/etc)
+  e2e_required: false             # frontend: E2E obrigatório
+  visual_regression: false        # frontend: visual regression (prod only)
+  a11y_testing: false             # frontend: acessibilidade (axe)
+  eval_strategy: null             # agent_ia: "golden_output_similarity" | null
+  eval_threshold: null            # agent_ia: float 0-1 | null
+  deterministic_tools_only: false # agent_ia: apenas tool calls são unit-testáveis
+  pipeline_testing: false         # ml_project: testa pipeline de dados
+  model_regression: false         # ml_project: regressão de performance de modelo
+```
+
+### test_specs por profile (valores canônicos)
+
+| Profile | test_types_required | Notas |
+|---|---|---|
+| `app_web_backend` | `[unit, integration]` | `http_integration: True`, `db_integration: True` |
+| `app_web_frontend` | `[unit, component, e2e]` | `component_testing: True`, `e2e_required: True` (dev+prod), `visual_regression: True` (prod), `a11y_testing: True` (dev+prod), `test_location: src/` (co-located) |
+| `dashboard` | `[unit, integration]` | `http_integration: True`, semelhante a backend |
+| `data_analysis` | `[unit]` | Notebooks: testar funções de transformação; sem integration obrigatória |
+| `ml_project` | `[unit, pipeline, model_eval]` | `pipeline_testing: True`, `model_regression: True` (dev+prod) |
+| `agent_ia` | `[unit_tools, integration_prompt, eval]` | `eval_strategy: golden_output_similarity`, `deterministic_tools_only: True`, `eval_threshold: 0.85` (dev+prod) |
+| `cli_tool` | `[unit, integration]` | integration = subprocess testing, stdin/stdout capture |
+| `framework_library` | `[unit, integration]` | coverage_threshold +10% (libs exigem cobertura maior por serem reusadas) |
+| `technical_article` | `[unit]` (se houver código) | Artigo sem código executável: `test_types_required: []` |
+| `experiment` | `[]` | Sem requisitos de teste — spike descartável |
 
 ## Profile-specific overrides (aplicados sobre defaults de tier)
 

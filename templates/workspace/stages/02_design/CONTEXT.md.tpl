@@ -53,24 +53,6 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 - {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md — lido como Input #11; NÃO re-ler de outras fontes.
 - Workspaces irmãos em {{PROJECT_ROOT}}/workspaces/<outro>/ — escopo é {{WORKSPACE}}.
 
-## Read order
-
-1. L0 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md
-2. L1 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md
-3. L2 — este arquivo
-4. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/discovery.md (entrada principal)
-5. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/output/recon-report.md (índice de ADRs + tipo de workspace)
-6. {{PROJECT_ROOT}}/docs/decisions/*.md (ADRs vigentes — só os listados pelo recon-report)
-7. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml + stop-points.md
-8. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md (schema obrigatório das tasks)
-9. Sumário superpowers writing-plans-200tok
-10. xp-conventions.md (naming, file limits, docstrings — fonte das constraints que plan.md declara por task)
-11. session-handoff-protocol.md (handoff final do estágio)
-12. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
-13. wave-planner-algorithm.md (estrutura de DAG e waves — referência para design de tasks)
-14. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md (se existe — handoff do estágio 01)
-15. {{PROJECT_ROOT}}/docs/lessons.md + tech_debt.md (se existem)
-
 ## Process
 
 1. **Pre-flight:** validar paths Inputs marcados `sim`; sub_stage `02_in_progress`. Se `discovery.md` ausente → status `BLOCKED_ERROR`.
@@ -80,12 +62,20 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 5. **Detectar stop points durante design:** stack/db/new_dep/paid_service/irreversible/over_eng/pii/adr_drift. Calibração por tier em `_config/stop-points.md`. Disparo: pausar, menu A/B/C, atualizar L1 `BLOCKED_STOP_POINT`, esperar resposta humana, retomar.
 6. **Spawn ADRs novos** quando decisão arquitetural irreversível ou divergente do declarado: criar `{{PROJECT_ROOT}}/docs/decisions/NNNN-<slug>.md` com formato canônico (Context / Decision / Consequences / Status). Numeração contínua a partir do maior NNNN existente.
 7. **Detectar adr_drift:** se proposta de design diverge de ADR vigente sem superseding declarado → stop point `adr_drift`. Resolução: superseding ADR (`NNNN-supersedes-MMMM.md`) OU revisão da proposta para alinhar.
-8. **Escrever `output/plan.md`** com seções: Visão geral (5-10 linhas); Tasks (lista, cada uma com 4-block + metadados); ADRs criados nesta sessão; Stop points disparados (se houve); Tech debt herdado (se houve); Métricas de aceite (vinculam a discovery.md).
+8. **Definir Test Strategy global do workspace** (uma vez no plan.md, não por task). Ler `test_specs` do `_config/profile-effective.yaml` para calibrar. Seção obrigatória com:
+   - **Framework**: linguagem → framework principal (ex: Python → pytest + httpx; TS → vitest + @testing-library/react)
+   - **Test pyramid**: proporção unit/integration/e2e justificada pelo profile
+   - **Coverage threshold**: de `test_specs.coverage_threshold` do profile efetivo (mínimo 80% development, 90% production em linhas/branches)
+   - **Path crítico 100%**: código de autenticação, pagamento, PII deve ter 100% unit obrigatório
+   - **Test file location**: convenção de onde ficam os arquivos de teste (co-located vs `tests/`)
+   - Se profile == `agent_ia`: incluir **Eval Strategy** (golden_output, eval_threshold, determinism seed)
+   - Se profile == `ml_project`: incluir **Model Regression** (dataset fixtures, performance baseline)
+9. **Escrever `output/plan.md`** com seções: Visão geral (5-10 linhas); **Test Strategy** (seção 8 acima); Tasks (lista, cada uma com 4-block + metadados); ADRs criados nesta sessão; Stop points disparados (se houve); Tech debt herdado (se houve); Métricas de aceite (vinculam a discovery.md).
 9. **Atualizar L1:** sub_stage `02_completed`, status `COMPLETED_AWAITING_HUMAN`, append `history` evento `stage_transition`. Commit atômico (hook valida).
 
 ## Outputs
 
-- `output/plan.md` — design técnico com lista de tasks no schema 4-block, consumido pelo Wave Planner em 03. ADRs vivem em `{{PROJECT_ROOT}}/docs/decisions/` (fora do workspace) — plan.md cita os filenames criados.
+- `output/plan.md` — design técnico com **Test Strategy global** + lista de tasks no schema 4-block (cada task com ≥1 arquivo de teste em `Files touched`), consumido pelo Wave Planner em 03. ADRs vivem em `{{PROJECT_ROOT}}/docs/decisions/` (fora do workspace) — plan.md cita os filenames criados.
 
 ## Sub_stage transitions
 
@@ -93,6 +83,8 @@ Enum válido: `02_in_progress`, `02_completed`.
 
 Transição IN_PROGRESS → COMPLETED dispara quando:
 - `output/plan.md` existe com pelo menos 1 task no schema 4-block + metadados completos.
+- `output/plan.md` contém seção **Test Strategy** preenchida com framework, pyramid, coverage threshold e test file location.
+- Toda task com código funcional tem ≥1 arquivo de teste em `Files touched`.
 - Stop points disparados durante a sessão estão resolvidos (status volta a `IN_PROGRESS` antes do completar).
 - ADRs novos commitados em `{{PROJECT_ROOT}}/docs/decisions/` (se houve decisão arquitetural).
 - Humano aprovou via gate (status `COMPLETED_AWAITING_HUMAN` → humano responde "aprovado, prosseguir 03").

@@ -432,6 +432,7 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
             shutil.copy2(src, runtime_dst / fname)
 
 
+
 def _save_profile_effective(
     workspace_dir: Path,
     effective: dict[str, Any],
@@ -752,6 +753,17 @@ def bootstrap(
 
     # Scaffold
     _scaffold_workspace_dirs(workspace_dir, skill_root, project_root)
+
+    # Copia test-recipe especifica do profile efetivo para _references/test-recipes/.
+    # So o arquivo do profile ativo e copiado; profiles sem receita (experiment,
+    # technical_article) tem arquivo minimo no template.
+    test_recipes_src = skill_root / "templates" / "_references" / "test-recipes"
+    if test_recipes_src.is_dir():
+        recipe_file = test_recipes_src / f"{profile}.md"
+        if recipe_file.is_file():
+            test_recipes_dst = workspace_dir / "_references" / "test-recipes"
+            test_recipes_dst.mkdir(parents=True, exist_ok=True)
+            shutil.copy2(recipe_file, test_recipes_dst / f"{profile}.md")
 
     # Stages skipped: derive from profile-effective and write SKIP.md markers
     stages_skipped: list[str] = effective.get("stages_skipped", [])

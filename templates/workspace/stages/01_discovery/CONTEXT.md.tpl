@@ -34,27 +34,15 @@ Brainstorming guiado com o humano. Refina escopo via clarification iterativa, ma
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
 | 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
+| 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/test-recipes/{{PROFILE}}.md | L3 | condicional: existe se profile ∈ {app_web_backend, app_web_frontend, agent_ia, ml_project, cli_tool, framework_library, dashboard}. Lido pra informar §Test Context no discovery.md |
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/ e {{PROJECT_ROOT}}/tests/ — discovery NÃO inspeciona código-fonte. Se contexto de código for necessário, citar dependência no recon-report e revisitar 00.
+- {{PROJECT_ROOT}}/src/ — discovery NÃO inspeciona código-fonte. Se contexto de código for necessário, citar dependência no recon-report e revisitar 00.
+- {{PROJECT_ROOT}}/tests/ — exceção: se projeto legado existir, recon-report (stage 00) deve ter indexado a suite existente; discovery lê apenas o índice do recon-report, não o diretório.
 - {{PROJECT_ROOT}}/docs/decisions/ — ADRs detalhados são consumidos no estágio 02. Aqui usa-se apenas o índice já listado em recon-report.md.
 - Outputs de estágios 02+ — não existem ainda.
 - {{PROJECT_ROOT}}/docs/tech_debt.md — escopo de tech debt aparece em design (02), não em discovery.
-
-## Read order
-
-1. L0 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md
-2. L1 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md
-3. L2 — este arquivo
-4. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/output/recon-report.md (entrada principal)
-5. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml
-6. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md
-7. {{PROJECT_ROOT}}/docs/lessons.md (se existe)
-8. Sumário superpowers brainstorming-200tok
-9. session-handoff-protocol.md (handoff final do estágio)
-10. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
-11. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/_kickoff.md (se existe — handoff do estágio 00)
 
 ## Process
 
@@ -66,7 +54,14 @@ Brainstorming guiado com o humano. Refina escopo via clarification iterativa, ma
 6. **Definir MVP IN/OUT:** o que entra nesta entrega vs o que fica para depois. Lista explícita.
 7. **Listar riscos** (técnicos, de escopo, de prazo) com mitigação proposta para cada.
 8. **Definir métricas de sucesso** — como o humano vai saber que o MVP entregou valor.
-9. **Escrever `output/discovery.md`** com seções fixas: Resumo executivo (3-5 frases); Público-alvo; Requisitos funcionais; Requisitos não-funcionais; Opções macro A/B/C + escolha; MVP IN/OUT; Riscos e mitigações; Métricas de sucesso; Stop points disparados (se houve).
+9. **Levantar Test Context** — capturar informações de teste existentes e expectativas do time:
+   - Há suite de testes existente? Framework usado? Coverage atual estimada?
+   - Há política de coverage mínima declarada pelo time?
+   - Há testes de integração, e2e, ou apenas unit?
+   - Para `agent_ia`/`ml_project`: há eval framework em uso? Como output não-determinístico é testado hoje?
+   - Registrar conclusões em `discovery.md §Test Context`; ausência de resposta → registrar "não levantado" (stage 02 define defaults do profile).
+   - Se `_references/test-recipes/{{PROFILE}}.md` existir: consultar para contextualizar perguntas ao humano.
+10. **Escrever `output/discovery.md`** com seções fixas: Resumo executivo (3-5 frases); Público-alvo; Requisitos funcionais; Requisitos não-funcionais; Opções macro A/B/C + escolha; MVP IN/OUT; Riscos e mitigações; Métricas de sucesso; **Test Context** (seção 9 acima); Stop points disparados (se houve).
 10. **Atualizar L1:** sub_stage `01_completed`, status `COMPLETED_AWAITING_HUMAN`, append `history` evento `stage_transition`. Commit atômico.
 
 ## Outputs
