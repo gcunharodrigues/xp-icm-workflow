@@ -49,6 +49,29 @@ Substituição completa do modelo Agent Teams (baseado em git worktrees + mailbo
 
 ---
 
+## v3.0.0-beta5 — Git governance overhaul + subagent protocol (2026-04-28)
+
+### Why beta5
+
+Auditoria de git revelou 7 problemas: subagentes sem checkout explícito de branch, lead ficando em base_branch após merge, context-check.sh crashando sob Agent calls paralelos, conflito ICM prefix vs Conventional Commits, wave branches sem nenhum hook, bootstrap parcial sem recovery, e chmod silencioso no Windows.
+
+### Mudanças
+
+- **`references/subagent-protocol.md`:** §2.4 branch setup obrigatório no prompt do subagente (`git checkout -b` + validação). §5 merge sequencial agora faz stash pré-flight, retorna pra workspace branch após cada merge, unstash ao final.
+- **`templates/.claude/hooks/context-check.sh`:** reescrito. Removido `set -e` (causava crash em pipes vazios). Lock atômico via `mkdir` (elimina race condition com 4+ Agent calls paralelos). Cada comando de parse com `|| fallback`. jq check explícito. Guard contra git mid-operation.
+- **`references/git-hooks.md`:** R8 — commit-msg emite warning em wave branches sem Conventional Commit. Nova seção "Wave branches" documentando separação workspace prefix vs conventional.
+- **`templates/.git-hooks/commit-msg`:** R8 implementado — detecta `^wave-[0-9]+-[0-9]+/` e valida Conventional Commit types (não bloqueia, apenas avisa).
+- **`references/recovery-wizard.md`:** 6ª inconsistência `BOOTSTRAP_PARTIAL` (scaffold commitado sem hooks). Ação A: instalar hooks. Ação B: rollback + re-bootstrap. Ordem canônica atualizada.
+- **`templates/workspace/_config/xp-conventions.md.tpl`:** resolvido conflito workspace prefix vs Conventional Commits. Workspace branches = `workspace NNN: <desc>`. Wave branches = `<type>: <desc>`.
+- **`scripts/bootstrap.py`:** chmod warning em POSIX (não mais `pass` silencioso). Em Windows aceita silencioso (comportamento esperado).
+- **`SKILL.md`:** header bump beta4 → beta5.
+
+### Tests
+
+Suite existente mantida. Novas regras de hook (R8) cobertas por `test_commit_msg_hook.bats` em CI. Bootstrap chmod testado em `test_bootstrap.py`.
+
+---
+
 ## v3.0.0-beta4 — 07→08 transição automática + 08 inferência de intenção (2026-04-26)
 
 ### Why beta4

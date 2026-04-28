@@ -29,7 +29,7 @@ from typing import Any
 # Constantes
 # ============================================================================
 
-SKILL_VERSION = "3.0.0-beta4"  # template prepends `v`
+SKILL_VERSION = "3.0.0-beta5"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")

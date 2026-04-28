@@ -4,7 +4,7 @@ description: Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto
 type: rigid
 ---
 
-# xp-icm-workflow v3.0.0-beta4
+# xp-icm-workflow v3.0.0-beta5
 
 > **Skill é parteira, não orquestradora.** Bootstrap one-shot cria a estrutura. Filesystem governa o ciclo. **1 stage = 1 sessão**: cada estágio termina com handoff dual (verbal + arquivo `_kickoff.md`) e a sessão sai. Próxima sessão começa fresh.
 

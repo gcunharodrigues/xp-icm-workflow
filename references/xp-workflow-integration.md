@@ -101,7 +101,7 @@ Regras ICM-specific:
 - Nunca `--no-verify` no workspace branch.
 - Files touched discipline: cada task declara seu footprint.
 
-**Estado atual (v3.0.0-beta4):** o arquivo `xp-conventions.md` existe como `templates/workspace/_config/xp-conventions.md.tpl` e é renderizado para `<workspace>/_config/xp-conventions.md` no bootstrap com placeholders preenchidos.
+**Estado atual (v3.0.0-beta5):** o arquivo `xp-conventions.md` existe como `templates/workspace/_config/xp-conventions.md.tpl` e é renderizado para `<workspace>/_config/xp-conventions.md` no bootstrap com placeholders preenchidos.
 
 ---
 
