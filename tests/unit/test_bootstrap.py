@@ -206,40 +206,40 @@ class TestUpdateIndex:
 class TestUpdateGitignore:
     def test_creates_file_when_missing(self, tmp_path: Path) -> None:
         gi = tmp_path / ".gitignore"
-        update_gitignore(gi, [".worktrees/", ".icm-profile.local.yaml"])
+        update_gitignore(gi, ["__pycache__/", ".icm-profile.local.yaml"])
         content = gi.read_text(encoding="utf-8")
-        assert ".worktrees/" in content
+        assert "__pycache__/" in content
         assert ".icm-profile.local.yaml" in content
 
     def test_idempotent_when_lines_already_present(self, tmp_path: Path) -> None:
         gi = tmp_path / ".gitignore"
         gi.write_text(
-            ".worktrees/\n"
+            "__pycache__/\n"
             ".icm-profile.local.yaml\n"
-            "__pycache__/\n",
+            ".coverage\n",
             encoding="utf-8",
         )
         original = gi.read_text(encoding="utf-8")
-        update_gitignore(gi, [".worktrees/", ".icm-profile.local.yaml"])
+        update_gitignore(gi, ["__pycache__/", ".icm-profile.local.yaml"])
         assert gi.read_text(encoding="utf-8") == original
 
     def test_adds_only_missing_lines(self, tmp_path: Path) -> None:
         gi = tmp_path / ".gitignore"
-        gi.write_text(".worktrees/\n", encoding="utf-8")
-        update_gitignore(gi, [".worktrees/", ".icm-profile.local.yaml"])
+        gi.write_text("__pycache__/\n", encoding="utf-8")
+        update_gitignore(gi, ["__pycache__/", ".icm-profile.local.yaml"])
         content = gi.read_text(encoding="utf-8")
-        # .worktrees/ aparece uma vez; .icm-profile.local.yaml foi adicionado
-        assert content.count(".worktrees/") == 1
+        # __pycache__/ aparece uma vez; .icm-profile.local.yaml foi adicionado
+        assert content.count("__pycache__/") == 1
         assert ".icm-profile.local.yaml" in content
 
     def test_preserves_existing_unrelated_lines(self, tmp_path: Path) -> None:
         gi = tmp_path / ".gitignore"
         gi.write_text("node_modules/\n*.log\n", encoding="utf-8")
-        update_gitignore(gi, [".worktrees/"])
+        update_gitignore(gi, ["__pycache__/"])
         content = gi.read_text(encoding="utf-8")
         assert "node_modules/" in content
         assert "*.log" in content
-        assert ".worktrees/" in content
+        assert "__pycache__/" in content
 
     def test_trailing_newline_handled(self, tmp_path: Path) -> None:
         gi = tmp_path / ".gitignore"
@@ -330,18 +330,24 @@ class TestScaffoldWorkspaceDirs:
 
     def test_creates_all_9_stage_dirs(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspaces" / "001-foo"
-        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        project_root = tmp_path / "project"
+        project_root.mkdir(parents=True)
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT, project_root)
         for s in bootstrap.STAGES:
             assert (ws / "stages" / s).is_dir()
 
     def test_creates_config_dir_with_profile_matrix(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspaces" / "001-foo"
-        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        project_root = tmp_path / "project"
+        project_root.mkdir(parents=True)
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT, project_root)
         assert (ws / "_config" / "profile-matrix.md").is_file()
 
     def test_copies_all_10_superpowers_summaries(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspaces" / "001-foo"
-        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        project_root = tmp_path / "project"
+        project_root.mkdir(parents=True)
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT, project_root)
         sp_dir = ws / "_references" / "superpowers-summary"
         assert sp_dir.is_dir()
         expected = {
@@ -361,26 +367,125 @@ class TestScaffoldWorkspaceDirs:
 
     def test_copies_runtime_references(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspaces" / "001-foo"
-        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        project_root = tmp_path / "project"
+        project_root.mkdir(parents=True)
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT, project_root)
         runtime_dir = ws / "_references" / "runtime"
         assert runtime_dir.is_dir()
         expected = {
-            "agent-team-protocol.md",
+            "subagent-protocol.md",
             "wave-planner-algorithm.md",
             "state-machine-schema.md",
             "recovery-wizard.md",
             "stop-points-canonical.md",
             "4-block-contract-template.md",
             "feedback-intake-fase08.md",
+            "session-handoff-protocol.md",
         }
         actual = {p.name for p in runtime_dir.iterdir() if p.is_file()}
         assert expected.issubset(actual), f"missing: {expected - actual}"
 
     def test_summary_files_have_expected_frontmatter(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspaces" / "001-foo"
-        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT)
+        project_root = tmp_path / "project"
+        project_root.mkdir(parents=True)
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT, project_root)
         sp_dir = ws / "_references" / "superpowers-summary"
         sample = (sp_dir / "brainstorming-200tok.md").read_text(encoding="utf-8")
         assert sample.startswith("---")
         assert "source_skill:" in sample
         assert "source_version:" in sample
+
+    def test_creates_docs_tech_debt_stub(self, tmp_path: Path) -> None:
+        ws = tmp_path / "workspaces" / "001-foo"
+        project_root = tmp_path / "project"
+        project_root.mkdir(parents=True)
+        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT, project_root)
+        tech_debt = project_root / "docs" / "tech_debt.md"
+        assert tech_debt.is_file()
+        content = tech_debt.read_text(encoding="utf-8")
+        assert "Tech Debt" in content
+
+
+class TestL2ContextRendering:
+    """Verifica que bootstrap renderiza L2 CONTEXT.md para cada estágio."""
+
+    def test_renders_all_9_l2_context_files(self, tmp_path: Path) -> None:
+        """Bootstrap deve criar CONTEXT.md em cada stage com placeholders resolvidos."""
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        (project_root / ".git").mkdir()
+        (project_root / ".git" / "HEAD").write_text("ref: refs/heads/main\n")
+        (project_root / ".git" / "refs" / "heads").mkdir(parents=True)
+        (project_root / ".git" / "refs" / "heads" / "main").write_text("abc123\n")
+        (project_root / ".git" / "objects").mkdir()
+        (project_root / ".git" / "config").write_text(
+            "[core]\n\trepositoryformatversion = 0\n"
+        )
+        ws_dir = project_root / "workspaces" / "001-test-l2"
+
+        placeholders = {
+            "WORKSPACE": "001-test-l2",
+            "WORKSPACE_NUM": "001",
+            "PROFILE": "app_web_backend",
+            "TIER": "development",
+            "PROJECT_ROOT": str(project_root).replace("\\", "/"),
+            "BASE_BRANCH": "main",
+            "LOGS_ROOT": "null",
+            "PROFILE_EFFECTIVE_HASH": "abc123",
+            "CREATED_AT": "2026-01-01T00:00:00Z",
+            "SKILL_VERSION": "3.0.0-beta1",
+            "SKILL_DIR": str(SKILL_ROOT).replace("\\", "/"),
+            "BOOTSTRAP_COMMIT_SHA": "deadbeef",
+        }
+
+        # Criar dirs primeiro (como _scaffold_workspace_dirs faria)
+        ws_dir.mkdir(parents=True)
+        stages_dir = ws_dir / "stages"
+        stages_dir.mkdir()
+        for s in bootstrap.STAGES:
+            (stages_dir / s).mkdir()
+
+        # Renderizar L2 templates como bootstrap faria
+        tpl_dir = SKILL_ROOT / "templates" / "workspace" / "stages"
+        for stage_dir_name in bootstrap.STAGES:
+            l2_tpl = tpl_dir / stage_dir_name / "CONTEXT.md.tpl"
+            if l2_tpl.exists():
+                rendered = bootstrap.render_template(l2_tpl, placeholders)
+                out = stages_dir / stage_dir_name / "CONTEXT.md"
+                out.write_text(rendered, encoding="utf-8")
+
+        for s in bootstrap.STAGES:
+            ctx = stages_dir / s / "CONTEXT.md"
+            assert ctx.is_file(), f"CONTEXT.md missing for stage {s}"
+            content = ctx.read_text(encoding="utf-8")
+            assert content.startswith("---"), f"stage {s}: CONTEXT.md missing frontmatter"
+            assert "{{" not in content, f"stage {s}: unresolved placeholder in CONTEXT.md"
+            assert "layer: L2" in content, f"stage {s}: missing layer: L2"
+
+    def test_l2_placeholders_resolved(self) -> None:
+        """Placeholders PROJECT_ROOT e WORKSPACE devem estar resolvidos em todos os L2s."""
+        project_root_str = "/tmp/test-project"
+        placeholders = {
+            "WORKSPACE": "001-test-l2",
+            "WORKSPACE_NUM": "001",
+            "PROFILE": "app_web_backend",
+            "TIER": "development",
+            "PROJECT_ROOT": project_root_str,
+            "BASE_BRANCH": "main",
+            "LOGS_ROOT": "null",
+            "PROFILE_EFFECTIVE_HASH": "abc123",
+            "CREATED_AT": "2026-01-01T00:00:00Z",
+            "SKILL_VERSION": "3.0.0-beta1",
+            "SKILL_DIR": "/skill/root",
+            "BOOTSTRAP_COMMIT_SHA": "deadbeef",
+        }
+
+        tpl_dir = SKILL_ROOT / "templates" / "workspace" / "stages"
+        for s in bootstrap.STAGES:
+            l2_tpl = tpl_dir / s / "CONTEXT.md.tpl"
+            if l2_tpl.exists():
+                rendered = bootstrap.render_template(l2_tpl, placeholders)
+                assert "{{PROJECT_ROOT}}" not in rendered, f"stage {s}: PROJECT_ROOT unresolved"
+                assert "{{WORKSPACE}}" not in rendered, f"stage {s}: WORKSPACE unresolved"
+                assert project_root_str in rendered, f"stage {s}: PROJECT_ROOT value not in output"

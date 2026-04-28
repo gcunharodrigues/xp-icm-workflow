@@ -1,5 +1,7 @@
 # State Machine Schema (L1 — `<workspace>/CONTEXT.md`)
 
+> **Path resolution:** caminhos `scripts/` neste documento referem-se a `<SKILL_DIR>/scripts/`, onde `SKILL_DIR` está definido em L0 (`CLAUDE.md`).
+
 > Esquema canônico do `CONTEXT.md` raiz do workspace. Validado em pre-flight check de cada sessão. Property-based tested em `tests/unit/test_state_machine.py`.
 
 ## Formato do arquivo
@@ -22,7 +24,7 @@
 |---|---|---|---|
 | `workspace` | string | `NNN-slug` (ex: `042-feat-auth`) | Bootstrap |
 | `profile_base` | string | um de 10 profiles canônicos | Bootstrap |
-| `profile_effective_hash` | string | sha256 hex (64 chars) | `scripts/profile-merge.py` |
+| `profile_effective_hash` | string | sha256 hex (64 chars) | `<SKILL_DIR>/scripts/profile-merge.py` |
 | `tier` | string | `experimental` \| `tool` \| `development` \| `production` | Bootstrap |
 | `project_root` | string | path absoluto | Bootstrap (CWD ou `--project-root`) |
 | `base_branch` | string | nome de branch git válido | Bootstrap (`git rev-parse --abbrev-ref HEAD`) |
@@ -41,6 +43,7 @@
 
 | Campo | Tipo | Quando presente | Default |
 |---|---|---|---|
+| `stages_skipped` | list of strings | sempre (bootstrap determina via profile/tier) | `[]` |
 | `logs_root` | string \| null | sistema com logs externos (H3) | `null` |
 | `waves` | object \| null | `stage_atual >= 04` (R2.8) | ausente antes de 04 |
 | `llm_review_skipped_count` | integer | sempre que ≥1 skip ocorre | `0` |
@@ -56,7 +59,7 @@
 | `IN_PROGRESS` | sessão ativa trabalhando | continuar trabalho ou transicionar |
 | `COMPLETED_AWAITING_HUMAN` | estágio concluído, gate humano pendente | humano aprova/rejeita; transition para próximo estágio |
 | `BLOCKED_STOP_POINT` | menu A/B/C disparado | humano responde menu; `IN_PROGRESS` |
-| `BLOCKED_ERROR` | falha runtime/CI/rebase | humano resolve manualmente; `IN_PROGRESS` |
+| `BLOCKED_ERROR` | falha runtime/CI/merge | humano resolve manualmente; `IN_PROGRESS` |
 | `COMPLETED` | workspace inteiro fechado (fase 07 saída ou fase 08 A) | none — workspace arquivado |
 
 **Variação especial:** `RESTARTING_AT_PHASE_X` (H1) é registrado em `history` como evento de `iteration++`, mas o `status` em si volta para `IN_PROGRESS` no estágio X com `iteration` incrementado.
@@ -75,7 +78,9 @@ Estados granulares dentro de cada estágio. Pre-flight valida enum.
 | 05 Verification | `05_in_progress`, `05_completed` |
 | 06 Review | `06_in_progress`, `06_completed` |
 | 07 Merge | `07_in_progress`, `07_completed` |
-| 08 Feedback Intake | `08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C` |
+| 08 Feedback Intake | `08_in_progress`, `08_decided_A`, `08_decided_B` †, `08_decided_C` |
+
+**† `08_decided_B` é transitório:** aparece somente como evento em `history`, nunca persistido em `sub_stage`. A sessão transita diretamente de `08_in_progress` para `<XX>_in_progress` (stage de retorno). O enum existe para compatibilidade do schema, mas validate-state deve aceitar `08_decided_B` em history events sem exigir que ele apareça em `sub_stage`.
 
 **Regra:** `sub_stage` SEMPRE começa com prefixo `<stage_atual>_`. Mismatch = inconsistência → Recovery Wizard.
 
@@ -85,7 +90,7 @@ Lista de eventos. Ordem cronológica preservada. Cada item:
 
 ```yaml
 - at: "2026-04-25T14:30:00Z"
-  event: "stage_transition"  # ou "stop_point_triggered" | "iteration_increment" | "recovery_applied" | "wave_completed" | "blocked_error"
+  event: "stage_transition"  # ver §Event types abaixo
   from: "02_completed"        # opcional, depende do event
   to: "03_in_progress"        # opcional, depende do event
   commit_sha: "abc123def"     # opcional, se houve commit
@@ -93,6 +98,20 @@ Lista de eventos. Ordem cronológica preservada. Cada item:
 ```
 
 **Regra:** sessões NUNCA editam itens existentes; apenas append. Recovery Wizard pode prepend item `recovery_applied` documentando reconstrução.
+
+### Event types canônicos
+
+| Event | Descrição | Campos obrigatórios |
+|---|---|---|
+| `stage_transition` | Transição entre estágios/sub_stages | `from`, `to`, `commit_sha` |
+| `stop_point_triggered` | Stop point disparado | `stop_point_id`, `from` |
+| `stop_point_resolved` | Humano respondeu stop point | `stop_point_id`, `to` |
+| `iteration_increment` | Saída B da fase 08: `iteration++` | `from`, `to`, `commit_sha` |
+| `recovery_applied` | Recovery Wizard corrigiu inconsistência | `inconsistency_type`, `action` |
+| `wave_completed` | Wave N da fase 04 finalizada | `wave`, `commit_sha` |
+| `blocked_error` | Erro runtime bloqueou progresso | `error_type`, `message` |
+| `workspace_bootstrapped` | Bootstrap inicial do workspace | `commit_sha` |
+| `feedback_session_started` | Humano abriu sessão de feedback (fase 08) | `from` |
 
 ## `waves` — schema (presente só se `stage_atual >= 04`)
 
@@ -115,7 +134,7 @@ last_transition:
   commit_sha: "abc123def456"
 ```
 
-**Regra:** `commit_sha` deve existir em `git log` da `workspace_branch`. Se não existe (rebased away) → Recovery Wizard inconsistência #4 (R2.7).
+**Regra:** `commit_sha` deve existir em `git log` da `workspace_branch`. Se não existe (force push ou branch reset) → Recovery Wizard inconsistência #4 (R2.7).
 
 ## Heurísticas de inconsistência (Recovery Wizard — R2.7)
 
@@ -125,7 +144,7 @@ Pre-flight de sessão NOVA dispara Recovery se qualquer uma:
 2. Outputs declarados em `history` não existem no FS
 3. `status: IN_PROGRESS` sem commit em `workspaces/NNN/*` nas últimas 24h
 4. `last_transition.commit_sha` não existe em git history
-5. `waves.current` declara wave N mas `.worktrees/workspace-NNN/wave-N/` ausente
+5. `waves.current` declara wave N mas branches `wave-NNN-N/<task>` ausentes
 
 Cada inconsistência tem mensagem específica + ação proposta em `references/recovery-wizard.md`.
 
@@ -152,9 +171,9 @@ waves:
   current_sub_wave: null
   blocked_at_sub_wave: null
   blocked_task: null
-last_action: "wave 2 spawned with 3 teammates"
+last_action: "wave 2 spawned with 3 subagentes"
 last_action_at: "2026-04-25T14:30:00Z"
-next_action: "lead aguarda 3 COMPLETE; depois wave-reviewer + rebase sequencial"
+next_action: "lead aguarda 3 COMPLETE; depois wave-reviewer + merge sequencial"
 last_transition:
   from: "04_wave_1_completed"
   to: "04_wave_2_in_progress"
@@ -189,7 +208,7 @@ Auth middleware para API Aura Luz. Tier development, 2 waves planejadas.
 
 ## Validação
 
-`scripts/validate-state.sh` chamado em pre-flight de cada sessão:
+`<SKILL_DIR>/scripts/validate-state.sh` chamado em pre-flight de cada sessão:
 
 1. Parse YAML frontmatter (PyYAML strict load).
 2. Valida campos obrigatórios presentes.

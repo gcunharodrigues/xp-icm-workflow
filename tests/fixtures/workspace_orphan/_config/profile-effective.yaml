@@ -3,7 +3,7 @@
 profile_base: app_web_backend
 tier: development
 caps:
-  parallel_teammates_max: 3
+  parallel_subagents_max: 3
   wave_max_tasks: 8
 loop_policy:
   iteration_max: 3

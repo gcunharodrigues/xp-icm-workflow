@@ -43,7 +43,7 @@ Tabela autoritativa. Espelho do mapeamento em `references/stage-templates.md` §
 
 | Skill | Onde aparece | Sumário |
 |---|---|---|
-| `using-git-worktrees` | fase 04 (lead spawn) — referência operacional | `using-git-worktrees-200tok.md` |
+| `using-git-worktrees` | fora do ciclo ICM (substituído por Agent tool) | `using-git-worktrees-200tok.md` |
 | `writing-skills` | fora do ciclo ICM (Guilherme criando/editando skills) | n/a — não copiado para workspace |
 
 ---
@@ -64,9 +64,9 @@ Bootstrap copia em `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superp
 | 8 | `receiving-code-review-200tok.md` | 06 |
 | 9 | `finishing-a-development-branch-200tok.md` | 07 |
 | 10 | `systematic-debugging-200tok.md` | transversal — qualquer estágio com bug |
-| 11 | `using-git-worktrees-200tok.md` | 04 (auxiliar) |
+| 11 | `using-git-worktrees-200tok.md` | auxiliar (fora do ciclo ICM) |
 
-> Notar: lista efetiva tem 11 arquivos. O plan §7 lista 10 explicitamente; o 11º (`using-git-worktrees`) entrou como auxiliar operacional do lead na fase 04 (referenciado em `agent-team-protocol.md` §2.2). Wave 5 da reescrita materializa os arquivos.
+> Notar: lista efetiva tem 11 arquivos. O plan §7 lista 10 explicitamente; o 11º (`using-git-worktrees`) permanece como auxiliar genérico de git, não mais exigido pelo protocolo de subagentes. Arquivos materializados em `templates/_references/superpowers-summary/` e copiados pelo bootstrap.
 
 ### 3.1 Schema obrigatório do sumário
 

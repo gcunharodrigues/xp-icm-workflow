@@ -35,7 +35,7 @@ history:
 
 # Workspace 999 — orphan fixture
 
-Fixture orfa documentando 4+ inconsistencias L1 simultaneamente:
+Fixture orfa documentando 4 inconsistencias L1 simultaneamente:
 
 1. **HASH_MISMATCH:** `profile_effective_hash` em L1 e zero (64 zeros)
    mas `_config/profile-effective.yaml` tem conteudo real -> hashes nao batem.
@@ -47,6 +47,5 @@ Fixture orfa documentando 4+ inconsistencias L1 simultaneamente:
 4. **MISSING_COMMIT:** `last_transition.commit_sha=deadbeef...` nao existe
    em git history — `git cat-file -e` falha.
 
-Inconsistencias 5 (MISSING_WORKTREES) e 6 (BRANCH_MISSING) so se aplicam
-quando o stage >= 04 / quando esta dentro de um repo git real, entao
-sao testadas com fixtures programaticas em test_recovery_wizard.py.
+Inconsistencia 5 (BRANCH_MISSING) so se aplica quando esta dentro de um repo
+git real, entao e testada com fixtures programaticas em test_recovery_wizard.py.

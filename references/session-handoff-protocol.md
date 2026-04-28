@@ -154,7 +154,7 @@ L1 final do 07:
 sub_stage = 07_completed → imediatamente → 08_in_progress
 stage_atual = 08
 status = COMPLETED_AWAITING_HUMAN
-```
+````
 
 History append 2 eventos: `stage_transition 07_in_progress→07_completed` + `stage_transition 07_completed→08_in_progress`.
 
@@ -286,25 +286,38 @@ Se durante a sessão o agente perceber sinais de degradação de contexto:
 
 - Repete instruções já presentes em arquivos
 - Pergunta coisas que L0/L1/L2 já explicam
-- Opera fora do protocolo (ignora stop points, pula ciclo TDD, não usa Agent Teams)
+- Opera fora do protocolo (ignora stop points, pula ciclo TDD, não usa subagentes)
 - Não lembra o branch correto ou a wave atual
 
 O agente DEVE parar imediatamente e executar **context refresh**:
 
 1. Re-ler L0 (`CLAUDE.md`), L1 (`CONTEXT.md`), L2 (`stages/<stage>/CONTEXT.md`).
 2. Re-ler `_kickoff.md`.
-3. Se contexto já está >75% (estimativa heurística): executar handoff antecipado — atualizar `_kickoff.md` e L1, commitar, imprimir KICKOFF block, e SAIR da sessão.
-4. Se contexto parece <75% mas degradado: continuar após re-leitura.
+3. Se contexto já está ≥70% (detectado via hook automatizado ou estimativa heurística): executar handoff antecipado — atualizar `_kickoff.md` e L1, commitar, imprimir KICKOFF block, e SAIR da sessão.
+4. Se contexto parece <70% mas degradado: continuar após re-leitura.
 
-### Regra: Agent Teams obrigatório em waves com 2+ tasks
+### Regra: subagentes obrigatórios em waves com 2+ tasks
 
-Em **stage 04**, quando a wave tem 2 ou mais tasks, o lead DEVE usar Agent Teams (subagents paralelos em worktrees isolados) conforme `agent-team-protocol.md`. Rodar todas as tasks sequencialmente em sessão única é **anti-pattern** que amplifica context pressure e ignora o paralelismo do protocolo.
+Em **stage 04**, quando a wave tem 2 ou mais tasks, o lead DEVE usar subagentes paralelos em branches isoladas conforme `subagent-protocol.md`. Rodar todas as tasks sequencialmente em sessão única é **anti-pattern** que amplifica context pressure e ignora o paralelismo do protocolo.
 
 Cap por tier (Q17):
-- experimental: 2 teammates
-- tool: 3 teammates
-- development: 5 teammates
-- production: 5 teammates
+- experimental: 2 subagentes
+- tool: 3 subagentes
+- development: 5 subagentes
+- production: 5 subagentes
+
+### Hook automatizado: context-check.sh
+
+O projeto inclui um hook `PostToolUse` que detecta contexto ≥70% automaticamente:
+
+- **Arquivo:** `<project_root>/workspaces/<NNN-slug>/.claude/hooks/context-check.sh`
+- **Registro:** `<project_root>/.claude/settings.local.json` → `hooks.PostToolUse`
+- **Lógica:** lê transcript diretamente de `~/.claude/projects/`, calcula `ctx_pct` (independente de statusline.sh), threshold 70%, cooldown 60s
+- **Ação:** stdout = protocolo de handoff obrigatório. Agente vê a mensagem e DEVE parar tudo, executar handoff, e SAIR.
+- **Bootstrap:** instalado pelo ICM stage 00 como infraestrutura de governança. Dependência `jq` em `_config/xp-conventions.md`.
+- **Escopo:** roda para todo o projeto, não apenas stage 04. Context pressure existe em qualquer stage.
+
+O hook NÃO força parada via código (exit 0 = continua). Enforcement é por protocolo: agente instruído a obedecer a mensagem. Se o agente ignorar repetidamente, o compact do LLM eventualmente degrada o contexto além da recuperação — o hook continua disparando a cada tool call com cooldown de 60s.
 
 ### Template: mid-wave _kickoff.md update
 
@@ -324,6 +337,6 @@ E atualizar `pending_for_this_stage` removendo tasks completadas.
 
 Se o agente perdeu L0/L1/L2 do contexto e não executou refresh, operações subsequentes provavelmente violam o protocolo (branch errada, skip de TDD, sem stop points). Prevenir é melhor que remediar — checkpoint após cada task completa.
 
-#### Fazer wave inteira sem Agent Teams
+#### Fazer wave inteira sem subagentes
 
-Em waves com 2+ tasks, cada task DEVE ter seu próprio teammate em worktree isolado. Lead orquestra, não executa. Sessão única sequencial é permitida APENAS quando wave tem 1 task (skip exception F2 do agent-team-protocol).
+Em waves com 2+ tasks, cada task DEVE ter seu próprio subagente em branch isolada. Lead orquestra, não executa. Sessão única sequencial é permitida APENAS quando wave tem 1 task (skip exception F2 do subagent-protocol).

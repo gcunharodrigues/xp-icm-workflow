@@ -30,12 +30,16 @@ Regex: `^workspace/[0-9]{3}-`. Se branch atual nao casa -> `exit 0`. Trabalho em
 Em workspace branch, todo staged file deve estar em:
 
 - `workspaces/NNN-slug/...` (escopo do workspace), OU
-- `docs/decisions/*.md` (ADRs sao L3 globais).
+- `docs/decisions/*.md` (ADRs sao L3 globais), OU
+- `docs/lessons.md` (lições herdadas, stage 08 saída A), OU
+- `docs/tech_debt.md` (débito técnico, stage 06 append P2/P3), OU
+- `workspaces/.index.md` (registry de workspaces ativos/completados), OU
+- `.gitignore` (atualizações de ignore pelo bootstrap).
 
 Outros caminhos (`src/`, `tests/`, raiz) -> reject:
 
 ```
-ERROR: branch workspace/NNN-slug pode tocar APENAS workspaces/NNN-slug/* ou docs/decisions/*.md.
+ERROR: branch workspace/NNN-slug pode tocar APENAS workspaces/NNN-slug/* ou arquivos whitelisted.
 File offendor: <path>
 ```
 
@@ -84,6 +88,14 @@ Razao: ADRs as vezes nasceram em outro contexto e sao refinados em workspace; o 
 
 **Invalido:** `docs(adr): record decision` (nem prefix nem marker).
 
+### R7.5 — Prefixos intake/feedback para stage 08 (R5.5)
+
+Mensagens de commit no stage 08 podem usar prefixos `intake:` ou `feedback:` como alternativa ao prefix `workspace NNN:`. Estes prefixos sao especificos da fase de feedback intake onde o workspace ja esta em fase terminal e o contexto e diferente de stages anteriores.
+
+**Valido:** `intake: stage 08 feedback coletado`, `feedback: close workspace`
+
+**Invalido:** `intake:` sem mensagem (vazio apos dois-pontos).
+
 ## Padroes regex exatos (R6.4)
 
 | Regra | Regex / Glob | Hook |
@@ -91,10 +103,17 @@ Razao: ADRs as vezes nasceram em outro contexto e sao refinados em workspace; o 
 | Branch workspace | `^workspace/[0-9]{3}-` | ambos |
 | Workspace ID extraction | `${branch#workspace/}` split em primeiro `-` | ambos |
 | Mensagem prefix | `^workspace [0-9]{3}: ` | commit-msg |
+| Intake/feedback prefix (stage 08) | `^(intake\|feedback): ` | commit-msg |
 | ADR file glob | `docs/decisions/*.md` | ambos |
+| Lessons file | `docs/lessons.md` | pre-commit |
+| Tech debt file | `docs/tech_debt.md` | pre-commit |
 | ADR mensagem marker | substring literal `(workspace NNN ` | commit-msg |
 | Stage output glob | `workspaces/<NNN-slug>/stages/<NN>/output/*` | pre-commit |
+| Workspace index | `workspaces/.index.md` | pre-commit |
+| Gitignore | `.gitignore` | pre-commit |
 | Rebase markers | `.git/rebase-merge/` ou `.git/rebase-apply/` | ambos |
+| Wave branch detect | `^wave-[0-9]+-[0-9]+/` | commit-msg |
+| Conventional Commit types | `^(feat\|fix\|refactor\|test\|docs\|chore\|perf\|ci\|build\|style\|revert)(\(.+\))?: .+` | commit-msg (R8 warning) |
 | Comment lines (msg) | `^#` | commit-msg (strip antes parse) |
 
 ## Como instalar
@@ -119,6 +138,29 @@ cp <skill-root>/templates/.git-hooks/pre-commit .git/hooks/pre-commit
 cp <skill-root>/templates/.git-hooks/commit-msg .git/hooks/commit-msg
 chmod +x .git/hooks/pre-commit .git/hooks/commit-msg
 ```
+
+## Wave branches (`wave-NNN-N/<task-slug>`)
+
+### R8 — Wave branch Conventional Commit warning
+
+Wave branches recebem **warning** (não bloqueio) via commit-msg hook R8 se a mensagem não segue Conventional Commits:
+
+```
+WARNING: wave branch detectada sem Conventional Commit.
+Recomendação: use formato "<type>: <descrição>" (feat, fix, test, etc).
+```
+
+Regex: `^(feat|fix|refactor|test|docs|chore|perf|ci|build|style|revert)(\(.+\))?: .+`
+
+Commits em wave branches usam **Conventional Commits padrão** sem prefix ICM:
+
+- Formato: `<type>: <descrição>`
+- Types: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`, `perf:`, `ci:`
+- Exemplos: `feat: add JWT validation`, `test: unit tests for auth middleware`
+
+Hooks ICM passam livremente em wave branches (R2/R5: branch não casa padrão workspace = exit 0). Isso é intencional — wave branches são escopo de código, não de state files. CI gate (lint, type-check, testes) substitui enforcement de hook.
+
+**Anti-pattern:** NÃO comitar state files (CONTEXT.md, _kickoff.md) em wave branches. State files pertencem à workspace branch.
 
 ## Bypass via `--no-verify` e anti-pattern
 

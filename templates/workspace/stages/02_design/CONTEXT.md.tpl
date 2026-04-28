@@ -37,15 +37,17 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
-| 11 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: existe se herdou ou foi acumulada |
-| 12 | {{PROJECT_ROOT}}/docs/tech_debt.md | L3 | condicional: existe se há débito declarado em iterações anteriores |
-| 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
+| 12 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: existe se herdou ou foi acumulada |
+| 13 | {{PROJECT_ROOT}}/docs/tech_debt.md | L3 | condicional: existe se há débito declarado em iterações anteriores |
+| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 
 ## Não Lê (negative constraint)
 
 - {{PROJECT_ROOT}}/src/ e {{PROJECT_ROOT}}/tests/ — design é output-driven a partir de discovery + ADRs; não inspeciona código existente. Se contexto de código for crítico, declarar dependência no plan.md (task com ADR de leitura) e revisitar 01.
 - ADRs não-listados pelo recon-report — só lê os indexados em 00 ou criados nesta sessão.
 - Outputs de estágios 03+ — não existem ainda.
+- {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md — lido como Input #11; NÃO re-ler de outras fontes.
 - Workspaces irmãos em {{PROJECT_ROOT}}/workspaces/<outro>/ — escopo é {{WORKSPACE}}.
 
 ## Read order
@@ -59,7 +61,9 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 7. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml + stop-points.md
 8. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md (schema obrigatório das tasks)
 9. Sumário superpowers writing-plans-200tok
-10. {{PROJECT_ROOT}}/docs/lessons.md + tech_debt.md (se existem)
+10. xp-conventions.md (naming, file limits, docstrings — fonte das constraints que plan.md declara por task)
+11. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md (se existe — handoff do estágio 01)
+12. {{PROJECT_ROOT}}/docs/lessons.md + tech_debt.md (se existem)
 
 ## Process
 
@@ -135,7 +139,7 @@ Ao concluir este estágio, sessão deve:
 
 2. **Renderizar `_kickoff.md`** no stage seguinte:
    - Path: `<workspace>/stages/03_wave_planner/_kickoff.md`
-   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
    - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
    - Corpo: prev_outputs com summary + prev_decisions + pending pra próximo stage
 

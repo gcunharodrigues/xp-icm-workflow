@@ -2,25 +2,27 @@
 
 > Detecção e reconstrução de workspaces ICM em estado inconsistente. Disparado em pre-flight check de sessão NOVA (humano explicitamente retomando), nunca por timer/cron.
 
+> **Path resolution:** todos os caminhos `scripts/` neste documento referem-se ao diretório `<SKILL_DIR>/scripts/`, onde `SKILL_DIR` está definido em L0 (`CLAUDE.md`). Em contexto de workspace, use o path absoluto `${SKILL_DIR}/scripts/<script>`.
+
 ## Quando dispara
 
-`scripts/recovery-wizard.py` é invocado:
+`<SKILL_DIR>/scripts/recovery-wizard.py` é invocado:
 
 1. **Bootstrap** detecta `<project_root>/workspaces/NNN-slug/` JÁ existente — pode ser retomada legítima ou estado órfão.
-2. **Pre-flight de cada sessão** (Q1.1) — antes de carregar L2, valida L1 via `scripts/validate-state.sh`. Heurísticas R2.7 → dispara wizard.
+2. **Pre-flight de cada sessão** (Q1.1) — antes de carregar L2, valida L1 via `${SKILL_DIR}/scripts/validate-state.sh`. Heurísticas R2.7 → dispara wizard.
 
 NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 
-## 6 inconsistências detectadas (R2.7 + R4.5)
+## 6 inconsistências detectadas (R2.7 + R4.5 + R6.6)
 
 | Code | Severidade | Causa | Detecção |
 |---|---|---|---|
 | `HASH_MISMATCH` | warning | `_config/profile-effective.yaml` editado fora do bootstrap | sha256 recomputado vs `profile_effective_hash` em L0 |
 | `MISSING_OUTPUT` | warning | output declarado em `history` ausente no FS | regex `stages/\d{2}\w*/output/.+\.md` em items de history; check existe |
 | `STALE_IN_PROGRESS` | warning | sessão crashou ou foi abandonada | `status: IN_PROGRESS` E sem commit em `workspaces/NNN/*` últimas 24h |
-| `MISSING_COMMIT` | critical | rebase eliminou o commit referenciado | `git cat-file -e <last_transition.commit_sha>` falha |
-| `MISSING_WORKTREES` | critical | wave declarada sem worktrees no FS | `waves.current=N` E `<project_root>/.worktrees/workspace-NNN/wave-N/` ausente |
+| `MISSING_COMMIT` | critical | merge/force push eliminou o commit referenciado | `git cat-file -e <last_transition.commit_sha>` falha |
 | `BRANCH_MISSING` | critical | humano deletou `workspace/NNN-slug` | `git branch --list workspace/NNN-slug` vazio |
+| `BOOTSTRAP_PARTIAL` | critical | bootstrap crashou entre scaffold commit e hook install | workspace dir existe E scaffold commitado E hooks ausentes em `.git/hooks/` |
 
 ## 3 ações por inconsistência
 
@@ -30,13 +32,13 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `MISSING_OUTPUT` | append `recovery_warning` em history (preserva append-only) | rollback ao `last_transition` antes do output sumir | mark `BLOCKED_ERROR` |
 | `STALE_IN_PROGRESS` | append `recovery_applied` em history + status `COMPLETED_AWAITING_HUMAN` | mesmo que A | mark `BLOCKED_ERROR` |
 | `MISSING_COMMIT` | rollback `last_transition` pro penúltimo válido em history | mesmo que A | mark `BLOCKED_ERROR` |
-| `MISSING_WORKTREES` | recria placeholder + warning | rollback `waves.current` pro último completed | mark `BLOCKED_ERROR` |
 | `BRANCH_MISSING` | append `recovery_warning` com sugestão `git reflog \| grep workspace/NNN` | mesmo que A | mark `BLOCKED_ERROR` (manual) |
+| `BOOTSTRAP_PARTIAL` | instalar hooks via `git-hook-installer.sh` + `context-check.sh` | rollback: `git reset --soft HEAD~1` e re-executar bootstrap | mark `BLOCKED_ERROR` |
 
 **Múltiplas inconsistências:** wizard agrupa por código e aplica em batch na ordem canônica:
 
 ```
-HASH → MISSING_COMMIT → MISSING_OUTPUT → STALE → MISSING_WORKTREES → BRANCH_MISSING
+HASH → BOOTSTRAP_PARTIAL → MISSING_COMMIT → MISSING_OUTPUT → STALE → BRANCH_MISSING
 ```
 
 Cada apply faz append em `history`:
@@ -54,13 +56,13 @@ Cada apply faz append em `history`:
 
 ```bash
 # Audit only (sem modificar)
-python scripts/recovery-wizard.py --workspace <path> --dry-run
+python <SKILL_DIR>/scripts/recovery-wizard.py --workspace <path> --dry-run
 
 # Interactive: imprime plano, lê stdin pra escolha A/B/C
-python scripts/recovery-wizard.py --workspace <path>
+python <SKILL_DIR>/scripts/recovery-wizard.py --workspace <path>
 
 # Não-interactive: aplica plan direto
-python scripts/recovery-wizard.py --workspace <path> --apply A
+python <SKILL_DIR>/scripts/recovery-wizard.py --workspace <path> --apply A
 ```
 
 **Exit codes:**
@@ -71,7 +73,7 @@ python scripts/recovery-wizard.py --workspace <path> --apply A
 ## UX exemplo (interactive)
 
 ```
-$ python scripts/recovery-wizard.py --workspace ~/projects/aura/workspaces/042-feat-auth
+$ python <SKILL_DIR>/scripts/recovery-wizard.py --workspace ~/projects/aura/workspaces/042-feat-auth
 
 🔍 Workspace: 042-feat-auth
 🔍 Inconsistências detectadas: 2
@@ -134,7 +136,7 @@ Humano decide.
 @dataclass(frozen=True)
 class Inconsistency:
     code: str        # "HASH_MISMATCH" | "MISSING_OUTPUT" | "STALE_IN_PROGRESS"
-                     # | "MISSING_COMMIT" | "MISSING_WORKTREES" | "BRANCH_MISSING"
+                     # | "MISSING_COMMIT" | "BRANCH_MISSING" | "BOOTSTRAP_PARTIAL"
     message: str     # mensagem humana específica
     proposed_action: str  # ação A sugerida em prosa curta
     severity: str    # "critical" | "warning"
@@ -145,8 +147,8 @@ class Inconsistency:
 
 | Componente | Como interage |
 |---|---|
-| `scripts/validate-state.sh` | Pre-flight call. Falha → dispara wizard. |
-| `scripts/bootstrap.sh` | Detecta workspace dir existente → invoca wizard antes de criar novo. |
+| `<SKILL_DIR>/scripts/validate-state.sh` | Pre-flight call. Falha → dispara wizard. |
+| `<SKILL_DIR>/scripts/bootstrap.sh` | Detecta workspace dir existente → invoca wizard antes de criar novo. |
 | Pre-commit hook | Wizard NÃO bypass. Recovery commits passam pelo hook normal. |
 | L1 history | Wizard SEMPRE append `recovery_applied` ou `recovery_warning`. |
 | `references/state-machine-schema.md` | Wizard respeita schema canônico em qualquer modificação. |

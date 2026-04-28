@@ -44,7 +44,7 @@ CANONICAL_SUB_STAGE = {
 
 ALLOWED_PLACEHOLDERS = {
     # bootstrap.py canonical set
-    "WORKSPACE", "PROFILE", "TIER", "PROJECT_ROOT", "BASE_BRANCH",
+    "WORKSPACE", "WORKSPACE_NUM", "PROFILE", "TIER", "PROJECT_ROOT", "BASE_BRANCH",
     "LOGS_ROOT", "PROFILE_EFFECTIVE_HASH", "CREATED_AT", "SKILL_VERSION",
     "BOOTSTRAP_COMMIT_SHA",
     # extras úteis em L2 templates (skill-resolved no bootstrap)

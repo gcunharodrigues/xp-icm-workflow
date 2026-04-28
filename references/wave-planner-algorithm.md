@@ -3,9 +3,10 @@
 > **Versão:** v3.0.0-beta1
 > **Skill:** `xp-icm-workflow`
 > **Estágio:** `03 wave_planner`
-> **Propósito:** documento canônico do algoritmo Wave Planner. Formaliza o pipeline determinístico baseline (Sessão 2 do estágio 03, já implementado em `scripts/wave-planner-script.py`) **+** o LLM review subagent (R2.4) que valida o DAG antes do gate humano.
+> **Path resolution:** caminhos `scripts/` neste documento referem-se a `<SKILL_DIR>/scripts/`, onde `SKILL_DIR` está definido em L0 (`CLAUDE.md`).
+> **Propósito:** documento canônico do algoritmo Wave Planner. Formaliza o pipeline determinístico baseline (Sessão 2 do estágio 03, já implementado em `<SKILL_DIR>/scripts/wave-planner-script.py`) **+** o LLM review subagent (R2.4) que valida o DAG antes do gate humano.
 
-> **Decisões de origem:** Q7 (DAG por footprint + worktrees), Q17 (cap por tier/profile), Q18 (LLM review SEMPRE), E3 (sub-waves), F2 (skip wave-reviewer 1-task), R2.4 (LLM review subagent via Task tool).
+> **Decisões de origem:** Q7 (DAG por footprint + branches isoladas), Q17 (cap por tier/profile), Q18 (LLM review SEMPRE), E3 (sub-waves), F2 (skip wave-reviewer 1-task), R2.4 (LLM review subagent via Task tool).
 
 > **Status:** o pipeline determinístico está validado por `tests/unit/test_wave_planner_dag.py` (33 tests verde). LLM review subagent é wave 4 da reescrita; tests com mocks em `tests/mocks/llm_review_responses/`.
 
@@ -21,7 +22,7 @@
 CLI determinístico:
 
 ```bash
-python scripts/wave-planner-script.py \
+python <SKILL_DIR>/scripts/wave-planner-script.py \
   --plan stages/02_design/output/plan.md \
   --tier development \
   --profile app_web_backend \
@@ -171,7 +172,7 @@ plan_source: stages/02_design/output/plan.md
 profile: app_web_backend
 tier: development
 workspace: 042-feat-auth
-cap_teammates_per_wave: 5
+cap_subagentes_per_wave: 5
 total_tasks: 4
 total_waves: 2
 total_sub_waves: 2
@@ -208,11 +209,11 @@ llm_review_iterations: 1
 
 Lead da fase 04 pode reduzir o cap **mid-wave** se observar drift:
 
-- 3 ciclos travados sem convergência de algum teammate;
-- idle waiting prolongado (mailbox sem progresso);
+- 3 ciclos travados sem convergência de algum subagente;
+- idle waiting prolongado (saída do Agent tool sem progresso);
 - orçamento de tokens crescendo desproporcional.
 
-Ação: encerra wave parcial com `BLOCKED_ERROR` + snapshot pra humano. Detalhamento em `references/agent-team-protocol.md` (sibling).
+Ação: encerra wave parcial com `BLOCKED_ERROR` + snapshot pra humano. Detalhamento em `references/subagent-protocol.md` (sibling).
 
 ---
 

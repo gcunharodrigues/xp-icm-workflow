@@ -7,6 +7,7 @@ Runtime e setup necessários para rodar a skill e sua suite de testes.
 - **Python 3.11+** (testado em 3.13)
 - **bash POSIX** — Linux/macOS nativo; Windows via Git for Windows / Git Bash
 - **git 2.30+**
+- **jq** — processamento JSON no hook `context-check.sh` (threshold de contexto)
 - **bats** — CI-only (instalado via `apt`); opcional em ambiente local
 
 ## Setup local
@@ -37,7 +38,7 @@ Para reduzir prompts de permissão durante a execução da skill, adicione ao
       "Bash(git log *)",
       "Bash(git branch *)",
       "Bash(git rev-parse *)",
-      "Bash(git worktree *)",
+      "Bash(git worktree *)",  # kept for potential future use; subagents no longer require worktrees
       "Bash(git checkout *)",
       "Bash(git stash *)",
       "Bash(bash scripts/*)",
@@ -50,6 +51,23 @@ Para reduzir prompts de permissão durante a execução da skill, adicione ao
 Se o bootstrap detectar que essas permissions estão ausentes, ele imprime esse
 snippet para o humano colar manualmente. A skill nunca edita `settings.json`
 silenciosamente.
+
+## Context checkpoint hook (anti-compact)
+
+O bootstrap instala automaticamente:
+
+- **`<project_root>/workspaces/<NNN-slug>/.claude/hooks/context-check.sh`** — hook `PostToolUse` que
+  detecta quando o contexto da sessão atinge ≥70%. Dispara alerta obrigatório
+  de handoff antecipado conforme protocolo ICM (`references/session-handoff-protocol.md`).
+- **Registro em `<project_root>/.claude/settings.local.json`** — chave
+  `hooks.PostToolUse` apontando para `bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh`.
+
+O hook lê o transcript de `~/.claude/projects/` diretamente (independente do
+statusline), calcula percentual de contexto, e emite alerta com cooldown de 60s.
+Threshold: 70% — margem para completar handoff antes do compact real (~90%).
+
+**Dependência:** `jq` deve estar no PATH. O hook falha silenciosamente se `jq`
+não estiver disponível (não bloqueia a sessão, apenas não emite alertas).
 
 ## Cross-platform notes (I2)
 

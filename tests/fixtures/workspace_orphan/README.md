@@ -17,7 +17,6 @@ mute esses arquivos no lugar.
 
 ## Inconsistencias NAO ilustradas pela fixture
 
-- `MISSING_WORKTREES` — exige `stage_atual >= 04` e `waves` declarado. Testado programaticamente.
 - `BRANCH_MISSING` — exige repo git real. Testado programaticamente.
 
 ## Estrutura

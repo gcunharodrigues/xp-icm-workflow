@@ -285,7 +285,7 @@ def test_plan_waves_canonical_topology():
         profile="app_web_backend",
     )
     assert result["total_tasks"] == 8
-    assert result["cap_teammates_per_wave"] == 5
+    assert result["cap_subagents_per_wave"] == 5
 
     # Wave 1: tasks sem deps + sem file conflict que as ponha mais tarde.
     # auth-routes-v2 conflita com auth-routes => so vai depois de auth-routes
@@ -324,7 +324,7 @@ def test_plan_waves_subdivides_when_cap_exceeded(tmp_path):
         profile="cli_tool",
     )
     assert result["total_tasks"] == 7
-    assert result["cap_teammates_per_wave"] == 3
+    assert result["cap_subagents_per_wave"] == 3
     # Uma unica wave logica, mas tres sub-waves
     assert len(result["waves"]) == 1
     assert len(result["waves"][0]) == 3
@@ -395,7 +395,7 @@ def test_render_wave_plan_has_yaml_frontmatter():
     fm = yaml.safe_load(rendered[4:closing])
     assert fm["tier"] == "development"
     assert fm["profile"] == "app_web_backend"
-    assert fm["cap_teammates_per_wave"] == 5
+    assert fm["cap_subagents_per_wave"] == 5
     assert fm["total_tasks"] == 8
     assert fm["llm_review"] == "PENDING"
     assert fm["llm_review_iterations"] == 0

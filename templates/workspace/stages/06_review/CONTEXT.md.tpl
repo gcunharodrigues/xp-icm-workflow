@@ -11,7 +11,7 @@ applicable_stop_points:
   - "adr_drift"
 output_files:
   - "output/review-report.md"
-  - "output/p0-p1-issues.md"
+  - "output/p0-p1-issues.md"  # condicional: somente se houver P0/P1
 next_stage: "07"
 ---
 
@@ -31,9 +31,10 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
 | 6 | {{PROJECT_ROOT}}/docs/decisions/ | L3 | condicional: ler ADRs referenciados em plan.md (sample-check, não conteúdo total) |
 | 7 | {{PROJECT_ROOT}}/docs/tech_debt.md | L3 | condicional: existe se tier ≠ experimental — append novos P2/P3 aqui |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
-| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/requesting-code-review-200tok.md | L3 | sim |
-| 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/receiving-code-review-200tok.md | L3 | sim |
-| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
+| 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/requesting-code-review-200tok.md | L3 | sim |
+| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/receiving-code-review-200tok.md | L3 | sim |
+| 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 
 ## Não Lê (negative constraint)
 
@@ -51,9 +52,11 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
 5. plan.md (intenção declarada — base para comparar com entrega)
 6. ADRs referenciados (sample)
 7. xp-conventions.md (padrões do projeto)
-8. tech_debt.md existente (se presente — para evitar duplicação)
-9. Sumários superpowers (requesting + receiving code review)
-10. Files touched declarados em plan.md tasks (somente esses, não árvore inteira)
+8. stop-points.md (thresholds por tier para over_eng, pii, adr_drift)
+9. tech_debt.md existente (se presente — para evitar duplicação)
+10. Sumários superpowers (requesting + receiving code review)
+11. Files touched declarados em plan.md tasks (somente esses, não árvore inteira)
+12. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md (se existe — handoff do estágio 05)
 
 ## Process
 
@@ -152,7 +155,7 @@ Ao concluir este estágio, sessão deve:
 2. **Renderizar `_kickoff.md`** no destino seguinte:
    - Sem P0/P1: `<workspace>/stages/07_merge/_kickoff.md`
    - Loopback (P0/P1): `<workspace>/stages/04_implementation_waves/_kickoff.md` (com `prev_outputs` incluindo `p0-p1-issues.md` + nota de fix loop em `pending_for_this_stage`)
-   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
    - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
    - Corpo: prev_outputs com summary + prev_decisions + pending pra próxima sessão
 

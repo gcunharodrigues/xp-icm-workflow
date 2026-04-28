@@ -13,7 +13,7 @@ next_stage: "04"
 
 # Estágio 03 — wave_planner (L2)
 
-Roda o wave-planner determinístico em cima do `plan.md` da fase 02 design. Constrói DAG por dependências explícitas e file footprint, particiona tasks em waves topológicas respeitando o cap de teammates por tier (2/3/5/5), e escreve `wave-plan.md` com lista de branches a criar para a fase 04. Estágio é determinístico: ciclos no plano viram `BLOCKED_ERROR`, não stop point.
+Roda o wave-planner determinístico em cima do `plan.md` da fase 02 design. Constrói DAG por dependências explícitas e file footprint, particiona tasks em waves topológicas respeitando o cap de subagentes por tier (2/3/5/5), e escreve `wave-plan.md` com lista de branches a criar para a fase 04. Estágio é determinístico: ciclos no plano viram `BLOCKED_ERROR`, não stop point.
 
 ## Inputs (lê SOMENTE estes, na ordem)
 
@@ -42,6 +42,7 @@ Roda o wave-planner determinístico em cima do `plan.md` da fase 02 design. Cons
 4. plan.md (entrada principal — schema 4-block + Files touched + Depends on)
 5. profile-effective.yaml (cap por tier/profile)
 6. dispatching-parallel-agents-200tok.md (sumário superpowers)
+7. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/_kickoff.md (se existe — handoff do estágio 02)
 
 ## Process
 
@@ -110,7 +111,7 @@ Ao concluir este estágio, sessão deve:
 
 2. **Renderizar `_kickoff.md`** no stage seguinte:
    - Path: `<workspace>/stages/04_implementation_waves/_kickoff.md`
-   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
    - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
    - Corpo: prev_outputs com summary + prev_decisions + pending pra próximo stage (incluindo wave 1 a executar)
 

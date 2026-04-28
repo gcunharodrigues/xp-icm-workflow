@@ -331,7 +331,7 @@ def plan_waves(*, plan_path: Path, tier: str, profile: str) -> dict:
 
     Retorna dict com:
       - tasks: lista de Task
-      - cap_teammates_per_wave
+      - cap_subagents_per_wave
       - waves: list[list[list[str]]]   waves -> sub_waves -> slugs
       - total_tasks, total_waves, total_sub_waves
       - ambiguities: list[str]
@@ -350,7 +350,7 @@ def plan_waves(*, plan_path: Path, tier: str, profile: str) -> dict:
         "tasks": tasks,
         "tier": tier,
         "profile": profile,
-        "cap_teammates_per_wave": cap,
+        "cap_subagents_per_wave": cap,
         "waves": sub,
         "total_tasks": len(tasks),
         "total_waves": len(sub),
@@ -381,7 +381,7 @@ def render_wave_plan(result: dict, *, plan_source: str, workspace: str) -> str:
         "plan_source": plan_source,
         "tier": result["tier"],
         "profile": result["profile"],
-        "cap_teammates_per_wave": result["cap_teammates_per_wave"],
+        "cap_subagents_per_wave": result["cap_subagents_per_wave"],
         "total_tasks": result["total_tasks"],
         "total_waves": result["total_waves"],
         "total_sub_waves": result["total_sub_waves"],

@@ -54,6 +54,7 @@ Gate de iteração universal do ciclo ICM. Workspace transita pra cá automatica
 5. Outputs anteriores (sample-check existência por estágio que rodou — respeita `stages_skipped` do profile)
 6. {{LOGS_ROOT}} (sample 30 dias, se aplicável)
 7. {{PROJECT_ROOT}}/docs/lessons.md (somente leitura aqui — append acontece em saída A)
+8. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md (se existe — handoff do estágio 07)
 
 ## Process
 
@@ -109,8 +110,7 @@ Transições:
 
 - `IN_PROGRESS` — coletando logs/feedback, escrevendo intake-report, ou aguardando escolha humana A/B/C. Também é o status final em saída B (no estágio X de retorno).
 - `COMPLETED` — saída A (workspace fechado, lições appended) ou saída C (workspace fechado com `spawn_to` set).
-- `BLOCKED_STOP_POINT` — raro; só dispara via stop point 11 `workspace_corrupt` se pré-condição falhar.
-- `BLOCKED_ERROR` — `intake-report.md` não escreve (disco cheio, permissão), pre-commit hook rejeita, ou humano interrompe antes de decidir A/B/C (status fica `IN_PROGRESS` em `08_in_progress`; próxima sessão retoma).
+- `BLOCKED_ERROR` — `workspace_corrupt` detectado no pre-flight, `intake-report.md` não escreve (disco cheio, permissão), pre-commit hook rejeita, ou humano interrompe antes de decidir A/B/C (status fica `IN_PROGRESS` em `08_in_progress`; próxima sessão retoma).
 
 ## Stop points aplicáveis
 
@@ -234,7 +234,7 @@ Detalhamento por saída:
 4. **Renderizar `_kickoff.md`** em `<workspace>/stages/<XX>_<name>/_kickoff.md`:
    - `prev_outputs` herda do `intake-report.md` (sumário das lições + 4 blocos de feedback)
    - `pending_for_this_stage`: pontos do feedback que motivaram o restart
-   - Use `python scripts/handoff.py render`
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render`
 5. Commit atômico (prefix `intake:` ou `feedback:`):
    ```
    intake: workspace <NNN> restart fase <XX> (saida B, iteration <N+1>) + kickoff

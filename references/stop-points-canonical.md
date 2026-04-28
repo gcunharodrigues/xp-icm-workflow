@@ -1,6 +1,7 @@
 # Stop Points canônicos
 
 > **Versão:** v3.0.0-beta1
+> **Path resolution:** caminhos `scripts/` neste documento referem-se a `<SKILL_DIR>/scripts/`, onde `SKILL_DIR` está definido em L0 (`CLAUDE.md`).
 > **Propósito:** lista canônica dos 12 stop points da skill `xp-icm-workflow` + thresholds calibrados por tier para itens 5/7/8 + template padronizado de menu A/B/C + protocolo de update do L1.
 
 Resolução **Q5** do plan: lista fixa de 12 stops; itens 5, 7, 8 calibrados por tier conforme `templates/_config/profile-matrix.md` (chaves `stop_points_calibration.item_5/7/8`); demais 9 sempre `hard` em qualquer tier.
@@ -132,7 +133,7 @@ Inconsistência entre L1 (CONTEXT.md frontmatter) e estado real do filesystem.
 - **Sinais:**
   - Pre-flight check detecta hash mismatch, outputs ausentes, commit_sha sumido (ver §Heurísticas em `references/state-machine-schema.md`).
   - L1 diz `IN_PROGRESS` mas sem commits em workspace há > 24h.
-  - `waves.current=N` sem `.worktrees/wave-N/` correspondente.
+  - `waves.current=N` sem branches `wave-N/<task>` correspondentes.
 - **Trade-offs típicos:** retomar via Recovery Wizard vs abandonar workspace vs spawn novo workspace.
 - **Nota:** este stop point é especial — sempre dispara `hard` e propõe Recovery Wizard direto, não menu A/B/C livre.
 
@@ -150,7 +151,7 @@ Profile/tier escolhido no bootstrap não corresponde ao escopo real da task em c
 
 ## 2. Thresholds calibrados por tier (itens 5, 7, 8)
 
-Source: `templates/_config/profile-matrix.md` (chaves `stop_points_calibration.item_5`, `item_7`, `item_8`). Em caso de divergência, `scripts/profile-merge.py` é a fonte da verdade operacional.
+Source: `templates/_config/profile-matrix.md` (chaves `stop_points_calibration.item_5`, `item_7`, `item_8`). Em caso de divergência, `<SKILL_DIR>/scripts/profile-merge.py` é a fonte da verdade operacional.
 
 | Item | experimental | tool | development | production |
 |---|---|---|---|---|
@@ -252,7 +253,7 @@ Humano responde no chat com `A`, `B`, `C` ou texto livre. Sessão:
 
 Override em `.icm-profile.local.yaml` campo `custom_stop_points` (schema completo em `templates/_config/profile-matrix.md`). Lista adicional projeto-específica. Cada item exige `id`, `description`, `threshold` (dict tier→modo).
 
-Bootstrap (`scripts/profile-merge.py`) valida schema e bootstrap inclui custom stops em `recon-report.md` para visibilidade. Sessões consultam tanto a lista canônica quanto `custom_stop_points` do profile efetivo.
+Bootstrap (`<SKILL_DIR>/scripts/profile-merge.py`) valida schema e bootstrap inclui custom stops em `recon-report.md` para visibilidade. Sessões consultam tanto a lista canônica quanto `custom_stop_points` do profile efetivo.
 
 ---
 

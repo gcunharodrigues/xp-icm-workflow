@@ -27,7 +27,7 @@ Lista canônica de 12 stop points + thresholds resolvidos para o tier deste work
 | 8 | `pii` | PII/dados sensíveis (LGPD, ofuscação) — **calibrado** |
 | 9 | `prod_migration` | Migration de schema com dados em prod |
 | 10 | `adr_drift` | Stack que difere do declarado em ADR existente |
-| 11 | `workspace_corrupt` | Workspace ICM corrupted (L1/L2 inconsistentes) |
+| 11 | `wave_branch_missing` | Wave branch ausente (branch esperada não encontrada no repositório) |
 | 12 | `profile_mismatch` | Profile/tier inconsistente com escopo da task |
 
 ---
@@ -167,17 +167,17 @@ Plan diverge de ADR existente.
   - ADR não foi superseded formalmente.
 - **Trade-offs típicos:** manter ADR (custo de cumprir) vs superseder (custo de re-justificar) vs convivência híbrida (custo de divergência).
 
-### 11. `workspace_corrupt` — Workspace corrupted
+### 11. `wave_branch_missing` — Wave branch ausente
 
 **Modo neste tier:** `hard` (sempre)
 
-Inconsistência entre L1 (CONTEXT.md frontmatter) e estado real do filesystem.
+Branch de wave esperida não encontrada no repositório local.
 
 - **Sinais:**
   - Pre-flight check detecta hash mismatch, outputs ausentes, commit_sha sumido.
   - L1 diz `IN_PROGRESS` mas sem commits em workspace há > 24h.
-  - `waves.current=N` sem `.worktrees/wave-N/` correspondente.
-- **Trade-offs típicos:** retomar via Recovery Wizard vs abandonar workspace vs spawn novo workspace.
+  - `waves.current=N` sem branch `wave-N` correspondente no repositório.
+- **Trade-offs típicos:** recriar branch a partir do SHA registrado no L1 vs abandonar workspace vs spawn novo workspace.
 - **Nota:** este stop point é especial — sempre dispara `hard` e propõe Recovery Wizard direto, não menu A/B/C livre.
 
 ### 12. `profile_mismatch` — Profile/tier inconsistente
@@ -295,7 +295,7 @@ Tabela de aplicabilidade típica. `n/a` significa que o estágio raramente dispa
 
 | Estágio | Stops mais comuns |
 |---|---|
-| 00 recon | 11 (`workspace_corrupt`), 12 (`profile_mismatch`) |
+| 00 recon | 11 (`wave_branch_missing`), 12 (`profile_mismatch`) |
 | 01 discovery | 1 (`stack`), 3 (`external_api`), 5 (`paid_service`), 8 (`pii`) |
 | 02 design | 1, 2 (`db`), 4 (`new_dep`), 5, 6 (`irreversible`), 7 (`over_eng`), 8, 10 (`adr_drift`) |
 | 03 wave_planner | n/a (wave-planner é determinístico — gap-fill se aplicável) |

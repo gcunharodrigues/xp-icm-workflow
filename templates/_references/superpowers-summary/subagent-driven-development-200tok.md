@@ -9,7 +9,7 @@ purpose: Executar plano com subagent fresco por tarefa e revisão em duas etapas
 
 ## Quando aplicar
 - Há plano de implementação escrito, tarefas independentes, execução na mesma sessão.
-- Casa com a fase 04 `implementation_waves` quando o Wave Planner liberou um agent team. Ver `references/agent-team-protocol.md` para regras locais (worktrees, isolamento, contratos 4-bloco).
+- Casa com a fase 04 `implementation_waves` quando o Wave Planner liberou subagentes. Ver `references/subagent-protocol.md` para regras locais (Agent tool, isolamento, contratos 4-bloco).
 
 ## Princípio
 Subagent novo por tarefa + revisão em duas etapas (spec compliance → qualidade de código) = alta qualidade, iteração rápida.
@@ -36,4 +36,4 @@ Use o modelo mais barato que aguenta o papel: mecânico → cheap; integração 
 Pular review, rodar code quality antes do spec OK, fazer subagent ler o plano (passe texto completo), aceitar issues abertas para próxima tarefa.
 
 ## Escape hatch
-Se complexidade exceder este sumário (coordenação multi-agent não trivial, conflitos de worktree, plano ambíguo) → invocar `superpowers:subagent-driven-development` formal.
+Se complexidade exceder este sumário (coordenação multi-agent não trivial, conflitos de branch, plano ambíguo) → invocar `superpowers:subagent-driven-development` formal.

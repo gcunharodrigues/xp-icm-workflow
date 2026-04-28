@@ -26,11 +26,13 @@ A `profile-matrix.md` declara `stages_skipped` por profile. `experiment` lista `
 
 ## Pré-condição
 
-Workspace deve estar em `status: COMPLETED` (fase 07 já concluída, ou fase 08 anterior decidiu A/C).
+Workspace deve estar em `status: COMPLETED_AWAITING_HUMAN` (fase 07 já concluída, aguardando humano) ou `status: COMPLETED` (fase 08 anterior decidiu A/C e workspace reaberto).
 
 Se status indefinido ou inconsistente → Stop point 11 (`workspace_corrupt`) → Recovery Wizard.
 
-Se status ∈ {`IN_PROGRESS`, `BLOCKED_*`, `COMPLETED_AWAITING_HUMAN`} → sessão recusa fase 08 com mensagem: "workspace ainda não foi concluído (fase 07). Termine o ciclo principal antes de rodar feedback intake."
+Se status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → sessão recusa fase 08 com mensagem: "workspace ainda não foi concluído (fase 07). Termine o ciclo principal antes de rodar feedback intake."
+
+Se status = `COMPLETED_AWAITING_HUMAN` → válido, prosseguir (transição automática de 07).
 
 ---
 

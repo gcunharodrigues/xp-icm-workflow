@@ -21,6 +21,7 @@ import re
 import shutil
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 from typing import Any
 
@@ -28,7 +29,7 @@ from typing import Any
 # Constantes
 # ============================================================================
 
-SKILL_VERSION = "3.0.0-beta1"  # template prepends `v`
+SKILL_VERSION = "3.0.0-beta4"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
@@ -48,13 +49,31 @@ STAGES: tuple[str, ...] = (
     "08_feedback_intake",
 )
 
+STAGE_NAMES: dict[int, str] = {
+    0: "recon",
+    1: "discovery",
+    2: "design",
+    3: "wave_planner",
+    4: "implementation_waves",
+    5: "verification",
+    6: "review",
+    7: "merge",
+    8: "feedback_intake",
+}
+
 GITIGNORE_LINES: tuple[str, ...] = (
-    ".worktrees/",
     ".icm-profile.local.yaml",
     "__pycache__/",
     ".pytest_cache/",
     ".coverage",
 )
+
+
+def yaml_safe_list(items: list[str]) -> str:
+    """Render list[str] as YAML flow sequence for frontmatter: ``[item1, item2]``."""
+    if not items:
+        return "[]"
+    return "[" + ", ".join(f'"{i}"' for i in items) + "]"
 
 INDEX_HEADER = (
     "# Workspaces index\n"
@@ -351,13 +370,30 @@ def _create_workspace_branch(project_root: Path, branch: str, base: str) -> None
     _run_git(["checkout", "-b", branch, base], cwd=project_root)
 
 
-def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path) -> None:
-    """Cria stages/00..08, _config/ (com profile-matrix), _references/ vazias."""
+def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root: Path) -> None:
+    """Cria stages/00..08 (com output/), _config/, _references/, docs/decisions/, docs/lessons.md stub."""
     workspace_dir.mkdir(parents=True, exist_ok=False)
     stages = workspace_dir / "stages"
     stages.mkdir()
     for s in STAGES:
         (stages / s).mkdir()
+        (stages / s / "output").mkdir()
+
+    # docs/decisions/, lessons.md stub e tech_debt.md stub no project_root
+    decisions_dir = project_root / "docs" / "decisions"
+    decisions_dir.mkdir(parents=True, exist_ok=True)
+    lessons_file = project_root / "docs" / "lessons.md"
+    if not lessons_file.exists():
+        lessons_file.write_text(
+            "# Lessons Learned\n\nRegisto append-only de lições por workspace e iteração.\n\n",
+            encoding="utf-8",
+        )
+    tech_debt_file = project_root / "docs" / "tech_debt.md"
+    if not tech_debt_file.exists():
+        tech_debt_file.write_text(
+            "# Tech Debt\n\nRegisto append-only de débitos técnicos. Cada item: workspace+task de origem, severidade P2/P3, descrição.\n\n",
+            encoding="utf-8",
+        )
 
     config_dir = workspace_dir / "_config"
     config_dir.mkdir()
@@ -376,17 +412,18 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path) -> None:
 
     runtime_dst = refs_dir / "runtime"
     runtime_dst.mkdir(parents=True)
-    # Copia subset de references/ que sao consumidos em runtime pelos teammates
+    # Copia subset de references/ que sao consumidos em runtime pelos subagentes
     # (R2.5 do plan). Skill formal em references/ continua sendo a fonte; workspace
     # ganha copia self-contained pra continuar trabalhando se skill mudar.
     runtime_refs = (
-        "agent-team-protocol.md",
+        "subagent-protocol.md",
         "wave-planner-algorithm.md",
         "state-machine-schema.md",
         "recovery-wizard.md",
         "stop-points-canonical.md",
         "4-block-contract-template.md",
         "feedback-intake-fase08.md",
+        "session-handoff-protocol.md",
     )
     refs_src = skill_root / "references"
     for fname in runtime_refs:
@@ -453,10 +490,177 @@ def _install_hooks(project_root: Path, skill_root: Path) -> None:
             shutil.copy2(src, dst)
             try:
                 os.chmod(dst, 0o755)
-            except OSError:
-                pass
+            except OSError as _chmod_exc:
+                # Windows não suporta permissão executável — Git Bash resolve
+                # via ACL, mas os.chmod é silently ignored. Log warning apenas
+                # se NÃO for Windows (erro inesperado em POSIX).
+                if os.name != "nt":
+                    sys.stderr.write(
+                        f"warning: falha ao tornar hook executável: {dst}: {_chmod_exc}\n"
+                    )
         except OSError as exc:
             sys.stderr.write(f"warning: falha ao instalar hook {hook}: {exc}\n")
+
+
+def _install_context_hook(project_root: Path, skill_root: Path, workspace: str) -> None:
+    """Idempotente: instala context-check.sh hook + registro em settings.local.json.
+
+    Cria workspaces/<workspace>/.claude/hooks/context-check.sh copiando do template
+    da skill e registra como PostToolUse hook em
+    workspaces/<workspace>/.claude/settings.local.json.
+
+    O hook e seu registro vivem dentro do workspace (ICM: workspace e self-contained).
+    O command registrado usa path relativo ao workspace: bash .claude/hooks/context-check.sh
+
+    Se settings.local.json do workspace nao existe, cria com estrutura minima.
+    Se ja existe, adiciona o hook sem duplicar.
+    """
+    workspace_dir = project_root / "workspaces" / workspace
+    hooks_dir = workspace_dir / ".claude" / "hooks"
+    try:
+        hooks_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        sys.stderr.write(f"warning: nao foi possivel criar {hooks_dir}: {exc}\n")
+        return
+
+    src_hook = skill_root / "templates" / ".claude" / "hooks" / "context-check.sh"
+    dst_hook = hooks_dir / "context-check.sh"
+
+    if not src_hook.exists():
+        sys.stderr.write(f"warning: context-check.sh template ausente: {src_hook}\n")
+        return
+
+    try:
+        shutil.copy2(src_hook, dst_hook)
+        try:
+            os.chmod(dst_hook, 0o755)
+        except OSError as _chmod_exc2:
+            if os.name != "nt":
+                sys.stderr.write(
+                    f"warning: falha ao tornar hook executável: {dst_hook}: {_chmod_exc2}\n"
+                )
+    except OSError as exc:
+        sys.stderr.write(f"warning: falha ao instalar context-check.sh: {exc}\n")
+        return
+
+    # Registrar hook em workspaces/<workspace>/.claude/settings.local.json
+    # Path relativo ao workspace (onde Claude Code resolve o command)
+    hook_command = "bash .claude/hooks/context-check.sh"
+    settings_path = workspace_dir / ".claude" / "settings.local.json"
+    hook_entry = {
+        "matcher": "",
+        "hooks": [{"type": "command", "command": hook_command}],
+    }
+
+    settings: dict[str, Any] = {}
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+            if not isinstance(settings, dict):
+                settings = {}
+        except (json.JSONDecodeError, OSError):
+            settings = {}
+
+    # Adicionar PostToolUse hook sem duplicar
+    post_tool_hooks = settings.get("hooks", {}).get("PostToolUse", [])
+    already_exists = any(
+        isinstance(entry, dict)
+        and entry.get("hooks") == hook_entry["hooks"]
+        and entry.get("matcher") == ""
+        for entry in post_tool_hooks
+    )
+    if not already_exists:
+        post_tool_hooks.append(hook_entry)
+        if "hooks" not in settings:
+            settings["hooks"] = {}
+        settings["hooks"]["PostToolUse"] = post_tool_hooks
+
+        try:
+            settings_path.parent.mkdir(parents=True, exist_ok=True)
+            settings_path.write_text(
+                json.dumps(settings, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            sys.stderr.write(f"warning: falha ao escrever settings.local.json: {exc}\n")
+
+    # Cleanup: remove hook legado de project_root/.claude/ se existir.
+    # Bootstrap antigo (pre-v3.1) instalava em project_root/.claude/hooks/.
+    # Novo design instala em workspaces/<workspace>/.claude/hooks/ + settings do workspace.
+    _cleanup_legacy_context_hook(project_root)
+
+
+def _cleanup_legacy_context_hook(project_root: Path) -> None:
+    """Remove context-check.sh legado de project_root/.claude/hooks/ e
+    sua entrada em project_root/.claude/settings.local.json.
+
+    Bootstrap pre-v3.1 instalava o hook na raiz do projeto. O novo design
+    instala tudo dentro do workspace. Esta funcao migra/remove o legado.
+    """
+    # Remove script legado
+    legacy_hook = project_root / ".claude" / "hooks" / "context-check.sh"
+    if legacy_hook.exists():
+        try:
+            legacy_hook.unlink()
+        except OSError as exc:
+            sys.stderr.write(f"warning: nao foi possivel remover {legacy_hook}: {exc}\n")
+
+    # Remove diretorio hooks vazio
+    legacy_hooks_dir = project_root / ".claude" / "hooks"
+    if legacy_hooks_dir.exists() and legacy_hooks_dir.is_dir():
+        try:
+            # rmdir so funciona se vazio
+            legacy_hooks_dir.rmdir()
+        except OSError:
+            pass  # dir nao vazio, nao remove
+
+    # Remove entrada do hook legado em project_root/.claude/settings.local.json
+    legacy_settings = project_root / ".claude" / "settings.local.json"
+    if not legacy_settings.exists():
+        return
+
+    settings: dict[str, Any] = {}
+    try:
+        settings = json.loads(legacy_settings.read_text(encoding="utf-8"))
+        if not isinstance(settings, dict):
+            return
+    except (json.JSONDecodeError, OSError):
+        return
+
+    post_tool_hooks: list[dict[str, Any]] = settings.get("hooks", {}).get("PostToolUse", [])
+    original_len = len(post_tool_hooks)
+
+    # Remove entradas com context-check.sh (legado = path relativo .claude/hooks/ ou
+    # workspaces/NNN-slug/.claude/hooks/)
+    post_tool_hooks[:] = [
+        entry for entry in post_tool_hooks
+        if not (
+            isinstance(entry, dict)
+            and isinstance(entry.get("hooks"), list)
+            and any(
+                isinstance(h, dict)
+                and h.get("type") == "command"
+                and "context-check.sh" in h.get("command", "")
+                for h in entry["hooks"]
+            )
+        )
+    ]
+
+    if len(post_tool_hooks) != original_len:
+        if post_tool_hooks:
+            settings["hooks"]["PostToolUse"] = post_tool_hooks
+        else:
+            settings["hooks"].pop("PostToolUse", None)
+            if not settings["hooks"]:
+                settings.pop("hooks", None)
+
+        try:
+            legacy_settings.write_text(
+                json.dumps(settings, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            sys.stderr.write(f"warning: falha ao limpar settings.local.json legado: {exc}\n")
 
 
 # Backward-compat alias (testes ou call sites antigos)
@@ -469,12 +673,18 @@ def _commit_scaffold(
     profile: str,
     tier: str,
 ) -> str:
-    """git add + commit do scaffold inicial. Retorna sha do commit."""
+    """git add + commit do scaffold inicial. Retorna sha do commit.
+
+    Usa --no-verify porque hooks de workspace anterior podem estar
+    instalados e rejeitar paths como .gitignore e workspaces/.index.md
+    que sao legitimos no bootstrap mas fora do workspace NNN-slug/.
+    Bootstrap e trusted; hooks protegem atividade futura do usuario.
+    """
     _run_git(["add", f"workspaces/{workspace}/", "workspaces/.index.md"], cwd=project_root)
     # .gitignore pode ou nao ter mudado; add idempotente
     _run_git(["add", ".gitignore"], cwd=project_root, check=False)
     msg = f"workspace {workspace.split('-', 1)[0]}: bootstrap scaffold (profile={profile} tier={tier})"
-    _run_git(["commit", "-m", msg], cwd=project_root)
+    _run_git(["commit", "--no-verify", "-m", msg], cwd=project_root)
     res = _run_git(["rev-parse", "HEAD"], cwd=project_root)
     return res.stdout.strip()
 
@@ -492,7 +702,7 @@ def _commit_context_sha(project_root: Path, workspace: str) -> None:
         cwd=project_root,
     )
     msg = f"workspace {nnn}: persist bootstrap commit_sha"
-    _run_git(["commit", "-m", msg], cwd=project_root)
+    _run_git(["commit", "--no-verify", "-m", msg], cwd=project_root)
 
 
 # ============================================================================
@@ -541,7 +751,21 @@ def bootstrap(
     _create_workspace_branch(project_root, workspace_branch, base_branch)
 
     # Scaffold
-    _scaffold_workspace_dirs(workspace_dir, skill_root)
+    _scaffold_workspace_dirs(workspace_dir, skill_root, project_root)
+
+    # Stages skipped: derive from profile-effective and write SKIP.md markers
+    stages_skipped: list[str] = effective.get("stages_skipped", [])
+    for skip_id in stages_skipped:
+        skip_dir = workspace_dir / "stages" / f"{skip_id}_{STAGE_NAMES[int(skip_id)]}"
+        if skip_dir.exists():
+            skip_file = skip_dir / "SKIP.md"
+            skip_file.write_text(
+                f"---\nlayer: L2-skip\nstage: \"{skip_id}\"\nreason: \"skipped by profile/tier\"\n---\n\n"
+                f"# Stage {skip_id} ({STAGE_NAMES[int(skip_id)]}) — SKIPPED\n\n"
+                f"Este estágio foi pulado pelo profile/tier deste workspace.\n"
+                f"O fluxo transita automaticamente deste stage para o próximo não-pulado.\n",
+                encoding="utf-8",
+            )
 
     # Templates
     created_at = _now_iso()
@@ -555,21 +779,43 @@ def bootstrap(
         "PROFILE_EFFECTIVE_HASH": profile_hash,
         "CREATED_AT": created_at,
         "SKILL_VERSION": SKILL_VERSION,
+        "SKILL_DIR": str(skill_root).replace("\\", "/"),
         "BOOTSTRAP_COMMIT_SHA": "{{BOOTSTRAP_COMMIT_SHA}}",  # patched depois
+        "STAGES_SKIPPED": yaml_safe_list(stages_skipped),
+        "WORKSPACE_NUM": workspace.split("-", 1)[0],
     }
 
     tpl_dir = skill_root / "templates" / "workspace"
+
+    # Render L2 CONTEXT.md for each stage
+    stages_tpl_dir = tpl_dir / "stages"
+    for stage_dir_name in STAGES:
+        l2_tpl = stages_tpl_dir / stage_dir_name / "CONTEXT.md.tpl"
+        if l2_tpl.exists():
+            l2_rendered = render_template(l2_tpl, placeholders)
+            l2_out = workspace_dir / "stages" / stage_dir_name / "CONTEXT.md"
+            l2_out.write_text(l2_rendered, encoding="utf-8")
+
     claude_md = render_template(tpl_dir / "CLAUDE.md.tpl", placeholders)
     (workspace_dir / "CLAUDE.md").write_text(claude_md, encoding="utf-8")
 
+    # xp-conventions.md (L3 — convenções de código/processo)
+    xp_conv_tpl = tpl_dir / "_config" / "xp-conventions.md.tpl"
+    if xp_conv_tpl.exists():
+        xp_conv_rendered = render_template(xp_conv_tpl, placeholders)
+        (workspace_dir / "_config" / "xp-conventions.md").write_text(
+            xp_conv_rendered, encoding="utf-8"
+        )
+
     # CONTEXT.md tem placeholder BOOTSTRAP_COMMIT_SHA que so existe pos-commit.
-    # render_template raise se sobrar `{{X}}`, entao injetamos sentinel vazio agora
-    # e patch depois do primeiro commit.
+    # Usamos UUID sentinel colision-safe em vez de "PENDING" (que podia colidir
+    # com outros campos). Patch depois do primeiro commit.
+    _sha_sentinel = f"__BOOTSTRAP_SHA_{uuid.uuid4().hex[:12]}__"
     placeholders_l1 = dict(placeholders)
-    placeholders_l1["BOOTSTRAP_COMMIT_SHA"] = "PENDING"  # sentinel; trocado depois
+    placeholders_l1["BOOTSTRAP_COMMIT_SHA"] = _sha_sentinel
     context_md = render_template(tpl_dir / "CONTEXT.md.tpl", placeholders_l1)
     # Volta o sentinel para `{{BOOTSTRAP_COMMIT_SHA}}` literal; patch depois
-    context_md = context_md.replace("PENDING", "{{BOOTSTRAP_COMMIT_SHA}}")
+    context_md = context_md.replace(_sha_sentinel, "{{BOOTSTRAP_COMMIT_SHA}}")
     (workspace_dir / "CONTEXT.md").write_text(context_md, encoding="utf-8")
 
     # Stop points: render template _config/stop-points.md com placeholders
@@ -599,8 +845,10 @@ def bootstrap(
     )
     update_gitignore(project_root / ".gitignore", list(GITIGNORE_LINES))
 
-    # Commit 1: scaffold (hook NAO instalado ainda — bootstrap e trusted; hook
-    # protege atividade futura do usuario).
+    # Commit 1: scaffold com --no-verify. Hooks de workspace anterior podem
+    # estar instalados e rejeitar paths legitimos do bootstrap (.gitignore,
+    # workspaces/.index.md). Bootstrap e trusted; hooks protegem atividade
+    # futura do usuario.
     commit_sha = _commit_scaffold(project_root, workspace, profile, tier)
 
     # Patch CONTEXT.md com sha do commit + commit 2
@@ -612,6 +860,10 @@ def bootstrap(
     # interferir nos commits atomicos do bootstrap. Pre-commit + commit-msg
     # juntos cobrem file checks e msg validation respectivamente.
     _install_hooks(project_root, skill_root)
+
+    # Context checkpoint hook (anti-compact): detecta contexto >= 70% e
+    # dispara handoff antecipado obrigatorio. Instalado apos git hooks.
+    _install_context_hook(project_root, skill_root, workspace)
 
     return {
         "workspace": workspace,
@@ -657,6 +909,9 @@ def main(argv: list[str] | None = None) -> int:
             logs_root=args.logs_root,
             override_path=Path(args.override).resolve() if args.override else None,
         )
+    except subprocess.CalledProcessError as exc:
+        print(f"erro: comando git falhou (rc={exc.returncode}): {exc.stderr.strip() if exc.stderr else exc}", file=sys.stderr)
+        return 1
     except BootstrapError as exc:
         print(f"erro: {exc}", file=sys.stderr)
         return 1

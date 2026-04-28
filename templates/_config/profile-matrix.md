@@ -37,7 +37,7 @@ operacional; este documento existe para revisão e onboarding.
 | `security_gate`             | False                | False                 | True (on)             | True (on+LGPD)              |
 | `tech_debt_tracking`        | False                | True                  | True                  | True                        |
 | `peer_review_required`      | False                | False                 | False                 | True                        |
-| `cap_teammates_per_wave`    | 2                    | 3                     | 5                     | 5                           |
+| `cap_subagents_per_wave`    | 2                    | 3                     | 5                     | 5                           |
 | `stop_points_calibration.item_5` (serviço pago)  | warning, R$ 50  | hard, R$ 200    | hard, R$ 500          | hard, R$ 1000               |
 | `stop_points_calibration.item_7` (over-eng.)     | warning         | warning         | hard                  | hard                        |
 | `stop_points_calibration.item_8` (PII/LGPD)      | warning         | hard            | hard                  | hard+DPO                    |
@@ -53,16 +53,16 @@ operacional; este documento existe para revisão e onboarding.
 
 ### `technical_article`
 
-- `stages_skipped` ⊇ `["03"]` (artigo não roda CI/automação de testes).
-- `cap_teammates_per_wave` = 5 (artigo longo pode paralelizar revisão).
+- `stages_skipped = ["03"]` (artigo não roda CI/automação de testes; tier `experimental` herda `["03", "05", "06", "08"]` com `03` já incluso — deduplicado automaticamente por `profile-merge.py`).
+- `cap_subagents_per_wave` = 5 (artigo longo pode paralelizar revisão).
 
 ### `framework_library`
 
-- `cap_teammates_per_wave` = 3 (framework requer coesão de design; cap menor).
+- `cap_subagents_per_wave` = 3 (framework requer coesão de design; cap menor).
 
 ### `ml_project`
 
-- `cap_teammates_per_wave` = 3 (pipelines ML demandam continuidade de
+- `cap_subagents_per_wave` = 3 (pipelines ML demandam continuidade de
   hiperparâmetros e dados; paralelismo alto fragmenta entendimento).
 
 ### `app_web_backend` e `app_web_frontend`
@@ -78,7 +78,7 @@ Schema completo:
 extends: app_web_backend         # obrigatório; ∈ profiles canônicos
 tier: development                # obrigatório; ∈ tiers canônicos
 overrides:                       # opcional; dict com chaves da matriz
-  cap_teammates_per_wave: 3
+  cap_subagents_per_wave: 3
   stages_skipped: ["08"]
 custom_stop_points:              # opcional; D3 — stops adicionais ao projeto
   - id: custom_1
@@ -99,7 +99,7 @@ Apenas as 7 chaves canônicas da matriz:
 - `security_gate`
 - `tech_debt_tracking`
 - `peer_review_required`
-- `cap_teammates_per_wave`
+- `cap_subagents_per_wave`
 - `stop_points_calibration`
 
 Qualquer outra chave em `overrides` → erro de validação.

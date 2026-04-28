@@ -53,7 +53,7 @@ def _write_wave_plan(path: Path, *, total_tasks: int, total_waves: int, total_su
         "plan_source: stages/02_design/output/plan.md",
         "tier: development",
         "profile: app_web_backend",
-        "cap_teammates_per_wave: 5",
+        "cap_subagents_per_wave: 5",
         f"total_tasks: {total_tasks}",
         f"total_waves: {total_waves}",
         f"total_sub_waves: {total_sub_waves}",

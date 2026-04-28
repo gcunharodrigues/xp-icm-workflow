@@ -50,6 +50,7 @@ Brainstorming guiado com o humano. Refina escopo via clarification iterativa, ma
 6. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md
 7. {{PROJECT_ROOT}}/docs/lessons.md (se existe)
 8. Sumário superpowers brainstorming-200tok
+9. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/_kickoff.md (se existe — handoff do estágio 00)
 
 ## Process
 
@@ -121,7 +122,7 @@ Ao concluir este estágio, sessão deve:
 
 2. **Renderizar `_kickoff.md`** no stage seguinte:
    - Path: `<workspace>/stages/02_design/_kickoff.md`
-   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
    - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
    - Corpo: prev_outputs com summary + prev_decisions + pending pra próximo stage
 

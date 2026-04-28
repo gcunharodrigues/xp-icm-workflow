@@ -47,16 +47,16 @@ Clone read-only de skill qualquer (ex: `superpowers/skills/brainstorming`).
 - [ ] master/main do clone permanece com 1 commit (initial do upstream)
 - [ ] Hook local instalado mas não propagado pra upstream
 
-### 4. tier=production com Agent Team de 5
+### 4. tier=production com 5 subagentes
 
 Plan.md com ≥5 tasks paralelizáveis.
 
 **Verificar:**
 - [ ] Wave Planner constrói DAG correto (sem ciclo, deps respeitadas)
-- [ ] 5 worktrees criados em `.worktrees/workspace-NNN/wave-1/<task>/`
-- [ ] Cada teammate em branch isolada `wave-NNN-1/<task-slug>`
+- [ ] 5 branches criadas em `wave-NNN-1/<task-slug>`
+- [ ] Cada subagente em branch isolada `wave-NNN-1/<task-slug>`
 - [ ] Sync barreira aguarda todos COMPLETE antes wave-reviewer
-- [ ] Rebase sequencial limpo OU conflito escalado para humano com mensagem clara
+- [ ] Merge sequencial limpo OU conflito escalado para humano com mensagem clara
 - [ ] CI gate global verde antes wave 2
 
 ### 5. Stop point real
@@ -114,7 +114,7 @@ Workspace em `D:\workspaces\NNN-<slug>\`, projeto em `C:\projects\X\`.
 **Verificar:**
 - [ ] L0 resolve `project_root: C:/projects/X/` corretamente
 - [ ] Código escrito sai em `C:\projects\X\src\` (NUNCA dentro do workspace)
-- [ ] Worktrees criados em `C:\projects\X\.worktrees/workspace-NNN/`
+- [ ] Branches criadas em `C:\projects\X\` (formato `wave-NNN-N/<task-slug>`)
 - [ ] Pre-commit hook valida prefixo `workspaces/NNN/` no workspace branch (não permite escrever em `src/`)
 
 ## Critérios de aceitação para promover beta1 → v3.0.0 (plan §8.3)
@@ -135,7 +135,7 @@ Workspace em `D:\workspaces\NNN-<slug>\`, projeto em `C:\projects\X\`.
 | 1 | Greenfield real | ✅/❌/⚠️ | ... |
 | 2 | Existing repo | ✅/❌/⚠️ | ... |
 | 3 | External repo | ✅/❌/⚠️ | ... |
-| 4 | Agent Team 5 | ✅/❌/⚠️ | ... |
+| 4 | 5 subagentes | ✅/❌/⚠️ | ... |
 | 5 | Stop point real | ✅/❌/⚠️ | ... |
 | 6 | Override guard-rail | ✅/❌/⚠️ | ... |
 | 7 | Recovery Wizard | ✅/❌/⚠️ | ... |

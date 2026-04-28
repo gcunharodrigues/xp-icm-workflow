@@ -40,6 +40,19 @@ fi
 branch="$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")"
 
 if ! printf '%s' "$branch" | grep -Eq '^workspace/[0-9]{3}-'; then
+    # R8: wave branch warning — recomenda Conventional Commits
+    if printf '%s' "$branch" | grep -Eq '^wave-[0-9]+-[0-9]+/'; then
+        msg_first_line_wave="$(printf '%s' "$commit_msg" | sed '/^#/d' | head -n 1)"
+        if ! printf '%s' "$msg_first_line_wave" | grep -qE '^(feat|fix|refactor|test|docs|chore|perf|ci|build|style|revert)(\(.+\))?: .+'; then
+            cat >&2 <<EOM
+WARNING: wave branch detectada sem Conventional Commit.
+Branch: ${branch}
+Mensagem: ${msg_first_line_wave}
+Recomendação: use formato "<type>: <descrição>" (feat, fix, test, etc).
+Hook NÃO bloqueia — apenas avisa.
+EOM
+        fi
+    fi
     exit 0
 fi
 
@@ -53,6 +66,11 @@ commit_msg="$(cat "$msg_file" 2>/dev/null || true)"
 # Remove linhas que comecam com '#' (comentarios git)
 msg_clean="$(printf '%s' "$commit_msg" | sed '/^#/d')"
 msg_first_line="$(printf '%s' "$msg_clean" | head -n 1)"
+
+# 4.5. Skip merge commits (msg comeca com "Merge")
+if printf '%s' "$msg_first_line" | grep -qE '^Merge '; then
+    exit 0
+fi
 
 expected_prefix="workspace ${ws_id}: "
 adr_marker="(workspace ${ws_id} "
@@ -73,6 +91,10 @@ EOF
 
 prefix_ok=0
 if printf '%s' "$msg_first_line" | grep -Eq "^workspace ${ws_id}: "; then
+    prefix_ok=1
+fi
+# R5.5: prefixos intake/feedback para stage 08
+if printf '%s' "$msg_first_line" | grep -Eq "^(intake|feedback): "; then
     prefix_ok=1
 fi
 

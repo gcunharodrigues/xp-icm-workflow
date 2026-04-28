@@ -1,4 +1,4 @@
-# Example Run — End-to-end com Agent Teams (xp-icm-workflow v3.0.0-beta1)
+# Example Run — End-to-end com subagentes (xp-icm-workflow v3.0.0-beta1)
 
 > **Versão:** v3.0.0-beta1
 > **Skill:** `xp-icm-workflow`
@@ -26,8 +26,8 @@ flowchart LR
     S1 --> S2[Sessão 2<br/>01 discovery<br/>STOP paid_service]
     S2 --> S3[Sessão 3<br/>02 design<br/>1 ADR novo]
     S3 --> S4[Sessão 4<br/>03 wave_planner<br/>DAG → 2 waves]
-    S4 --> S5[Sessão 5<br/>04 wave 1<br/>2 teammates paralelos]
-    S5 --> S6[Sessão 6<br/>04 wave 2<br/>1 teammate seq]
+    S4 --> S5[Sessão 5<br/>04 wave 1<br/>2 subagentes paralelos]
+    S5 --> S6[Sessão 6<br/>04 wave 2<br/>1 subagente seq]
     S6 --> S7[Sessão 7<br/>05 verification]
     S7 --> S8[Sessão 8<br/>06 review<br/>0 P0/P1, 2 P3]
     S8 --> S9[Sessão 9<br/>07 merge<br/>direto em main]
@@ -74,7 +74,7 @@ Guilherme abre sessão Claude Code no project root e executa:
    ```
 7. `git checkout -b workspace/042-feat-auth`.
 8. Instala `pre-commit` hook em `.git/hooks/pre-commit`.
-9. Atualiza `.gitignore` (adiciona `.worktrees/`, `.icm-profile.local.yaml`).
+9. Atualiza `.gitignore` (adiciona `.icm-profile.local.yaml`).
 10. Commit inicial: `chore(workspace): bootstrap 042-feat-auth (profile=app_web_backend tier=development)`.
 11. Atualiza `workspaces/.index.md` com entry `042-feat-auth | active | 2026-04-25`.
 12. Mensagem ao humano: "Workspace 042-feat-auth bootstrapped. Abra nova sessão para iniciar estágio 00 recon."
@@ -292,15 +292,14 @@ total_tasks=3 total_waves=2 total_sub_waves=2 ambiguities=0
 
 ---
 
-## Sessão 5 — estágio 04 wave 1 (~6k tok lead + 1×6k teammate = 12k)
+## Sessão 5 — estágio 04 wave 1 (~6k tok lead + 1×6k subagente = 12k)
 
 **Pre-flight:** OK. Lead lê wave-plan.md, identifica wave 1 = `[jwt-utils]`.
 
 Wave 1 tem **1 task** → fluxo simplificado:
 
-- Lead spawn 1 teammate via Task tool em worktree `/repo/aura-luz-api/.worktrees/workspace-042-feat-auth/wave-1/jwt-utils`.
-- Branch: `wave-042-feat-auth-1/jwt-utils`.
-- Teammate roda ciclo TDD 7 passos:
+- Lead spawn 1 subagente via Task tool em branch `wave-042-feat-auth-1/jwt-utils`.
+- Subagente roda ciclo TDD 7 passos:
   1. **RED:** `tests/auth/test_jwt_utils.py` com 6 tests (sign, verify, decode, expired, malformed, edge cases). Vermelho.
   2. **GREEN:** `src/auth/jwt_utils.py` com 3 funcs. Verde.
   3. **CI gate (1ª):** ruff ✓ mypy ✓ pytest ✓.
@@ -311,8 +310,7 @@ Wave 1 tem **1 task** → fluxo simplificado:
 
 - Lead poll detecta `task-jwt-utils.md` → sync barreira OK.
 - Wave-reviewer **skip** (1 task, conforme F2 de `wave-planner-algorithm.md` §10).
-- Lead rebase sequencial: `git rebase wave-042-feat-auth-1/jwt-utils main` → CI global verde.
-- Cleanup worktree.
+- Lead merge sequencial: `git merge wave-042-feat-auth-1/jwt-utils into main` → CI global verde.
 
 **L1 transita:**
 
@@ -332,23 +330,22 @@ history append:
 
 ---
 
-## Sessão 6 — estágio 04 wave 2 (~1k lead + 2×7k teammates + 3k wave-reviewer = ~18k)
+## Sessão 6 — estágio 04 wave 2 (~1k lead + 2×7k subagentes + 3k wave-reviewer = ~18k)
 
 **Pre-flight:** OK. Lead identifica wave 2 = `[auth-middleware, refresh-endpoint]`.
 
-- Lead cria 2 worktrees:
-  - `.worktrees/.../wave-2/auth-middleware/` (branch `wave-042-feat-auth-2/auth-middleware`).
-  - `.worktrees/.../wave-2/refresh-endpoint/` (branch `wave-042-feat-auth-2/refresh-endpoint`).
-- Spawn 2 teammates **em paralelo**, cada um com prompt fixo (4-block + ADRs + lessons top-3 pré-cozinhadas).
-- Cada teammate roda ciclo TDD 7 passos.
+- Lead spawn 2 subagentes em branches isoladas:
+  - branch `wave-042-feat-auth-2/auth-middleware`.
+  - branch `wave-042-feat-auth-2/refresh-endpoint`.
+- Spawn 2 subagentes **em paralelo**, cada um com prompt fixo (4-block + ADRs + lessons top-3 pré-cozinhadas).
+- Cada subagente roda ciclo TDD 7 passos.
 - `auth-middleware`: 2 ciclos Akita (1ª volta falhou item 12, removeu `logger.info(token)`; 2ª verde).
 - `refresh-endpoint`: 1 ciclo, verde direto.
 - Lead sync barreira: poll a cada 30s até detectar `task-auth-middleware.md` + `task-refresh-endpoint.md`. ~12min total.
 - Wave-reviewer roda (2 tasks > 1, NÃO pula). Verdict: `APPROVE` — coherence OK.
-- Rebase sequencial em ordem topológica (sem deps entre auth-middleware e refresh-endpoint, ordem por aparição em plan.md):
-  - `git rebase wave-042-feat-auth-2/auth-middleware main` → CI verde.
-  - `git rebase wave-042-feat-auth-2/refresh-endpoint main` → CI verde.
-- Cleanup worktrees.
+- Merge sequencial em ordem topológica (sem deps entre auth-middleware e refresh-endpoint, ordem por aparição em plan.md):
+  - `git merge wave-042-feat-auth-2/auth-middleware into main` → CI verde.
+  - `git merge wave-042-feat-auth-2/refresh-endpoint into main` → CI verde.
 
 **L1 transita:** sub_stage `04_wave_2_completed` → estágio 05.
 
@@ -361,7 +358,7 @@ history append:
 **Trabalho:**
 - Consulta `verification-before-completion-200tok.md`.
 - Verifica:
-  - CI global verde em `main` (post-rebase).
+  - CI global verde em `main` (post-merge).
   - Coverage: `src/auth/` 94% (acima do mínimo 90% de tier=development).
   - Conformidade ao plan.md: 3/3 tasks com VALIDAÇÃO atendida (sample-check de tests).
   - Conformidade aos ADRs: ADR 0042 implementado em todos os pontos do plan.
@@ -399,7 +396,7 @@ history append:
 **Trabalho:**
 - Consulta `finishing-a-development-branch-200tok.md`.
 - Apresenta menu humano: (a) merge direto em `main`, (b) abrir PR para review externo, (c) tag de release.
-- Humano escolhe (a) — main já recebeu rebases das waves; nada a fazer no código.
+- Humano escolhe (a) — main já recebeu merges das waves; nada a fazer no código.
 - Sessão:
   - Atualiza `docs/lessons.md` com 1 entry nova (vinculada ao ciclo Akita do auth-middleware: "logger.info pode vazar token; usar logger com filter de PII por default").
   - Escreve `stages/07_merge/output/merge-report.md`.
@@ -496,7 +493,7 @@ history append:
 - ❌ Lead na fase 04 abre `src/auth/middleware.py` "só pra dar uma olhada" — lead lê SOMENTE `task-<slug>.md` reports e `wave-summary.md`.
 - ❌ Sessão pula `pre-flight check` do L2 alegando "tá óbvio, last commit foi meu" — pre-flight detecta drift mesmo em sessões consecutivas.
 - ❌ Humano pede "use Auth0" no chat sem ter aprovado o stop point — sessão deve recusar e remontar menu A/B/C com a nova preferência registrada.
-- ❌ Teammate na fase 04 lê `docs/lessons.md` cru (lead pré-cozinha top-3 inline; teammate NÃO consulta lessons direto).
+- ❌ Subagente na fase 04 lê `docs/lessons.md` cru (lead pré-cozinha top-3 inline; subagente NÃO consulta lessons direto).
 - ❌ Tentar invocar `Skill({skill:"superpowers:writing-plans"})` na fase 02 sem registrar `skill_escape_hatch` em L1 history — quebra audit.
 
 ---
@@ -509,7 +506,7 @@ history append:
 | `references/stage-templates.md` | Spec dos 9 L2 templates |
 | `references/stop-points-canonical.md` | 12 stop points + thresholds (paid_service §1.1) |
 | `references/wave-planner-algorithm.md` | DAG construction + LLM review subagent |
-| `references/agent-team-protocol.md` | Spawn, mailbox, sync barreira, wave-reviewer |
+| `references/subagent-protocol.md` | Spawn, saída do Agent tool, sync barreira, wave-reviewer |
 | `references/4-block-contract-template.md` | Schema da task no plan.md + ciclo TDD 7 passos + Akita 15-item |
 | `references/feedback-intake-fase08.md` | Fase 08 detalhada (3 saídas A/B/C) |
 | `references/v2.4-snapshot/example-run.md` | Versão v2.4 anterior (transição estágio 02→03 isolada) |

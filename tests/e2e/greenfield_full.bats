@@ -2,7 +2,7 @@
 # CI-only — bats nao rodavel local em Windows.
 #
 # E2E: bootstrap greenfield → percorre estágios 00 → 07 sequencial,
-# sem Agent Teams (single teammate sintético em 04). Valida transições
+# sem subagentes (single subagente sintético em 04). Valida transições
 # L1 e existência de outputs declarados em cada L2 template.
 #
 # Cada step:

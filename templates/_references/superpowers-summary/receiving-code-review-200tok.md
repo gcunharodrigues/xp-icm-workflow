@@ -2,7 +2,7 @@
 name: receiving-code-review-200tok
 source_skill: superpowers:receiving-code-review
 source_version: "5.0.0"
-purpose: Teammate recebe feedback do reviewer com rigor tecnico, nao concordancia performativa.
+purpose: Subagente recebe feedback do reviewer com rigor tecnico, nao concordancia performativa.
 ---
 
 # Receiving Code Review — sumario 200tok

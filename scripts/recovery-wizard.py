@@ -10,7 +10,6 @@ Inconsistencias detectadas (codes):
   - MISSING_OUTPUT      — history declara output ausente no FS
   - STALE_IN_PROGRESS   — IN_PROGRESS sem commit nas ultimas 24h
   - MISSING_COMMIT      — last_transition.commit_sha nao existe em git
-  - MISSING_WORKTREES   — waves.current=N mas worktree ausente / vazia
   - BRANCH_MISSING      — branch workspace/NNN-slug nao existe (R4.5)
 
 Schema canonico em references/state-machine-schema.md.
@@ -42,7 +41,6 @@ CODE_HASH_MISMATCH = "HASH_MISMATCH"
 CODE_MISSING_COMMIT = "MISSING_COMMIT"
 CODE_MISSING_OUTPUT = "MISSING_OUTPUT"
 CODE_STALE_IN_PROGRESS = "STALE_IN_PROGRESS"
-CODE_MISSING_WORKTREES = "MISSING_WORKTREES"
 CODE_BRANCH_MISSING = "BRANCH_MISSING"
 
 # Ordem canonica determinista (R2.7 batch order).
@@ -51,7 +49,6 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_MISSING_COMMIT,
     CODE_MISSING_OUTPUT,
     CODE_STALE_IN_PROGRESS,
-    CODE_MISSING_WORKTREES,
     CODE_BRANCH_MISSING,
 )
 
@@ -255,7 +252,7 @@ def detect_inconsistencies(
     project_root: Path | None = None,
     now: datetime | None = None,
 ) -> list[Inconsistency]:
-    """Roda os 6 checks. Retorna inconsistencias em ordem canonica.
+    """Roda os 5 checks. Retorna inconsistencias em ordem canonica.
 
     `project_root` defaults para `state["project_root"]` se ausente.
     `now` defaults para `datetime.now(timezone.utc)`.
@@ -368,42 +365,7 @@ def detect_inconsistencies(
                 )
             )
 
-    # 5) MISSING_WORKTREES
-    waves = state.get("waves")
-    if isinstance(waves, dict) and project_root is not None:
-        current = waves.get("current")
-        ws_id = state.get("workspace", "")
-        if isinstance(current, int) and ws_id:
-            wt_dir = (
-                project_root
-                / ".worktrees"
-                / f"workspace-{ws_id}"
-                / f"wave-{current}"
-            )
-            wt_missing = (not wt_dir.exists()) or (
-                wt_dir.is_dir() and not any(wt_dir.iterdir())
-            )
-            if wt_missing:
-                found.append(
-                    Inconsistency(
-                        code=CODE_MISSING_WORKTREES,
-                        message=(
-                            f"waves.current={current} declarado, mas worktree "
-                            f"{wt_dir} ausente ou vazia."
-                        ),
-                        proposed_action=(
-                            "recriar worktree placeholder + warning "
-                            "(ou rollback waves.current pro ultimo completed)"
-                        ),
-                        severity="critical",
-                        context={
-                            "expected_path": str(wt_dir),
-                            "wave": current,
-                        },
-                    )
-                )
-
-    # 6) BRANCH_MISSING (R4.5)
+    # 5) BRANCH_MISSING (R4.5)
     branch = state.get("workspace_branch")
     if isinstance(branch, str) and branch:
         if not _branch_exists(branch, cwd=cwd_for_git):
@@ -549,18 +511,6 @@ def _apply_plan_a(
         elif inc.code == CODE_STALE_IN_PROGRESS:
             state["status"] = "COMPLETED_AWAITING_HUMAN"
 
-        elif inc.code == CODE_MISSING_WORKTREES:
-            # Cria placeholder
-            wt_path = inc.context.get("expected_path")
-            if wt_path:
-                p = Path(wt_path)
-                p.mkdir(parents=True, exist_ok=True)
-                placeholder = p / ".recovery-placeholder"
-                placeholder.write_text(
-                    "placeholder criado por recovery-wizard\n",
-                    encoding="utf-8",
-                )
-
         elif inc.code == CODE_BRANCH_MISSING:
             # Plan A pra branch missing nao re-cria automaticamente —
             # apenas registra warning. Recreate exige humano.
@@ -626,14 +576,6 @@ def _apply_plan_b(
         # Plan B: nao mexe em L1 (assume profile-effective.yaml errado);
         # registra warning para humano regenerar profile.
         pass
-
-    if any(i.code == CODE_MISSING_WORKTREES for i in inconsistencies):
-        # Rollback waves.current pro ultimo completed
-        waves = state.get("waves") or {}
-        completed = waves.get("completed") or []
-        if isinstance(completed, list) and completed:
-            waves["current"] = max(int(c) for c in completed)
-            state["waves"] = waves
 
     if any(i.code == CODE_STALE_IN_PROGRESS for i in inconsistencies):
         # Plan B identico ao A

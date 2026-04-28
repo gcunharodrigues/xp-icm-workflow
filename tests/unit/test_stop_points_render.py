@@ -326,7 +326,7 @@ class TestRenderStopPointsTemplate:
             "pii",
             "prod_migration",
             "adr_drift",
-            "workspace_corrupt",
+            "wave_branch_missing",
             "profile_mismatch",
         ):
             assert sp_id in out, f"stop point canonico ausente: {sp_id}"

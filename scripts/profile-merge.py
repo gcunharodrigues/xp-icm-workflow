@@ -46,7 +46,7 @@ MATRIX_KEYS: frozenset[str] = frozenset({
     "security_gate",
     "tech_debt_tracking",
     "peer_review_required",
-    "cap_teammates_per_wave",
+    "cap_subagents_per_wave",
     "stop_points_calibration",
 })
 
@@ -77,7 +77,7 @@ def _tier_defaults(tier: str) -> dict[str, Any]:
             "security_gate": False,
             "tech_debt_tracking": False,
             "peer_review_required": False,
-            "cap_teammates_per_wave": 2,
+            "cap_subagents_per_wave": 2,
             "stop_points_calibration": {
                 "item_5": {"mode": "warning", "limite_mensal_BRL": 50},
                 "item_7": {"mode": "warning"},
@@ -92,7 +92,7 @@ def _tier_defaults(tier: str) -> dict[str, Any]:
             "security_gate": False,
             "tech_debt_tracking": True,
             "peer_review_required": False,
-            "cap_teammates_per_wave": 3,
+            "cap_subagents_per_wave": 3,
             "stop_points_calibration": {
                 "item_5": {"mode": "hard", "limite_mensal_BRL": 200},
                 "item_7": {"mode": "warning"},
@@ -108,7 +108,7 @@ def _tier_defaults(tier: str) -> dict[str, Any]:
             "security_mode": "on",
             "tech_debt_tracking": True,
             "peer_review_required": False,
-            "cap_teammates_per_wave": 5,
+            "cap_subagents_per_wave": 5,
             "stop_points_calibration": {
                 "item_5": {"mode": "hard", "limite_mensal_BRL": 500},
                 "item_7": {"mode": "hard"},
@@ -124,7 +124,7 @@ def _tier_defaults(tier: str) -> dict[str, Any]:
             "security_mode": "on+LGPD",
             "tech_debt_tracking": True,
             "peer_review_required": True,
-            "cap_teammates_per_wave": 5,
+            "cap_subagents_per_wave": 5,
             "stop_points_calibration": {
                 "item_5": {"mode": "hard", "limite_mensal_BRL": 1000},
                 "item_7": {"mode": "hard"},
@@ -150,13 +150,13 @@ def _apply_profile_rules(profile: str, tier: str, base: dict[str, Any]) -> dict[
         skipped = set(out["stages_skipped"])
         skipped.add("03")
         out["stages_skipped"] = sorted(skipped)
-        out["cap_teammates_per_wave"] = 5
+        out["cap_subagents_per_wave"] = 5
 
     if profile == "framework_library":
-        out["cap_teammates_per_wave"] = 3
+        out["cap_subagents_per_wave"] = 3
 
     if profile == "ml_project":
-        out["cap_teammates_per_wave"] = 3
+        out["cap_subagents_per_wave"] = 3
 
     # Apps web ligam security_gate em qualquer tier acima de experimental
     if profile in ("app_web_backend", "app_web_frontend") and tier != "experimental":

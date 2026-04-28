@@ -32,6 +32,7 @@ Reconnaissance inicial do projeto. Detecta tipo de workspace (greenfield, existi
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/brainstorming-200tok.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
 | 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. Em stage 00 só existe se workspace foi spawn de fase 08 saída C (workspace herdado). |
+| 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_seed.md | L4-seed | condicional: gerado pelo bootstrap da skill. Presente quando user invocou `/xp-icm-workflow` com descrição livre (intenção inferida). Contém intenção original, profile/tier inferidos e pendências. |
 
 ## Não Lê (negative constraint)
 
@@ -51,10 +52,12 @@ Reconnaissance inicial do projeto. Detecta tipo de workspace (greenfield, existi
 7. {{PROJECT_ROOT}}/docs/decisions/ (índice de ADRs — listing only)
 8. {{PROJECT_ROOT}}/docs/lessons.md (se existe; herança de fase 08 saída C ou iteração anterior)
 9. Sumários superpowers (brainstorming + writing-plans 200tok)
+10. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_seed.md (se existe — intenção pré-recon do bootstrap)
+11. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_kickoff.md (se existe — handoff de fase 08 saída B)
 
 ## Process
 
-1. **Pre-flight:** validar que todos os paths Inputs marcados `sim` existem; sub_stage `00_in_progress`. Se path obrigatório ausente → status `BLOCKED_ERROR`.
+1. **Pre-flight:** validar que todos os paths Inputs marcados `sim` existem; sub_stage `00_in_progress`. Se path obrigatório ausente → status `BLOCKED_ERROR`. Validar também que `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh` existe e é executável, e que `{{PROJECT_ROOT}}/.claude/settings.local.json` contém entrada `hooks.PostToolUse` apontando para `bash workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh`. Se ausente → warning (não bloqueia bootstrap, mas context checkpoint anti-compact fica sem enforcement automático).
 2. **Detectar tipo de workspace:** classifica em `greenfield` (sem `src/` populado, sem ADRs), `existing` (repositório com código + ADRs prévios) ou `external_repo` (clone read-only que vai gerar workspace de leitura/análise). Decisão baseada em listing de `{{PROJECT_ROOT}}/src/` (apenas existência), `{{PROJECT_ROOT}}/docs/decisions/` (count de arquivos) e `git remote -v`.
 3. **Validar coerência profile×tier vs estado real:** comparar `profile_base` e `tier` do L0/L1 contra realidade do FS. Sinais de mismatch — ex: tier `experimental` num repo com tag de release; profile `cli_tool` num repo com app web — disparam stop point `profile_mismatch`.
 4. **Validar integridade do workspace:** rodar heurísticas de `references/state-machine-schema.md` §R2.7 (hash mismatch, history inconsistente, commit_sha sumido). Qualquer falha → stop point `workspace_corrupt` propondo Recovery Wizard.
@@ -123,7 +126,7 @@ Ao concluir este estágio, sessão deve:
 
 2. **Renderizar `_kickoff.md`** no stage seguinte:
    - Path: `<workspace>/stages/01_discovery/_kickoff.md`
-   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
    - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
    - Corpo: prev_outputs com summary + prev_decisions + pending pra próximo stage
 

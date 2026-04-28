@@ -26,8 +26,9 @@ Finaliza ciclo de implementação: integra a `workspace_branch` rebased em `base
 | 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/CONTEXT.md | L2 | sim |
 | 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/output/review-report.md | L4 | sim |
 | 5 | {{PROJECT_ROOT}}/.git/config | L3 | sim (read-only — qual remote, qual base_branch) |
-| 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/finishing-branch-200tok.md | L3 | sim |
-| 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/finishing-a-development-branch-200tok.md | L3 | sim |
+| 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
+| 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 
 ## Não Lê (negative constraint)
 
@@ -43,7 +44,9 @@ Finaliza ciclo de implementação: integra a `workspace_branch` rebased em `base
 3. L2 — este arquivo
 4. review-report.md (confirma sem P0/P1, aprovação humana registrada)
 5. .git/config (remotes, base_branch)
-6. Sumário finishing-branch-200tok
+6. Sumário finishing-a-development-branch-200tok
+7. stop-points.md (thresholds por tier para irreversible, prod_migration)
+8. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/_kickoff.md (se existe — handoff do estágio 06)
 
 ## Process
 
@@ -104,7 +107,7 @@ Disparo: agente pausa, escreve menu A/B/C no output, atualiza L1 `status: BLOCKE
 
 Sumário 200tok (consulta obrigatória):
 
-- `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/finishing-branch-200tok.md`
+- `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/finishing-a-development-branch-200tok.md`
 
 Skill formal (escape hatch): `superpowers:finishing-a-development-branch`.
 
@@ -112,7 +115,7 @@ Skill formal (escape hatch): `superpowers:finishing-a-development-branch`.
 
 - **Humano:** escolhe A/B/C no menu de merge; confirma o merge-report ao final.
 - **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`. Pós-merge, CI da `base_branch` valida o estado integrado.
-- **Aprovação para transitar:** humano confirma merge-report; sub_stage vira `07_completed` e `status: COMPLETED` no commit que registra a confirmação.
+- **Aprovação para transitar:** humano confirma merge-report; sub_stage vira `07_completed` e status transita imediatamente para `COMPLETED_AWAITING_HUMAN` (stage 08). `COMPLETED` NÃO é setado neste stage — fechamento definitivo só em stage 08 saída A.
 
 ## End of stage handoff (1-stage-1-sessão)
 
@@ -126,7 +129,7 @@ Ao concluir este estágio, sessão deve:
    - `last_transition.at = <ISO 8601 UTC now>`
    - `history` append 2 eventos: `stage_transition 07_in_progress→07_completed` + `stage_transition 07_completed→08_in_progress`
 
-2. **Renderizar `_kickoff.md` em `stages/08_feedback_intake/_kickoff.md`** via `python scripts/handoff.py render`. Campos:
+2. **Renderizar `_kickoff.md` em `stages/08_feedback_intake/_kickoff.md`** via `python {{SKILL_DIR}}/scripts/handoff.py render`. Campos:
    - `prev_outputs`: `output/merge-report.md` (path + summary "merge feito A/B/C, commit_sha=X")
    - `prev_decisions_summary`: linha curta com decisão A/B/C + commit/tag/PR resultante
    - `pending_for_this_stage`: ["aguardar feedback humano após uso real do projeto", "interpretar intenção pra A/B/C"]

@@ -69,7 +69,7 @@ def test_all_combos_return_valid_dict(profile, tier):
         "security_gate",
         "tech_debt_tracking",
         "peer_review_required",
-        "cap_teammates_per_wave",
+        "cap_subagents_per_wave",
         "stop_points_calibration",
     ):
         assert key in effective, f"chave {key!r} faltando para {profile}/{tier}"
@@ -114,7 +114,7 @@ def test_experimental_defaults():
     assert eff["security_gate"] is False
     assert eff["tech_debt_tracking"] is False
     assert eff["peer_review_required"] is False
-    assert eff["cap_teammates_per_wave"] == 2
+    assert eff["cap_subagents_per_wave"] == 2
     assert eff["stop_points_calibration"]["item_5"]["limite_mensal_BRL"] == 50
 
 
@@ -124,7 +124,7 @@ def test_tool_defaults():
     assert eff["security_gate"] is False
     assert eff["tech_debt_tracking"] is True
     assert eff["peer_review_required"] is False
-    assert eff["cap_teammates_per_wave"] == 3
+    assert eff["cap_subagents_per_wave"] == 3
     assert eff["stop_points_calibration"]["item_5"]["limite_mensal_BRL"] == 200
 
 
@@ -134,7 +134,7 @@ def test_development_defaults():
     assert eff["security_gate"] is True
     assert eff["tech_debt_tracking"] is True
     assert eff["peer_review_required"] is False
-    assert eff["cap_teammates_per_wave"] == 5
+    assert eff["cap_subagents_per_wave"] == 5
     assert eff["stop_points_calibration"]["item_5"]["limite_mensal_BRL"] == 500
 
 
@@ -144,7 +144,7 @@ def test_production_defaults():
     assert eff["security_gate"] is True
     assert eff["tech_debt_tracking"] is True
     assert eff["peer_review_required"] is True
-    assert eff["cap_teammates_per_wave"] == 5
+    assert eff["cap_subagents_per_wave"] == 5
     assert eff["stop_points_calibration"]["item_5"]["limite_mensal_BRL"] == 1000
 
 
@@ -166,19 +166,19 @@ def test_technical_article_skips_stage_03():
 def test_framework_library_cap_is_3():
     for tier in CANONICAL_TIERS:
         eff, _ = merge_profile(profile="framework_library", tier=tier)
-        assert eff["cap_teammates_per_wave"] == 3
+        assert eff["cap_subagents_per_wave"] == 3
 
 
 def test_ml_project_cap_is_3():
     for tier in CANONICAL_TIERS:
         eff, _ = merge_profile(profile="ml_project", tier=tier)
-        assert eff["cap_teammates_per_wave"] == 3
+        assert eff["cap_subagents_per_wave"] == 3
 
 
 def test_technical_article_cap_is_5():
     for tier in CANONICAL_TIERS:
         eff, _ = merge_profile(profile="technical_article", tier=tier)
-        assert eff["cap_teammates_per_wave"] == 5
+        assert eff["cap_subagents_per_wave"] == 5
 
 
 def test_app_web_security_gate_above_experimental():
@@ -200,10 +200,10 @@ def test_override_cap_applied(tmp_path):
     override_file.write_text(yaml.safe_dump({
         "extends": "app_web_backend",
         "tier": "development",
-        "overrides": {"cap_teammates_per_wave": 7},
+        "overrides": {"cap_subagents_per_wave": 7},
     }), encoding="utf-8")
     eff, _ = merge_profile(profile="app_web_backend", tier="development", override_path=override_file)
-    assert eff["cap_teammates_per_wave"] == 7
+    assert eff["cap_subagents_per_wave"] == 7
 
 
 def test_override_stages_skipped_applied(tmp_path):
@@ -222,7 +222,7 @@ def test_override_changes_hash(tmp_path):
     override_file.write_text(yaml.safe_dump({
         "extends": "app_web_backend",
         "tier": "development",
-        "overrides": {"cap_teammates_per_wave": 7},
+        "overrides": {"cap_subagents_per_wave": 7},
     }), encoding="utf-8")
     _, hash_default = merge_profile(profile="app_web_backend", tier="development")
     _, hash_override = merge_profile(profile="app_web_backend", tier="development", override_path=override_file)
@@ -321,10 +321,10 @@ def test_safe_override_does_not_require_confirm(tmp_path):
     override_file.write_text(yaml.safe_dump({
         "extends": "app_web_backend",
         "tier": "development",
-        "overrides": {"cap_teammates_per_wave": 2},
+        "overrides": {"cap_subagents_per_wave": 2},
     }), encoding="utf-8")
     eff, _ = merge_profile(profile="app_web_backend", tier="development", override_path=override_file)
-    assert eff["cap_teammates_per_wave"] == 2
+    assert eff["cap_subagents_per_wave"] == 2
 
 
 def test_enabling_gate_does_not_require_confirm(tmp_path):
@@ -510,7 +510,7 @@ def test_cli_with_override(tmp_path):
     override_file.write_text(yaml.safe_dump({
         "extends": "framework_library",
         "tier": "tool",
-        "overrides": {"cap_teammates_per_wave": 4},
+        "overrides": {"cap_subagents_per_wave": 4},
     }), encoding="utf-8")
     result = _run_cli(
         "--profile", "framework_library",
@@ -519,7 +519,7 @@ def test_cli_with_override(tmp_path):
     )
     assert result.returncode == 0, f"stderr={result.stderr}"
     payload = json.loads(result.stdout)
-    assert payload["effective"]["cap_teammates_per_wave"] == 4
+    assert payload["effective"]["cap_subagents_per_wave"] == 4
 
 
 def test_cli_invalid_profile_exits_nonzero():

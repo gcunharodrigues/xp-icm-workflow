@@ -2,7 +2,7 @@
 
 > **Versão:** v3.0.0-beta1
 > **Skill:** `xp-icm-workflow`
-> **Propósito:** Define o contrato 4-block obrigatório por task no `plan.md` (output da fase 02 design, consumido pelas fases 03 wave_planner e 04 implementation_waves) **e** o ciclo TDD canônico de 7 passos que todo teammate executa por task. Inclui o auto-QA Akita (checklist 15-item) aplicado no passo 6 e o cap de 3 voltas que dispara escalonamento ao lead.
+> **Propósito:** Define o contrato 4-block obrigatório por task no `plan.md` (output da fase 02 design, consumido pelas fases 03 wave_planner e 04 implementation_waves) **e** o ciclo TDD canônico de 7 passos que todo subagente executa por task. Inclui o auto-QA Akita (checklist 15-item) aplicado no passo 6 e o cap de 3 voltas que dispara escalonamento ao lead.
 
 > **Decisão de origem:** F1 do plan `reescrever-a-skill-zazzy-wirth.md` (linha 57) + §4.4 dev↔qa loop + §4.11 canal 3 (plan.md schema).
 
@@ -40,9 +40,9 @@ Toda task no `plan.md` (fase 02 design) **deve** declarar os 4 blocos abaixo, na
 
 | Bloco | Sem ele... |
 |---|---|
-| O QUE | Teammate inventa requisito; QA não tem âncora pra validar |
+| O QUE | Subagente inventa requisito; QA não tem âncora pra validar |
 | COMO | Decisões arquiteturais divergem entre tasks paralelas da mesma wave |
-| NÃO QUERO | Scope creep silencioso; teammate adiciona "enquanto está aqui..." |
+| NÃO QUERO | Scope creep silencioso; subagente adiciona "enquanto está aqui..." |
 | VALIDAÇÃO | Tests cobrem o que o dev achou interessante, não o que importa |
 
 ---
@@ -56,6 +56,9 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 
 ### O QUE / COMO / NÃO QUERO / VALIDAÇÃO
 <vide §1>
+
+### Depends on
+- <slug-de-task-pai> OR nenhum (task raiz)
 
 ### Files touched
 - src/path/file.ts
@@ -80,19 +83,20 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 
 | Campo | Quem preenche | Quem consome |
 |---|---|---|
-| 4-block | Designer (fase 02) | Teammate (fase 04) |
-| Files touched | Designer; refinado wave-planner | Lead (worktree boundary) |
-| ADRs aplicáveis | Designer | Teammate (read order) |
-| Lições críticas | Wave-planner (Q10 match) | Teammate (audit pré-RED) |
-| Conventions extras | Designer (raro) | Teammate |
-| Tech debt paydown | Designer | Teammate (declara em commit) |
+| 4-block | Designer (fase 02) | Subagente (fase 04) |
+| Depends on | Designer (fase 02) | Wave-planner (DAG aresta explícita) |
+| Files touched | Designer; refinado wave-planner | Lead (boundary da branch) |
+| ADRs aplicáveis | Designer | Subagente (read order) |
+| Lições críticas | Wave-planner (Q10 match) | Subagente (audit pré-RED) |
+| Conventions extras | Designer (raro) | Subagente |
+| Tech debt paydown | Designer | Subagente (declara em commit) |
 | Requires_peer_review | Wave-planner (regra Q6) | Lead (decide spawn QA-pair) |
 
 ---
 
 ## 3. Ciclo TDD 7 passos — ordem canônica
 
-Todo teammate executa **exatamente** esta sequência por task. CI gate roda 2x (passos 3 e 5) — princípio "verde antes do refactor, verde depois do refactor".
+Todo subagente executa **exatamente** esta sequência por task. CI gate roda 2x (passos 3 e 5) — princípio "verde antes do refactor, verde depois do refactor".
 
 | Passo | Nome | Ação | Saída |
 |---|---|---|---|
@@ -108,25 +112,25 @@ Todo teammate executa **exatamente** esta sequência por task. CI gate roda 2x (
 
 - **Cap:** 3 voltas sem convergir (auto-QA falha 3× seguidas).
 - Ao atingir cap:
-  1. Teammate seta no próprio task report `status: BLOCKED_ERROR`.
-  2. Sinaliza ao lead via mailbox: `stages/04/output/wave-N/mailbox/<task-slug>-blocked.md` (descreve item Akita que falha repetidamente + tentativas).
+  1. Subagente seta no próprio task report `status: BLOCKED_ERROR`.
+  2. Sinaliza ao lead via saída do Agent tool: `stages/04/output/wave-N/<task-slug>-blocked.md` (descreve item Akita que falha repetidamente + tentativas).
   3. Pausa e espera lead intervir (lead pode escalar humano).
 - Cada `❌` no Akita conta como 1 ciclo (não cada item; a volta inteira).
 
 ### 3.2 Stop points dentro do ciclo
 
-Se durante qualquer passo o teammate detecta um stop point (ex: novo paid service não declarado em ADR), ele:
+Se durante qualquer passo o subagente detecta um stop point (ex: novo paid service não declarado em ADR), ele:
 
 - Pausa o ciclo no estado atual (sem perder progresso).
 - Dispara menu A/B/C conforme `stop-points-canonical.md`.
-- Sinaliza lead via mailbox.
+- Sinaliza lead via saída do Agent tool.
 - Espera resolução; ciclo retoma do passo onde parou.
 
 ---
 
 ## 4. Integração com superpowers (sumários 200tok)
 
-Teammate na fase 04 tem na pasta `_references/superpowers-summary/` (criada na Wave 5 da skill):
+Subagente na fase 04 tem na pasta `_references/superpowers-summary/` (copiada pelo bootstrap):
 
 | Sumário | Cobre passos |
 |---|---|
@@ -138,7 +142,9 @@ Teammate na fase 04 tem na pasta `_references/superpowers-summary/` (criada na W
 
 ## 5. Auto-QA Akita — checklist 15-item
 
-Aplicado **no passo 6**. Teammate marca cada item ✅/❌. **Qualquer `❌` força volta** ao passo 4 (refactor) ou passo 3 (impl), e conta como 1 volta no cap de 3.
+Aplicado **no passo 6**. Subagente marca cada item ✅/❌. **Qualquer `❌` força volta** ao passo 4 (refactor) ou passo 3 (impl), e conta como 1 volta no cap de 3.
+
+Fonte autoritativa dos critérios de estilo (itens 4-10): `_config/xp-conventions.md` no workspace (L3). Fonte autoritativa de segurança (itens 11-12): `_config/stop-points.md` + ADRs. Fonte autoritativa de TDD (itens 1-3): ciclo canônico §3 deste documento.
 
 | # | Item | Foco |
 |---|---|---|
@@ -158,7 +164,7 @@ Aplicado **no passo 6**. Teammate marca cada item ✅/❌. **Qualquer `❌` for�
 | 14 | Tech debt declarado (qualquer atalho/TODO commitado em `docs/tech_debt.md`)? | Aderência |
 | 15 | Commit message segue convenção do repo (conventional commits, scope correto)? | Aderência |
 
-### 5.1 Como teammate registra checklist no task report
+### 5.1 Como subagente registra checklist no task report
 
 No `task-<slug>.md` (passo 7 COMPLETE), seção dedicada:
 
@@ -211,6 +217,10 @@ Task fictícia que ilustra o schema completo (4-block + metadados + auto-QA regi
 - Test: pipeline order (`cors` antes, `rateLimit` depois) — integration.
 - Cobertura ≥90% em `src/auth/middleware.ts`.
 
+### Depends on
+- project-setup
+- add-user-model
+
 ### Files touched
 - src/auth/middleware.ts
 - src/auth/errors.ts
@@ -236,7 +246,7 @@ Task fictícia que ilustra o schema completo (4-block + metadados + auto-QA regi
 - true (path /auth, tier=production)
 ```
 
-### 6.2 Saída esperada do teammate (`task-auth-middleware.md`, passo 7)
+### 6.2 Saída esperada do subagente (`task-auth-middleware.md`, passo 7)
 
 ```markdown
 # Task auth-middleware — COMPLETE
@@ -272,10 +282,10 @@ Cobertura 94%.
 
 | Doc | Conteúdo relacionado |
 |---|---|
-| `references/doc-reading-protocol.md` | Canais 1/2/3 — quem injeta o quê no teammate |
+| `references/doc-reading-protocol.md` | Canais 1/2/3 — quem injeta o quê no subagente |
 | `references/wave-planner-algorithm.md` | DAG, Q10 lesson match, Q6 peer-review trigger |
-| `references/agent-team-protocol.md` | Lead spawn, mailbox, plan approval |
+| `references/subagent-protocol.md` | Lead spawn, saída do Agent tool, plan approval |
 | `references/stop-points-canonical.md` | 12 stop points + thresholds por tier |
 | `references/recovery-wizard.md` | Recuperação se ciclo trava no passo 7 sem COMPLETE |
-| `_references/superpowers-summary/test-driven-development-200tok.md` | Sumário TDD (Wave 5) |
-| `_references/superpowers-summary/verification-before-completion-200tok.md` | Sumário CI gate (Wave 5) |
+| `_references/superpowers-summary/test-driven-development-200tok.md` | Sumário TDD |
+| `_references/superpowers-summary/verification-before-completion-200tok.md` | Sumário CI gate |

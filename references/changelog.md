@@ -4,6 +4,51 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.1.0 — Agent Teams → subagentes (2026-04-27)
+
+### Why v3.1.0
+
+Substituição completa do modelo Agent Teams (baseado em git worktrees + mailbox custom) pelo modelo de subagentes nativos do Claude Code (Agent tool). O novo modelo elimina a complexidade de worktrees, mailbox e rebase sequencial, usando branches isoladas e merges em vez de rebases. Simplifica a orquestração da fase 04 e reduz superfície de erro.
+
+### Mudanças
+
+- **`references/subagent-protocol.md` (NOVO):** protocolo canônico de subagentes substitui `agent-team-protocol.md`. Usa Agent tool nativo em vez de git worktrees + mailbox. Sem sync barrier manual — o lead aguarda retorno direto de cada subagente.
+- **`references/agent-team-protocol.md` (DEPRECATED):** removido do fluxo ativo. Preservado em `references/v2.4-snapshot/` para referência histórica.
+- **`references/file-flow-diagram.md` (DEPRECATED):** removido do fluxo ativo. Diagrama original referia-se ao modelo de worktrees/mailbox.
+
+### Terminologia atualizada em todos os references ativos
+
+- "Agent Team" / "agent team" / "Agent Teams" → "subagente" / "subagentes" / "subagente" (conforme contexto em PT-BR)
+- "teammate" / "teammates" → "subagente" / "subagentes"
+- "worktree" / "git worktree" → "branch isolada" / "branches isoladas" (contexto de isolamento de task)
+- "mailbox" / "mailbox custom" → "saída do Agent tool" (contexto de sinalização entre lead e subagente)
+- "rebase" (sequencial de wave) → "merge" (o workflow agora usa merge em vez de rebase)
+- "agent-team-protocol.md" (referência) → "subagent-protocol.md"
+
+### Arquivos atualizados
+
+- `references/session-handoff-protocol.md`
+- `references/4-block-contract-template.md`
+- `references/stage-templates.md`
+- `references/xp-workflow-integration.md`
+- `references/wave-planner-algorithm.md`
+- `references/stop-points-canonical.md`
+- `references/state-machine-schema.md`
+- `references/recovery-wizard.md`
+- `references/superpowers-mapping.md`
+- `references/doc-reading-protocol.md`
+- `references/smoke-manual-checklist.md`
+- `references/example-run.md`
+- `references/changelog.md` (este arquivo)
+
+### Semântica preservada
+
+- Arquivos em `references/v2.4-snapshot/` não foram alterados (snapshot histórico imutável).
+- Entradas históricas do changelog (v2.4 e anteriores) permanecem com a terminologia original "Agent Teams" / "worktrees" — são registros históricos.
+- `using-git-worktrees` permanece como skill auxiliar no mapeamento de superpowers (a skill ainda existe no plugin superpowers, mas o protocolo ICM não a exige mais).
+
+---
+
 ## v3.0.0-beta4 — 07→08 transição automática + 08 inferência de intenção (2026-04-26)
 
 ### Why beta4

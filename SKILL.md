@@ -1,6 +1,6 @@
 ---
 name: xp-icm-workflow
-description: Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto e SAI. A partir daí o filesystem governa o ciclo — sessões novas leem L0+L1+L2 do estágio atual e trabalham. Suporta 9 estágios (00 recon → 08 feedback intake), 10 profiles × 4 tiers calibrando rigor, Agent Teams na fase 04 (paralelismo via git worktrees), Wave Planner determinístico + LLM review, e Recovery Wizard pra workspaces órfãos.
+description: Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto e SAI. A partir daí o filesystem governa o ciclo — sessões novas leem L0+L1+L2 do estágio atual e trabalham. Suporta 9 estágios (00 recon → 08 feedback intake), 10 profiles × 4 tiers calibrando rigor, subagentes via Agent Tool na fase 04 (paralelismo sem worktrees), Wave Planner determinístico + LLM review, e Recovery Wizard pra workspaces órfãos.
 type: rigid
 ---
 
@@ -28,7 +28,7 @@ Invoque `/xp-icm-workflow` para **iniciar** um workspace novo. Casos típicos:
 
 - Projeto novo (greenfield ou existente) com múltiplos estágios + revisão humana entre passos.
 - Feature complexa (discovery → design → implementação → review → merge).
-- Implementação que se beneficia de paralelismo (Agent Teams na fase 04).
+- Implementação que se beneficia de paralelismo (subagentes via Agent Tool na fase 04).
 - Quer ver, editar e aprovar artefatos intermediários (L4 outputs por estágio).
 - Decisões arquiteturais não-triviais que precisam de menu A/B/C.
 
@@ -53,7 +53,7 @@ EXIT   →  Skill SAI. Sessão nova retoma via L1+L2.
 
 A skill **não persiste** durante o ciclo. Não é orquestradora. Não invoca outras skills no runtime do projeto. É um *project starter* curto.
 
-**Anti-superpowers (regra inegociável):** durante o bootstrap, NUNCA invoque `Skill` tool com `superpowers:*` (brainstorming, executing-plans, writing-plans, test-driven-development, debugging, requesting-code-review, etc.). Discovery/brainstorm pertencem ao `stages/01_discovery/` do workspace. TDD/debug viram instruções inline em cada L2. Sumários (200tok cada) ficam em `workspaces/NNN-slug/_references/superpowers-summary/` como referência. Escape hatch: invocação real só com aprovação humana explícita por turno.
+**Anti-superpowers (regra inegociável):** durante o bootstrap, NUNCA invoque `Skill` tool com `superpowers:*` (brainstorming, executing-plans, writing-plans, test-driven-development, debugging, requesting-code-review, etc.). Discovery/brainstorm pertencem ao `stages/00_recon/` → `stages/01_discovery/` do workspace. TDD/debug viram instruções inline em cada L2. Sumários (200tok cada) ficam em `workspaces/NNN-slug/_references/superpowers-summary/` como referência. Escape hatch: invocação real só com aprovação humana explícita por turno.
 
 ---
 
@@ -90,17 +90,17 @@ User pode invocar `/xp-icm-workflow` com **descrição livre** em vez de args (e
 
 4. **Executar bootstrap** com args confirmados (`bash scripts/bootstrap.sh --profile X --tier Y --workspace-name slug`).
 
-5. **Escrever seed inicial** pra próxima sessão em `workspaces/NNN-slug/stages/01_discovery/_seed.md`:
+5. **Escrever seed inicial** pra próxima sessão em `workspaces/NNN-slug/stages/00_recon/_seed.md`:
 
    ```markdown
    ---
    layer: L4-seed
-   stage: 01_discovery
+   stage: 00_recon
    created_by: bootstrap
    created_at: <ISO8601>
    ---
 
-   # Seed — input pré-discovery
+   # Seed — input pré-recon
 
    ## Intenção do user (literal)
    <prompt original do user, citado>
@@ -115,15 +115,15 @@ User pode invocar `/xp-icm-workflow` com **descrição livre** em vez de args (e
    ## Recursos externos referenciados
    - <repos, URLs, papers citados pelo user, com summary curto se já fetchados>
 
-   ## Pendências pra 01_discovery
+   ## Pendências pra 00_recon
    - <Qs ainda sem resposta — ex: output format, dependências>
    ```
 
-   Esse arquivo é input declarado no `Inputs` do `stages/01_discovery/CONTEXT.md` (L2). Próxima sessão lê e parte dele em vez de zero.
+   Esse arquivo é input declarado no `Inputs` do `stages/00_recon/CONTEXT.md` (L2). Próxima sessão lê e parte dele em vez de zero.
 
 6. **Commit do seed** atomicamente com bootstrap (pre-commit hook valida prefixo `workspace NNN: bootstrap seed`).
 
-7. **SAIR.** Resumo final inclui: workspace path, branch, próximos passos, e linha **"Seed pré-discovery em stages/01_discovery/_seed.md"**.
+7. **SAIR.** Resumo final inclui: workspace path, branch, próximos passos, e linha **"Seed pré-recon em stages/00_recon/_seed.md"**.
 
 **Quando NÃO inferir:** se o prompt é ambíguo ou o user quer escolher manualmente (sinais: "ajuda escolher", "quais opções", "explica diferenças"), pular passo 2 e ir direto pro menu interativo do `bootstrap.sh` (passo 3 com tabela completa).
 
@@ -170,7 +170,7 @@ Detalhes da matriz em `templates/_config/profile-matrix.md` (10 × 4 = 40 combos
 ├── .git/
 │   └── hooks/
 │       └── pre-commit              [hook instalado, R2.3+R3.3+R3.10+R5.4]
-├── .gitignore                      [updated: .worktrees/ + .icm-profile.local.yaml]
+├── .gitignore                      [updated: .icm-profile.local.yaml]
 ├── workspaces/
 │   ├── .index.md                   [registry de workspaces ativos/completados]
 │   └── NNN-slug/                   [workspace root]
@@ -190,19 +190,15 @@ Detalhes da matriz em `templates/_config/profile-matrix.md` (10 × 4 = 40 combos
 │       │   ├── profile-effective.yaml  [profile base + override + hash]
 │       │   └── profile-matrix.md       [referência humana 10×4]
 │       └── _references/
-│           ├── runtime/                [protocolos: agent-team, wave-planner, recovery, etc.]
+│           ├── runtime/                [protocolos: subagent, wave-planner, recovery, etc.]
 │           └── superpowers-summary/    [10 sumários 200tok cada]
-└── .worktrees/                         [criado on-demand pela fase 04]
-    └── workspace-NNN/
-        └── wave-N/
-            └── task-slug/              [git worktree por teammate]
 ```
 
 **Branches criadas:**
 
 - `<base_branch>` — código real do projeto (geralmente `main`).
 - `workspace/NNN-slug` — APENAS state files (`workspaces/NNN-slug/*` + `docs/decisions/*` via exceção). NUNCA toca `src/`.
-- `wave-NNN-N/<task-slug>` — código + tests da task. Criada de `<base_branch>`. Lead rebase em `<base_branch>` ao fim da wave.
+- `wave-NNN-N/<task-slug>` — código + tests da task. Criada de `<base_branch>`. Lead faz merge em `<base_branch>` ao fim da wave.
 
 ---
 
@@ -237,7 +233,7 @@ A skill **sai**. Próximos passos seguem protocolo **1-stage-1-sessão** (supers
 
 **Stop points:** 12 stop points canônicos em `_config/stop-points.md` calibrados por tier. Disparo: agente pausa, escreve menu A/B/C, atualiza L1 `status: BLOCKED_STOP_POINT`. Humano responde, sessão retoma.
 
-**Agent Teams (fase 04):** waves de paralelismo via git worktrees. Cap por tier (2/3/5/5). Wave Planner determinístico + LLM review subagent. Detalhes em `_references/runtime/agent-team-protocol.md`.
+**Subagentes (fase 04):** waves de paralelismo via Agent tool. Cap por tier (2/3/5/5). Wave Planner determinístico + LLM review subagent. Detalhes em `_references/runtime/subagent-protocol.md`.
 
 **Feedback intake (fase 08):** disparada manualmente pelo humano após uso real. 3 saídas: A) close workspace; B) restart fase X (iteration++); C) spawn novo workspace herdando lessons+ADRs.
 
@@ -263,9 +259,9 @@ Permissions allowlist sugerida em `system-requirements.md`.
 - `git commit --no-verify` no workspace — pre-commit hook valida atomicidade L1↔outputs e prefixos. Bypass quebra audit. Investigue e corrija conteúdo, NÃO bypass o hook.
 - Re-invocar `/xp-icm-workflow` em workspace existente — só pra criar novos. Para retomar, abra sessão nova; ela lê L1.
 - Editar L1 (`CONTEXT.md`) manualmente sem entender o schema — use `scripts/recovery-wizard.py` se precisar reconstruir.
-- Editar L4 outputs commitados (decisions.md, ADRs) sem nova versão ou superseding — vide `_config/icm-conventions.md`.
+- Editar L4 outputs commitados (decisions.md, ADRs) sem nova versão ou superseding — vide `_config/xp-conventions.md`.
 - **Invocar `superpowers:*` skills durante bootstrap** (brainstorming, writing-plans, executing-plans, test-driven-development, debugging, etc.). Brainstorm vive em `stages/01_discovery/`. TDD/debug viram instruções dentro de cada L2. Sumários em `_references/superpowers-summary/` (200tok cada) servem como referência. Bypass via Skill tool quebra atomicidade L1↔outputs.
-- **Diálogo Q&A pré-bootstrap em vez de bootstrappar.** Quando user invoca a skill com descrição livre, infira profile/tier (vide "Intent inference"), confirme com menu curto, bootstrappe, e mande pendências pro `_seed.md` do `01_discovery`. NÃO conduzir discovery completa antes de criar workspace.
+- **Diálogo Q&A pré-bootstrap em vez de bootstrappar.** Quando user invoca a skill com descrição livre, infira profile/tier (vide "Intent inference"), confirme com menu curto, bootstrappe, e mande pendências pro `_seed.md` do `00_recon`. NÃO conduzir discovery completa antes de criar workspace.
 
 ---
 
@@ -284,15 +280,14 @@ Permissions allowlist sugerida em `system-requirements.md`.
 | `templates/workspace/CLAUDE.md.tpl` | Template L0 com placeholders |
 | `templates/workspace/CONTEXT.md.tpl` | Template L1 com placeholders |
 
-**Referências de algoritmo (Wave 3+ da skill — em construção):**
+**Referências de algoritmo:**
 
 - `references/wave-planner-algorithm.md` — DAG construction, sub-waves, LLM review subagent
-- `references/agent-team-protocol.md` — spawn, mailbox, plan approval, mid-wave reduce
+- `references/subagent-protocol.md` — spawn via Agent tool, plan approval, mid-wave reduce
 - `references/stop-points-canonical.md` — 12 stop points + thresholds por tier
 - `references/4-block-contract-template.md` — O QUE / COMO / NÃO QUERO / VALIDAÇÃO
 - `references/feedback-intake-fase08.md` — 3 saídas A/B/C
-- `references/profile-matrix.md` — calibração por profile/tier (estágios pulados, etc.)
-- `references/doc-reading-protocol.md` — 3 canais de docs (L2 Inputs, lead injeta, plan.md declara)
+- `references/profile-matrix.md` — calibração por profile/tier (estágios pulados, etc.) — cópia em `templates/_config/profile-matrix.md`
 
 **Referências de testes:**
 

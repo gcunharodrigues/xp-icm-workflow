@@ -2,13 +2,12 @@
 
 Cobertura:
 
-Detect (5 + 1 inconsistencias):
+Detect (4 + 1 inconsistencias):
   * Workspace consistente -> lista vazia
   * HASH_MISMATCH -> hash recomputado != declarado em L1
   * MISSING_OUTPUT -> history referencia output ausente no FS
   * STALE_IN_PROGRESS -> IN_PROGRESS sem commit nas ultimas 24h
   * MISSING_COMMIT -> last_transition.commit_sha nao existe em git
-  * MISSING_WORKTREES -> waves.current=N, .worktrees/.../wave-N ausente
   * BRANCH_MISSING -> branch workspace/NNN-slug nao existe (R4.5)
   * Multiplas -> ordem deterministic
 
@@ -260,104 +259,6 @@ class TestDetectMissingCommit:
         assert all(i.code != "MISSING_COMMIT" for i in result)
 
 
-class TestDetectMissingWorktrees:
-    def _build_wave_workspace(
-        self, tmp_path: Path, project_root: Path, current_wave: int
-    ) -> Path:
-        ws = tmp_path / "wave-ws"
-        ws.mkdir()
-        (ws / "_config").mkdir()
-        profile_yaml = "profile_base: app_web_backend\n"
-        profile_bytes = profile_yaml.encode("utf-8")
-        (ws / "_config" / "profile-effective.yaml").write_bytes(profile_bytes)
-        correct_hash = hashlib.sha256(profile_bytes).hexdigest()
-        now = datetime(2026, 4, 25, 14, 30, tzinfo=timezone.utc).isoformat()
-        context = f"""---
-workspace: "777-wave-ws"
-profile_base: "app_web_backend"
-profile_effective_hash: "{correct_hash}"
-tier: "development"
-project_root: "{project_root.as_posix()}"
-base_branch: "main"
-workspace_branch: "workspace/777-wave-ws"
-stage_atual: "04"
-sub_stage: "04_wave_{current_wave}_in_progress"
-status: "IN_PROGRESS"
-iteration: 0
-llm_review_skipped_count: 0
-waves:
-  current: {current_wave}
-  completed: []
-last_action: "wave spawn"
-last_action_at: "{now}"
-next_action: "exec wave"
-last_transition:
-  from: "03_completed"
-  to: "04_wave_{current_wave}_in_progress"
-  at: "{now}"
-  commit_sha: "abc123def456"
-history:
-  - at: "{now}"
-    event: "stage_transition"
-    from: "03_completed"
-    to: "04_wave_{current_wave}_in_progress"
-    commit_sha: "abc123def456"
----
-
-# Workspace 777 — wave fixture
-"""
-        (ws / "CONTEXT.md").write_text(context, encoding="utf-8")
-        return ws
-
-    def test_missing_worktree_for_current_wave(self, tmp_path, mock_git):
-        project_root = tmp_path / "proj"
-        project_root.mkdir()
-        ws = self._build_wave_workspace(tmp_path, project_root, current_wave=2)
-        # Intencionalmente NAO criar .worktrees/workspace-777-wave-ws/wave-2/
-        # Mas adicionar 777 e workspace/777 nas existing pra evitar BRANCH_MISSING
-        mock_git.existing_branches.add("workspace/777-wave-ws")
-        now = datetime(2026, 4, 25, 14, 30, tzinfo=timezone.utc)
-        # Suppress STALE: commit recente
-        mock_git.last_commit_at = now - timedelta(minutes=30)
-        result = detect_inconsistencies(
-            ws, project_root=project_root, now=now
-        )
-        codes = [i.code for i in result]
-        assert "MISSING_WORKTREES" in codes
-
-    def test_worktree_present_no_inconsistency(self, tmp_path, mock_git):
-        project_root = tmp_path / "proj"
-        project_root.mkdir()
-        ws = self._build_wave_workspace(tmp_path, project_root, current_wave=2)
-        # Cria worktree presente E nao-vazia
-        wt = project_root / ".worktrees" / "workspace-777-wave-ws" / "wave-2"
-        wt.mkdir(parents=True)
-        (wt / "placeholder.txt").write_text("x", encoding="utf-8")
-        mock_git.existing_branches.add("workspace/777-wave-ws")
-        now = datetime(2026, 4, 25, 14, 30, tzinfo=timezone.utc)
-        mock_git.last_commit_at = now - timedelta(minutes=30)
-        result = detect_inconsistencies(
-            ws, project_root=project_root, now=now
-        )
-        assert all(i.code != "MISSING_WORKTREES" for i in result)
-
-    def test_empty_worktree_dir_triggers_inconsistency(self, tmp_path, mock_git):
-        project_root = tmp_path / "proj"
-        project_root.mkdir()
-        ws = self._build_wave_workspace(tmp_path, project_root, current_wave=2)
-        wt = project_root / ".worktrees" / "workspace-777-wave-ws" / "wave-2"
-        wt.mkdir(parents=True)
-        # Vazia -> ainda inconsistente
-        mock_git.existing_branches.add("workspace/777-wave-ws")
-        now = datetime(2026, 4, 25, 14, 30, tzinfo=timezone.utc)
-        mock_git.last_commit_at = now - timedelta(minutes=30)
-        result = detect_inconsistencies(
-            ws, project_root=project_root, now=now
-        )
-        codes = [i.code for i in result]
-        assert "MISSING_WORKTREES" in codes
-
-
 class TestDetectBranchMissing:
     def test_branch_missing(self, tmp_path, mock_git):
         ws = _build_consistent_workspace(tmp_path)
@@ -397,13 +298,12 @@ class TestDetectMultipleOrdering:
         ):
             assert expected in codes
         # Ordem deterministic: HASH > MISSING_COMMIT > MISSING_OUTPUT > STALE
-        # > MISSING_WORKTREES > BRANCH_MISSING
+        # > BRANCH_MISSING
         canonical_order = [
             "HASH_MISMATCH",
             "MISSING_COMMIT",
             "MISSING_OUTPUT",
             "STALE_IN_PROGRESS",
-            "MISSING_WORKTREES",
             "BRANCH_MISSING",
         ]
         # Filtra so codes presentes em result, na ordem canonica esperada

@@ -89,7 +89,7 @@ teardown() {
 extends: cli_tool
 tier: development
 overrides:
-  cap_teammates_per_wave: 4
+  cap_subagents_per_wave: 4
 EOF
 
     run python "$BOOTSTRAP_PY" \
@@ -101,7 +101,7 @@ EOF
     [ "$status" -eq 0 ]
 
     # profile-effective.yaml deve refletir cap = 4
-    grep -q "cap_teammates_per_wave: 4" \
+    grep -q "cap_subagents_per_wave: 4" \
         "${TMP_PROJECT}/workspaces/001-feat-override/_config/profile-effective.yaml"
 }
 
@@ -147,7 +147,7 @@ EOF
     git init -q -b main
     cat > .gitignore <<EOF
 node_modules/
-.worktrees/
+.icm-profile.local.yaml
 EOF
     git add .gitignore
     git commit -q -m "initial"
@@ -160,15 +160,15 @@ EOF
         --workspace-name feat-gi
     [ "$status" -eq 0 ]
 
-    # .worktrees/ aparece UMA vez (nao duplicada)
-    n="$(grep -c '^\.worktrees/$' "${TMP_PROJECT}/.gitignore")"
+    # .icm-profile.local.yaml aparece UMA vez (nao duplicada)
+    n="$(grep -c '^\.icm-profile\.local\.yaml$' "${TMP_PROJECT}/.gitignore")"
     [ "$n" -eq 1 ]
 
     # node_modules/ preservado
     grep -q "node_modules/" "${TMP_PROJECT}/.gitignore"
 
-    # .icm-profile.local.yaml adicionado
-    grep -q ".icm-profile.local.yaml" "${TMP_PROJECT}/.gitignore"
+    # __pycache__/ adicionado pelo bootstrap
+    grep -q "__pycache__/" "${TMP_PROJECT}/.gitignore"
 }
 
 # 7. Pre-commit hook instalado e executavel ----------------------------------

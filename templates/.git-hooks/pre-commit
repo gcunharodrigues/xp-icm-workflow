@@ -19,7 +19,9 @@
 #         (exceto ADRs em docs/decisions/*.md).
 #      b) Reject se outputs de stages/<NN>/output sao staged sem que
 #         workspaces/NNN-slug/CONTEXT.md tambem esteja staged
-#         (atomicidade L1 <-> outputs).
+#         (atomicidade L1 -> outputs: outputs exigem L1; L1 so
+#         nao exige outputs — transicoes de estado podem nao produzir
+#         outputs a cada commit).
 #
 # Anti-bypass: NUNCA use --no-verify; corrija o conteudo.
 
@@ -63,9 +65,13 @@ fi
 offending=""
 while IFS= read -r f; do
     [ -z "$f" ] && continue
-    # ADR liberado: docs/decisions/*.md
+    # Whitelist: paths liberados fora de workspaces/NNN-slug/
     case "$f" in
-        docs/decisions/*.md) continue ;;
+        docs/decisions/*.md) continue ;;    # ADRs
+        docs/lessons.md) continue ;;         # licoes (stage 08 saida A)
+        docs/tech_debt.md) continue ;;       # tech debt (stage 06)
+        workspaces/.index.md) continue ;;    # registry de workspaces
+        .gitignore) continue ;;              # gitignore updates
     esac
     # Dentro do workspace? — liberado
     case "$f" in
@@ -125,7 +131,7 @@ if [ -n "$output_offender" ] && [ "$context_staged" -eq 0 ]; then
     cat >&2 <<EOM
 ERROR: outputs do estagio ${output_stage} staged sem update de CONTEXT.md.
 File: ${output_offender}
-Atomicidade L1<->outputs requerida. Stage CONTEXT.md tambem:
+Atomicidade L1->outputs requerida. Stage CONTEXT.md tambem:
   git add ${context_md_path}
 
 NUNCA use --no-verify; corrija o conteudo.

@@ -2,7 +2,7 @@
 
 > **Propósito:** define o **schema obrigatório** dos 9 templates L2 em `templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl`. Cada L2 é um *contrato de estágio*: declara o que o agente lê, processa e escreve quando aquele estágio está ativo.
 
-> **Status:** spec. L2 templates concretos são gerados na Wave 3 da reescrita da skill (paralelizável). Toda alteração de schema aqui obriga regenerar os 9 .tpl + atualizar `tests/unit/test_l2_templates.py`.
+> **Status:** spec. L2 templates concretos em `templates/workspace/stages/*/CONTEXT.md.tpl`. Toda alteração de schema aqui obriga regenerar os 9 .tpl + atualizar `tests/unit/test_l2_templates.py`.
 
 > **Não confundir:** este doc é spec do **template** L2. O `.tpl` resultante carrega placeholders `{{PROJECT_ROOT}}` e `{{WORKSPACE}}` que o bootstrap resolve. O resultado materializado em `<project_root>/workspaces/<NNN-slug>/stages/<NN>_<slug>/CONTEXT.md` é o L2 efetivo lido por sessões.
 
@@ -15,8 +15,8 @@
 | 00 | `recon`                  | Reconnaissance do projeto/repositório: detecta stack, branch, ADRs e lessons existentes; gera baseline para os estágios seguintes. |
 | 01 | `discovery`              | Brainstorming guiado: público, requisitos funcionais/não-funcionais, alternativas, MVP IN/OUT, riscos, métricas. |
 | 02 | `design`                 | Plano arquitetural + ADRs formais; modelagem de dados, contratos de API, divisão em tasks com 4-block contract. |
-| 03 | `wave_planner`           | Constrói DAG de tasks, agrupa em waves respeitando cap de teammates e dependências; LLM review subagent assina o plano. |
-| 04 | `implementation_waves`   | Execução paralela via Agent Teams em git worktrees; lead orquestra spawn/mailbox/rebase sequencial; uma sub-stage por wave. |
+| 03 | `wave_planner`           | Constrói DAG de tasks, agrupa em waves respeitando cap de subagentes e dependências; LLM review subagent assina o plano. |
+| 04 | `implementation_waves`   | Execução paralela via subagentes em branches isoladas; lead orquestra spawn/saída do Agent tool/merge sequencial; uma sub-stage por wave. |
 | 05 | `verification`           | Verificação técnica do que foi entregue: CI, cobertura, conformidade ao plano e aos ADRs; PASS/CONDITIONAL/FAIL. |
 | 06 | `review`                 | Code review nas 7 dimensões (correctness, security, tests, design, standards, readability, performance) + recebimento de feedback. |
 | 07 | `merge`                  | Finaliza branch: merge direto, PR, tag de release ou cleanup; atualiza lessons/tech_debt; fecha o ciclo de entrega. |
@@ -152,7 +152,7 @@ Subset dos 5 canônicos de `references/state-machine-schema.md`.
 - `IN_PROGRESS` — trabalho ativo.
 - `COMPLETED_AWAITING_HUMAN` — outputs prontos, aguarda gate humano.
 - `BLOCKED_STOP_POINT` — menu A/B/C disparado (ver §10).
-- `BLOCKED_ERROR` — runtime/CI/rebase falhou.
+- `BLOCKED_ERROR` — runtime/CI/merge falhou.
 - `COMPLETED` — APENAS estágio 07 (saída) ou 08 saída A.
 ```
 
@@ -207,10 +207,10 @@ Skill formal: `superpowers:<nome>` (escape hatch — invocação real só se com
 | 01 discovery | `brainstorming` | `brainstorming-200tok.md` |
 | 02 design | `writing-plans` | `writing-plans-200tok.md` |
 | 03 wave_planner | `dispatching-parallel-agents` | `dispatching-parallel-agents-200tok.md` |
-| 04 implementation_waves | `test-driven-development` + `subagent-driven-development` | `tdd-200tok.md`, `subagent-dd-200tok.md` |
-| 05 verification | `verification-before-completion` | `verification-200tok.md` |
+| 04 implementation_waves | `test-driven-development` + `subagent-driven-development` | `test-driven-development-200tok.md`, `subagent-driven-development-200tok.md` |
+| 05 verification | `verification-before-completion` | `verification-before-completion-200tok.md` |
 | 06 review | `requesting-code-review` + `receiving-code-review` | `requesting-code-review-200tok.md` |
-| 07 merge | `finishing-a-development-branch` | `finishing-branch-200tok.md` |
+| 07 merge | `finishing-a-development-branch` | `finishing-a-development-branch-200tok.md` |
 | 08 feedback_intake | (nenhuma direta) | usa `references/feedback-intake-fase08.md` local |
 
 ### 12. Gates
@@ -225,7 +225,7 @@ Declara explicitamente quem libera o estágio.
 - **Aprovação para transitar:** <regra exata para sub_stage IN_PROGRESS → COMPLETED>
 ```
 
-Estágio 04 referencia gate composto: peer review subagent + wave-reviewer + rebase verde.
+Estágio 04 referencia gate composto: peer review subagent + wave-reviewer + merge verde.
 
 ---
 
@@ -325,7 +325,7 @@ Produz plano arquitetural executável + ADRs formais. Cada decisão não-trivial
 | 5 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/00_recon/output/baseline.md | L4 | sim |
 | 6 | /repo/aura-luz-api/docs/decisions/ | L3 | condicional: ler ADRs já existentes referenciados em discovery.md |
 | 7 | /repo/aura-luz-api/docs/tech_debt.md | L3 | condicional: tier ≠ experimental |
-| 8 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/icm-conventions.md | L3 | sim |
+| 8 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/xp-conventions.md | L3 | sim |
 | 9 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/stop-points.md | L3 | sim |
 | 10 | /repo/aura-luz-api/workspaces/042-feat-auth/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
 
@@ -345,7 +345,7 @@ Produz plano arquitetural executável + ADRs formais. Cada decisão não-trivial
 5. baseline.md (recon)
 6. ADRs listados em discovery
 7. tech_debt.md (se tier permitir)
-8. icm-conventions.md, stop-points.md, sumário writing-plans
+8. xp-conventions.md, stop-points.md, sumário writing-plans
 
 ## Process
 

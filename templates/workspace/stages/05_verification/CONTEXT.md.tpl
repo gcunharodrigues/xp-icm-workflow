@@ -27,7 +27,8 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 | 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/ | L4 | sim |
 | 7 | {{PROJECT_ROOT}}/docs/decisions/ | L3 | sim — sample-check (3 ADRs aleatórios) |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/verification-before-completion-200tok.md | L3 | sim |
-| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
+| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
+| 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 
 ## Não Lê (negative constraint)
 
@@ -45,6 +46,8 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 6. stages/04/output/ — task reports + wave summaries
 7. ADRs sample (3 aleatórios) — verificar citação em ≥1 task report
 8. verification-before-completion-200tok.md (sumário)
+9. xp-conventions.md — naming, file limits, docstrings (baseline para verification)
+10. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md (se existe — handoff do estágio 04)
 
 ## Process
 
@@ -107,7 +110,7 @@ Ao concluir este estágio, sessão deve:
 
 2. **Renderizar `_kickoff.md`** no stage seguinte:
    - Path: `<workspace>/stages/06_review/_kickoff.md`
-   - Use `python scripts/handoff.py render` ou função `render_kickoff` do `scripts/handoff.py`
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
    - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
    - Corpo: prev_outputs com summary + prev_decisions + pending pra próximo stage
 

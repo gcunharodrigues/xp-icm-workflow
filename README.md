@@ -12,7 +12,7 @@ Skill de orquestração de projetos via filesystem (ICM). v3.0.0-beta1.
 
 ## O que faz
 
-Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto e SAI. A partir daí o filesystem governa o ciclo — sessões novas leem L0+L1+L2 do estágio atual e trabalham. 9 estágios (00 recon → 08 feedback intake), 10 profiles × 4 tiers calibrando rigor, Agent Teams na fase 04 (paralelismo via git worktrees), Wave Planner determinístico + LLM review subagent, Recovery Wizard pra workspaces órfãos.
+Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto e SAI. A partir daí o filesystem governa o ciclo — sessões novas leem L0+L1+L2 do estágio atual e trabalham. 9 estágios (00 recon → 08 feedback intake), 10 profiles × 4 tiers calibrando rigor, subagentes via Agent Tool na fase 04 (paralelismo sem worktrees), Wave Planner determinístico + LLM review subagent, Recovery Wizard pra workspaces órfãos.
 
 ## Setup
 
@@ -41,7 +41,7 @@ Detalhes em `references/`. Walkthrough E2E em `references/example-run.md`.
 | `references/stop-points-canonical.md` | 12 stop points + thresholds por tier |
 | `references/4-block-contract-template.md` | 4-block + ciclo TDD 7 passos + Akita 15-item |
 | `references/wave-planner-algorithm.md` | DAG + LLM review subagent |
-| `references/agent-team-protocol.md` | Spawn worktrees + mailbox + sync |
+| `references/subagent-protocol.md` | Spawn via Agent tool + mid-wave reduce |
 | `references/feedback-intake-fase08.md` | 3 saídas A/B/C |
 | `references/recovery-wizard.md` | 6 inconsistências + reconstrução |
 | `references/superpowers-mapping.md` | Estágio ↔ skill superpowers ↔ sumário 200tok |

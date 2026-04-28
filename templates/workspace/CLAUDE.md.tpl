@@ -39,13 +39,15 @@ L0 é a constituição imutável deste workspace. Todo agente em qualquer estág
 | L1 state | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md` |
 | Estágios | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<NN>_*/` |
 | Config | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/` |
+| Conventions | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md` |
+| Runtime refs | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/` |
 | Sumários superpowers | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/` |
+| Skill dir | `{{SKILL_DIR}}` (diretório raiz da skill xp-icm-workflow — scripts, templates, references) |
 | ADRs do projeto | `{{PROJECT_ROOT}}/docs/decisions/` |
 | Lessons do projeto | `{{PROJECT_ROOT}}/docs/lessons.md` |
 | Tech debt | `{{PROJECT_ROOT}}/docs/tech_debt.md` |
-| Worktrees fase 04 | `{{PROJECT_ROOT}}/.worktrees/workspace-{{WORKSPACE}}/wave-<N>/<task-slug>/` |
 
-**Regra:** TODA referência a docs resolve absoluta a partir de `{{PROJECT_ROOT}}`. NUNCA use `../../` relativo. Vazamento de path = bug B2 do diagnóstico.
+**Regra:** TODA referência a docs resolve absoluta a partir de `{{PROJECT_ROOT}}`. Scripts da skill resolvem absoluta a partir de `{{SKILL_DIR}}/scripts/`. NUNCA use `scripts/` relativo (assumir CWD errado). NUNCA use `../../` relativo. Vazamento de path = bug B2 do diagnóstico.
 
 ## Regras inegociáveis
 
@@ -59,13 +61,13 @@ Cada sessão começa lendo seu L2 (`stages/<NN>/CONTEXT.md`). O L2 declara o CWD
 
 - Sessões 00–03, 05–08: CWD = `{{PROJECT_ROOT}}` (workspace branch checkout).
 - Sessão 04 (lead): CWD = `{{PROJECT_ROOT}}` (workspace branch).
-- Teammate em wave: CWD = `{{PROJECT_ROOT}}/.worktrees/workspace-{{WORKSPACE}}/wave-<N>/<task-slug>/` (branch `wave-{{WORKSPACE}}-<N>/<task-slug>`).
+- Subagente em wave: CWD = `{{PROJECT_ROOT}}` (branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`).
 
 ### 3. Branches
 
 - `{{BASE_BRANCH}}` — código real do projeto.
 - `workspace/{{WORKSPACE}}` — só state files (`workspaces/{{WORKSPACE}}/*`). NUNCA toca `src/`, `tests/`.
-- `wave-{{WORKSPACE}}-<N>/<task-slug>` — código + tests da task. Criada de `{{BASE_BRANCH}}`. Lead rebase em `{{BASE_BRANCH}}` ao fim da wave.
+- `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` — código + tests da task. Criada de `{{BASE_BRANCH}}`. Lead merge em `{{BASE_BRANCH}}` ao fim da wave.
 
 Pre-commit hook rejeita commit em `workspace/*` que toca paths fora de `workspaces/*` (R3.3).
 
@@ -74,7 +76,7 @@ Pre-commit hook rejeita commit em `workspace/*` que toca paths fora de `workspac
 Profile = `{{PROFILE}}`. Tier = `{{TIER}}`. Calibração canônica em `_config/profile-matrix.md`. Define:
 
 - Estágios pulados.
-- Cap de teammates por wave (2/3/5/5 por tier).
+- Cap de subagentes por wave (2/3/5/5 por tier).
 - TDD obrigatório vs opcional.
 - Security gate on/off.
 - Stop points calibrados (5 serviço pago, 7 over-engineering, 8 PII).
@@ -107,9 +109,10 @@ Skills `superpowers:*` (brainstorming, executing-plans, test-driven-development,
 1. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md` (este arquivo, L0)
 2. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md` (L1, state machine)
 3. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<stage_atual>/CONTEXT.md` (L2, instruções do estágio)
-4. Paths declarados na tabela `Inputs` do L2 (L3 + L4 específicos)
+4. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<stage_atual>/_kickoff.md` (L4-kickoff, handoff da sessão anterior — condicional, pode não existir em workspaces legados ou primeira sessão de stage)
+5. Paths declarados na tabela `Inputs` do L2 (L3 + L4 específicos)
 
-Layer Loading Protocol literal: lê só o listado em `Inputs`. Recusa ler mais.
+Layer Loading Protocol literal: a tabela `Inputs` do L2 é a fonte canônica do que ler. O `Read Order` é guia prático de sequência — pode agrupar itens relacionados ou reordenar para eficiência, mas cada item do Read Order deve mapear para um item em Inputs. Recusa ler qualquer path não listado em Inputs.
 
 ## Session header
 

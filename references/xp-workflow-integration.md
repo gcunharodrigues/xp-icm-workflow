@@ -26,7 +26,7 @@ Use quando há **estrutura, paralelismo ou decisões não-triviais**:
 
 - Projeto novo (greenfield ou existente) com múltiplos estágios + revisão humana entre passos.
 - Feature complexa (discovery → design → impl → review → merge).
-- Implementação que se beneficia de paralelismo (Agent Teams na fase 04).
+- Implementação que se beneficia de paralelismo (subagentes na fase 04).
 - Quer ver, editar e aprovar artefatos intermediários (L4 outputs por estágio).
 - Decisões arquiteturais não-triviais que precisam de menu A/B/C + ADR formal.
 - Tier `development` ou `production` com auditabilidade obrigatória.
@@ -47,7 +47,7 @@ Use quando há **estrutura, paralelismo ou decisões não-triviais**:
 | Estágios formais | Phases 0-10 internas (no SKILL.md da skill) | 9 estágios materializados em pastas (`stages/00..08`) |
 | Sessões típicas | 1 sessão única ponta a ponta | N sessões (1 por estágio ou batch) |
 | State machine externa | n/a (skill é stateless por sessão) | L1 `<workspace>/CONTEXT.md` (yaml frontmatter + history append-only) |
-| Paralelismo | n/a (sequencial single-agent) | Agent Teams na fase 04 (cap 2/3/5/5 por tier, git worktrees) |
+| Paralelismo | n/a (sequencial single-agent) | subagentes na fase 04 (cap 2/3/5/5 por tier, branches isoladas) |
 | ADRs formais | Pode escrever em `docs/decisions/` se a tarefa pedir | Obrigatório quando estágio 02 dispara stop point arquitetural |
 | Profile/Tier | Implícito (inferido pela tarefa) | Explícito em L0 (`profile: app_web_backend`, `tier: development`) — calibra rigor |
 | Stop points | Sim (lista interna do `xp-workflow`) | Sim (12 canônicos em `references/stop-points-canonical.md`, calibrados por tier) |
@@ -81,26 +81,27 @@ Implicações práticas:
 
 ## 4. Conventions compartilhadas
 
-### 4.1 `xp-conventions.md` (compartilhado entre as duas skills)
+### 4.1 `xp-conventions.md` (único arquivo de convenções)
 
-Define padrões neutros aplicáveis a qualquer profile:
+Define padrões aplicáveis ao profile/tier do workspace. Na v3, é o **único** arquivo de convenções — contém tanto regras compartilhadas (naming, TDD, clean code) quanto regras ICM-specific (branches, commit prefixes, stop points).
 
+Regras compartilhadas (derivadas do xp-workflow v3):
 - TDD obrigatório se `tier ∈ {development, production}`.
 - Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `docs`, `test`).
-- Prefixos de commit por contexto (`workspace:`, `wave:`, `feedback:`, `intake:`).
-- Files touched discipline: cada task declara seu footprint.
+- Funções 4-20 linhas, arquivos <300/500, nesting máx 2.
+- Docstrings em PT obrigatórias em função pública (4 elementos).
+- Clean Code gates por linguagem (formatter, linter, type check, complexity, security, secrets, coverage).
+- Dirt check pós-cycle (duplicação, naming, tamanho).
 - LGPD/PII handling baseline.
+- Secrets policy (nunca commit, env var only).
 
-**Estado atual (v3.0.0-beta1):** o arquivo `xp-conventions.md` ainda **não existe** como template separado. Wave 7 da reescrita da skill cria `templates/_config/xp-conventions.md.tpl` para ser copiado em `<workspace>/_config/xp-conventions.md` no bootstrap. Até lá, `xp-icm-workflow` referencia o conteúdo via `icm-conventions.md.tpl` parcial — verificar `templates/_config/` no bootstrap real.
+Regras ICM-specific:
+- Prefixos de commit por contexto: `workspace NNN:` em branch workspace (validado por hook), Conventional Commits em wave branches e base branch (sem validação de hook), `intake:`/`feedback:` em stage 08 (validado por hook).
+- Branches por contexto (`workspace/NNN` para state, `wave-NNN-N/task` para código).
+- Nunca `--no-verify` no workspace branch.
+- Files touched discipline: cada task declara seu footprint.
 
-### 4.2 `icm-conventions.md` (específica da skill ICM)
-
-Convenções que só fazem sentido no ciclo ICM:
-
-- L0 imutável após bootstrap (regenerar via `scripts/recovery-wizard.py` se precisar).
-- L1 `history` append-only — nunca editar item existente.
-- L4 outputs commitados (decisions.md, ADRs) são imutáveis; mudanças via novo ADR superseding.
-- Sub_stage prefixo bate com `stage_atual` sempre.
+**Estado atual (v3.0.0-beta4):** o arquivo `xp-conventions.md` existe como `templates/workspace/_config/xp-conventions.md.tpl` e é renderizado para `<workspace>/_config/xp-conventions.md` no bootstrap com placeholders preenchidos.
 
 ---
 
@@ -142,7 +143,7 @@ Um mesmo `project_root` pode ter:
 - `main` ou outras branches ativas onde `/xp-workflow` opera diretamente.
 - Contas separadas: `workspace/042-feat-auth` toca SOMENTE state files; `main` (e seus descendentes) toca código.
 
-**Regra de não-interferência:** sessão `xp-workflow` na `main` **não** lê `workspaces/NNN/` (não é input dela). Sessão `xp-icm-workflow` em workspace ativo respeita L2 §"Não Lê" (não toca `src/` fora dos worktrees da fase 04).
+**Regra de não-interferência:** sessão `xp-workflow` na `main` **não** lê `workspaces/NNN/` (não é input dela). Sessão `xp-icm-workflow` em workspace ativo respeita L2 §"Não Lê" (não toca `src/` fora das branches da fase 04).
 
 ---
 
@@ -156,10 +157,10 @@ Recap rápido — `xp-workflow` v3 tem phases 0-10 internas; `xp-icm-workflow` v
 | 1 4-block communication | Embutido em fase 02 (plan.md schema) | 4-block-contract-template.md formaliza |
 | 2 Division of responsibilities | Embutido no `SKILL.md` §Division | Tabela L0/L1/L2/L3/L4 cobre |
 | 3 Bootstrap or continuation | One-shot bootstrap (esta skill) | Sai depois — filesystem governa |
-| 4 TDD cycles | 04 implementation_waves (cada teammate roda os 7 passos) | Ver `4-block-contract-template.md` §3 |
+| 4 TDD cycles | 04 implementation_waves (cada subagente roda os 7 passos) | Ver `4-block-contract-template.md` §3 |
 | 5 Stop points | Em qualquer estágio com decisão | 12 canônicos em `stop-points-canonical.md` |
 | 6 CI Gate | Passos 3 e 5 do TDD ciclo + 05 verification | Dupla verificação |
-| 7 Pair check | Wave-reviewer (sempre) + peer-reviewer ad-hoc (path crítico) | Detalhes em `agent-team-protocol.md` §5, §10 |
+| 7 Pair check | Wave-reviewer (sempre) + peer-reviewer ad-hoc (path crítico) | Detalhes em `subagent-protocol.md` §5, §10 |
 | 8 Post-deploy | 08 feedback_intake (universal todos os tiers) | 3 saídas A/B/C |
 | 9 Tech debt dashboard | `docs/tech_debt.md` mantido pela fase 04 | Sample-check em 05/06 |
 | 10 Self-revision | **Dropada** | Skill ICM é starter, não runtime |
@@ -172,8 +173,8 @@ Recap rápido — `xp-workflow` v3 tem phases 0-10 internas; `xp-icm-workflow` v
 |---|---|---|---|
 | `docs/decisions/NNNN-slug.md` | `<project_root>/docs/decisions/` | fase 02 design (ICM) ou xp-workflow ad-hoc | qualquer estágio posterior; xp-workflow consulta |
 | `docs/lessons.md` | `<project_root>/docs/lessons.md` | fase 08 saída A (ICM); xp-workflow ad-hoc | retomada de sessão; pré-cozinhada pelo lead na fase 04 |
-| `docs/tech_debt.md` | `<project_root>/docs/tech_debt.md` | teammate em fase 04 declarando débito | fases 04, 05, 06 |
-| `xp-conventions.md` | `<workspace>/_config/xp-conventions.md` (ICM) ou implicit (xp-workflow) | bootstrap copia template (Wave 7 pendente) | ambas as skills |
+| `docs/tech_debt.md` | `<project_root>/docs/tech_debt.md` | subagente em fase 04 declarando débito | fases 04, 05, 06 |
+| `xp-conventions.md` | `<workspace>/_config/xp-conventions.md` (ICM) ou implicit (xp-workflow) | bootstrap renderiza `templates/_config/xp-conventions.md.tpl` | ambas as skills |
 
 ---
 
