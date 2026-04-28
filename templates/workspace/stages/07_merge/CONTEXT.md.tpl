@@ -39,19 +39,6 @@ Finaliza ciclo de implementação: integra a `workspace_branch` rebased em `base
 - {{PROJECT_ROOT}}/docs/decisions/ na íntegra — ADRs já foram aplicados nas fases 02/04/06.
 - Workspaces irmãos.
 
-## Read order
-
-1. L0 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md
-2. L1 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md
-3. L2 — este arquivo
-4. review-report.md (confirma sem P0/P1, aprovação humana registrada)
-5. .git/config (remotes, base_branch)
-6. Sumário finishing-a-development-branch-200tok
-7. stop-points.md (thresholds por tier para irreversible, prod_migration)
-8. session-handoff-protocol.md (handoff final do estágio)
-9. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
-10. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/_kickoff.md (se existe — handoff do estágio 06)
-
 ## Process
 
 1. **Pre-flight:** validar paths Inputs; sub_stage `07_in_progress`. review-report.md AUSENTE ou indicando P0/P1 → `BLOCKED_ERROR` (não deveria estar em 07 nesse caso).

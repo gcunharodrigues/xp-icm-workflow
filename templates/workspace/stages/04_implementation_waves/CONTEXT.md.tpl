@@ -51,24 +51,6 @@ Execução paralela em waves. Lead session orquestra subagentes via Agent tool r
 - Outputs de outros estágios do mesmo workspace (00, 01, 05+) — apenas plan.md (02) e wave-plan.md (03)
 - {{PROJECT_ROOT}}/docs/tech_debt.md diretamente — entra via canal 2 do lead se aplicável
 
-## Read order
-
-1. L0 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md
-2. L1 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md
-3. L2 — este arquivo
-4. wave-plan.md (entrada principal — qual wave, quais tasks, branches a criar)
-5. plan.md (4-block + metadados por task referenciada)
-6. ADRs aplicáveis (apenas os listados na task)
-7. Lições críticas pré-marcadas (canal 2)
-8. Sumários TDD + subagent-driven-development
-9. 4-block-contract-template.md (ciclo TDD 7 passos canônico)
-10. xp-conventions.md (Clean Code gates, naming, tamanho, docstrings — fonte do Akita itens 4-10)
-11. stop-points.md (thresholds calibrados por tier para new_dep, irreversible, over_eng, prod_migration, adr_drift)
-12. subagent-protocol.md (spawn via Agent tool, plan approval, mid-wave reduce — protocolo de orquestração dos subagentes)
-13. session-handoff-protocol.md (handoff final do estágio)
-14. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
-15. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/_kickoff.md (se existe — handoff do estágio 03)
-
 ## Process
 
 Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.

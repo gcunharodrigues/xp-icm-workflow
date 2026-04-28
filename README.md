@@ -1,11 +1,11 @@
 # xp-icm-workflow
 
-Skill de orquestração de projetos via filesystem (ICM). v3.0.0-beta1.
+Skill de orquestração de projetos via filesystem (ICM). v3.0.0-beta5.
 
 ![tests](https://img.shields.io/badge/tests-502%20passed-brightgreen)
 ![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
-![version](https://img.shields.io/badge/version-v3.0.0--beta1-orange)
+![version](https://img.shields.io/badge/version-v3.0.0--beta5-orange)
 
 > Quando publicada como repo GitHub, substituir os badges acima por
 > `[![tests](https://github.com/<user>/xp-icm-workflow/actions/workflows/test-skill.yml/badge.svg)](...)` etc.
@@ -74,4 +74,4 @@ CI: `.github/workflows/test-skill.yml` — Ubuntu runner com Python 3.13 + bats.
 
 ## Versão
 
-v3.0.0-beta1 — reescrita completa em 7 waves. v2.4 preservada em `references/v2.4-snapshot/`. Promoção a v3.0.0 condicionada aos critérios em `references/smoke-manual-checklist.md`.
+v3.0.0-beta5 — reescrita completa em 7 waves. v2.4 preservada em `references/v2.4-snapshot/`. Promoção a v3.0.0 condicionada aos critérios em `references/smoke-manual-checklist.md`.

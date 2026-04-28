@@ -1,6 +1,6 @@
 # xp-workflow ↔ xp-icm-workflow Integration
 
-> **Versão:** v3.0.0-beta1
+> **Versão:** v3.0.0-beta5
 > **Skill:** `xp-icm-workflow`
 > **Propósito:** doc canônico de como `xp-icm-workflow` (esta skill, parteira de workspaces ICM) se relaciona com `xp-workflow` (skill irmã no plugin, executora direta de tarefas). Define quando usar cada uma, hierarquia de invocação, conventions compartilhadas e fluxo de "lift" de uma para outra.
 

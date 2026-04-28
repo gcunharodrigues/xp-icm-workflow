@@ -44,23 +44,6 @@ Reconnaissance inicial do projeto. Detecta tipo de workspace (greenfield, existi
 - Outputs de estágios 01+ — não existem ainda.
 - Workspaces irmãos em {{PROJECT_ROOT}}/workspaces/<outro>/ — escopo deste workspace é {{WORKSPACE}}.
 
-## Read order
-
-1. L0 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md (identidade)
-2. L1 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md (state machine)
-3. L2 — este arquivo (instruções do estágio)
-4. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml (profile + tier resolvidos)
-5. {{PROJECT_ROOT}}/.icm-profile.local.yaml (se existe)
-6. {{PROJECT_ROOT}}/.git/config (base_branch + remotes)
-7. {{PROJECT_ROOT}}/docs/decisions/ (índice de ADRs — listing only)
-8. {{PROJECT_ROOT}}/docs/lessons.md (se existe; herança de fase 08 saída C ou iteração anterior)
-9. Sumários superpowers (brainstorming + writing-plans 200tok)
-10. session-handoff-protocol.md (handoff final do estágio)
-11. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
-12. state-machine-schema.md (validação de integridade §R2.7)
-13. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_seed.md (se existe — intenção pré-recon do bootstrap)
-14. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/_kickoff.md (se existe — handoff de fase 08 saída B)
-
 ## Process
 
 1. **Pre-flight:** validar que todos os paths Inputs marcados `sim` existem; sub_stage `00_in_progress`. Se path obrigatório ausente → status `BLOCKED_ERROR`. Validar também que `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh` existe e é executável, e que `{{PROJECT_ROOT}}/.claude/settings.local.json` contém entrada `hooks.PostToolUse` apontando para `bash workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh`. Se ausente → warning (não bloqueia bootstrap, mas context checkpoint anti-compact fica sem enforcement automático).

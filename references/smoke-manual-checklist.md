@@ -1,13 +1,13 @@
 ---
 name: smoke-manual-checklist
 purpose: Checklist de smoke tests manuais pré-release (plan §8.2)
-gate: v3.0.0-beta1 → v3.0.0 promotion
+gate: v3.0.0-beta5 → v3.0.0 promotion
 required_projects: 3
 ---
 
-# Smoke manual — pré-release v3.0.0
+# Smoke manual — pré-release v3.0.0-beta5
 
-> Antes de promover `v3.0.0-beta1` para `v3.0.0`: rodar todos os 10 itens em ≥3 projetos reais distintos. Documentar resultado por projeto em `references/smoke-results-<projeto>-<YYYY-MM-DD>.md`.
+> Antes de promover `v3.0.0-beta5` para `v3.0.0`: rodar todos os 10 itens em ≥3 projetos reais distintos. Documentar resultado por projeto em `references/smoke-results-<projeto>-<YYYY-MM-DD>.md`.
 
 ## Critérios gerais (todos os itens)
 
@@ -15,7 +15,7 @@ required_projects: 3
 - ❌ **FAIL** se: crash, escrita fora do escopo declarado, regressão de qualquer Wave anterior, perda de trabalho do humano.
 - ⚠️ **WARN** se: comportamento correto mas UX confusa / mensagem ruim / passo extra inesperado. Anotar para Wave 8 (futuras melhorias).
 
-## Os 10 itens
+## Os 13 itens
 
 ### 1. Greenfield real
 
@@ -117,6 +117,36 @@ Workspace em `D:\workspaces\NNN-<slug>\`, projeto em `C:\projects\X\`.
 - [ ] Branches criadas em `C:\projects\X\` (formato `wave-NNN-N/<task-slug>`)
 - [ ] Pre-commit hook valida prefixo `workspaces/NNN/` no workspace branch (não permite escrever em `src/`)
 
+### 11. Test Infrastructure — profile-effective.yaml
+
+`profile=app_web_backend tier=development`. Verificar geração de test_specs.
+
+**Verificar:**
+- [ ] `profile-effective.yaml` contém campo `test_specs` com sub-campos `test_types_required`, `coverage_threshold`, `http_integration`, `db_integration`
+- [ ] `coverage_threshold` = 80 para tier=development (conforme tabela de defaults)
+- [ ] `test_types_required` = `[unit, integration]` para profile `app_web_backend`
+- [ ] Campo `test_specs` ausente em `.icm-profile.local.yaml` — não-overridável
+
+### 12. Test Strategy no plan.md (stage 02)
+
+Percorrer stage 02 em workspace real.
+
+**Verificar:**
+- [ ] Stage 02 produz seção `§Test Strategy` no plan.md (framework, pirâmide, threshold, path crítico)
+- [ ] Toda task com arquivos em `src/` declara ≥1 arquivo de teste em `Files touched`
+- [ ] Task sem arquivo de teste em `Files touched` para código funcional → Wave Planner dispara `BLOCKED_ERROR "test file missing for task <slug>"`
+- [ ] Transition condition do stage 02 bloqueia se Test Strategy ausente
+
+### 13. Test-recipe copiada no bootstrap
+
+Bootstrap com qualquer profile (ex: `agent_ia`, `ml_project`).
+
+**Verificar:**
+- [ ] `workspace/_references/test-recipes/<profile>.md` existe após bootstrap
+- [ ] Conteúdo da receita bate com `templates/_references/test-recipes/<profile>.md` da skill
+- [ ] Stage 01 lista o arquivo na tabela Inputs (Input #12) como `condicional`
+- [ ] Stage 05 passo 4.6 executa sample-check e reporta PASS/CONDITIONAL/FAIL
+
 ## Critérios de aceitação para promover beta1 → v3.0.0 (plan §8.3)
 
 - ✅ Suite formal: ≥80% coverage críticos, ≥60% resto. CI verde 7 dias consecutivos.
@@ -142,6 +172,9 @@ Workspace em `D:\workspaces\NNN-<slug>\`, projeto em `C:\projects\X\`.
 | 8 | Feedback intake A/B/C | ✅/❌/⚠️ | ... |
 | 9 | Custo $ vs v2.4 | ✅/❌/⚠️ | v3=Xtok / v2.4=Ytok = Z% |
 | 10 | Path absoluto | ✅/❌/⚠️ | ... |
+| 11 | test_specs no profile-effective | ✅/❌/⚠️ | ... |
+| 12 | Test Strategy no plan.md | ✅/❌/⚠️ | ... |
+| 13 | test-recipe copiada no bootstrap | ✅/❌/⚠️ | ... |
 
 ## Bugs descobertos
 - ...

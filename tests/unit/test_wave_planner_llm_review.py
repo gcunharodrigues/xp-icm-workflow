@@ -4,8 +4,8 @@ Cobertura:
   - Skip threshold (<=2 tasks ou <=1 wave)
   - Pass-through de respostas APPROVE / PROPOSE_CHANGES validas
   - Validacao de schema (verdict enum, issues, proposed_dag_changes)
-  - Erros de mock ausente / NotImplementedError em prod
-  - CLI canonico (escreve output json)
+  - Mock mode (--mock-response), prod mode (--llm-response) e prompt mode
+  - CLI canonico (escreve output json, exit 2 em prompt mode)
   - Property: todas as 3 verdict-strings validam OK quando bem formadas
 """
 from __future__ import annotations
@@ -16,6 +16,7 @@ import sys
 from pathlib import Path
 
 import pytest
+import yaml
 
 # ----------------------------------------------------------------------------
 # Boot do script como modulo (hifen no nome impede import direto)
@@ -37,6 +38,8 @@ should_skip = wave_planner_llm_review.should_skip
 request_review = wave_planner_llm_review.request_review
 validate_response = wave_planner_llm_review.validate_response
 build_skipped_verdict = wave_planner_llm_review.build_skipped_verdict
+_update_wave_plan_llm_review = wave_planner_llm_review._update_wave_plan_llm_review
+_increment_llm_review_skipped_count = wave_planner_llm_review._increment_llm_review_skipped_count
 main = wave_planner_llm_review.main
 
 
@@ -86,7 +89,7 @@ def _make_workspace(tmp_path: Path, *, total_tasks: int, total_waves: int) -> di
     return {"wave_plan": wave_plan, "plan": plan, "amb": amb, "output": output}
 
 
-def _argv(paths: dict[str, Path], *, mock: Path | None = None) -> list[str]:
+def _argv(paths: dict[str, Path], *, mock: Path | None = None, llm: Path | None = None) -> list[str]:
     args = [
         "--wave-plan", str(paths["wave_plan"]),
         "--plan", str(paths["plan"]),
@@ -95,6 +98,8 @@ def _argv(paths: dict[str, Path], *, mock: Path | None = None) -> list[str]:
     ]
     if mock is not None:
         args += ["--mock-response", str(mock)]
+    if llm is not None:
+        args += ["--llm-response", str(llm)]
     return args
 
 
@@ -150,6 +155,28 @@ def test_approve_response_passes_through(tmp_path):
     assert out["verdict"] == "APPROVE"
     assert out["issues"] == []
     assert out["proposed_dag_changes"] == []
+
+
+def test_llm_response_passes_through(tmp_path):
+    """Prod mode: --llm-response aponta para JSON valido gerado externamente."""
+    paths = _make_workspace(tmp_path, total_tasks=8, total_waves=3)
+    llm_json = tmp_path / "llm_response.json"
+    llm_json.write_text(
+        json.dumps({"verdict": "APPROVE", "issues": [], "proposed_dag_changes": []}),
+        encoding="utf-8",
+    )
+    rc = main(_argv(paths, llm=llm_json))
+    assert rc == 0
+    out = json.loads(paths["output"].read_text(encoding="utf-8"))
+    assert out["verdict"] == "APPROVE"
+
+
+def test_llm_response_missing_file_raises(tmp_path, capsys):
+    paths = _make_workspace(tmp_path, total_tasks=8, total_waves=3)
+    rc = main(_argv(paths, llm=tmp_path / "missing.json"))
+    assert rc == 1
+    captured = capsys.readouterr()
+    assert "not found" in captured.err.lower()
 
 
 # ============================================================================
@@ -212,15 +239,16 @@ def test_missing_proposed_dag_changes_raises(tmp_path, capsys):
 
 
 # ============================================================================
-# 6. Sem mock + sem Task tool -> NotImplementedError -> exit 1
+# 6. Prompt mode (sem response path) -> imprime prompt -> exit 2
 # ============================================================================
 
-def test_no_mock_no_task_tool_raises(tmp_path, capsys):
+def test_no_response_path_emits_prompt_and_exit_2(tmp_path, capsys):
     paths = _make_workspace(tmp_path, total_tasks=8, total_waves=3)
-    rc = main(_argv(paths))  # sem --mock-response
-    assert rc == 1
+    rc = main(_argv(paths))  # sem --mock-response nem --llm-response
+    assert rc == 2
     captured = capsys.readouterr()
-    assert "task tool integration is wave 5+" in captured.err.lower()
+    assert "wave-planner-reviewer" in captured.out
+    assert captured.err == ""
 
 
 # ============================================================================
@@ -408,25 +436,113 @@ def test_parse_wave_plan_canonical(tmp_path):
 def test_request_review_with_mock(tmp_path):
     mock = tmp_path / "m.json"
     mock.write_text(json.dumps({"verdict": "APPROVE", "issues": [], "proposed_dag_changes": []}), encoding="utf-8")
-    out = request_review("wp", "p", "amb", mock_response_path=mock)
+    out = request_review("wp", "p", "amb", response_path=mock)
     assert out["verdict"] == "APPROVE"
 
 
 def test_request_review_mock_missing_file(tmp_path):
     with pytest.raises(LLMReviewError, match="not found"):
-        request_review("wp", "p", "amb", mock_response_path=tmp_path / "absent.json")
+        request_review("wp", "p", "amb", response_path=tmp_path / "absent.json")
 
 
 def test_request_review_mock_invalid_json(tmp_path):
     bad = tmp_path / "bad.json"
     bad.write_text("{not json", encoding="utf-8")
     with pytest.raises(LLMReviewError, match="invalid JSON"):
-        request_review("wp", "p", "amb", mock_response_path=bad)
+        request_review("wp", "p", "amb", response_path=bad)
 
 
-def test_request_review_no_mock_raises_not_implemented():
-    with pytest.raises(NotImplementedError, match="Wave 5"):
-        request_review("wp", "p", "amb", mock_response_path=None)
+# ============================================================================
+# 12. --update-wave-plan frontmatter update
+# ============================================================================
+
+def test_update_wave_plan_approves_frontmatter(tmp_path):
+    wave_plan = tmp_path / "wave-plan.md"
+    wave_plan.write_text(
+        "---\n"
+        "llm_review: PENDING\n"
+        "llm_review_iterations: 0\n"
+        "---\n"
+        "# Wave Plan\n",
+        encoding="utf-8",
+    )
+    _update_wave_plan_llm_review(wave_plan, "APPROVE")
+    text = wave_plan.read_text(encoding="utf-8")
+    fm = yaml.safe_load(text.split("---\n")[1])
+    assert fm["llm_review"] == "APPROVE"
+    assert fm["llm_review_iterations"] == 1
+    assert "# Wave Plan" in text
+
+
+def test_update_wave_plan_propose_changes_increments_iterations(tmp_path):
+    wave_plan = tmp_path / "wave-plan.md"
+    wave_plan.write_text(
+        "---\n"
+        "llm_review: PENDING\n"
+        "llm_review_iterations: 2\n"
+        "---\n"
+        "# Wave Plan\n",
+        encoding="utf-8",
+    )
+    _update_wave_plan_llm_review(wave_plan, "PROPOSE_CHANGES")
+    fm = yaml.safe_load(wave_plan.read_text(encoding="utf-8").split("---\n")[1])
+    assert fm["llm_review"] == "PROPOSE_CHANGES"
+    assert fm["llm_review_iterations"] == 3
+
+
+def test_update_wave_plan_missing_file(tmp_path):
+    with pytest.raises(LLMReviewError, match="wave-plan file not found"):
+        _update_wave_plan_llm_review(tmp_path / "absent.md", "APPROVE")
+
+
+def test_update_wave_plan_no_frontmatter(tmp_path):
+    wave_plan = tmp_path / "wave-plan.md"
+    wave_plan.write_text("# No frontmatter\n", encoding="utf-8")
+    with pytest.raises(LLMReviewError, match="missing YAML frontmatter"):
+        _update_wave_plan_llm_review(wave_plan, "APPROVE")
+
+
+def test_update_wave_plan_unclosed_frontmatter(tmp_path):
+    wave_plan = tmp_path / "wave-plan.md"
+    wave_plan.write_text("---\nllm_review: PENDING\n", encoding="utf-8")
+    with pytest.raises(LLMReviewError, match="frontmatter not closed"):
+        _update_wave_plan_llm_review(wave_plan, "APPROVE")
+
+
+def test_update_wave_plan_cli_integration(tmp_path):
+    """End-to-end: CLI with --update-wave-plan writes verdict JSON AND updates frontmatter."""
+    paths = _make_workspace(tmp_path, total_tasks=8, total_waves=3)
+    mock = MOCKS_DIR / "approve_clean.json"
+    wave_plan = paths["wave_plan"]
+    wave_plan.write_text(
+        "---\n"
+        "total_tasks: 8\n"
+        "total_waves: 3\n"
+        "total_sub_waves: 3\n"
+        "llm_review: PENDING\n"
+        "llm_review_iterations: 0\n"
+        "---\n"
+        "# Wave Plan\n",
+        encoding="utf-8",
+    )
+    rc = main(_argv(paths, mock=mock) + ["--update-wave-plan", str(wave_plan)])
+    assert rc == 0
+    # JSON output
+    out = json.loads(paths["output"].read_text(encoding="utf-8"))
+    assert out["verdict"] == "APPROVE"
+    # Frontmatter updated
+    fm = yaml.safe_load(wave_plan.read_text(encoding="utf-8").split("---\n")[1])
+    assert fm["llm_review"] == "APPROVE"
+    assert fm["llm_review_iterations"] == 1
+
+
+def test_request_review_no_path_returns_prompt():
+    out = request_review("wave_plan_text", "plan_text", "amb_text", response_path=None)
+    assert isinstance(out, str)
+    assert "wave-planner-reviewer" in out
+    assert "wave_plan_text" in out
+    assert "plan_text" in out
+    assert "amb_text" in out
 
 
 # ============================================================================
@@ -441,3 +557,68 @@ def test_build_skipped_verdict_shape():
         "proposed_dag_changes": [],
         "skip_reason": "total_tasks=2",
     }
+
+
+# ============================================================================
+# 13. --workspace-context skip counter
+# ============================================================================
+
+def test_skip_with_workspace_context_increments_counter(tmp_path):
+    """Skip threshold + --workspace-context atualiza L1 llm_review_skipped_count."""
+    paths = _make_workspace(tmp_path, total_tasks=2, total_waves=2)
+    context_md = tmp_path / "CONTEXT.md"
+    context_md.write_text(
+        "---\nllm_review_skipped_count: 0\n---\n\n# L1\n",
+        encoding="utf-8",
+    )
+    rc = main(_argv(paths) + ["--workspace-context", str(context_md)])
+    assert rc == 0
+    fm = yaml.safe_load(context_md.read_text(encoding="utf-8").split("---\n")[1])
+    assert fm["llm_review_skipped_count"] == 1
+
+
+def test_skip_with_workspace_context_missing_file_silent(tmp_path):
+    """Skip + --workspace-context apontando pra arquivo inexistente: silencioso."""
+    paths = _make_workspace(tmp_path, total_tasks=2, total_waves=2)
+    rc = main(_argv(paths) + ["--workspace-context", str(tmp_path / "no.md")])
+    assert rc == 0
+
+
+def test_approve_with_workspace_context_does_not_increment(tmp_path):
+    """APPROVE + --workspace-context NÃO incrementa skipped_count."""
+    paths = _make_workspace(tmp_path, total_tasks=8, total_waves=3)
+    mock = MOCKS_DIR / "approve_clean.json"
+    context_md = tmp_path / "CONTEXT.md"
+    context_md.write_text(
+        "---\nllm_review_skipped_count: 0\n---\n\n# L1\n",
+        encoding="utf-8",
+    )
+    rc = main(_argv(paths, mock=mock) + ["--workspace-context", str(context_md)])
+    assert rc == 0
+    fm = yaml.safe_load(context_md.read_text(encoding="utf-8").split("---\n")[1])
+    assert fm["llm_review_skipped_count"] == 0
+
+
+def test_increment_llm_review_skipped_count_unit(tmp_path):
+    """Testa _increment_llm_review_skipped_count diretamente."""
+    context_md = tmp_path / "CONTEXT.md"
+    context_md.write_text(
+        "---\nllm_review_skipped_count: 3\n---\n\n# L1\n",
+        encoding="utf-8",
+    )
+    _increment_llm_review_skipped_count(context_md)
+    fm = yaml.safe_load(context_md.read_text(encoding="utf-8").split("---\n")[1])
+    assert fm["llm_review_skipped_count"] == 4
+
+
+def test_increment_llm_review_skipped_count_missing_file(tmp_path):
+    """Arquivo inexistente: silencioso."""
+    _increment_llm_review_skipped_count(tmp_path / "no.md")
+
+
+def test_increment_llm_review_skipped_count_no_frontmatter(tmp_path):
+    """Sem frontmatter: silencioso."""
+    context_md = tmp_path / "CONTEXT.md"
+    context_md.write_text("# No frontmatter\n", encoding="utf-8")
+    _increment_llm_review_skipped_count(context_md)
+    assert context_md.read_text(encoding="utf-8") == "# No frontmatter\n"

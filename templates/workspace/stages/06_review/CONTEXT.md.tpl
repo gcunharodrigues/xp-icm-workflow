@@ -45,23 +45,6 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
 - ADRs em {{PROJECT_ROOT}}/docs/decisions/ NÃO referenciados no plan.md.
 - {{PROJECT_ROOT}}/docs/lessons.md (lições já vêm pré-injetadas no fluxo da fase 04, não relevantes ao review).
 
-## Read order
-
-1. L0 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md
-2. L1 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md
-3. L2 — este arquivo
-4. verification-report.md (estado pós-verificação)
-5. plan.md (intenção declarada — base para comparar com entrega)
-6. ADRs referenciados (sample)
-7. xp-conventions.md (padrões do projeto)
-8. stop-points.md (thresholds por tier para over_eng, pii, adr_drift)
-9. tech_debt.md existente (se presente — para evitar duplicação)
-10. Sumários superpowers (requesting + receiving code review)
-11. session-handoff-protocol.md (handoff final do estágio)
-12. stop-points-canonical.md (catálogo de IDs complementar ao _config/stop-points.md)
-13. Files touched declarados em plan.md tasks (somente esses, não árvore inteira)
-14. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md (se existe — handoff do estágio 05)
-
 ## Process
 
 1. **Pre-flight:** validar paths Inputs obrigatórios; sub_stage `06_in_progress`. verification-report.md AUSENTE → `BLOCKED_ERROR`.

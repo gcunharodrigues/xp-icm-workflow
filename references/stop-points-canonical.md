@@ -1,6 +1,6 @@
 # Stop Points canônicos
 
-> **Versão:** v3.0.0-beta1
+> **Versão:** v3.0.0-beta5
 > **Path resolution:** caminhos `scripts/` neste documento referem-se a `<SKILL_DIR>/scripts/`, onde `SKILL_DIR` está definido em L0 (`CLAUDE.md`).
 > **Propósito:** lista canônica dos 12 stop points da skill `xp-icm-workflow` + thresholds calibrados por tier para itens 5/7/8 + template padronizado de menu A/B/C + protocolo de update do L1.
 

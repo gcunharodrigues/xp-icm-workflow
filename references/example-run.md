@@ -1,6 +1,6 @@
-# Example Run — End-to-end com subagentes (xp-icm-workflow v3.0.0-beta1)
+# Example Run — End-to-end com subagentes (xp-icm-workflow v3.0.0-beta5)
 
-> **Versão:** v3.0.0-beta1
+> **Versão:** v3.0.0-beta5
 > **Skill:** `xp-icm-workflow`
 > **Propósito:** walkthrough concreto de um workspace inteiro, do bootstrap ao feedback intake. Workspace fictício mas realista. Mostra o que cada sessão lê, escreve e como L1 transita. Use como âncora mental ao executar ciclos reais.
 

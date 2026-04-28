@@ -179,13 +179,13 @@ class TestRenderKickoff:
         with pytest.raises(HandoffError):
             render_kickoff(tmp_path / "nope.tpl", _canonical_data())
 
-    def test_path_with_absolute_workspace_branch(self) -> None:
-        """project_root absoluto resolve corretamente nas read orders."""
+    def test_kickoff_block_contains_relative_read_order(self) -> None:
+        """Bloco KICKOFF verbal lista paths relativos do workspace."""
         data = _canonical_data()
         out = render_kickoff(TEMPLATE_PATH, data)
-        assert "/home/dev/aura-luz-api/workspaces/042-feat-auth/CLAUDE.md" in out
+        assert "workspaces/042-feat-auth/CLAUDE.md" in out
         assert (
-            "/home/dev/aura-luz-api/workspaces/042-feat-auth/"
+            "workspaces/042-feat-auth/"
             "stages/03_wave_planner/CONTEXT.md"
         ) in out
 

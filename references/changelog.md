@@ -4,6 +4,30 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.2.0 — Test infrastructure: test_specs, test-recipes, TDD evidências (2026-04-28)
+
+### Why v3.2.0
+
+Auditoria identificou 7 lacunas na infraestrutura de testes da skill: ausência de distinção por tipo de teste no plan.md, nenhum planejamento de testes no stage 02, stage 05 excluindo `tests/` completamente, profile-matrix sem `test_specs`, itens 1-3 do Akita sem evidência mandatória, sem receitas de teste por profile, e stage 01 sem captura de contexto de teste existente.
+
+### Mudanças
+
+- **`scripts/profile-merge.py`:** função `_test_specs(profile, tier)` nova — deriva `test_specs` para os 10 profiles cobrindo `test_types_required`, `coverage_threshold` (calibrado por tier), `http_integration`, `db_integration`, `component_testing`, `eval_strategy`, `eval_threshold` e similares. Campo integrado em `merge_profile()` — não-overridável via `.icm-profile.local.yaml`.
+- **`templates/_config/profile-matrix.md`:** row `test_specs.coverage_threshold` na tabela de defaults (0 / 60 / 80 / 90 por tier). Nova seção "test_specs por profile" documenta valores canônicos dos 10 profiles.
+- **`templates/_references/test-recipes/` (10 NOVOS arquivos):** receitas de teste por profile — `app_web_backend`, `app_web_frontend`, `agent_ia`, `ml_project`, `cli_tool`, `framework_library`, `dashboard`, `data_analysis`, `experiment`, `technical_article`. Frameworks, padrões, anti-patterns e checklist rápido por profile.
+- **`scripts/bootstrap.py`:** copia `_references/test-recipes/<profile>.md` para workspace durante bootstrap.
+- **`templates/workspace/stages/01_discovery/CONTEXT.md.tpl`:** Input #12 test-recipe (condicional). Novo passo 9 "Levantar Test Context" — captura suite existente, framework, coverage policy, eval strategy; saída em `§Test Context` do discovery.md.
+- **`templates/workspace/stages/02_design/CONTEXT.md.tpl`:** Novo passo 8 obrigatório "Definir Test Strategy global do workspace". Transition condition: `plan.md` deve conter `§Test Strategy` + toda task de código deve declarar ≥1 arquivo de teste em `Files touched`.
+- **`references/wave-planner-algorithm.md`:** §2 "Regra de test file obrigatório" — tasks com arquivos de código (`src/`, `.py`, `.ts`, etc.) devem declarar ≥1 arquivo de teste; violação = `BLOCKED_ERROR "test file missing for task <slug>"`; exceção para `doc-only`/`config-only`.
+- **`references/4-block-contract-template.md`:** regra em `Files touched` obriga ≥1 arquivo de teste por task de código. Itens 1-3 do Akita agora exigem evidência mandatória: nome do arquivo de teste + nome do test case; cobertura ≥ threshold; execução 3× consecutiva.
+- **`templates/workspace/stages/05_verification/CONTEXT.md.tpl`:** Passo 4.5 — auditoria `coverage report` vs `test_specs.coverage_threshold` (PASS/CONDITIONAL/FAIL por tier). Passo 4.6 — sample-check 3 tasks aleatórias do wave-plan verificando tipos de teste no FS. Constraint `Não Lê` relaxada: leitura parcial de `tests/` via `git ls-files` + coverage report.
+
+### Tests
+
+Suite existente mantida. Regra de test file do Wave Planner coberta por `test_wave_planner_dag.py`. `_test_specs()` é pura — testável por unit test direto.
+
+---
+
 ## v3.1.0 — Agent Teams → subagentes (2026-04-27)
 
 ### Why v3.1.0
@@ -206,7 +230,7 @@ Reescrita end-to-end em 7 waves. Skill v2.4 (orquestradora persistente, 1 main +
 | 1 — Foundations | Schema state-machine L1 com sub_stage enum por estágio; 4 scripts deterministic (profile-merge, lessons-match, wave-planner-script, validate_state); pre-commit hook bash POSIX com 6 regras; templates L0/L1; profile-matrix 10×4; pyproject.toml com workaround pytest-playwright. |
 | 2 — Bootstrap + Recovery | SKILL.md reescrita (parteira one-shot); bootstrap.sh + bootstrap.py com greenfield/existing/external_repo; recovery-wizard.py detectando 6 inconsistências R2.7+R4.5 com 3 ações A/B/C; git-hook-installer.sh idempotente. |
 | 3 — Stage Templates + L2 | 9 L2 templates (00..08) com schema canônico (frontmatter + Inputs + Não Lê + sub_stage enum + applicable_stop_points); 4 references (stage-templates, stop-points-canonical 12 itens, 4-block-contract + ciclo TDD 7 passos + Akita 15-item, feedback-intake-fase08 com 3 saídas A/B/C); workspace stop-points.md resolvido por tier. |
-| 4 — Agent Teams + Wave Planner LLM | references/wave-planner-algorithm.md (DAG + LLM review subagent R2.4); references/agent-team-protocol.md (spawn worktrees + mailbox + sync barreira + mid-wave reduce + peer-reviewer ad-hoc); scripts/wave-planner-llm-review.py com modo mock (`--mock-response`); scripts/agent-team-protocol.py wrapper helpers (Windows-safe filenames). |
+| 4 — Agent Teams + Wave Planner LLM | references/wave-planner-algorithm.md (DAG + LLM review subagent R2.4); references/subagent-protocol.md (spawn via Agent tool + mid-wave reduce); scripts/wave-planner-llm-review.py com modo mock (`--mock-response`), prod (`--llm-response`) e prompt (exit 2). |
 | 5 — Superpowers summaries | 10 sumários 200tok em `templates/_references/superpowers-summary/` (brainstorming, writing-plans, dispatching-parallel-agents, TDD, subagent-DD, verification, requesting-review, receiving-review, finishing-branch, debugging); references/superpowers-mapping.md, xp-workflow-integration.md, example-run.md reescritas; bootstrap.py copia summaries + 7 runtime refs pra workspace. |
 | 6 — CI + Smoke | `.github/workflows/test-skill.yml` (Ubuntu Python 3.13 + bats); tests/run.sh com flags `--ci` e `--no-bats`; README badges; references/smoke-manual-checklist.md (10 itens canônicos pré-release). |
 

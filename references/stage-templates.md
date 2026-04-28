@@ -1,4 +1,4 @@
-# Stage Templates — Spec Canônico L2 (xp-icm-workflow v3.0.0-beta1)
+# Stage Templates — Spec Canônico L2 (xp-icm-workflow v3.0.0-beta5)
 
 > **Propósito:** define o **schema obrigatório** dos 9 templates L2 em `templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl`. Cada L2 é um *contrato de estágio*: declara o que o agente lê, processa e escreve quando aquele estágio está ativo.
 
@@ -14,10 +14,10 @@
 |----|--------------------------|----------------|
 | 00 | `recon`                  | Reconnaissance do projeto/repositório: detecta stack, branch, ADRs e lessons existentes; gera baseline para os estágios seguintes. |
 | 01 | `discovery`              | Brainstorming guiado: público, requisitos funcionais/não-funcionais, alternativas, MVP IN/OUT, riscos, métricas. |
-| 02 | `design`                 | Plano arquitetural + ADRs formais; modelagem de dados, contratos de API, divisão em tasks com 4-block contract. |
+| 02 | `design`                 | Plano arquitetural + ADRs formais; modelagem de dados, contratos de API, divisão em tasks com 4-block contract + Test Strategy global. |
 | 03 | `wave_planner`           | Constrói DAG de tasks, agrupa em waves respeitando cap de subagentes e dependências; LLM review subagent assina o plano. |
 | 04 | `implementation_waves`   | Execução paralela via subagentes em branches isoladas; lead orquestra spawn/saída do Agent tool/merge sequencial; uma sub-stage por wave. |
-| 05 | `verification`           | Verificação técnica do que foi entregue: CI, cobertura, conformidade ao plano e aos ADRs; PASS/CONDITIONAL/FAIL. |
+| 05 | `verification`           | Verificação técnica do que foi entregue: CI, cobertura vs threshold (test_specs), sample-check tipos de teste, conformidade ao plano e ADRs; PASS/CONDITIONAL/FAIL. |
 | 06 | `review`                 | Code review nas 7 dimensões (correctness, security, tests, design, standards, readability, performance) + recebimento de feedback. |
 | 07 | `merge`                  | Finaliza branch: merge direto, PR, tag de release ou cleanup; atualiza lessons/tech_debt; fecha o ciclo de entrega. |
 | 08 | `feedback_intake`        | Pós-uso real: 3 saídas — A) close workspace, B) restart fase X (`iteration++`), C) spawn novo workspace herdando lessons+ADRs. |

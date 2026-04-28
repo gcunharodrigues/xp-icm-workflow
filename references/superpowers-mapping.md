@@ -1,6 +1,6 @@
-# Superpowers Mapping — xp-icm-workflow v3.0.0-beta1
+# Superpowers Mapping — xp-icm-workflow v3.0.0-beta5
 
-> **Versão:** v3.0.0-beta1
+> **Versão:** v3.0.0-beta5
 > **Skill:** `xp-icm-workflow`
 > **Propósito:** documento canônico de como o `xp-icm-workflow` v3 **usa** as skills do plugin `superpowers`. Versão v3 inverte a relação v2.4: superpowers viram **referências sumarizadas**, não invocações no runtime. Skill formal só por escape hatch.
 

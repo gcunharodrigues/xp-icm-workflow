@@ -14,14 +14,6 @@ pending_for_this_stage: {{PENDING_YAML}}
 
 # Kickoff — Stage {{STAGE_TARGET}} {{STAGE_TARGET_NAME}} (workspace {{WORKSPACE}})
 
-## Read order (paths absolutos)
-
-1. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md`
-2. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`
-3. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/{{STAGE_TARGET_DIR}}/CONTEXT.md`
-4. Este arquivo (`stages/{{STAGE_TARGET_DIR}}/_kickoff.md`)
-5. Inputs declarados pelo L2 do stage atual
-
 ## Estado entregue pela sessão anterior
 
 {{PREV_STATE_PROSE}}

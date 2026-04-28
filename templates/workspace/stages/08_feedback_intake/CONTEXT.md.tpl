@@ -47,19 +47,6 @@ Gate de iteração universal do ciclo ICM. Workspace transita pra cá automatica
 - {{PROJECT_ROOT}}/docs/decisions/ — ADRs não são editados na fase 08; herança em saída C é responsabilidade do novo workspace.
 - {{PROJECT_ROOT}}/docs/tech_debt.md — não há append aqui (lições da fase 08 vão em `docs/lessons.md` somente em saída A).
 
-## Read order
-
-1. L0 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md
-2. L1 — {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md (valida pré-condição `status: COMPLETED`)
-3. L2 — este arquivo
-4. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-fase08.md (protocolo literal)
-5. Outputs anteriores (sample-check existência por estágio que rodou — respeita `stages_skipped` do profile)
-6. {{LOGS_ROOT}} (sample 30 dias, se aplicável)
-7. {{PROJECT_ROOT}}/docs/lessons.md (somente leitura aqui — append acontece em saída A)
-8. session-handoff-protocol.md (handoff final do estágio — saída B gera kickoff)
-9. recovery-wizard.md (protocolo de recovery se workspace inconsistente no pre-flight)
-10. {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md (se existe — handoff do estágio 07)
-
 ## Process
 
 1. **Pre-flight — pré-condição obrigatória:** L1 deve declarar `stage_atual: "08"` com `sub_stage: 08_in_progress` (transição automática vinda de stage 07) e `status: COMPLETED_AWAITING_HUMAN`. Se status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → workspace inconsistente (recovery wizard). Se `stage_atual ≠ 08` → recusar com "workspace ainda não chegou em 08 (termine 07 primeiro)". Se status indefinido → stop point 11 `workspace_corrupt`.

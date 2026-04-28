@@ -19,14 +19,6 @@ pending_for_this_stage: ["Resolver ambiguidade: tasks user-model e user-routes t
 
 # Kickoff — Stage 03 wave_planner (workspace 042-feat-auth)
 
-## Read order (paths absolutos)
-
-1. `/home/dev/aura-luz-api/workspaces/042-feat-auth/CLAUDE.md`
-2. `/home/dev/aura-luz-api/workspaces/042-feat-auth/CONTEXT.md`
-3. `/home/dev/aura-luz-api/workspaces/042-feat-auth/stages/03_wave_planner/CONTEXT.md`
-4. Este arquivo (`stages/03_wave_planner/_kickoff.md`)
-5. Inputs declarados pelo L2 do stage atual
-
 ## Estado entregue pela sessão anterior
 
 Sessao anterior fechou design com 8 tasks plan + 2 ADRs.

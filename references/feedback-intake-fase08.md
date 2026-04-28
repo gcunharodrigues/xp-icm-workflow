@@ -1,6 +1,6 @@
 # Feedback Intake — Fase 08
 
-> v3.0.0-beta1 · Define a fase 08 (feedback intake universal). Disparo manual humano após uso real do output do workspace. Três saídas: A close, B restart fase X, C spawn novo workspace.
+> **Versão:** v3.0.0-beta5 · Define a fase 08 (feedback intake universal). Disparo manual humano após uso real do output do workspace. Três saídas: A close, B restart fase X, C spawn novo workspace.
 
 ---
 
