@@ -1,6 +1,6 @@
 ---
 name: xp-icm-workflow
-description: Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto e SAI. A partir daí o filesystem governa o ciclo — sessões novas leem L0+L1+L2 do estágio atual e trabalham. Suporta 9 estágios (00 recon → 08 feedback intake), 10 profiles × 4 tiers calibrando rigor, subagentes via Agent Tool na fase 04 (paralelismo sem worktrees), Wave Planner determinístico + LLM review, e Recovery Wizard pra workspaces órfãos.
+description: Bootstrap one-shot ICM (Interpretable Context Methodology) que cria estrutura L0/L1/L2/L3 + branch git + hooks num projeto e sai; sessões subsequentes leem L1+L2 do stage corrente. Suporta 9 estágios (00 recon → 08 feedback intake), 10 profiles × 4 tiers, subagents via Agent Tool fase 04, Wave Planner determinístico, Recovery Wizard, AGENT-BRIEF protocol, ubiquitous language layer, ADR 3-criteria gate, diagnose protocol, triage state machine, OUT-OF-SCOPE knowledge base. Use when starting workspace ICM novo, projeto multi-estágio com revisão humana entre passos, feature complexa que requer discovery+design+implementação+review+merge, ou implementação que precisa paralelismo via subagents. Skip when tarefa trivial (1 arquivo), bug fix simples, refinamento cosmético, ou continuar workspace existente (sessão fresh lê L1+L2 sozinha — não re-invocar).
 type: rigid
 ---
 

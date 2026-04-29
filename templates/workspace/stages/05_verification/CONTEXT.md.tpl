@@ -149,3 +149,18 @@ Ao concluir este estágio, sessão deve:
 5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+
+---
+
+## v3.3.0 references aplicáveis a este stage
+
+- **Diagnose protocol fallback (`_references/runtime/diagnose-protocol.md`):**
+  quando CI fail OU coverage fail, ativar diagnose 6-fase em vez de tentar
+  fix ad-hoc. Phase 1 (build feedback loop) é THE skill — sem loop
+  reproduzível, não avançar. Hipóteses 3-5 ranked falsifiable. Tag debug
+  logs com `[DEBUG-xxxx]` para cleanup grep no fim.
+- **Output adicional:** `output/diagnose-report.md` com repro evidence,
+  ranked hypotheses, root cause, fix, regression test (path).
+- **HITL loop (`_config/hitl-loop.template.sh`):** template bash para bugs
+  que exigem interação manual humana. Customizar `REPRO_STEPS`,
+  `OBSERVE_CMD`, `PASS_PATTERN`.

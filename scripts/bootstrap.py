@@ -449,6 +449,7 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "task-types-hitl-afk.md",         # T2.6
         "triage-state-machine.md",        # T2.7
         "out-of-scope-kb.md",             # T2.8
+        "design-it-twice.md",             # T3 — parallel interface design
     )
     refs_src = skill_root / "references"
     for fname in runtime_refs:

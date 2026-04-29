@@ -176,3 +176,35 @@ Ao concluir este estágio, sessão deve:
 5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+
+---
+
+## v3.3.0 references aplicáveis a este stage
+
+- **ADR 3-critérios gate (`_references/runtime/adr-format.md`):** antes de
+  spawnar ADR, validar TODOS os 3 critérios: (1) hard to reverse, (2)
+  surprising without context, (3) result of real trade-off. Falha em qualquer
+  → vai para `decisions.md` como nota, NÃO ADR.
+- **OUT-OF-SCOPE check (`_references/runtime/out-of-scope-kb.md`):** se
+  `iteration > 0` no L1, ler `<workspace>/_out-of-scope/*.md` antes de
+  propor design. Match com rejeição prior → surface ao humano antes de
+  re-propor.
+- **HITL/AFK no plan.md (`_references/runtime/task-types-hitl-afk.md`):**
+  cada task no plan.md ganha campo `**Type:** HITL|AFK`. AFK é default.
+  HITL exige justificativa em campo `**Reason:**`.
+- **AGENT-BRIEF compatibility (`_references/runtime/agent-brief-template.md`):**
+  4-block (O QUE / COMO / NÃO QUERO / VALIDAÇÃO) por task DEVE ser parseável
+  pelo `agent-brief-render.py` na fase 04. Mapping: O QUE→Summary+Desired,
+  COMO→Key interfaces (sem paths absolutos!), NÃO QUERO→Out of scope,
+  VALIDAÇÃO→Acceptance criteria.
+- **Design It Twice (`_references/runtime/design-it-twice.md`):** módulos
+  marcados `core: true` no plan.md acionam Design It Twice. Spawnar 3+
+  Agent tool calls em paralelo com constraints distintos (minimize
+  interface / maximize flexibility / optimize common caller). Output em
+  `output/design-alternatives-<module>.md` + decisão final em decisions.md.
+
+## Ubiquitous Language
+
+Inputs: `_config/CONTEXT.md` (L3, populado em stage 01) é obrigatório.
+Vocabulário do glossário deve ser usado consistentemente em plan.md, ADRs,
+e output/. Auto-QA Akita valida consistência.

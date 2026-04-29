@@ -288,3 +288,25 @@ Detalhamento por saída:
 5. SAIR da sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+
+---
+
+## v3.3.0 references aplicáveis a este stage
+
+- **Triage state machine (`_references/runtime/triage-state-machine.md`):**
+  ANTES da inferência A/B/C, classificar feedback em (category, state):
+  - bug → Saída B (restart fase X)
+  - enhancement aceito → Saída C (spawn novo workspace)
+  - enhancement rejeitado → wontfix → append em `_out-of-scope/` + Saída A
+  - tudo OK → Saída A
+  Cada item B/C produz AGENT-BRIEF (formato:
+  `_references/runtime/agent-brief-template.md`).
+
+- **OUT-OF-SCOPE wontfix (`_references/runtime/out-of-scope-kb.md`):**
+  enhancement rejeitada → criar/atualizar `<workspace>/_out-of-scope/<conceito-kebab>.md`
+  com decision + reason durável + prior requests.
+
+- **CLAUDE.md root atualização:**
+  - **Saída A:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO8601>`. Se era o último ativo, ativa região idle automaticamente.
+  - **Saída B:** `python {{SKILL_DIR}}/scripts/handoff.py update-project-md --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --profile {{PROFILE}} --tier {{TIER}} --stage-atual <X> --stage-dir <X_name> --sub-stage <X>_in_progress --iteration <N+1> --status IN_PROGRESS --skill-dir {{SKILL_DIR}}`.
+  - **Saída C:** `remove-block` (workspace dono vira COMPLETED). Bootstrap em sessão B adiciona bloco do novo workspace.

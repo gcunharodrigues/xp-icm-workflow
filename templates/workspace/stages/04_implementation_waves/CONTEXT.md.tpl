@@ -189,3 +189,31 @@ Ao concluir esta wave (ou o estágio inteiro se for última wave), sessão deve:
 5. **SAIR** da sessão. NÃO continuar pra próxima wave / próximo stage na mesma sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+
+---
+
+## v3.3.0 references aplicáveis a este stage
+
+- **AGENT-BRIEF (`_references/runtime/agent-brief-template.md` +
+  `<skill_root>/scripts/agent-brief-render.py`):** lead session gera brief
+  estruturado por task ANTES de spawnar Agent tool. CLI:
+
+  ```bash
+  python {{SKILL_DIR}}/scripts/agent-brief-render.py \
+      --task <slug> \
+      --plan stages/02_design/output/plan.md \
+      --adrs {{PROJECT_ROOT}}/docs/decisions
+  ```
+
+  Output (markdown) é injetado no prompt do Agent tool. Anti-patterns
+  (paths absolutos, line numbers) gerados warnings.
+
+- **HITL handling:** se wave é `Type: HITL`, lead session NÃO spawna
+  subagent. Gera AGENT-BRIEF, exibe ao humano, atualiza L1 para
+  `status=COMPLETED_AWAITING_HUMAN, sub_stage=04_wave_N_hitl_pending`,
+  SAIR. Próxima sessão (após humano resolver) retoma wave seguinte.
+
+- **Diagnose protocol nota (`_references/runtime/diagnose-protocol.md`):**
+  subagent que detecta bug recorrente em sua task PODE ativar diagnose
+  protocol (build feedback loop → reproduce → hypothesise → fix) antes
+  de declarar BLOCKED. Reportar resultado em `task-<slug>.md`.

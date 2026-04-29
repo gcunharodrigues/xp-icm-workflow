@@ -160,3 +160,14 @@ Ao concluir este estágio, sessão deve:
 5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+
+---
+
+## v3.3.0 references aplicáveis a este stage
+
+- **Ubiquitous Language (`_config/CONTEXT.md`):** stage 01 = grilling session.
+  Cada termo de domínio resolvido durante discovery → atualizar
+  `<workspace>/_config/CONTEXT.md` **inline** (não batchear no fim).
+  Formato canônico: `_references/runtime/context-format.md`.
+- **Output adicional:** glossário populado em `_config/CONTEXT.md` é input
+  obrigatório de stage 02 (design).

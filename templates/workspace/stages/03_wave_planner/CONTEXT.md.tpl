@@ -152,3 +152,13 @@ Ao concluir este estágio, sessão deve:
 5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+
+---
+
+## v3.3.0 references aplicáveis a este stage
+
+- **HITL/AFK respect (`_references/runtime/task-types-hitl-afk.md`):**
+  wave-planner respeita campo `Type` por task. Tasks `HITL` ficam em
+  **wave isolada com cap=1** (sub_stage `wave-N_hitl_pending`). Tasks
+  `AFK` agrupadas normalmente respeitando cap por tier.
+- **Output `wave-plan.md`:** adicionar coluna `Type` na tabela por sub-wave.

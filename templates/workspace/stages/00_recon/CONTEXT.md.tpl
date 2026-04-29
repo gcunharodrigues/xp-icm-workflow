@@ -154,3 +154,14 @@ Ao concluir este estágio, sessão deve:
 5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+
+---
+
+## v3.3.0 references aplicáveis a este stage
+
+- **Module map skeleton (zoom-out pattern):** ao encontrar módulo desconhecido
+  durante recon, subir abstração e mapear callers. Anotar termos candidatos
+  para o glossário (próxima sessão de stage 01 resolverá em
+  `_config/CONTEXT.md`).
+- **Output:** `_config/CONTEXT.md` é criado vazio pelo bootstrap; stage 01
+  populará.
