@@ -29,7 +29,7 @@ from typing import Any
 # Constantes
 # ============================================================================
 
-SKILL_VERSION = "3.3.0"  # template prepends `v`
+SKILL_VERSION = "3.4.0"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
@@ -63,6 +63,7 @@ STAGE_NAMES: dict[int, str] = {
 
 GITIGNORE_LINES: tuple[str, ...] = (
     ".icm-profile.local.yaml",
+    ".icm-main/",  # v3.4.0 — worktree linkada da base branch (modelo cross-branch)
     "__pycache__/",
     ".pytest_cache/",
     ".coverage",
@@ -370,30 +371,95 @@ def _create_workspace_branch(project_root: Path, branch: str, base: str) -> None
     _run_git(["checkout", "-b", branch, base], cwd=project_root)
 
 
+def _ensure_base_branch_docs(project_root: Path) -> None:
+    """Cria docs/decisions/, docs/lessons.md, docs/tech_debt.md na base branch.
+
+    Pre-condicao: caller esta com base branch checada (antes da criacao do
+    workspace branch). Idempotente: skip se ja existe.
+
+    v3.4.0: docs/ vivem APENAS na base branch. Workspace branch nao tem
+    visibilidade direta — usa `.icm-main/` worktree. Ver
+    references/worktree-model.md.
+    """
+    decisions_dir = project_root / "docs" / "decisions"
+    decisions_dir.mkdir(parents=True, exist_ok=True)
+    (decisions_dir / ".keep").touch()  # garante diretorio nao-vazio pro git
+
+    lessons = project_root / "docs" / "lessons.md"
+    if not lessons.exists():
+        lessons.write_text(
+            "# Lessons Learned\n\nRegisto append-only de lições por workspace e iteração.\n\n",
+            encoding="utf-8",
+        )
+
+    tech_debt = project_root / "docs" / "tech_debt.md"
+    if not tech_debt.exists():
+        tech_debt.write_text(
+            "# Tech Debt\n\nRegisto append-only de débitos técnicos. Cada item: workspace+task de origem, severidade P2/P3, descrição.\n\n",
+            encoding="utf-8",
+        )
+
+    # Commit docs scaffolding na base se houver mudancas
+    res = _run_git(["status", "--porcelain", "docs/"], cwd=project_root, check=False)
+    if res.stdout.strip():
+        _run_git(["add", "docs/decisions/.keep", "docs/lessons.md", "docs/tech_debt.md"], cwd=project_root, check=False)
+        _run_git(
+            ["commit", "-m", "chore(icm): scaffold docs/ on base for ICM cross-branch model (v3.4.0)", "--no-verify"],
+            cwd=project_root,
+            check=False,
+        )
+
+
+def _setup_main_worktree(project_root: Path, base_branch: str) -> None:
+    """Cria worktree linkada `.icm-main/` checada em base_branch (v3.4.0).
+
+    Idempotente: skip se ja existe e esta valida.
+
+    Funcao essencial do modelo cross-branch v3.4.0: workspace branch nao
+    tem `docs/`, `src/`, etc. no working tree, entao agentes leem/escrevem
+    esses paths via worktree linkada permanente.
+
+    Ver references/worktree-model.md (canonico).
+    """
+    worktree_path = project_root / ".icm-main"
+    if worktree_path.exists():
+        # Validar que ja eh worktree git valida
+        try:
+            res = _run_git(
+                ["rev-parse", "--show-toplevel"],
+                cwd=worktree_path,
+                check=False,
+            )
+            if res.returncode == 0 and res.stdout.strip():
+                return  # idempotente
+        except Exception:
+            pass
+        # Existe mas nao eh worktree — humano resolve manualmente
+        raise BootstrapError(
+            f".icm-main/ existe em {project_root} mas nao eh worktree git valida. "
+            "Remova ou rode `git worktree repair` antes de bootstrap."
+        )
+
+    _run_git(
+        ["worktree", "add", str(worktree_path), base_branch],
+        cwd=project_root,
+    )
+
+
 def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root: Path) -> None:
-    """Cria stages/00..08 (com output/), _config/, _references/, docs/decisions/, docs/lessons.md stub."""
+    """Cria stages/00..08 (com output/), _config/, _references/.
+
+    v3.4.0: docs/decisions/, docs/lessons.md, docs/tech_debt.md NAO sao
+    criados aqui. Ficam na base branch (criados por
+    `_ensure_base_branch_docs` antes do workspace branch). Acesso via
+    worktree `.icm-main/`.
+    """
     workspace_dir.mkdir(parents=True, exist_ok=False)
     stages = workspace_dir / "stages"
     stages.mkdir()
     for s in STAGES:
         (stages / s).mkdir()
         (stages / s / "output").mkdir()
-
-    # docs/decisions/, lessons.md stub e tech_debt.md stub no project_root
-    decisions_dir = project_root / "docs" / "decisions"
-    decisions_dir.mkdir(parents=True, exist_ok=True)
-    lessons_file = project_root / "docs" / "lessons.md"
-    if not lessons_file.exists():
-        lessons_file.write_text(
-            "# Lessons Learned\n\nRegisto append-only de lições por workspace e iteração.\n\n",
-            encoding="utf-8",
-        )
-    tech_debt_file = project_root / "docs" / "tech_debt.md"
-    if not tech_debt_file.exists():
-        tech_debt_file.write_text(
-            "# Tech Debt\n\nRegisto append-only de débitos técnicos. Cada item: workspace+task de origem, severidade P2/P3, descrição.\n\n",
-            encoding="utf-8",
-        )
 
     config_dir = workspace_dir / "_config"
     config_dir.mkdir()
@@ -828,6 +894,12 @@ def bootstrap(
 
     # Profile merge
     effective, profile_hash = _run_profile_merge(skill_root, profile, tier, override_path)
+
+    # v3.4.0: garantir docs/ scaffolding na base + criar worktree linkada
+    # `.icm-main/` ANTES de switch pra workspace branch. Worktree fica
+    # disponivel pra todas as sessoes futuras lerem/escreverem cross-branch.
+    _ensure_base_branch_docs(project_root)
+    _setup_main_worktree(project_root, base_branch)
 
     # Cria branch
     workspace_branch = f"workspace/{workspace}"

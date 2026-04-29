@@ -25,7 +25,7 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 | 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md | L4 | sim |
 | 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/output/wave-plan.md | L4 | sim |
 | 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/ | L4 | sim |
-| 7 | {{PROJECT_ROOT}}/docs/decisions/ | L3 | sim — sample-check (3 ADRs aleatórios) |
+| 7 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | sim — sample-check (3 ADRs aleatórios) |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/verification-before-completion-200tok.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
@@ -34,10 +34,10 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/ (código-fonte; CI já compilou/lint/type-checked)
-- {{PROJECT_ROOT}}/tests/ — exceção: coverage report e lista de arquivos de teste existentes são verificados nos passos 4.5 e 4.6 abaixo via `git ls-files` + cobertura do CI, sem ler conteúdo de tests
+- {{PROJECT_ROOT}}/.icm-main/src/ (código-fonte; CI já compilou/lint/type-checked)
+- {{PROJECT_ROOT}}/.icm-main/tests/ — exceção: coverage report e lista de arquivos de teste existentes são verificados nos passos 4.5 e 4.6 abaixo via `git ls-files` + cobertura do CI, sem ler conteúdo de tests
 - Outputs de estágios 00, 01, 06+ do mesmo workspace
-- {{PROJECT_ROOT}}/docs/lessons.md, {{PROJECT_ROOT}}/docs/tech_debt.md (escopo do review fase 06)
+- {{PROJECT_ROOT}}/.icm-main/docs/lessons.md, {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md (escopo do review fase 06)
 
 ## Process
 
@@ -55,7 +55,7 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
    - Verificar que o tipo de teste (unit/integration/e2e/component/eval) bate com `test_specs.test_types_required` do profile efetivo.
    - Registrar no report: task slug, arquivo esperado, arquivo encontrado (✅/⚠️), tipo de teste declarado vs encontrado.
    - ≥2/3 tasks com arquivos corretos → PASS; 1/3 → CONDITIONAL; 0/3 → FAIL.
-5. **Sample-check ADRs:** seleciona 3 ADRs aleatórios de `{{PROJECT_ROOT}}/docs/decisions/`. Para cada, faz `grep` no diretório `stages/04/output/` por menção (slug do ADR ou número). ≥1 menção = ok; 0 menções = warning no report.
+5. **Sample-check ADRs:** seleciona 3 ADRs aleatórios de `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`. Para cada, faz `grep` no diretório `stages/04/output/` por menção (slug do ADR ou número). ≥1 menção = ok; 0 menções = warning no report.
 6. **Escrever `output/verification-report.md`:** seções `Entregáveis (declarado vs entregue)`, `CI Status`, `Sample ADRs`, `Sumário PASS/CONDITIONAL/FAIL`.
 7. Se CI global falhou OU entregáveis ausentes → `status: BLOCKED_ERROR`, registrar em `history`. Humano resolve (volta fase 04 com `iteration++` ou corrige manualmente).
 8. Atualizar L1: sub_stage `05_completed`, status `COMPLETED_AWAITING_HUMAN`. Commit atômico.

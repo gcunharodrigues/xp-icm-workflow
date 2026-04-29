@@ -34,9 +34,9 @@ Finaliza ciclo de implementação: integra a `workspace_branch` rebased em `base
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/, {{PROJECT_ROOT}}/tests/ — merge não inspeciona código (review e verification já validaram).
+- {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/ — merge não inspeciona código (review e verification já validaram).
 - Outputs de estágios 00–05 — review-report já consolida o que importa para a decisão de merge.
-- {{PROJECT_ROOT}}/docs/decisions/ na íntegra — ADRs já foram aplicados nas fases 02/04/06.
+- {{PROJECT_ROOT}}/.icm-main/docs/decisions/ na íntegra — ADRs já foram aplicados nas fases 02/04/06.
 - Workspaces irmãos.
 
 ## Process

@@ -27,7 +27,7 @@ Brainstorming guiado com o humano. Refina escopo via clarification iterativa, ma
 | 2 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | sim |
 | 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/CONTEXT.md | L2 | sim |
 | 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/output/recon-report.md | L4 | sim |
-| 5 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: existe se herdou de fase 08 saída C ou iteração anterior |
+| 5 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | condicional: existe se herdou de fase 08 saída C ou iteração anterior |
 | 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml | L3 | sim |
 | 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/brainstorming-200tok.md | L3 | sim |
@@ -38,11 +38,11 @@ Brainstorming guiado com o humano. Refina escopo via clarification iterativa, ma
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/ — discovery NÃO inspeciona código-fonte. Se contexto de código for necessário, citar dependência no recon-report e revisitar 00.
-- {{PROJECT_ROOT}}/tests/ — exceção: se projeto legado existir, recon-report (stage 00) deve ter indexado a suite existente; discovery lê apenas o índice do recon-report, não o diretório.
-- {{PROJECT_ROOT}}/docs/decisions/ — ADRs detalhados são consumidos no estágio 02. Aqui usa-se apenas o índice já listado em recon-report.md.
+- {{PROJECT_ROOT}}/.icm-main/src/ — discovery NÃO inspeciona código-fonte. Se contexto de código for necessário, citar dependência no recon-report e revisitar 00.
+- {{PROJECT_ROOT}}/.icm-main/tests/ — exceção: se projeto legado existir, recon-report (stage 00) deve ter indexado a suite existente; discovery lê apenas o índice do recon-report, não o diretório.
+- {{PROJECT_ROOT}}/.icm-main/docs/decisions/ — ADRs detalhados são consumidos no estágio 02. Aqui usa-se apenas o índice já listado em recon-report.md.
 - Outputs de estágios 02+ — não existem ainda.
-- {{PROJECT_ROOT}}/docs/tech_debt.md — escopo de tech debt aparece em design (02), não em discovery.
+- {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md — escopo de tech debt aparece em design (02), não em discovery.
 
 ## Process
 

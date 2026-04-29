@@ -31,7 +31,7 @@ Gate de iteração universal do ciclo ICM. Workspace transita pra cá automatica
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/output/ | L4 | condicional: existe se verification rodou |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/output/ | L4 | condicional: existe se review rodou |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/output/ | L4 | sim (sample-check pré-condição) |
-| 11 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: append apenas em saída A |
+| 11 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | condicional: append apenas em saída A |
 | 12 | {{LOGS_ROOT}} | L3 | condicional: opcional — sample dos últimos 30 dias se L0 declara `logs_root` ≠ null |
 | 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-fase08.md | L3 | sim (protocolo literal — cópia local da reference) |
 | 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. Em stage 08 normalmente AUSENTE — humano dispara manualmente após uso real, não há sessão anterior automática. |
@@ -42,10 +42,10 @@ Gate de iteração universal do ciclo ICM. Workspace transita pra cá automatica
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/, {{PROJECT_ROOT}}/tests/ — fase 08 não revisita código.
+- {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/ — fase 08 não revisita código.
 - Outros workspaces em {{PROJECT_ROOT}}/workspaces/<outro>/ — saída C (spawn) consulta CONTEXT.md de workspace antigo via `spawn_from`, mas isso é responsabilidade do NOVO workspace; o workspace atual não lê outros.
-- {{PROJECT_ROOT}}/docs/decisions/ — ADRs não são editados na fase 08; herança em saída C é responsabilidade do novo workspace.
-- {{PROJECT_ROOT}}/docs/tech_debt.md — não há append aqui (lições da fase 08 vão em `docs/lessons.md` somente em saída A).
+- {{PROJECT_ROOT}}/.icm-main/docs/decisions/ — ADRs não são editados na fase 08; herança em saída C é responsabilidade do novo workspace.
+- {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md — não há append aqui (lições da fase 08 vão em `docs/lessons.md` somente em saída A).
 
 ## Process
 
@@ -201,7 +201,7 @@ Detalhamento por saída:
    - `last_transition.to = 08_decided_A`
    - `last_transition.at = <ISO 8601 UTC now>`
    - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "saida A close"}`
-2. Append lições novas (de "QUE LIÇÃO TIRAR") em `{{PROJECT_ROOT}}/docs/lessons.md` respeitando frontmatter strict.
+2. Append lições novas (de "QUE LIÇÃO TIRAR") em `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` respeitando frontmatter strict.
 3. Commit atômico (pre-commit valida atomicidade L1↔outputs↔lessons; commit-msg prefix `intake:` ou `feedback:`):
    ```
    intake: workspace <NNN> close (saida A) + lessons append

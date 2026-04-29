@@ -31,10 +31,10 @@ Roda o wave-planner determinístico em cima do `plan.md` da fase 02 design. Cons
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/, {{PROJECT_ROOT}}/tests/
-- {{PROJECT_ROOT}}/docs/decisions/ (ADRs já lidos pela fase 02; wave-planner só lê metadados em plan.md)
+- {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/
+- {{PROJECT_ROOT}}/.icm-main/docs/decisions/ (ADRs já lidos pela fase 02; wave-planner só lê metadados em plan.md)
 - Outputs de outros estágios além de `02_design/output/plan.md`
-- {{PROJECT_ROOT}}/docs/lessons.md (lições serão injetadas pelo lead na fase 04)
+- {{PROJECT_ROOT}}/.icm-main/docs/lessons.md (lições serão injetadas pelo lead na fase 04)
 
 ## Process
 

@@ -4,6 +4,61 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.4.0 — Cross-branch worktree model `.icm-main/` (2026-04-29)
+
+### Why v3.4.0
+
+Workspaces ICM v3.3.x sofriam de **path invisibility** entre branches:
+o workspace branch (`workspace/NNN-slug`) não tinha `docs/decisions/`,
+`docs/lessons.md`, `docs/tech_debt.md`, `src/`, `tests/` no working tree
+porque esses paths viviam apenas em `base_branch`. L0/L2 declaravam paths
+absolutos `<project_root>/docs/decisions/...` mas Read tool retornava
+ENOENT em sessões workspace branch.
+
+Workarounds frágeis (stash/checkout/commit/checkout/pop, `git show base:`,
+checkout temp em main) violavam atomicidade L1↔outputs e sujavam history.
+
+v3.4.0 introduz **worktree linkada permanente** `<project_root>/.icm-main/`
+(checada em base_branch desde o bootstrap; gitignored em todas branches).
+Sessões em qualquer estágio leem cross-branch via Read tool direto;
+escritas cross-branch (ADRs, lessons, tech_debt) commitam via
+`cd .icm-main && git commit ...` em transação única na base branch.
+
+Doc canônico: `references/worktree-model.md`.
+
+### Mudanças
+
+**Worktree model (canônico):**
+- `references/worktree-model.md` (NOVO) — fonte canônica do modelo Opção B; estrutura, comandos, regras de uso, falhas + recovery, comparação com opções A/C/D.
+
+**Bootstrap:**
+- `scripts/bootstrap.py` — `SKILL_VERSION` 3.3.0 → 3.4.0; `GITIGNORE_LINES` ganha `.icm-main/`; novas funções `_ensure_base_branch_docs(project_root)` (cria `docs/decisions/`, `docs/lessons.md`, `docs/tech_debt.md` na base branch) e `_setup_main_worktree(project_root, base_branch)` (cria worktree linkada via `git worktree add`); fluxo principal chama as duas ANTES de criar workspace branch; `_scaffold_workspace_dirs` não cria mais `docs/*` no project root (movido para `_ensure_base_branch_docs`).
+
+**Templates L0/L2:**
+- `templates/workspace/CLAUDE.md.tpl` — paths absolutos ganham coluna "Branch real"; nova entry "Worktree base branch (`.icm-main/`)" lista ADRs/lessons/tech_debt/src/tests sob esse prefix; §3 Branches reescrito para documentar worktree paralelo; §6 ADRs ganha workflow canônico via `cd .icm-main && git commit`; §8 nova "Cross-branch reads via `.icm-main/`" (numeração superpowers vai pra §9).
+- `templates/workspace/stages/00_recon/CONTEXT.md.tpl` — paths `docs/`, `src/` migrados para `.icm-main/...`; pre-flight valida worktree existe.
+- `templates/workspace/stages/01_discovery/CONTEXT.md.tpl` — paths migrados para `.icm-main/...`.
+- `templates/workspace/stages/02_design/CONTEXT.md.tpl` — paths migrados; process step 6 "Spawn ADRs novos" reescrito com workflow `cd .icm-main && git commit`; nova seção "Worktree paralelo".
+- `templates/workspace/stages/03_wave_planner/CONTEXT.md.tpl` — paths migrados.
+- `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` — paths migrados; nova seção subagent worktree (`Agent(isolation: "worktree")`); lead sincroniza `.icm-main/` via `git pull --ff-only` após merge.
+- `templates/workspace/stages/05_verification/CONTEXT.md.tpl` — paths migrados.
+- `templates/workspace/stages/06_review/CONTEXT.md.tpl` — paths migrados; tech_debt update via `cd .icm-main`.
+- `templates/workspace/stages/07_merge/CONTEXT.md.tpl` — paths migrados.
+- `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` — paths migrados; lessons append via `cd .icm-main`.
+
+**Hooks:**
+- `templates/.git-hooks/pre-commit` — whitelist tightened: removidos `docs/decisions/*.md`, `docs/lessons.md`, `docs/tech_debt.md` (devem ir via `.icm-main/`); mantém `workspaces/.index.md`, `.gitignore`, `CLAUDE.md`; nova rule rejeita paths em `.icm-main/*` (worktree paths não devem ser tracked pelo workspace branch — gitignore deve cobrir).
+- `templates/.claude/hooks/icm-session-check.sh` (NOVO) — SessionStart hook valida (1) branch atual = workspace branch ativo; (2) `.icm-main/` worktree existe; (3) worktree em base_branch correta. Imprime warning visível, não bloqueia.
+- `templates/project_root/.claude/settings.local.json.example` (NOVO) — exemplo de settings local com SessionStart + PostToolUse hooks apontando pros scripts no workspace.
+
+**Recovery:**
+- `scripts/recovery-wizard.py` — 3 novos códigos: `WORKTREE_MISSING` (critical, sugere `git worktree add .icm-main <BASE_BRANCH>`); `WORKTREE_WRONG_BRANCH` (warning, sugere `git checkout`); `WRONG_BRANCH_CHECKOUT` (warning, branch principal != workspace branch durante workspace ativo).
+
+**Migration v3.3.x → v3.4.0:**
+- Workspaces existentes pré-v3.4.0 continuam funcionando, mas sessões em workspace branch falham ao tentar `Read docs/decisions/...` (paths legados). Migration manual: (1) `git worktree add .icm-main <BASE_BRANCH>` no project_root; (2) adicionar `.icm-main/` ao `.gitignore` em todas branches; (3) opcional — atualizar L0/L2 paths para usar `.icm-main/` prefix. Recovery wizard detecta e sinaliza.
+
+---
+
 ## v3.3.0 — Tier 1 + Tier 2 patterns adopted from mattpocock/skills (2026-04-29)
 
 ### Why v3.3.0

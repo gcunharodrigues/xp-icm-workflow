@@ -21,7 +21,7 @@ next_stage: "03"
 
 # Estágio 02 — design (L2)
 
-Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan.md` no schema 4-block + Files touched + ADRs por task (consumido pelo Wave Planner em 03). Cria ADRs novos em `{{PROJECT_ROOT}}/docs/decisions/` quando decisões arquiteturais surgem (stack, db, dependências, serviços pagos, migrações irreversíveis, etc.). Gate humano antes de transitar para 03.
+Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan.md` no schema 4-block + Files touched + ADRs por task (consumido pelo Wave Planner em 03). Cria ADRs novos em `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (worktree linkada da base branch — modelo v3.4.0) quando decisões arquiteturais surgem (stack, db, dependências, serviços pagos, migrações irreversíveis, etc.). Gate humano antes de transitar para 03.
 
 ## Inputs (lê SOMENTE estes, na ordem)
 
@@ -32,14 +32,14 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 | 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/CONTEXT.md | L2 | sim |
 | 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/discovery.md | L4 | sim |
 | 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/output/recon-report.md | L4 | sim |
-| 6 | {{PROJECT_ROOT}}/docs/decisions/ | L3 | condicional: ler conteúdo dos ADRs vigentes listados no recon-report (filenames já indexados em 00) |
+| 6 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | condicional: ler conteúdo dos ADRs vigentes listados no recon-report (filenames já indexados em 00). Lido via worktree `.icm-main/`. |
 | 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml | L3 | sim |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
 | 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
-| 12 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: existe se herdou ou foi acumulada |
-| 13 | {{PROJECT_ROOT}}/docs/tech_debt.md | L3 | condicional: existe se há débito declarado em iterações anteriores |
+| 12 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | condicional: existe se herdou ou foi acumulada. Lido via worktree `.icm-main/`. |
+| 13 | {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md | L3 | condicional: existe se há débito declarado em iterações anteriores. Lido via worktree `.icm-main/`. |
 | 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 | 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
 | 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
@@ -47,7 +47,7 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/ e {{PROJECT_ROOT}}/tests/ — design é output-driven a partir de discovery + ADRs; não inspeciona código existente. Se contexto de código for crítico, declarar dependência no plan.md (task com ADR de leitura) e revisitar 01.
+- {{PROJECT_ROOT}}/.icm-main/src/ e {{PROJECT_ROOT}}/.icm-main/tests/ — design é output-driven a partir de discovery + ADRs; não inspeciona código existente. Se contexto de código for crítico, declarar dependência no plan.md (task com ADR de leitura) e revisitar 01.
 - ADRs não-listados pelo recon-report — só lê os indexados em 00 ou criados nesta sessão.
 - Outputs de estágios 03+ — não existem ainda.
 - {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md — lido como Input #11; NÃO re-ler de outras fontes.
@@ -60,7 +60,16 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 3. **Mapear discovery → tasks técnicas:** quebrar a opção macro escolhida em 01 numa lista de tasks discretas. Cada task encaixa em ≤1 wave do Wave Planner (ver `references/wave-planner-algorithm.md` — em construção, Wave 4 da skill).
 4. **Para cada task, escrever 4-block + metadados** (Files touched, ADRs aplicáveis, Lições críticas se há match, etc.). Linguagem direta, evita over-engineering.
 5. **Detectar stop points durante design:** stack/db/new_dep/paid_service/irreversible/over_eng/pii/adr_drift. Calibração por tier em `_config/stop-points.md`. Disparo: pausar, menu A/B/C, atualizar L1 `BLOCKED_STOP_POINT`, esperar resposta humana, retomar.
-6. **Spawn ADRs novos** quando decisão arquitetural irreversível ou divergente do declarado: criar `{{PROJECT_ROOT}}/docs/decisions/NNNN-<slug>.md` com formato canônico (Context / Decision / Consequences / Status). Numeração contínua a partir do maior NNNN existente.
+6. **Spawn ADRs novos** quando decisão arquitetural irreversível ou divergente do declarado: workflow canônico v3.4.0 via worktree `.icm-main/`:
+   ```
+   1. Write {{PROJECT_ROOT}}/.icm-main/docs/decisions/NNNN-<slug>.md
+      (formato canônico — ver `_references/runtime/adr-format.md`)
+   2. cd {{PROJECT_ROOT}}/.icm-main
+   3. git add docs/decisions/NNNN-*.md
+   4. git commit -m "docs(decisions): <slug> (workspace {{WORKSPACE}})"
+   5. cd {{PROJECT_ROOT}}
+   ```
+   Numeração contínua a partir do maior NNNN existente em `.icm-main/docs/decisions/`. Validar 3-criteria gate antes (`adr-format.md`).
 7. **Detectar adr_drift:** se proposta de design diverge de ADR vigente sem superseding declarado → stop point `adr_drift`. Resolução: superseding ADR (`NNNN-supersedes-MMMM.md`) OU revisão da proposta para alinhar.
 8. **Definir Test Strategy global do workspace** (uma vez no plan.md, não por task). Ler `test_specs` do `_config/profile-effective.yaml` para calibrar. Seção obrigatória com:
    - **Framework**: linguagem → framework principal (ex: Python → pytest + httpx; TS → vitest + @testing-library/react)
@@ -75,7 +84,7 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 
 ## Outputs
 
-- `output/plan.md` — design técnico com **Test Strategy global** + lista de tasks no schema 4-block (cada task com ≥1 arquivo de teste em `Files touched`), consumido pelo Wave Planner em 03. ADRs vivem em `{{PROJECT_ROOT}}/docs/decisions/` (fora do workspace) — plan.md cita os filenames criados.
+- `output/plan.md` — design técnico com **Test Strategy global** + lista de tasks no schema 4-block (cada task com ≥1 arquivo de teste em `Files touched`), consumido pelo Wave Planner em 03. ADRs vivem em `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (worktree base branch) — plan.md cita os filenames criados como path relativo a `.icm-main/`.
 
 ## Sub_stage transitions
 
@@ -86,7 +95,7 @@ Transição IN_PROGRESS → COMPLETED dispara quando:
 - `output/plan.md` contém seção **Test Strategy** preenchida com framework, pyramid, coverage threshold e test file location.
 - Toda task com código funcional tem ≥1 arquivo de teste em `Files touched`.
 - Stop points disparados durante a sessão estão resolvidos (status volta a `IN_PROGRESS` antes do completar).
-- ADRs novos commitados em `{{PROJECT_ROOT}}/docs/decisions/` (se houve decisão arquitetural).
+- ADRs novos commitados em base branch via `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (se houve decisão arquitetural).
 - Humano aprovou via gate (status `COMPLETED_AWAITING_HUMAN` → humano responde "aprovado, prosseguir 03").
 
 ## Status canônicos disponíveis neste estágio
@@ -109,7 +118,7 @@ Catálogo canônico em `references/stop-points-canonical.md`. IDs disparáveis n
 - `pii` — LGPD, dados sensíveis (warning experimental, hard tool/development, hard+DPO production).
 - `adr_drift` — proposta diverge de ADR existente sem superseding declarado. Sempre `hard`.
 
-Disparo: agente pausa, escreve menu A/B/C no output, atualiza L1 `status: BLOCKED_STOP_POINT`. Humano responde, sessão retoma com `IN_PROGRESS`. Decisões arquiteturais resolvidas viram ADRs em `{{PROJECT_ROOT}}/docs/decisions/`.
+Disparo: agente pausa, escreve menu A/B/C no output, atualiza L1 `status: BLOCKED_STOP_POINT`. Humano responde, sessão retoma com `IN_PROGRESS`. Decisões arquiteturais resolvidas viram ADRs em `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`.
 
 ## Skill superpowers de referência
 
@@ -120,7 +129,7 @@ Skill formal: `superpowers:writing-plans` (escape hatch — invocação real só
 ## Gates
 
 - **Humano:** revisa `output/plan.md` e ADRs criados; aprova ou requisita ajustes. Pode editar plan.md diretamente se discordar.
-- **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`. ADRs em `{{PROJECT_ROOT}}/docs/decisions/` commitam em base_branch (não no workspace branch).
+- **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`. ADRs commitam via `cd {{PROJECT_ROOT}}/.icm-main && git commit ...` — esses commits caem em base_branch automaticamente (worktree linkada).
 - **Aprovação para transitar:** humano explicitamente aprova; sub_stage vira `02_completed` no commit que registra a aprovação. Stop points pendentes bloqueiam transição.
 
 ## End of stage handoff (1-stage-1-sessão)
@@ -208,3 +217,10 @@ Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
 Inputs: `_config/CONTEXT.md` (L3, populado em stage 01) é obrigatório.
 Vocabulário do glossário deve ser usado consistentemente em plan.md, ADRs,
 e output/. Auto-QA Akita valida consistência.
+
+## v3.4.0 — Worktree paralelo
+
+Pré-flight do estágio inclui validar `.icm-main/` worktree existe em
+`{{PROJECT_ROOT}}/`. Ausente = `BLOCKED_ERROR`; recovery wizard sugere
+`git worktree add .icm-main {{BASE_BRANCH}}`. Doc canônico:
+`_references/runtime/worktree-model.md`.

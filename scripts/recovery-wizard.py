@@ -44,6 +44,10 @@ CODE_STALE_IN_PROGRESS = "STALE_IN_PROGRESS"
 CODE_BRANCH_MISSING = "BRANCH_MISSING"
 CODE_CLAUDE_MD_ROOT_STALE = "CLAUDE_MD_ROOT_STALE"
 CODE_CLAUDE_MD_ROOT_MISSING = "CLAUDE_MD_ROOT_MISSING"
+# v3.4.0: worktree model
+CODE_WORKTREE_MISSING = "WORKTREE_MISSING"
+CODE_WORKTREE_WRONG_BRANCH = "WORKTREE_WRONG_BRANCH"
+CODE_WRONG_BRANCH_CHECKOUT = "WRONG_BRANCH_CHECKOUT"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -54,6 +58,9 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_BRANCH_MISSING,
     CODE_CLAUDE_MD_ROOT_STALE,
     CODE_CLAUDE_MD_ROOT_MISSING,
+    CODE_WORKTREE_MISSING,
+    CODE_WORKTREE_WRONG_BRANCH,
+    CODE_WRONG_BRANCH_CHECKOUT,
 )
 
 STALE_THRESHOLD = timedelta(hours=24)
@@ -441,6 +448,98 @@ def detect_inconsistencies(
                             },
                         )
                     )
+
+    # 7) WORKTREE_MISSING / WORKTREE_WRONG_BRANCH (v3.4.0)
+    # `.icm-main/` worktree linkada eh obrigatoria desde v3.4.0. Doc:
+    # references/worktree-model.md.
+    if project_root is not None and project_root.is_dir():
+        base_branch = state.get("base_branch", "")
+        worktree_path = project_root / ".icm-main"
+        if not worktree_path.exists():
+            found.append(
+                Inconsistency(
+                    code=CODE_WORKTREE_MISSING,
+                    message=(
+                        f"`.icm-main/` worktree ausente em {project_root}. "
+                        "Modelo cross-branch v3.4.0 exige worktree linkada da "
+                        "base branch. Sessoes futuras nao conseguirao ler "
+                        "ADRs/lessons/tech_debt."
+                    ),
+                    proposed_action=(
+                        f"git -C {project_root} worktree add .icm-main {base_branch or '<BASE_BRANCH>'}"
+                    ),
+                    severity="critical",
+                    context={"project_root": str(project_root), "base_branch": base_branch},
+                )
+            )
+        else:
+            # Validar branch checada
+            try:
+                import subprocess as _sp
+                res = _sp.run(
+                    ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                    cwd=worktree_path,
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                )
+                wt_branch = res.stdout.strip()
+                if base_branch and wt_branch and wt_branch != base_branch:
+                    found.append(
+                        Inconsistency(
+                            code=CODE_WORKTREE_WRONG_BRANCH,
+                            message=(
+                                f"`.icm-main/` esta em '{wt_branch}', deveria "
+                                f"estar em base_branch '{base_branch}'."
+                            ),
+                            proposed_action=(
+                                f"cd {worktree_path} && git checkout {base_branch}"
+                            ),
+                            severity="warning",
+                            context={"current": wt_branch, "expected": base_branch},
+                        )
+                    )
+            except Exception:
+                pass
+
+    # 8) WRONG_BRANCH_CHECKOUT (v3.4.0)
+    # Worktree principal deveria estar em workspace branch durante ciclo ICM
+    # ativo. Se humano abriu sessao em base_branch por engano, sinaliza.
+    expected_ws_branch = state.get("workspace_branch", "")
+    if expected_ws_branch and project_root is not None and project_root.is_dir():
+        try:
+            import subprocess as _sp2
+            res2 = _sp2.run(
+                ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                cwd=project_root,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+            current_branch = res2.stdout.strip()
+            l1_status = state.get("status", "")
+            if (
+                current_branch
+                and current_branch != expected_ws_branch
+                and l1_status not in ("COMPLETED",)
+            ):
+                found.append(
+                    Inconsistency(
+                        code=CODE_WRONG_BRANCH_CHECKOUT,
+                        message=(
+                            f"branch atual em {project_root} eh '{current_branch}', "
+                            f"esperado '{expected_ws_branch}' (workspace ainda ativo, "
+                            f"status={l1_status})."
+                        ),
+                        proposed_action=(
+                            f"git -C {project_root} checkout {expected_ws_branch}"
+                        ),
+                        severity="warning",
+                        context={"current": current_branch, "expected": expected_ws_branch},
+                    )
+                )
+        except Exception:
+            pass
 
     # Reordenar pra ordem canonica
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}

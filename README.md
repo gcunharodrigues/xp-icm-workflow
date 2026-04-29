@@ -1,6 +1,6 @@
 # xp-icm-workflow
 
-Skill de orquestração de projetos via filesystem (ICM). v3.3.0.
+Skill de orquestração de projetos via filesystem (ICM). v3.4.0 — modelo cross-branch via worktree paralelo `.icm-main/`.
 
 ![tests](https://img.shields.io/badge/tests-502%20passed-brightgreen)
 ![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)
@@ -50,6 +50,7 @@ Detalhes em `references/`. Walkthrough E2E em `references/example-run.md`.
 | `references/smoke-manual-checklist.md` | 10 itens pré-release v3.0.0 |
 | `references/changelog.md` | Versões |
 | `references/git-hooks.md` | Pre-commit hook regras |
+| `references/worktree-model.md` | Worktree paralelo `.icm-main/` (v3.4.0) — modelo cross-branch canônico |
 | `system-requirements.md` | Runtime + permissions allowlist |
 
 ## Tests
@@ -74,7 +75,20 @@ CI: `.github/workflows/test-skill.yml` — Ubuntu runner com Python 3.13 + bats.
 
 ## Versão
 
-v3.3.0 — reescrita completa em 7 waves. v2.4 preservada em `references/v2.4-snapshot/`. Promoção a v3.0.0 condicionada aos critérios em `references/smoke-manual-checklist.md`.
+v3.4.0 — cross-branch worktree model. v3.3.x ainda referenciada como v2.4 snapshot em `references/v2.4-snapshot/`. Promoção a v3.0.0 condicionada aos critérios em `references/smoke-manual-checklist.md`.
+
+## v3.4.0 — Cross-branch worktree model
+
+Workspace branch (`workspace/NNN-slug`) não tem `docs/`, `src/`, `tests/`
+no working tree. v3.4.0 introduz worktree linkada permanente
+`<project_root>/.icm-main/` (sempre checada na base branch, gitignored)
+para resolver visibility cross-branch:
+
+- Read tool funciona direto: `Read .icm-main/docs/decisions/0001-stack.md`.
+- Write/commit cross-branch: `cd .icm-main && git add docs/... && git commit ...` cai na base branch atomicamente.
+- Subagentes em fase 04 usam `Agent(isolation: "worktree")` para wave branches isoladas; lead permanece em workspace branch.
+
+Doc canônico: `references/worktree-model.md`. Bootstrap automatiza setup.
 
 ## v3.3.0 — Patterns adopted from mattpocock/skills
 

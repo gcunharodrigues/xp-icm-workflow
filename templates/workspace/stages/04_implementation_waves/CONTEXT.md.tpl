@@ -32,8 +32,8 @@ Execução paralela em waves. Lead session orquestra subagentes via Agent tool r
 | 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/CONTEXT.md | L2 | sim |
 | 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/output/wave-plan.md | L4 | sim |
 | 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md | L4 | sim |
-| 6 | {{PROJECT_ROOT}}/docs/decisions/ | L3 | condicional: ler SOMENTE ADRs listados em "ADRs aplicáveis" da task no plan.md |
-| 7 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: lessons-match.py pré-extrai lições relevantes; lead injeta via canal 2 |
+| 6 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | condicional: ler SOMENTE ADRs listados em "ADRs aplicáveis" da task no plan.md |
+| 7 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | condicional: lessons-match.py pré-extrai lições relevantes; lead injeta via canal 2 |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/test-driven-development-200tok.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/subagent-driven-development-200tok.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md | L3 | sim |
@@ -47,9 +47,9 @@ Execução paralela em waves. Lead session orquestra subagentes via Agent tool r
 ## Não Lê (negative constraint)
 
 - {{PROJECT_ROOT}}/workspaces/ (outros workspaces — isolamento por workspace)
-- ADRs em {{PROJECT_ROOT}}/docs/decisions/ NÃO listados em "ADRs aplicáveis" da task corrente
+- ADRs em {{PROJECT_ROOT}}/.icm-main/docs/decisions/ NÃO listados em "ADRs aplicáveis" da task corrente
 - Outputs de outros estágios do mesmo workspace (00, 01, 05+) — apenas plan.md (02) e wave-plan.md (03)
-- {{PROJECT_ROOT}}/docs/tech_debt.md diretamente — entra via canal 2 do lead se aplicável
+- {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md diretamente — entra via canal 2 do lead se aplicável
 
 ## Process
 
@@ -202,11 +202,22 @@ Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
   python {{SKILL_DIR}}/scripts/agent-brief-render.py \
       --task <slug> \
       --plan stages/02_design/output/plan.md \
-      --adrs {{PROJECT_ROOT}}/docs/decisions
+      --adrs {{PROJECT_ROOT}}/.icm-main/docs/decisions
   ```
 
   Output (markdown) é injetado no prompt do Agent tool. Anti-patterns
   (paths absolutos, line numbers) gerados warnings.
+
+- **Subagent worktree (v3.4.0):** lead spawna subagentes via
+  `Agent(isolation: "worktree")` para wave branches `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`
+  derivadas de `{{BASE_BRANCH}}`. Tool cria worktree efêmera; subagente
+  trabalha nela isolado da worktree principal (que continua em
+  `workspace/{{WORKSPACE}}`). Lead permanece no `{{PROJECT_ROOT}}/`
+  workspace branch durante toda a wave. Após subagente terminar, lead
+  inspeciona resultado do worktree retornado e merge a wave branch em
+  `{{BASE_BRANCH}}` conforme protocol da fase 04. Após merge:
+  `cd {{PROJECT_ROOT}}/.icm-main && git pull --ff-only` para sincronizar
+  worktree linkada com novo HEAD da base.
 
 - **HITL handling:** se wave é `Type: HITL`, lead session NÃO spawna
   subagent. Gera AGENT-BRIEF, exibe ao humano, atualiza L1 para

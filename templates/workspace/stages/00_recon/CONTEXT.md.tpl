@@ -26,8 +26,8 @@ Reconnaissance inicial do projeto. Detecta tipo de workspace (greenfield, existi
 | 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/CONTEXT.md | L2 | sim |
 | 4 | {{PROJECT_ROOT}}/.icm-profile.local.yaml | L3 | condicional: existe se humano declarou override local |
 | 5 | {{PROJECT_ROOT}}/.git/config | L3 | sim (read-only — checa base_branch + remotes) |
-| 6 | {{PROJECT_ROOT}}/docs/lessons.md | L3 | condicional: existe se workspace foi spawn de fase 08 saída C ou herda de iteração anterior |
-| 7 | {{PROJECT_ROOT}}/docs/decisions/ | L3 | condicional: lista índice de ADRs existentes (sem ler conteúdo de cada um) |
+| 6 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | condicional: existe se workspace foi spawn de fase 08 saída C ou herda de iteração anterior |
+| 7 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | condicional: lista índice de ADRs existentes (sem ler conteúdo de cada um) |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/brainstorming-200tok.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
@@ -39,19 +39,21 @@ Reconnaissance inicial do projeto. Detecta tipo de workspace (greenfield, existi
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/ e {{PROJECT_ROOT}}/tests/ — estágio 00 NÃO inspeciona código-fonte; só metadata de repositório.
-- Conteúdo individual de ADRs em {{PROJECT_ROOT}}/docs/decisions/*.md — apenas o índice (filenames). Leitura detalhada acontece no estágio 02.
+- {{PROJECT_ROOT}}/.icm-main/src/ e {{PROJECT_ROOT}}/.icm-main/tests/ — estágio 00 NÃO inspeciona código-fonte; só metadata de repositório.
+- Conteúdo individual de ADRs em {{PROJECT_ROOT}}/.icm-main/docs/decisions/*.md — apenas o índice (filenames). Leitura detalhada acontece no estágio 02.
 - Outputs de estágios 01+ — não existem ainda.
 - Workspaces irmãos em {{PROJECT_ROOT}}/workspaces/<outro>/ — escopo deste workspace é {{WORKSPACE}}.
 
 ## Process
 
-1. **Pre-flight:** validar que todos os paths Inputs marcados `sim` existem; sub_stage `00_in_progress`. Se path obrigatório ausente → status `BLOCKED_ERROR`. Validar também que `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh` existe e é executável, e que `{{PROJECT_ROOT}}/.claude/settings.local.json` contém entrada `hooks.PostToolUse` apontando para `bash workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh`. Se ausente → warning (não bloqueia bootstrap, mas context checkpoint anti-compact fica sem enforcement automático).
-2. **Detectar tipo de workspace:** classifica em `greenfield` (sem `src/` populado, sem ADRs), `existing` (repositório com código + ADRs prévios) ou `external_repo` (clone read-only que vai gerar workspace de leitura/análise). Decisão baseada em listing de `{{PROJECT_ROOT}}/src/` (apenas existência), `{{PROJECT_ROOT}}/docs/decisions/` (count de arquivos) e `git remote -v`.
+1. **Pre-flight:** validar que todos os paths Inputs marcados `sim` existem; sub_stage `00_in_progress`. Se path obrigatório ausente → status `BLOCKED_ERROR`. Validar também:
+   - `{{PROJECT_ROOT}}/.icm-main/` worktree existe e está checada em `{{BASE_BRANCH}}` (modelo v3.4.0). Ausente → `BLOCKED_ERROR` com sugestão `git worktree add .icm-main {{BASE_BRANCH}}`.
+   - `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh` existe e é executável, e `{{PROJECT_ROOT}}/.claude/settings.local.json` contém entrada `hooks.PostToolUse` apontando para `bash workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh`. Se ausente → warning (não bloqueia bootstrap, mas context checkpoint anti-compact fica sem enforcement automático).
+2. **Detectar tipo de workspace:** classifica em `greenfield` (sem `src/` populado, sem ADRs), `existing` (repositório com código + ADRs prévios) ou `external_repo` (clone read-only que vai gerar workspace de leitura/análise). Decisão baseada em listing de `{{PROJECT_ROOT}}/.icm-main/src/` (apenas existência), `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (count de arquivos) e `git remote -v`.
 3. **Validar coerência profile×tier vs estado real:** comparar `profile_base` e `tier` do L0/L1 contra realidade do FS. Sinais de mismatch — ex: tier `experimental` num repo com tag de release; profile `cli_tool` num repo com app web — disparam stop point `profile_mismatch`.
 4. **Validar integridade do workspace:** rodar heurísticas de `references/state-machine-schema.md` §R2.7 (hash mismatch, history inconsistente, commit_sha sumido). Qualquer falha → stop point `workspace_corrupt` propondo Recovery Wizard.
-5. **Listar ADRs vigentes:** glob `{{PROJECT_ROOT}}/docs/decisions/*.md` → registrar filename + título (primeira linha) sem ler corpo. Lista alimentará o estágio 02.
-6. **Registrar herança (se `spawn_from`):** se L1 declara `spawn_from: <workspace>`, ler `{{PROJECT_ROOT}}/docs/lessons.md` e citar lições herdáveis aplicáveis em `recon-report.md`. Se ausente, anotar "sem herança".
+5. **Listar ADRs vigentes:** glob `{{PROJECT_ROOT}}/.icm-main/docs/decisions/*.md` → registrar filename + título (primeira linha) sem ler corpo. Lista alimentará o estágio 02.
+6. **Registrar herança (se `spawn_from`):** se L1 declara `spawn_from: <workspace>`, ler `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` e citar lições herdáveis aplicáveis em `recon-report.md`. Se ausente, anotar "sem herança".
 7. **Consultar sumários superpowers** (brainstorming + writing-plans 200tok) para enquadrar o estilo do report — direto, factual, sem invenção.
 8. **Escrever `output/recon-report.md`** com seções fixas: Tipo de workspace; Profile×tier check; ADRs vigentes (índice); Lessons herdáveis; Stop points pré-disparados (se houver); Próximos passos sugeridos para 01_discovery.
 9. **Atualizar L1:** sub_stage `00_completed`, status `COMPLETED_AWAITING_HUMAN`, append `history` evento `stage_transition`. Commit atômico (pre-commit hook valida atomicidade L1↔outputs).

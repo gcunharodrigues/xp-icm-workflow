@@ -1,0 +1,27 @@
+{
+  "_comment": "Exemplo de project-root .claude/settings.local.json para skill xp-icm-workflow v3.4.0. Copie para .claude/settings.local.json (gitignored). Substitua <NNN-slug> pelo workspace ativo.",
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash workspaces/<NNN-slug>/.claude/hooks/icm-session-check.sh"
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": ".*",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh"
+          }
+        ]
+      }
+    ]
+  }
+}

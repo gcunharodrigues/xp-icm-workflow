@@ -17,7 +17,7 @@ next_stage: "07"
 
 # Estágio 06 — review (L2)
 
-Code review nas 7 dimensões (correctness, security, performance, complexity, tests, docs, conventions) sobre o que a fase 04 entregou e a fase 05 verificou. Issues P0/P1 disparam fix loop (loopback ao estágio 04 — nova wave ou regeneração de wave existente). Issues P2/P3 viram tech debt registrado em `{{PROJECT_ROOT}}/docs/tech_debt.md` e o ciclo segue para o merge (07).
+Code review nas 7 dimensões (correctness, security, performance, complexity, tests, docs, conventions) sobre o que a fase 04 entregou e a fase 05 verificou. Issues P0/P1 disparam fix loop (loopback ao estágio 04 — nova wave ou regeneração de wave existente). Issues P2/P3 viram tech debt registrado em `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` e o ciclo segue para o merge (07).
 
 ## Inputs (lê SOMENTE estes, na ordem)
 
@@ -28,8 +28,8 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
 | 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/CONTEXT.md | L2 | sim |
 | 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/output/verification-report.md | L4 | sim |
 | 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md | L4 | sim |
-| 6 | {{PROJECT_ROOT}}/docs/decisions/ | L3 | condicional: ler ADRs referenciados em plan.md (sample-check, não conteúdo total) |
-| 7 | {{PROJECT_ROOT}}/docs/tech_debt.md | L3 | condicional: existe se tier ≠ experimental — append novos P2/P3 aqui |
+| 6 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | condicional: ler ADRs referenciados em plan.md (sample-check, não conteúdo total) |
+| 7 | {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md | L3 | condicional: existe se tier ≠ experimental — append novos P2/P3 aqui |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/requesting-code-review-200tok.md | L3 | sim |
@@ -40,10 +40,10 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/src/ na íntegra — review focado nos arquivos `Files touched` declarados em cada task do plan.md.
+- {{PROJECT_ROOT}}/.icm-main/src/ na íntegra — review focado nos arquivos `Files touched` declarados em cada task do plan.md.
 - Outputs dos estágios 00, 01, 03, 04, 07, 08 — não relevantes para o review (verification-report já consolida o que importa de 04+05).
-- ADRs em {{PROJECT_ROOT}}/docs/decisions/ NÃO referenciados no plan.md.
-- {{PROJECT_ROOT}}/docs/lessons.md (lições já vêm pré-injetadas no fluxo da fase 04, não relevantes ao review).
+- ADRs em {{PROJECT_ROOT}}/.icm-main/docs/decisions/ NÃO referenciados no plan.md.
+- {{PROJECT_ROOT}}/.icm-main/docs/lessons.md (lições já vêm pré-injetadas no fluxo da fase 04, não relevantes ao review).
 
 ## Process
 
@@ -72,7 +72,7 @@ Code review nas 7 dimensões (correctness, security, performance, complexity, te
    - status: `IN_PROGRESS`. Sessão termina; próxima sessão retoma na fase 04.
    - Commit atômico (pre-commit hook valida atomicidade L1↔outputs).
 7. **Se nenhum P0/P1:**
-   - Append P2/P3 em `{{PROJECT_ROOT}}/docs/tech_debt.md` (cada item com workspace+task de origem).
+   - Append P2/P3 em `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` (cada item com workspace+task de origem).
    - Escrever `output/review-report.md`: 7 dimensões, lista de issues classificada P0-P3, stops detectados, recomendação final ("OK para 07" / "fix loop").
    - Atualizar L1: `sub_stage: "06_completed"`, `status: COMPLETED_AWAITING_HUMAN`. Append `history` evento `stage_transition`.
    - Commit atômico.

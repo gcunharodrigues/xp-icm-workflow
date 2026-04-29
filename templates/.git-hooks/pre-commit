@@ -10,13 +10,18 @@
 #   pre-commit  → file/atomicidade checks (sem msg)
 #   commit-msg  → msg validation (recebe path em $1)
 #
-# Regras (R2.3, R3.3, R3.10, R5.4):
+# Regras (R2.3, R3.3, R3.10, R5.4) — atualizadas em v3.4.0:
 #
 #   1. Skip durante rebase/merge em andamento.
 #   2. Branches que nao casam ^workspace/[0-9]{3}- passam livremente.
 #   3. Em branches workspace/NNN-slug:
 #      a) Reject se algum staged file esta fora de workspaces/NNN-slug/
-#         (exceto ADRs em docs/decisions/*.md).
+#         (whitelist v3.4.0: workspaces/.index.md, .gitignore, CLAUDE.md).
+#         ADRs / docs/lessons.md / docs/tech_debt.md NAO estao no whitelist
+#         desde v3.4.0 — devem ir via worktree linkada `.icm-main/`
+#         (`cd .icm-main && git commit ...`). Doc: references/worktree-model.md.
+#      c) Reject paths em `.icm-main/*` (worktree paths nao devem ser
+#         tracked pelo workspace branch — gitignore deve cobrir).
 #      b) Reject se outputs de stages/<NN>/output sao staged sem que
 #         workspaces/NNN-slug/CONTEXT.md tambem esteja staged
 #         (atomicidade L1 -> outputs: outputs exigem L1; L1 so
@@ -63,16 +68,25 @@ fi
 # 5. Reject src edits (R3.3) --------------------------------------------------
 
 offending=""
+icm_main_offender=""
 while IFS= read -r f; do
     [ -z "$f" ] && continue
-    # Whitelist: paths liberados fora de workspaces/NNN-slug/
+    # `.icm-main/` worktree paths — esses sao da base branch (worktree linkada).
+    # NAO devem aparecer no diff do workspace branch. Se aparecer, gitignore
+    # quebrou ou alguem `git add`-ou na worktree errada.
     case "$f" in
-        docs/decisions/*.md) continue ;;    # ADRs
-        docs/lessons.md) continue ;;         # licoes (stage 08 saida A)
-        docs/tech_debt.md) continue ;;       # tech debt (stage 06)
+        .icm-main/*)
+            icm_main_offender="$f"
+            break
+            ;;
+    esac
+    # Whitelist v3.4.0: paths liberados fora de workspaces/NNN-slug/
+    # ADRs / docs/lessons.md / docs/tech_debt.md NAO estao mais no whitelist —
+    # commitam via `cd .icm-main && git commit ...` direto na base branch.
+    case "$f" in
         workspaces/.index.md) continue ;;    # registry de workspaces
         .gitignore) continue ;;              # gitignore updates
-        CLAUDE.md) continue ;;               # project root CLAUDE.md (G6)
+        CLAUDE.md) continue ;;               # project root CLAUDE.md (G6) — dashboard ICM
     esac
     # Dentro do workspace? — liberado
     case "$f" in
@@ -85,11 +99,29 @@ done <<EOF
 $staged
 EOF
 
+if [ -n "$icm_main_offender" ]; then
+    cat >&2 <<EOM
+ERROR: file '${icm_main_offender}' esta em .icm-main/ — diretorio reservado pra worktree linkada da base branch.
+Worktree paths NAO devem ser tracked pelo workspace branch.
+Verifique .gitignore (deve listar '.icm-main/').
+Se quis commitar nessa pasta, use:
+  cd .icm-main && git add <path-relativo> && git commit ...
+NUNCA use --no-verify; corrija o conteudo.
+EOM
+    exit 1
+fi
+
 if [ -n "$offending" ]; then
     cat >&2 <<EOM
-ERROR: branch workspace/${ws_full} pode tocar APENAS workspaces/${ws_full}/* ou docs/decisions/*.md.
+ERROR: branch workspace/${ws_full} pode tocar APENAS:
+  - workspaces/${ws_full}/* (state files do workspace)
+  - workspaces/.index.md (registry global)
+  - .gitignore (regras de ignore)
+  - CLAUDE.md (dashboard ICM no project root)
 File offendor: ${offending}
-Pra editar src/, faca checkout em base_branch primeiro.
+Para tocar src/, docs/decisions/, docs/lessons.md, docs/tech_debt.md
+ou demais paths da base branch, use a worktree linkada:
+  cd .icm-main && git add <path> && git commit ...
 NUNCA use --no-verify; corrija o conteudo.
 EOM
     exit 1
