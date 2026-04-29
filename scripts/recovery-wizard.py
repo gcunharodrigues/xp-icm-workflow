@@ -48,6 +48,8 @@ CODE_CLAUDE_MD_ROOT_MISSING = "CLAUDE_MD_ROOT_MISSING"
 CODE_WORKTREE_MISSING = "WORKTREE_MISSING"
 CODE_WORKTREE_WRONG_BRANCH = "WORKTREE_WRONG_BRANCH"
 CODE_WRONG_BRANCH_CHECKOUT = "WRONG_BRANCH_CHECKOUT"
+# v3.4.2: gate inline antes do kickoff
+CODE_KICKOFF_WITHOUT_GATE = "KICKOFF_WITHOUT_GATE"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -61,7 +63,31 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_WORKTREE_MISSING,
     CODE_WORKTREE_WRONG_BRANCH,
     CODE_WRONG_BRANCH_CHECKOUT,
+    CODE_KICKOFF_WITHOUT_GATE,
 )
+
+# Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).
+# Stage 04 omitido por ter logica de waves complexa; 00 e 08 nao se aplicam.
+_NEXT_STAGE_DIR: dict[str, str] = {
+    "01": "02_design",
+    "02": "03_wave_planner",
+    "03": "04_implementation_waves",
+    "05": "06_review",
+    "06": "07_merge",
+    "07": "08_feedback_intake",
+}
+
+# Mapping pra Plan A do KICKOFF_WITHOUT_GATE: stage_atual → (next_stage_id,
+# next_sub_stage, next_status). Stage 07 special (auto-transit pra 08 com
+# status=COMPLETED_AWAITING_HUMAN, workspace fica vivo aguardando feedback).
+_GATE_RETRO_TRANSITION: dict[str, tuple[str, str, str]] = {
+    "01": ("02", "02_in_progress", "IN_PROGRESS"),
+    "02": ("03", "03_in_progress", "IN_PROGRESS"),
+    "03": ("04", "04_wave_1_in_progress", "IN_PROGRESS"),
+    "05": ("06", "06_in_progress", "IN_PROGRESS"),
+    "06": ("07", "07_in_progress", "IN_PROGRESS"),
+    "07": ("08", "08_in_progress", "COMPLETED_AWAITING_HUMAN"),
+}
 
 STALE_THRESHOLD = timedelta(hours=24)
 
@@ -541,6 +567,47 @@ def detect_inconsistencies(
         except Exception:
             pass
 
+    # 9) KICKOFF_WITHOUT_GATE (v3.4.2)
+    # Sintoma do bug pre-v3.4.2: sessao anterior renderizou _kickoff.md do
+    # stage NN+1 mas L1 indica stage_atual=NN com status=COMPLETED_AWAITING_HUMAN
+    # (gate nao aprovado). Workspaces criados antes do fix podem estar
+    # neste estado. Detect: kickoff existe AND status pendente AND
+    # sub_stage termina em _completed.
+    stage_atual = str(state.get("stage_atual", ""))
+    sub_stage = str(state.get("sub_stage", ""))
+    status = state.get("status", "")
+    next_dir = _NEXT_STAGE_DIR.get(stage_atual)
+    if (
+        next_dir
+        and status == "COMPLETED_AWAITING_HUMAN"
+        and sub_stage.endswith("_completed")
+    ):
+        kickoff_path = workspace_path / "stages" / next_dir / "_kickoff.md"
+        if kickoff_path.is_file():
+            found.append(
+                Inconsistency(
+                    code=CODE_KICKOFF_WITHOUT_GATE,
+                    message=(
+                        f"_kickoff.md de {next_dir} existe mas L1 declara "
+                        f"stage_atual={stage_atual!r} sub_stage={sub_stage!r} "
+                        "status=COMPLETED_AWAITING_HUMAN. Sintoma do bug "
+                        "pre-v3.4.2: sessao anterior renderizou kickoff sem "
+                        "aguardar gate humano."
+                    ),
+                    proposed_action=(
+                        "aprovar gate retroativo (mantém kickoff, transita "
+                        "L1 pra próximo stage)"
+                    ),
+                    severity="warning",
+                    context={
+                        "stage_atual": stage_atual,
+                        "sub_stage": sub_stage,
+                        "kickoff_path": str(kickoff_path),
+                        "next_dir": next_dir,
+                    },
+                )
+            )
+
     # Reordenar pra ordem canonica
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}
     ordered = [by_code[c] for c in CANONICAL_ORDER if c in by_code]
@@ -707,6 +774,39 @@ def _apply_plan_a(
                 },
             )
 
+        elif inc.code == CODE_KICKOFF_WITHOUT_GATE:
+            # Plan A: aprovar gate retroativamente. Transita L1 pro próximo
+            # stage usando _GATE_RETRO_TRANSITION (mantém kickoff já gerado).
+            stage_atual_str = str(state.get("stage_atual", ""))
+            transition = _GATE_RETRO_TRANSITION.get(stage_atual_str)
+            if transition:
+                next_stage, next_sub, next_status = transition
+                prev_sub = str(state.get("sub_stage", ""))
+                state["stage_atual"] = next_stage
+                state["sub_stage"] = next_sub
+                state["status"] = next_status
+                state["last_transition"] = {
+                    "from": prev_sub,
+                    "to": next_sub,
+                    "at": _now_iso(now),
+                    "commit_sha": state.get("last_transition", {}).get(
+                        "commit_sha", ""
+                    ),
+                }
+                _append_history(
+                    state,
+                    {
+                        "at": _now_iso(now),
+                        "event": "stage_transition",
+                        "from": prev_sub,
+                        "to": next_sub,
+                        "note": (
+                            "gate approved retroactively via recovery wizard "
+                            "(KICKOFF_WITHOUT_GATE Plan A)"
+                        ),
+                    },
+                )
+
         elif inc.code in (CODE_CLAUDE_MD_ROOT_STALE, CODE_CLAUDE_MD_ROOT_MISSING):
             # Plan A: regerar bloco do workspace no <project_root>/CLAUDE.md
             # a partir do estado L1 atual. Lazy import de handoff.
@@ -802,6 +902,45 @@ def _apply_plan_b(
     if any(i.code == CODE_STALE_IN_PROGRESS for i in inconsistencies):
         # Plan B identico ao A
         state["status"] = "COMPLETED_AWAITING_HUMAN"
+
+    # KICKOFF_WITHOUT_GATE: Plan B = deleta kickoff + volta L1 pra in_progress.
+    # Workspace continua trabalhando no stage NN (refaz outputs).
+    for inc in inconsistencies:
+        if inc.code == CODE_KICKOFF_WITHOUT_GATE:
+            kickoff_path_str = inc.context.get("kickoff_path", "")
+            if kickoff_path_str:
+                kickoff_path = Path(kickoff_path_str)
+                if kickoff_path.is_file():
+                    try:
+                        kickoff_path.unlink()
+                    except OSError:
+                        pass  # warning silencioso — humano vê history
+            stage_atual_str = str(state.get("stage_atual", ""))
+            prev_sub = str(state.get("sub_stage", ""))
+            new_sub = f"{stage_atual_str}_in_progress"
+            state["sub_stage"] = new_sub
+            state["status"] = "IN_PROGRESS"
+            state["last_transition"] = {
+                "from": prev_sub,
+                "to": new_sub,
+                "at": _now_iso(now),
+                "commit_sha": state.get("last_transition", {}).get(
+                    "commit_sha", ""
+                ),
+            }
+            _append_history(
+                state,
+                {
+                    "at": _now_iso(now),
+                    "event": "stage_transition",
+                    "from": prev_sub,
+                    "to": new_sub,
+                    "note": (
+                        "kickoff deletado, voltando ao trabalho via "
+                        "recovery wizard (KICKOFF_WITHOUT_GATE Plan B)"
+                    ),
+                },
+            )
 
     _append_history(
         state,

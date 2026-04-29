@@ -28,6 +28,7 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `WORKTREE_MISSING` (v3.4.0) | critical | `.icm-main/` worktree linkada removida ou não criada | `<project_root>/.icm-main/` ausente |
 | `WORKTREE_WRONG_BRANCH` (v3.4.0) | warning | worktree foi switched para outra branch manualmente | `git rev-parse --abbrev-ref HEAD` em `.icm-main/` ≠ `base_branch` |
 | `WRONG_BRANCH_CHECKOUT` (v3.4.0) | warning | humano abriu sessão sem ativar workspace branch | `<project_root>` checkado em branch ≠ `workspace_branch` enquanto status ≠ COMPLETED |
+| `KICKOFF_WITHOUT_GATE` (v3.4.2) | warning | sintoma do bug pre-v3.4.2 — sessão renderizou kickoff sem aguardar gate | `_kickoff.md` em `stages/<NN+1>/_kickoff.md` existe AND L1 declara `stage_atual=NN, status=COMPLETED_AWAITING_HUMAN, sub_stage=NN_completed` |
 
 ## Ações por inconsistência
 
@@ -43,6 +44,7 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `WORKTREE_MISSING` (v3.4.0) | rodar `git worktree add .icm-main <base_branch>` | n/a (sempre A) | mark `BLOCKED_ERROR` |
 | `WORKTREE_WRONG_BRANCH` (v3.4.0) | `cd .icm-main && git checkout <base_branch>` | n/a | mark `BLOCKED_ERROR` |
 | `WRONG_BRANCH_CHECKOUT` (v3.4.0) | `git -C <project_root> checkout <workspace_branch>` | n/a | mark `BLOCKED_ERROR` |
+| `KICKOFF_WITHOUT_GATE` (v3.4.2) | aprovar gate retroativamente: transita L1 pra `stage_atual=NN+1`, mantém kickoff já gerado | deleta `_kickoff.md` + volta `sub_stage=NN_in_progress` (workspace continua trabalhando no stage NN) | mark `BLOCKED_ERROR` |
 
 **Múltiplas inconsistências:** wizard agrupa por código e aplica em batch na ordem canônica:
 
