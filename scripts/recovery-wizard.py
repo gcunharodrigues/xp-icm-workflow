@@ -42,6 +42,8 @@ CODE_MISSING_COMMIT = "MISSING_COMMIT"
 CODE_MISSING_OUTPUT = "MISSING_OUTPUT"
 CODE_STALE_IN_PROGRESS = "STALE_IN_PROGRESS"
 CODE_BRANCH_MISSING = "BRANCH_MISSING"
+CODE_CLAUDE_MD_ROOT_STALE = "CLAUDE_MD_ROOT_STALE"
+CODE_CLAUDE_MD_ROOT_MISSING = "CLAUDE_MD_ROOT_MISSING"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -50,6 +52,8 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_MISSING_OUTPUT,
     CODE_STALE_IN_PROGRESS,
     CODE_BRANCH_MISSING,
+    CODE_CLAUDE_MD_ROOT_STALE,
+    CODE_CLAUDE_MD_ROOT_MISSING,
 )
 
 STALE_THRESHOLD = timedelta(hours=24)
@@ -386,10 +390,86 @@ def detect_inconsistencies(
                 )
             )
 
+    # 6) CLAUDE_MD_ROOT_STALE / MISSING (G5)
+    # Verifica consistência entre L1.stage_atual e bloco do workspace no
+    # <project_root>/CLAUDE.md (região ICM). Doc: references/project-root-claude-md.md.
+    if project_root is not None and project_root.is_dir():
+        ws_id = state.get("workspace", "")
+        l1_status = state.get("status", "")
+        l1_stage = str(state.get("stage_atual", ""))
+        if ws_id and l1_status == "IN_PROGRESS":
+            root_block = _get_root_workspace_block(project_root, ws_id)
+            if root_block is None:
+                found.append(
+                    Inconsistency(
+                        code=CODE_CLAUDE_MD_ROOT_MISSING,
+                        message=(
+                            f"workspace {ws_id} status=IN_PROGRESS mas não "
+                            "aparece como bloco em <project_root>/CLAUDE.md "
+                            "região ICM. Bootstrap não rodou ou bloco foi "
+                            "removido manualmente."
+                        ),
+                        proposed_action=(
+                            "regerar bloco do workspace a partir do L1 via "
+                            "handoff.py update-project-md"
+                        ),
+                        severity="warning",
+                        context={"workspace": ws_id},
+                    )
+                )
+            else:
+                root_stage = str(root_block.get("stage_atual", ""))
+                if root_stage and l1_stage and root_stage != l1_stage:
+                    found.append(
+                        Inconsistency(
+                            code=CODE_CLAUDE_MD_ROOT_STALE,
+                            message=(
+                                f"<project_root>/CLAUDE.md mostra stage "
+                                f"{root_stage!r} para workspace {ws_id} mas "
+                                f"L1 declara {l1_stage!r}. Sessão anterior "
+                                "crash sem chamar handoff."
+                            ),
+                            proposed_action=(
+                                "regerar bloco a partir do L1 via "
+                                "handoff.py update-project-md"
+                            ),
+                            severity="warning",
+                            context={
+                                "workspace": ws_id,
+                                "root_stage": root_stage,
+                                "l1_stage": l1_stage,
+                            },
+                        )
+                    )
+
     # Reordenar pra ordem canonica
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}
     ordered = [by_code[c] for c in CANONICAL_ORDER if c in by_code]
     return ordered
+
+
+def _get_root_workspace_block(project_root: Path, workspace_id: str) -> dict | None:
+    """Lê <project_root>/CLAUDE.md, retorna dict do bloco do workspace ou None.
+
+    Parse via comentários `<!-- ICM-DATA:... -->` (JSON). Lazy import de handoff
+    via sys.path para evitar dependência circular.
+    """
+    claude_md = project_root / "CLAUDE.md"
+    if not claude_md.is_file():
+        return None
+    scripts_dir = str(Path(__file__).resolve().parent)
+    if scripts_dir not in sys.path:
+        sys.path.insert(0, scripts_dir)
+    try:
+        import handoff  # noqa: PLC0415
+    except ImportError:
+        return None
+    blocks = handoff._parse_workspace_blocks(claude_md)
+    block = blocks.get(workspace_id)
+    if block is None:
+        return None
+    from dataclasses import asdict  # noqa: PLC0415
+    return asdict(block)
 
 
 # Plan rendering -------------------------------------------------------------
@@ -527,6 +607,49 @@ def _apply_plan_a(
                     ),
                 },
             )
+
+        elif inc.code in (CODE_CLAUDE_MD_ROOT_STALE, CODE_CLAUDE_MD_ROOT_MISSING):
+            # Plan A: regerar bloco do workspace no <project_root>/CLAUDE.md
+            # a partir do estado L1 atual. Lazy import de handoff.
+            scripts_dir = str(Path(__file__).resolve().parent)
+            if scripts_dir not in sys.path:
+                sys.path.insert(0, scripts_dir)
+            try:
+                import handoff  # noqa: PLC0415
+            except ImportError:
+                _append_history(
+                    state,
+                    {
+                        "at": _now_iso(now),
+                        "event": "recovery_warning",
+                        "note": "handoff.py indisponível; bloco CLAUDE.md root não regenerado",
+                    },
+                )
+                continue
+            ws_id = state.get("workspace", "")
+            proj_root_str = state.get("project_root", "")
+            if not (ws_id and proj_root_str):
+                continue
+            proj_root = Path(proj_root_str)
+            sub_stage = state.get("sub_stage", f"{state.get('stage_atual', '00')}_in_progress")
+            stage_id = str(state.get("stage_atual", "00"))
+            stage_dir = handoff.STAGE_DIR_BY_ID.get(stage_id, f"{stage_id}_unknown")
+            block = handoff.WorkspaceBlock(
+                workspace=ws_id,
+                profile=state.get("profile_base", ""),
+                tier=state.get("tier", ""),
+                stage_atual=stage_id,
+                stage_dir=stage_dir,
+                sub_stage=sub_stage,
+                iteration=int(state.get("iteration", 0)),
+                status=state.get("status", "IN_PROGRESS"),
+                last_action="recovery_wizard regenerated block",
+                last_action_at=_now_iso(now),
+                next_action=state.get("next_action", ""),
+            )
+            # SKILL_DIR não está em L1; usar placeholder (workspace L0 tem skill_dir
+            # absoluto, mas recovery não consulta L0). Doc canônico orienta usuário.
+            handoff.update_project_claude_md(proj_root, block, skill_dir="<skill-dir>")
 
     # Append evento sumario recovery_applied
     _append_history(

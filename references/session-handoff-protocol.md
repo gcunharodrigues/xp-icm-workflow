@@ -106,38 +106,60 @@ pending_for_this_stage:
 
 **Regra "no orphan files":** `_kickoff.md` é declarado nos `Inputs` do L2 do stage_target. Próxima sessão lê via leitor declarado.
 
-## Handoff verbal (3C dual)
+## Handoff verbal (session-end)
 
-Final da sessão imprime no chat:
+A partir de v3.1.0, o handoff verbal é simplificado — a região ICM em
+`<project_root>/CLAUDE.md` (mantida por `handoff.update_project_claude_md`)
+elimina a necessidade do bloco copy-paste KICKOFF. Próxima sessão fresh aberta
+no project_root carrega CLAUDE.md automaticamente e tem todo o read order +
+estado do workspace.
+
+Final da sessão imprime:
 
 ```
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-✅ Stage 02 (design) COMPLETO — workspace 042-feat-auth
-
-Workspace atualizado em commit abc123de:
-  - L1: stage_atual=03, sub_stage=03_in_progress, status=IN_PROGRESS
-  - Outputs: stages/02_design/output/plan.md (8 tasks)
+✅ Stage 02 (design) COMPLETO — workspace 042-feat-auth (commit abc123de)
+   - L1: stage_atual=03, sub_stage=03_in_progress, status=IN_PROGRESS
+   - Outputs: stages/02_design/output/plan.md (8 tasks)
               stages/02_design/output/decisions.md (2 ADRs)
-  - Kickoff: stages/03_wave_planner/_kickoff.md gerado
+   - Kickoff: stages/03_wave_planner/_kickoff.md gerado
+   - CLAUDE.md atualizado: <project_root>/CLAUDE.md (região ICM)
 
-🔄 KICKOFF próxima sessão — copy/paste:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-Continuar workspace 042-feat-auth no estágio 03 (wave_planner).
-
-Read order:
-  workspaces/042-feat-auth/CLAUDE.md
-  workspaces/042-feat-auth/CONTEXT.md
-  workspaces/042-feat-auth/stages/03_wave_planner/CONTEXT.md
-  workspaces/042-feat-auth/stages/03_wave_planner/_kickoff.md
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-Para continuar: encerre esta sessão (Ctrl+D ou /exit) e abra
-nova sessão Claude no project_root, depois cole o prompt acima.
+🔄 Para continuar: encerre esta sessão (Ctrl+D ou /exit) e abra nova
+   sessão Claude no project_root. CLAUDE.md cuida do resto.
 ```
 
-Verbal + arquivo redundantes intencionais:
-- Arquivo: persistente, lido pela próxima sessão automaticamente.
-- Verbal: pro user copy-paste, não depender de Claude lembrar de ler kickoff.
+Camadas distintas, não redundantes:
+- `<project_root>/CLAUDE.md` (região ICM): dashboard externo do estado, lido
+  automaticamente por Claude Code em sessão fresh. Doc canônico:
+  `references/project-root-claude-md.md`.
+- `_kickoff.md` no stage seguinte: detalhe transicional (prev_outputs,
+  prev_decisions_summary, pending_for_this_stage). Persistente, lido após L0/L1/L2.
+
+## Saídas A/B/C da fase 08 e CLAUDE.md root
+
+| Saída | Função em `handoff.py` | Estado pós-saída |
+|---|---|---|
+| **A** (close) | `remove_workspace_block(workspace, ...)` | Bloco do workspace removido. Se era o último ativo: região ICM substituída por mensagem "nenhum ativo + rode /init". |
+| **B** (restart fase X, iteration++) | `update_project_claude_md(workspace, stage_target=X, iteration=N+1, ...)` | Bloco atualizado mostrando nova fase e iteration. |
+| **C** (spawn novo workspace) | Sessão A: `remove_workspace_block(workspace_dono, ...)`. Sessão B (bootstrap): `update_project_claude_md(novo_workspace, ...)` adiciona bloco do 043. | Bloco do dono removido. Bootstrap em sessão separada adiciona novo bloco. |
+
+## Atomicidade e concorrência (G15, G12)
+
+Todas escritas em `<project_root>/CLAUDE.md` usam padrão write-tmp + fsync +
+rename (atômico em POSIX e Windows NTFS). Crash mid-write não corrompe
+arquivo original.
+
+Concorrência: workspace branch isola sessões via git. Conflito de write
+gera erro git → sessão aborta com `BLOCKED_ERROR`. Recovery wizard
+(`CLAUDE_MD_ROOT_STALE`) detecta e regenera bloco a partir do L1.
+
+## Contrato com `/init` futuro (G4)
+
+`/init` regenera CLAUDE.md a partir do código. Marcadores
+`<!-- ICM-START -->`/`<!-- ICM-END -->` delimitam região exclusiva da skill.
+**Não invoque `/init` enquanto workspace ICM ativo** — warning explícito na
+própria região. Após Saída A do último workspace, `/init` opera livremente
+(região ICM já está substituída por mensagem idle).
 
 ## Stage 04 (waves) — exceção
 

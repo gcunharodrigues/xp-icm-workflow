@@ -13,7 +13,7 @@
 
 NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 
-## 6 inconsistências detectadas (R2.7 + R4.5 + R6.6)
+## Inconsistências detectadas (R2.7 + R4.5 + R6.6 + G5)
 
 | Code | Severidade | Causa | Detecção |
 |---|---|---|---|
@@ -23,8 +23,10 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `MISSING_COMMIT` | critical | merge/force push eliminou o commit referenciado | `git cat-file -e <last_transition.commit_sha>` falha |
 | `BRANCH_MISSING` | critical | humano deletou `workspace/NNN-slug` | `git branch --list workspace/NNN-slug` vazio |
 | `BOOTSTRAP_PARTIAL` | critical | bootstrap crashou entre scaffold commit e hook install | workspace dir existe E scaffold commitado E hooks ausentes em `.git/hooks/` |
+| `CLAUDE_MD_ROOT_STALE` | warning | sessão crashou sem chamar `handoff.update_project_claude_md` | bloco do workspace em `<project_root>/CLAUDE.md` (região ICM) tem `stage_atual` ≠ `L1.stage_atual` |
+| `CLAUDE_MD_ROOT_MISSING` | warning | bloco removido manualmente, ou bootstrap pre-v3.1 | `L1.status=IN_PROGRESS` mas comentário `<!-- ICM-WORKSPACE:NNN-slug -->` ausente |
 
-## 3 ações por inconsistência
+## Ações por inconsistência
 
 | Code | A (preserve) | B (rollback) | C (escalate) |
 |---|---|---|---|
@@ -34,6 +36,7 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `MISSING_COMMIT` | rollback `last_transition` pro penúltimo válido em history | mesmo que A | mark `BLOCKED_ERROR` |
 | `BRANCH_MISSING` | append `recovery_warning` com sugestão `git reflog \| grep workspace/NNN` | mesmo que A | mark `BLOCKED_ERROR` (manual) |
 | `BOOTSTRAP_PARTIAL` | instalar hooks via `git-hook-installer.sh` + `context-check.sh` | rollback: `git reset --soft HEAD~1` e re-executar bootstrap | mark `BLOCKED_ERROR` |
+| `CLAUDE_MD_ROOT_STALE` / `CLAUDE_MD_ROOT_MISSING` | regerar bloco a partir de L1 (chama `handoff.update_project_claude_md`) | mesmo que A | mark `BLOCKED_ERROR` |
 
 **Múltiplas inconsistências:** wizard agrupa por código e aplica em batch na ordem canônica:
 
