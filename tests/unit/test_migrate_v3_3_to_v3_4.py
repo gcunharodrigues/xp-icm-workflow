@@ -134,7 +134,7 @@ class TestUpdateL0Version:
         ws = _build_v33_workspace(project_root)
         changed = migrate.update_l0_version(ws / "CLAUDE.md", dry_run=False)
         assert changed
-        assert 'icm_skill_version: "3.4.0"' in (ws / "CLAUDE.md").read_text(encoding="utf-8")
+        assert 'icm_skill_version: "3.4.1"' in (ws / "CLAUDE.md").read_text(encoding="utf-8")
 
     def test_dry_run_no_write(self, project_root: Path) -> None:
         ws = _build_v33_workspace(project_root)
@@ -216,7 +216,7 @@ class TestMigrateProject:
         assert summary["_global"]["worktree_setup"]
         assert (project_root / ".icm-main").exists()
         assert summary["001-legacy"]["l0_version_bumped"]
-        assert 'icm_skill_version: "3.4.0"' in (
+        assert 'icm_skill_version: "3.4.1"' in (
             project_root / "workspaces" / "001-legacy" / "CLAUDE.md"
         ).read_text(encoding="utf-8")
 
