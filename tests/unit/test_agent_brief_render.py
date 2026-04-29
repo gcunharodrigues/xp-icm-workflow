@@ -24,28 +24,42 @@ SAMPLE_PLAN = """\
 
 (omitido para teste)
 
-### Task: implementar-jwt-refresh
+## Task implementar-jwt-refresh: Refresh tokens JWT com TTL 7 dias
 
 **Type:** AFK
 **Files touched:** src/auth/jwt.ts, src/auth/jwt.test.ts
 
-**O QUE:** Implementar refresh tokens JWT com TTL de 7 dias.
-**COMO:** Adicionar endpoint POST /auth/refresh que aceita refresh_token e
+### O QUE
+Implementar refresh tokens JWT com TTL de 7 dias.
+
+### COMO
+Adicionar endpoint POST /auth/refresh que aceita refresh_token e
 retorna novo access_token. Validar refresh_token via assinatura HMAC.
-**NÃO QUERO:** Não invalidar refresh tokens ainda válidos. Não tocar em
+
+### NÃO QUERO
+Não invalidar refresh tokens ainda válidos. Não tocar em
 mecanismo de session existente.
-**VALIDAÇÃO:** Test que envia refresh_token válido retorna 200 com novo
+
+### VALIDAÇÃO
+Test que envia refresh_token válido retorna 200 com novo
 access_token. Test que envia token expirado retorna 401.
 
-### Task: choose-orm
+## Task choose-orm: Escolher ORM (HITL)
 
 **Type:** HITL
 **Files touched:** docs/decisions/0007-orm.md
 
-**O QUE:** Escolher ORM entre Prisma, Drizzle e raw SQL.
-**COMO:** Avaliar trade-offs de type safety, performance, lock-in.
-**NÃO QUERO:** Não implementar antes do humano decidir.
-**VALIDAÇÃO:** ADR criado em docs/decisions/0007-orm.md.
+### O QUE
+Escolher ORM entre Prisma, Drizzle e raw SQL.
+
+### COMO
+Avaliar trade-offs de type safety, performance, lock-in.
+
+### NÃO QUERO
+Não implementar antes do humano decidir.
+
+### VALIDAÇÃO
+ADR criado em docs/decisions/0007-orm.md.
 """
 
 

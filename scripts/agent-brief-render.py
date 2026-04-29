@@ -38,13 +38,15 @@ class AgentBriefError(Exception):
 # ============================================================================
 
 def extract_task_section(plan_md: str, slug: str) -> str:
-    """Extrai seção `### Task: {slug}` até próxima `### Task:` ou EOF.
+    """Extrai seção `## Task <slug>: <título>` até próxima `## Task ` ou EOF.
 
-    Slug é case-sensitive e exato. Retorna texto da section (incluindo header).
-    Raise AgentBriefError se não encontrada.
+    Schema canônico v3.4.2: H2 `## Task <SLUG>: <Título>` (não H3 `### Task:`
+    como em versões anteriores). Slug é case-sensitive e exato. Retorna
+    texto da section (incluindo header). Raise AgentBriefError se não
+    encontrada.
     """
     pattern = re.compile(
-        rf"^### Task: {re.escape(slug)}\b.*?(?=^### Task: |\Z)",
+        rf"^## Task {re.escape(slug)}\b.*?(?=^## Task |\Z)",
         re.MULTILINE | re.DOTALL,
     )
     match = pattern.search(plan_md)
@@ -55,6 +57,10 @@ def extract_task_section(plan_md: str, slug: str) -> str:
 
 def parse_4block(task_section: str) -> dict[str, str]:
     """Parse 4-block (O QUE / COMO / NÃO QUERO / VALIDAÇÃO) da seção.
+
+    Schema canônico v3.4.2: blocos como H3 (`### O QUE`, `### COMO`,
+    `### NÃO QUERO`, `### VALIDAÇÃO`), conteúdo nas linhas seguintes.
+    Schema anterior usava bold inline (`**O QUE:**`) — não suportado.
 
     Retorna dict com chaves: o_que, como, nao_quero, validacao, type, files_touched.
     Strings vazias para chaves ausentes.
@@ -78,15 +84,19 @@ def parse_4block(task_section: str) -> dict[str, str]:
     if m:
         out["files_touched"] = m.group(1).strip()
 
-    # 4-block extraction
+    # 4-block extraction (H3 markers, content até próximo H3 ou H2 ou EOF)
     blocks = {
-        "o_que": r"\*\*O QUE:\*\*",
-        "como": r"\*\*COMO:\*\*",
-        "nao_quero": r"\*\*N[ÃA]O QUERO:\*\*",
-        "validacao": r"\*\*VALIDA[ÇC][ÃA]O:\*\*",
+        "o_que": r"^### O QUE\s*$",
+        "como": r"^### COMO\s*$",
+        "nao_quero": r"^### N[ÃA]O QUERO\s*$",
+        "validacao": r"^### VALIDA[ÇC][ÃA]O\s*$",
     }
     for key, marker in blocks.items():
-        m = re.search(rf"{marker}\s*(.*?)(?=\n\*\*[A-ZÃÇ]|\Z)", task_section, re.DOTALL)
+        m = re.search(
+            rf"{marker}\n(.*?)(?=^### |^## |\Z)",
+            task_section,
+            re.DOTALL | re.MULTILINE,
+        )
         if m:
             out[key] = m.group(1).strip()
 
