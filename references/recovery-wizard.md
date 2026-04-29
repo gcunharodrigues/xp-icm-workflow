@@ -29,6 +29,7 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `WORKTREE_WRONG_BRANCH` (v3.4.0) | warning | worktree foi switched para outra branch manualmente | `git rev-parse --abbrev-ref HEAD` em `.icm-main/` ≠ `base_branch` |
 | `WRONG_BRANCH_CHECKOUT` (v3.4.0) | warning | humano abriu sessão sem ativar workspace branch | `<project_root>` checkado em branch ≠ `workspace_branch` enquanto status ≠ COMPLETED |
 | `KICKOFF_WITHOUT_GATE` (v3.4.2) | warning | sintoma do bug pre-v3.4.2 — sessão renderizou kickoff sem aguardar gate | `_kickoff.md` em `stages/<NN+1>/_kickoff.md` existe AND L1 declara `stage_atual=NN, status=COMPLETED_AWAITING_HUMAN, sub_stage=NN_completed` |
+| `WAVE_WORKTREE_ORPHAN` (v3.4.3) | warning | sintoma do bug pre-v3.4.3 — lead não removeu worktrees efêmeras pós-merge | `git worktree list` mostra worktree(s) com branch pattern `wave-<NNN>-` (NNN=workspace num) já merged em base_branch |
 
 ## Ações por inconsistência
 
@@ -45,6 +46,7 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `WORKTREE_WRONG_BRANCH` (v3.4.0) | `cd .icm-main && git checkout <base_branch>` | n/a | mark `BLOCKED_ERROR` |
 | `WRONG_BRANCH_CHECKOUT` (v3.4.0) | `git -C <project_root> checkout <workspace_branch>` | n/a | mark `BLOCKED_ERROR` |
 | `KICKOFF_WITHOUT_GATE` (v3.4.2) | aprovar gate retroativamente: transita L1 pra `stage_atual=NN+1`, mantém kickoff já gerado | deleta `_kickoff.md` + volta `sub_stage=NN_in_progress` (workspace continua trabalhando no stage NN) | mark `BLOCKED_ERROR` |
+| `WAVE_WORKTREE_ORPHAN` (v3.4.3) | auto-cleanup: `git worktree remove <path>` + `git branch -d <branch>` (safe pq detecção filtrou por branch já merged) | n/a (sempre A) | mark `BLOCKED_ERROR` |
 
 **Múltiplas inconsistências:** wizard agrupa por código e aplica em batch na ordem canônica:
 

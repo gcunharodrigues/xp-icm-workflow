@@ -50,6 +50,8 @@ CODE_WORKTREE_WRONG_BRANCH = "WORKTREE_WRONG_BRANCH"
 CODE_WRONG_BRANCH_CHECKOUT = "WRONG_BRANCH_CHECKOUT"
 # v3.4.2: gate inline antes do kickoff
 CODE_KICKOFF_WITHOUT_GATE = "KICKOFF_WITHOUT_GATE"
+# v3.4.3: wave worktree cleanup
+CODE_WAVE_WORKTREE_ORPHAN = "WAVE_WORKTREE_ORPHAN"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -64,6 +66,7 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_WORKTREE_WRONG_BRANCH,
     CODE_WRONG_BRANCH_CHECKOUT,
     CODE_KICKOFF_WITHOUT_GATE,
+    CODE_WAVE_WORKTREE_ORPHAN,
 )
 
 # Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).
@@ -256,6 +259,43 @@ def _commit_exists(sha: str, *, cwd: Path | None = None) -> bool:
 def _branch_exists(branch: str, *, cwd: Path | None = None) -> bool:
     result = _run_git(["branch", "--list", branch], cwd=cwd)
     return bool(result.stdout.strip())
+
+
+def _list_worktrees(cwd: Path) -> list[tuple[str, str]]:
+    """Parse `git worktree list --porcelain`. Retorna [(path, branch), ...].
+
+    Worktree sem branch (detached HEAD) tem branch="". Path sempre absoluto.
+    """
+    result = _run_git(["worktree", "list", "--porcelain"], cwd=cwd)
+    if result.returncode != 0:
+        return []
+    out: list[tuple[str, str]] = []
+    cur_path = ""
+    cur_branch = ""
+    for line in result.stdout.split("\n"):
+        line = line.rstrip()
+        if line.startswith("worktree "):
+            if cur_path:
+                out.append((cur_path, cur_branch))
+            cur_path = line[len("worktree "):]
+            cur_branch = ""
+        elif line.startswith("branch refs/heads/"):
+            cur_branch = line[len("branch refs/heads/"):]
+    if cur_path:
+        out.append((cur_path, cur_branch))
+    return out
+
+
+def _is_branch_merged(
+    branch: str, base_branch: str, *, cwd: Path | None = None
+) -> bool:
+    """True se `branch` ja foi merged em `base_branch` (i.e., ancestor)."""
+    if not branch or not base_branch:
+        return False
+    result = _run_git(
+        ["merge-base", "--is-ancestor", branch, base_branch], cwd=cwd
+    )
+    return result.returncode == 0
 
 
 def _last_workspace_commit_at(
@@ -608,6 +648,58 @@ def detect_inconsistencies(
                 )
             )
 
+    # 10) WAVE_WORKTREE_ORPHAN (v3.4.3)
+    # Worktrees efemeras criadas pelo Agent tool em fase 04 deveriam ser
+    # removidas pelo lead apos merge sequencial + CI verde. Bug pre-v3.4.3:
+    # cleanup ausente fazia worktrees + branches `wave-<NNN>-N/<task>`
+    # acumularem em <project_root>/.icm-wave-* (ou path retornado pelo
+    # Agent tool). Detect: worktrees com branch pattern `wave-<NNN>-`
+    # onde NNN bate workspace_num, AND branch ja merged em base_branch
+    # (cleanup safe).
+    if project_root is not None and project_root.is_dir():
+        ws_id = state.get("workspace", "")
+        base_branch = state.get("base_branch", "")
+        if ws_id and base_branch:
+            workspace_num = ws_id.split("-", 1)[0]  # "001-..." -> "001"
+            wave_branch_prefix = f"wave-{workspace_num}-"
+            worktrees = _list_worktrees(project_root)
+            orphans: list[tuple[str, str]] = []
+            for wt_path, wt_branch in worktrees:
+                # Skip worktree principal (project_root) e .icm-main
+                wt_path_resolved = Path(wt_path).resolve()
+                if wt_path_resolved == project_root.resolve():
+                    continue
+                if wt_path_resolved == (project_root / ".icm-main").resolve():
+                    continue
+                if not wt_branch.startswith(wave_branch_prefix):
+                    continue
+                # Cleanup safe apenas se branch ja merged
+                if _is_branch_merged(wt_branch, base_branch, cwd=project_root):
+                    orphans.append((wt_path, wt_branch))
+            if orphans:
+                listed = ", ".join(f"{p} ({b})" for p, b in orphans[:3])
+                more = f" (+{len(orphans) - 3} more)" if len(orphans) > 3 else ""
+                found.append(
+                    Inconsistency(
+                        code=CODE_WAVE_WORKTREE_ORPHAN,
+                        message=(
+                            f"{len(orphans)} wave worktree(s) orfa(s) "
+                            f"detectada(s): {listed}{more}. Bug pre-v3.4.3: "
+                            "lead nao executou cleanup pos-merge."
+                        ),
+                        proposed_action=(
+                            "auto-cleanup: git worktree remove + "
+                            "git branch -d (safe pq ja merged)"
+                        ),
+                        severity="warning",
+                        context={
+                            "orphans": orphans,
+                            "workspace_num": workspace_num,
+                            "base_branch": base_branch,
+                        },
+                    )
+                )
+
     # Reordenar pra ordem canonica
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}
     ordered = [by_code[c] for c in CANONICAL_ORDER if c in by_code]
@@ -770,6 +862,56 @@ def _apply_plan_a(
                         + inc.context.get("branch", "")
                         + ". Sugestao: git reflog | grep "
                         + inc.context.get("branch", "")
+                    ),
+                },
+            )
+
+        elif inc.code == CODE_WAVE_WORKTREE_ORPHAN:
+            # Plan A: auto-cleanup. Para cada orfa: git worktree remove +
+            # git branch -d. Cleanup safe pq deteccao filtrou por branch
+            # ja merged em base_branch.
+            project_root_str = state.get("project_root", "")
+            if not project_root_str:
+                continue
+            cwd = Path(project_root_str)
+            orphans = inc.context.get("orphans", []) or []
+            removed: list[str] = []
+            failed: list[str] = []
+            for wt_path, wt_branch in orphans:
+                # 1. Remove worktree
+                wt_result = _run_git(
+                    ["worktree", "remove", wt_path], cwd=cwd
+                )
+                if wt_result.returncode != 0:
+                    # Tenta com --force se cleanup falhou
+                    wt_result = _run_git(
+                        ["worktree", "remove", "--force", wt_path], cwd=cwd
+                    )
+                # 2. Delete branch (safe pq merged)
+                br_result = _run_git(
+                    ["branch", "-d", wt_branch], cwd=cwd
+                )
+                if wt_result.returncode == 0 and br_result.returncode == 0:
+                    removed.append(f"{wt_path} ({wt_branch})")
+                else:
+                    failed.append(
+                        f"{wt_path} ({wt_branch}): "
+                        f"worktree_rc={wt_result.returncode}, "
+                        f"branch_rc={br_result.returncode}"
+                    )
+            note = (
+                f"removed {len(removed)} orfa(s); "
+                f"failed {len(failed)}: {failed[:3]}"
+            )
+            _append_history(
+                state,
+                {
+                    "at": _now_iso(now),
+                    "event": "recovery_warning"
+                    if failed
+                    else "recovery_applied",
+                    "note": (
+                        "wave worktree cleanup (Plan A): " + note
                     ),
                 },
             )
