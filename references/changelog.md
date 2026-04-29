@@ -4,6 +4,57 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.4.3 — Wave worktree cleanup (2026-04-29)
+
+### Why v3.4.3
+
+Bug observado em uso real: após cada wave de fase 04, worktrees efêmeras
+criadas pelos subagentes (Agent tool com `isolation: "worktree"`)
+ficavam orfãs em `<project_root>/.icm-wave-*` (ou path retornado pelo
+tool), e branches `wave-<NNN>-<N>/<task-slug>` poluíam `git branch`
+listing. Lead nunca executava cleanup pós-merge.
+
+### Mudanças
+
+**1. L2 stage 04: novo passo 11 cleanup pós-merge:**
+- Após merge sequencial + CI gate global verde, lead executa:
+  ```bash
+  git worktree remove <path-do-worktree>     # paths capturados dos Agent tool results
+  git branch -d wave-<NNN>-<N>/<task-slug>   # safe pq merged --no-ff
+  ```
+- Fallback robusto se path foi perdido: `git worktree list --porcelain`
+  filtrado por branch pattern.
+- Falha não-fatal — registra warning em `wave-summary.md`, prossegue.
+- `git branch -d` recusa não-merged (intencional). Não usar `-D`.
+
+**2. Recovery Wizard: novo tipo `WAVE_WORKTREE_ORPHAN`:**
+- Detect: `git worktree list` mostra worktrees com branch pattern
+  `wave-<NNN>-` (NNN=workspace num) AND branch já merged em base_branch.
+- Plan A (auto-cleanup): `git worktree remove <path>` + `git branch -d`.
+  Cleanup safe pq detecção filtrou por já-merged.
+- Skip orfas com branch não-merged (sinal de wave incompleta — atenção
+  humana, não auto-cleanup).
+- Helpers novos: `_list_worktrees`, `_is_branch_merged`.
+
+**3. Docs atualizados:**
+- `references/worktree-model.md` seção 3 (cleanup obrigatório).
+- `references/subagent-protocol.md` seção 5.1 (Cleanup pós-merge).
+- `references/recovery-wizard.md` (novo tipo).
+
+### Compatibilidade
+
+Workspaces v3.4.0/v3.4.1/v3.4.2 com worktrees orfãs acumuladas: rodar
+Recovery Wizard manualmente quando aparecer. Plan A auto-cleanup remove
+tudo de uma vez. Novos workspaces criados via v3.4.3 nascem com
+cleanup automático no protocol da fase 04.
+
+### Testes
+
+8 tests novos em `tests/unit/test_v3_4_3_wave_cleanup.py`. Suite total
+627 tests verde.
+
+---
+
 ## v3.4.2 — Gate inline + tech debt drain (2026-04-29)
 
 ### Why v3.4.2
