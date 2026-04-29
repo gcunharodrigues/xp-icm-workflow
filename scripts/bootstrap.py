@@ -684,10 +684,58 @@ def _commit_scaffold(
     _run_git(["add", f"workspaces/{workspace}/", "workspaces/.index.md"], cwd=project_root)
     # .gitignore pode ou nao ter mudado; add idempotente
     _run_git(["add", ".gitignore"], cwd=project_root, check=False)
+    # CLAUDE.md root: criado/atualizado por _render_project_claude_md;
+    # add idempotente (check=False) — pode estar limpo se brownfield e nada mudou.
+    _run_git(["add", "CLAUDE.md"], cwd=project_root, check=False)
     msg = f"workspace {workspace.split('-', 1)[0]}: bootstrap scaffold (profile={profile} tier={tier})"
     _run_git(["commit", "--no-verify", "-m", msg], cwd=project_root)
     res = _run_git(["rev-parse", "HEAD"], cwd=project_root)
     return res.stdout.strip()
+
+
+def _render_project_claude_md(
+    project_root: Path,
+    *,
+    workspace: str,
+    profile: str,
+    tier: str,
+    stage_atual: str,
+    stage_dir: str,
+    sub_stage: str,
+    iteration: int,
+    status: str,
+    last_action: str,
+    last_action_at: str,
+    next_action: str,
+    skill_dir: str,
+) -> Path:
+    """Cria/atualiza <project_root>/CLAUDE.md com bloco ICM do workspace.
+
+    Idempotente. Brownfield-safe (preserva conteúdo fora dos marcadores ICM).
+    Multi-workspace: adiciona bloco preservando blocos de outros workspaces.
+    Doc canônico: references/project-root-claude-md.md.
+    """
+    # Lazy import: handoff.py está no mesmo diretório scripts/ mas não há __init__.py
+    # então import direto via sys.path adjustment.
+    _scripts_dir = str(Path(__file__).parent)
+    if _scripts_dir not in sys.path:
+        sys.path.insert(0, _scripts_dir)
+    from handoff import WorkspaceBlock, update_project_claude_md  # noqa: PLC0415
+
+    block = WorkspaceBlock(
+        workspace=workspace,
+        profile=profile,
+        tier=tier,
+        stage_atual=stage_atual,
+        stage_dir=stage_dir,
+        sub_stage=sub_stage,
+        iteration=iteration,
+        status=status,
+        last_action=last_action,
+        last_action_at=last_action_at,
+        next_action=next_action,
+    )
+    return update_project_claude_md(project_root, block, skill_dir)
 
 
 def _patch_context_with_sha(context_path: Path, commit_sha: str) -> None:
@@ -846,6 +894,26 @@ def bootstrap(
 
     # Profile efetivo persistido para validate-state
     _save_profile_effective(workspace_dir, effective, profile_hash)
+
+    # CLAUDE.md no project_root: cria/atualiza com bloco do novo workspace.
+    # Brownfield-safe: marcadores ICM delimitam região; conteúdo fora preservado.
+    # Multi-workspace: blocos de workspaces existentes preservados.
+    # Doc canônico: references/project-root-claude-md.md.
+    _render_project_claude_md(
+        project_root=project_root,
+        workspace=workspace,
+        profile=profile,
+        tier=tier,
+        stage_atual="00",
+        stage_dir="00_recon",
+        sub_stage="00_in_progress",
+        iteration=0,
+        status="IN_PROGRESS",
+        last_action=f"bootstrap (profile={profile} tier={tier})",
+        last_action_at=created_at,
+        next_action="iniciar stage 00 recon",
+        skill_dir=str(skill_root).replace("\\", "/"),
+    )
 
     # Indice + .gitignore do projeto
     update_index(

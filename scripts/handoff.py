@@ -14,9 +14,11 @@ from __future__ import annotations
 
 import argparse
 import datetime as _dt
+import json
+import os
 import re
 import sys
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Sequence
 
@@ -276,6 +278,338 @@ def _default_template_path() -> Path:
 
 
 # ============================================================================
+# CLAUDE.md no project_root: bloco dinâmico do workspace ativo
+# ============================================================================
+
+ICM_START_MARKER = "<!-- ICM-START -->"
+ICM_END_MARKER = "<!-- ICM-END -->"
+
+
+@dataclass(frozen=True)
+class WorkspaceBlock:
+    """Estado renderizado de um workspace na região ICM do CLAUDE.md root.
+
+    Serializado como JSON em comentário `<!-- ICM-DATA:... -->` para round-trip
+    determinístico (parse + re-render preservam todos os campos).
+    """
+    workspace: str
+    profile: str
+    tier: str
+    stage_atual: str
+    stage_dir: str
+    sub_stage: str
+    iteration: int
+    status: str
+    last_action: str
+    last_action_at: str
+    next_action: str
+
+
+def _block_marker_start(workspace: str) -> str:
+    return f"<!-- ICM-WORKSPACE:{workspace} -->"
+
+
+def _block_marker_end(workspace: str) -> str:
+    return f"<!-- /ICM-WORKSPACE:{workspace} -->"
+
+
+def _atomic_write(path: Path, content: str) -> None:
+    """Write tmp + fsync + rename — crash mid-write não corrompe arquivo (G15).
+
+    Sufixo `.tmp` no mesmo diretório garante atomic rename mesmo entre filesystems.
+    """
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(content, encoding="utf-8")
+    try:
+        fd = os.open(str(tmp), os.O_RDONLY)
+        try:
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+    except OSError:
+        # fsync pode falhar em filesystems não-POSIX (Windows network drives,
+        # tmpfs alguns kernels). Nesses casos rename ainda é atomic.
+        pass
+    tmp.replace(path)
+
+
+def _render_workspace_block_md(b: WorkspaceBlock) -> str:
+    """Markdown do bloco do workspace (sem marcadores HTML)."""
+    return (
+        f"### Workspace `{b.workspace}` · profile=`{b.profile}` · tier=`{b.tier}`\n"
+        "\n"
+        f"- **Stage atual:** `{b.stage_atual}` (`{b.stage_dir}`) · "
+        f"**Sub-stage:** `{b.sub_stage}` · **Iteration:** `{b.iteration}`\n"
+        f"- **Status:** `{b.status}`\n"
+        f"- **Last action:** `{b.last_action}` em `{b.last_action_at}`\n"
+        f"- **Next action:** `{b.next_action}`\n"
+        "\n"
+        "**Read order para retomar:**\n"
+        f"1. `workspaces/{b.workspace}/CLAUDE.md` (L0)\n"
+        f"2. `workspaces/{b.workspace}/CONTEXT.md` (L1)\n"
+        f"3. `workspaces/{b.workspace}/stages/{b.stage_dir}/CONTEXT.md` (L2)\n"
+        f"4. `workspaces/{b.workspace}/stages/{b.stage_dir}/_kickoff.md` (se existir)\n"
+    )
+
+
+def _wrap_block_with_markers(b: WorkspaceBlock) -> str:
+    """Bloco markdown encapsulado por marcadores HTML + JSON serializado.
+
+    Estrutura:
+        <!-- ICM-WORKSPACE:NNN-slug -->
+        <!-- ICM-DATA:{...json...} -->
+        ### Workspace `NNN-slug` · ...
+        ...
+        <!-- /ICM-WORKSPACE:NNN-slug -->
+    """
+    data_json = json.dumps(asdict(b), ensure_ascii=False, sort_keys=True)
+    return (
+        f"{_block_marker_start(b.workspace)}\n"
+        f"<!-- ICM-DATA:{data_json} -->\n"
+        f"{_render_workspace_block_md(b)}"
+        f"{_block_marker_end(b.workspace)}\n"
+    )
+
+
+def _render_icm_header() -> str:
+    return (
+        "## Active ICM Workspaces\n"
+        "\n"
+        "> Esta seção é mantida automaticamente pela skill `xp-icm-workflow`.\n"
+        "> Não editar manualmente — atualizada a cada handoff de stage.\n"
+        "> **Não rode `/init` enquanto houver workspace ativo.**\n"
+        "\n"
+    )
+
+
+def _render_icm_footer(skill_dir: str) -> str:
+    return (
+        "\n"
+        "---\n"
+        "\n"
+        f"**Skill:** `{skill_dir}/SKILL.md` · "
+        f"**Recovery:** `python {skill_dir}/scripts/recovery-wizard.py` · "
+        "**Estado canônico:** `workspaces/.index.md`\n"
+    )
+
+
+def _render_icm_idle(closed_at: str) -> str:
+    """Mensagem 'nenhum workspace ativo' (após Saída A do último)."""
+    closed = closed_at if closed_at else "desconhecido"
+    return (
+        "## ICM — Nenhum workspace ativo\n"
+        "\n"
+        f"> Último workspace foi finalizado em `{closed}` (Saída A).\n"
+        "> Histórico em `workspaces/`.\n"
+        ">\n"
+        "> **Próximo passo:** rode `/init` para regenerar a região abaixo com\n"
+        "> informações do código construído. Esta região ICM permanecerá vazia\n"
+        "> até bootstrap de novo workspace.\n"
+    )
+
+
+def _render_full_icm_region(blocks: Sequence[WorkspaceBlock], skill_dir: str) -> str:
+    """Conteúdo completo da região ICM (sem marcadores externos START/END).
+
+    Vazio -> mensagem idle. 1+ workspaces -> header + blocos + footer.
+    """
+    if not blocks:
+        return _render_icm_idle("")
+    sorted_blocks = sorted(blocks, key=lambda b: b.workspace)
+    body = "\n".join(_wrap_block_with_markers(b) for b in sorted_blocks)
+    return _render_icm_header() + body + _render_icm_footer(skill_dir)
+
+
+def _wrap_outer(region_inner: str) -> str:
+    """Envolve região em <!-- ICM-START --> ... <!-- ICM-END -->."""
+    return f"{ICM_START_MARKER}\n{region_inner}{ICM_END_MARKER}\n"
+
+
+def _greenfield_template(project_name: str, region_outer: str) -> str:
+    """CLAUDE.md root completo para projeto sem CLAUDE.md preexistente."""
+    return (
+        f"# CLAUDE.md — {project_name}\n"
+        "\n"
+        "This file provides guidance to Claude Code (claude.ai/code) when working in this repository.\n"
+        "\n"
+        f"{region_outer}\n"
+        "<!-- A região abaixo é livre. Pode ser preenchida pelo `/init` do Claude Code -->\n"
+        "<!-- ou manualmente pelo usuário com codebase context (commands, architecture,   -->\n"
+        "<!-- conventions, etc). A skill `xp-icm-workflow` NUNCA toca esta região.        -->\n"
+    )
+
+
+def _insert_region_after_first_h1(content: str, region_outer: str) -> str:
+    """Brownfield sem marcadores: insere região após primeiro título H1.
+
+    Se não houver H1, prepende ao topo. Demais conteúdo preservado.
+    """
+    lines = content.split("\n")
+    insert_idx: int | None = None
+    for i, line in enumerate(lines):
+        stripped = line.lstrip()
+        if stripped.startswith("# ") and not stripped.startswith("## "):
+            # H1 encontrado
+            insert_idx = i + 1
+            # Skip linhas em branco e descrição imediatamente após o título
+            while insert_idx < len(lines) and lines[insert_idx].strip() == "":
+                insert_idx += 1
+            break
+    if insert_idx is None:
+        # Sem H1: prepende
+        return region_outer + "\n" + content
+    before = "\n".join(lines[:insert_idx])
+    after = "\n".join(lines[insert_idx:])
+    sep_b = "" if before.endswith("\n") else "\n"
+    sep_a = "" if after.startswith("\n") else "\n"
+    return before + sep_b + "\n" + region_outer + sep_a + after
+
+
+def _parse_workspace_blocks(claude_md_path: Path) -> dict[str, WorkspaceBlock]:
+    """Extrai dict[workspace_id -> WorkspaceBlock] do CLAUDE.md root.
+
+    Parse via JSON em comentários `<!-- ICM-DATA:... -->`. Round-trip seguro.
+    Arquivo ausente ou sem marcadores -> dict vazio.
+    """
+    if not claude_md_path.exists():
+        return {}
+    content = claude_md_path.read_text(encoding="utf-8")
+    pattern = re.compile(
+        r"<!-- ICM-WORKSPACE:([^\s>]+) -->\n<!-- ICM-DATA:(.+?) -->\n",
+    )
+    out: dict[str, WorkspaceBlock] = {}
+    for match in pattern.finditer(content):
+        ws_id = match.group(1)
+        try:
+            data = json.loads(match.group(2))
+            out[ws_id] = WorkspaceBlock(**data)
+        except (json.JSONDecodeError, TypeError):
+            # Bloco corrompido -> ignora; recovery wizard detecta depois
+            continue
+    return out
+
+
+def _write_icm_region(
+    claude_md: Path,
+    project_name: str,
+    blocks: list[WorkspaceBlock],
+    skill_dir: str,
+) -> None:
+    """Helper: escreve região ICM completa preservando conteúdo fora dos marcadores.
+
+    - Greenfield (arquivo ausente) -> cria via _greenfield_template.
+    - Brownfield com marcadores -> substitui apenas conteúdo entre marcadores.
+    - Brownfield sem marcadores -> insere após primeiro H1.
+    """
+    region_inner = _render_full_icm_region(blocks, skill_dir)
+    region_outer = _wrap_outer(region_inner)
+
+    if not claude_md.exists():
+        content = _greenfield_template(project_name, region_outer.rstrip("\n"))
+        _atomic_write(claude_md, content)
+        return
+
+    current = claude_md.read_text(encoding="utf-8")
+    start = current.find(ICM_START_MARKER)
+    end = current.find(ICM_END_MARKER)
+    if start < 0 or end <= start:
+        # Brownfield sem marcadores
+        new_content = _insert_region_after_first_h1(current, region_outer)
+    else:
+        end_after = end + len(ICM_END_MARKER)
+        # Pular newline imediatamente após ICM_END_MARKER (se houver) para
+        # não acumular blank lines a cada update.
+        if end_after < len(current) and current[end_after] == "\n":
+            end_after += 1
+        new_content = current[:start] + region_outer + current[end_after:]
+    _atomic_write(claude_md, new_content)
+
+
+def update_project_claude_md(
+    project_root: Path,
+    workspace_block: WorkspaceBlock,
+    skill_dir: str,
+) -> Path:
+    """Insere ou atualiza o bloco do workspace no CLAUDE.md do project_root.
+
+    Idempotente. Brownfield-safe. Preserva blocos de outros workspaces.
+    Retorna path absoluto do arquivo escrito.
+    """
+    claude_md = project_root / "CLAUDE.md"
+    blocks = _parse_workspace_blocks(claude_md)
+    blocks[workspace_block.workspace] = workspace_block
+    _write_icm_region(claude_md, project_root.name, list(blocks.values()), skill_dir)
+    return claude_md
+
+
+def remove_workspace_block(
+    project_root: Path,
+    workspace: str,
+    skill_dir: str,
+    *,
+    closed_at: str = "",
+) -> Path:
+    """Remove o bloco do workspace do CLAUDE.md root.
+
+    Se workspace não existia: no-op (return path sem escrever).
+    Se era o último: substitui região por mensagem idle (deactivate).
+    """
+    claude_md = project_root / "CLAUDE.md"
+    blocks = _parse_workspace_blocks(claude_md)
+    if workspace not in blocks:
+        return claude_md
+    del blocks[workspace]
+    if blocks:
+        _write_icm_region(claude_md, project_root.name, list(blocks.values()), skill_dir)
+    else:
+        deactivate_project_claude_md(project_root, closed_at=closed_at)
+    return claude_md
+
+
+def deactivate_project_claude_md(
+    project_root: Path,
+    *,
+    closed_at: str = "",
+) -> Path:
+    """Substitui região ICM por mensagem 'nenhum workspace ativo'.
+
+    Usado após Saída A quando não restam workspaces ativos. Conteúdo fora
+    dos marcadores preservado intacto.
+    """
+    claude_md = project_root / "CLAUDE.md"
+    region_inner = _render_icm_idle(closed_at)
+    region_outer = _wrap_outer(region_inner)
+
+    if not claude_md.exists():
+        # Greenfield idle: criar arquivo com região idle
+        content = _greenfield_template(project_root.name, region_outer.rstrip("\n"))
+        _atomic_write(claude_md, content)
+        return claude_md
+
+    current = claude_md.read_text(encoding="utf-8")
+    start = current.find(ICM_START_MARKER)
+    end = current.find(ICM_END_MARKER)
+    if start < 0 or end <= start:
+        new_content = _insert_region_after_first_h1(current, region_outer)
+    else:
+        end_after = end + len(ICM_END_MARKER)
+        if end_after < len(current) and current[end_after] == "\n":
+            end_after += 1
+        new_content = current[:start] + region_outer + current[end_after:]
+    _atomic_write(claude_md, new_content)
+    return claude_md
+
+
+def list_active_workspace_ids(project_root: Path) -> list[str]:
+    """Lista IDs de workspaces presentes na região ICM do CLAUDE.md root.
+
+    Usado por bootstrap para detectar workspaces preexistentes em multi-workspace
+    e por recovery wizard para checar consistência com .index.md.
+    """
+    return sorted(_parse_workspace_blocks(project_root / "CLAUDE.md").keys())
+
+
+# ============================================================================
 # CLI
 # ============================================================================
 
@@ -319,6 +653,40 @@ def main(argv: Sequence[str] | None = None) -> int:
     render.add_argument("--project-root", type=Path, default=None,
                         help="default = workspace_root.parent.parent")
 
+    update = sub.add_parser(
+        "update-project-md",
+        help="Insere/atualiza bloco do workspace no CLAUDE.md root",
+    )
+    update.add_argument("--project-root", type=Path, required=True)
+    update.add_argument("--workspace", required=True, help="NNN-slug")
+    update.add_argument("--profile", required=True)
+    update.add_argument("--tier", required=True)
+    update.add_argument("--stage-atual", required=True)
+    update.add_argument("--stage-dir", required=True, help="ex 03_wave_planner")
+    update.add_argument("--sub-stage", required=True)
+    update.add_argument("--iteration", type=int, default=0)
+    update.add_argument("--status", required=True)
+    update.add_argument("--last-action", default="")
+    update.add_argument("--last-action-at", default="")
+    update.add_argument("--next-action", default="")
+    update.add_argument("--skill-dir", required=True)
+
+    remove = sub.add_parser(
+        "remove-block",
+        help="Remove bloco do workspace do CLAUDE.md root (Saída A ou C)",
+    )
+    remove.add_argument("--project-root", type=Path, required=True)
+    remove.add_argument("--workspace", required=True)
+    remove.add_argument("--skill-dir", required=True)
+    remove.add_argument("--closed-at", default="", help="ISO 8601 UTC")
+
+    deactivate = sub.add_parser(
+        "deactivate-project-md",
+        help="Substitui região ICM por mensagem 'nenhum workspace ativo'",
+    )
+    deactivate.add_argument("--project-root", type=Path, required=True)
+    deactivate.add_argument("--closed-at", default="")
+
     args = parser.parse_args(list(argv) if argv is not None else None)
 
     if args.cmd == "render":
@@ -350,6 +718,43 @@ def main(argv: Sequence[str] | None = None) -> int:
         out = write_kickoff(ws_root, data)
         print(out)
         return 0
+
+    if args.cmd == "update-project-md":
+        block = WorkspaceBlock(
+            workspace=args.workspace,
+            profile=args.profile,
+            tier=args.tier,
+            stage_atual=args.stage_atual,
+            stage_dir=args.stage_dir,
+            sub_stage=args.sub_stage,
+            iteration=int(args.iteration),
+            status=args.status,
+            last_action=args.last_action,
+            last_action_at=args.last_action_at or utc_now_iso(),
+            next_action=args.next_action,
+        )
+        out = update_project_claude_md(args.project_root.resolve(), block, args.skill_dir)
+        print(out)
+        return 0
+
+    if args.cmd == "remove-block":
+        out = remove_workspace_block(
+            args.project_root.resolve(),
+            args.workspace,
+            args.skill_dir,
+            closed_at=args.closed_at,
+        )
+        print(out)
+        return 0
+
+    if args.cmd == "deactivate-project-md":
+        out = deactivate_project_claude_md(
+            args.project_root.resolve(),
+            closed_at=args.closed_at,
+        )
+        print(out)
+        return 0
+
     return 2
 
 
