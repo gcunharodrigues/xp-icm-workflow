@@ -434,7 +434,7 @@ class TestL2ContextRendering:
             "LOGS_ROOT": "null",
             "PROFILE_EFFECTIVE_HASH": "abc123",
             "CREATED_AT": "2026-01-01T00:00:00Z",
-            "SKILL_VERSION": "3.0.0-beta5",
+            "SKILL_VERSION": "3.3.0",
             "SKILL_DIR": str(SKILL_ROOT).replace("\\", "/"),
             "BOOTSTRAP_COMMIT_SHA": "deadbeef",
         }
@@ -476,7 +476,7 @@ class TestL2ContextRendering:
             "LOGS_ROOT": "null",
             "PROFILE_EFFECTIVE_HASH": "abc123",
             "CREATED_AT": "2026-01-01T00:00:00Z",
-            "SKILL_VERSION": "3.0.0-beta5",
+            "SKILL_VERSION": "3.3.0",
             "SKILL_DIR": "/skill/root",
             "BOOTSTRAP_COMMIT_SHA": "deadbeef",
         }

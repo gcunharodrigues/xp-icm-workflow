@@ -29,7 +29,7 @@ from typing import Any
 # Constantes
 # ============================================================================
 
-SKILL_VERSION = "3.0.0-beta5"  # template prepends `v`
+SKILL_VERSION = "3.3.0"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
@@ -401,6 +401,22 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
     if matrix_src.exists():
         shutil.copy2(matrix_src, config_dir / "profile-matrix.md")
 
+    # T2.5: hitl-loop template (HITL bash loop pra diagnose Phase 1 item 10)
+    hitl_src = skill_root / "templates" / "workspace" / "_config" / "hitl-loop.template.sh"
+    if hitl_src.exists():
+        shutil.copy2(hitl_src, config_dir / "hitl-loop.template.sh")
+
+    # T2.8: _out-of-scope/ knowledge base (vazio + README explicativo)
+    oos_dir = workspace_dir / "_out-of-scope"
+    oos_dir.mkdir()
+    oos_tpl = skill_root / "templates" / "workspace" / "_out-of-scope" / "README.md.tpl"
+    if oos_tpl.exists():
+        # Render placeholders básicos (só {{WORKSPACE}})
+        oos_content = oos_tpl.read_text(encoding="utf-8").replace(
+            "{{WORKSPACE}}", workspace_dir.name
+        )
+        (oos_dir / "README.md").write_text(oos_content, encoding="utf-8")
+
     refs_dir = workspace_dir / "_references"
     sp_dst = refs_dir / "superpowers-summary"
     sp_dst.mkdir(parents=True)
@@ -424,6 +440,15 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "4-block-contract-template.md",
         "feedback-intake-fase08.md",
         "session-handoff-protocol.md",
+        # v3.1 (Tier 1 + Tier 2 patterns adopted from mattpocock/skills)
+        "project-root-claude-md.md",     # T1.1
+        "context-format.md",              # T1.3 — ubiquitous language
+        "agent-brief-template.md",        # T1.2
+        "adr-format.md",                  # T1.4
+        "diagnose-protocol.md",           # T2.5
+        "task-types-hitl-afk.md",         # T2.6
+        "triage-state-machine.md",        # T2.7
+        "out-of-scope-kb.md",             # T2.8
     )
     refs_src = skill_root / "references"
     for fname in runtime_refs:
@@ -865,6 +890,14 @@ def bootstrap(
         xp_conv_rendered = render_template(xp_conv_tpl, placeholders)
         (workspace_dir / "_config" / "xp-conventions.md").write_text(
             xp_conv_rendered, encoding="utf-8"
+        )
+
+    # CONTEXT.md (L3 — ubiquitous language; vazio no bootstrap, populado em stage 01)
+    ub_tpl = tpl_dir / "_config" / "CONTEXT.md.tpl"
+    if ub_tpl.exists():
+        ub_rendered = render_template(ub_tpl, placeholders)
+        (workspace_dir / "_config" / "CONTEXT.md").write_text(
+            ub_rendered, encoding="utf-8"
         )
 
     # CONTEXT.md tem placeholder BOOTSTRAP_COMMIT_SHA que so existe pos-commit.

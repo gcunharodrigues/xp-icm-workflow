@@ -4,6 +4,77 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.3.0 — Tier 1 + Tier 2 patterns adopted from mattpocock/skills (2026-04-29)
+
+### Why v3.3.0
+
+Análise comparativa do repo `mattpocock/skills` identificou 13 padrões aplicáveis. Esta release adota 8 deles (Tier 1 + Tier 2 + dependência), endereçando 6 gaps de UX/qualidade no skill atual. Os outros 5 ficam como future work (Tier 3).
+
+### Mudanças
+
+**T1.1 — `<project_root>/CLAUDE.md` + handoff dinâmico:**
+- `templates/project_root/CLAUDE.md.tpl` (NOVO) — template com marcadores `<!-- ICM-START/END -->` delimitando região exclusiva da skill.
+- `scripts/handoff.py` — `WorkspaceBlock` dataclass; `update_project_claude_md`, `remove_workspace_block`, `deactivate_project_claude_md`, `list_active_workspace_ids`. Round-trip JSON via comentários `<!-- ICM-DATA:... -->`. Atomic write tmp+fsync+rename (G15). CLI subcommands.
+- `scripts/bootstrap.py` — `_render_project_claude_md` chamado durante bootstrap; CLAUDE.md root incluído no staging.
+- `scripts/recovery-wizard.py` — codes `CLAUDE_MD_ROOT_STALE`/`CLAUDE_MD_ROOT_MISSING` (G5); plan A regenera bloco a partir do L1.
+- `templates/.git-hooks/pre-commit` — whitelist CLAUDE.md root (G6).
+- `references/project-root-claude-md.md` (NOVO) — doc canônico cobrindo G1-G17 (brownfield, multi-workspace, /init contract, atomicidade, concorrência).
+- `references/session-handoff-protocol.md` — §verbal block simplificado (remove KICKOFF copy-paste; CLAUDE.md root cobre read order).
+- `tests/unit/test_project_root_claude_md.py` (NOVO) — 17 tests cobrindo greenfield, brownfield (com/sem marcadores), multi-workspace, idempotência, atomic write, round-trip JSON.
+
+**T1.2 — AGENT-BRIEF template:**
+- `references/agent-brief-template.md` (NOVO) — formato canônico (durability over precision, behavioral not procedural, complete acceptance criteria, explicit scope boundaries). Mapping pra 4-block do plan.md.
+- `scripts/agent-brief-render.py` (NOVO) — extrai task do plan.md, parse 4-block, renderiza AGENT-BRIEF. CLI; warn de anti-patterns (paths absolutos, line numbers).
+- `tests/unit/test_agent_brief_render.py` (NOVO) — 10 tests.
+
+**T1.3 — CONTEXT.md ubiquitous language layer:**
+- `templates/workspace/_config/CONTEXT.md.tpl` (NOVO) — glossário de domínio (L3), vazio no bootstrap, populado em stage 01.
+- `references/context-format.md` (NOVO) — formato Term/Definition/Avoid/Relationships/Example dialogue/Flagged ambiguities.
+- `scripts/bootstrap.py` — render do `_config/CONTEXT.md` durante scaffold.
+
+**T1.4 — ADR 3-critérios gate:**
+- `references/adr-format.md` (NOVO) — gate (hard to reverse + surprising without context + real trade-off); template minimal; sections opcionais.
+- `templates/workspace/docs/decisions/_template.md` (NOVO) — template para ADR individual.
+
+**T2.5 — Diagnose 6-fase:**
+- `references/diagnose-protocol.md` (NOVO) — 6 fases (build feedback loop → reproduce → hypothesise → instrument → fix+regression test → cleanup+post-mortem). Hipóteses 3-5 ranked falsifiable. Tag logs `[DEBUG-xxxx]`.
+- `templates/workspace/_config/hitl-loop.template.sh` (NOVO) — template HITL bash loop pra Phase 1 item 10.
+
+**T2.6 — HITL/AFK classification:**
+- `references/task-types-hitl-afk.md` (NOVO) — definição HITL vs AFK + critérios de classificação. AFK é default. HITL exige justificativa.
+
+**T2.7 — Triage state machine:**
+- `references/triage-state-machine.md` (NOVO) — categorias (bug/enhancement) + estados (needs-triage / needs-info / ready-for-action / wontfix). Mapping → Saída A/B/C. AGENT-BRIEF gerado para B e C.
+
+**T2.8 — OUT-OF-SCOPE kb:**
+- `templates/workspace/_out-of-scope/README.md.tpl` (NOVO) — convenção do diretório. 1 arquivo por conceito rejeitado.
+- `references/out-of-scope-kb.md` (NOVO) — quando criar (enhancement rejeitado), quando consultar (stage 02 iter>0, stage 08 triage). Format completo.
+- `scripts/bootstrap.py` — cria `_out-of-scope/` no scaffold + render do README.
+
+**Bootstrap.py geral:**
+- 8 novos refs canônicos adicionados à lista `runtime_refs` (copiados pra `<workspace>/_references/runtime/`).
+- `SKILL_VERSION = "3.3.0"`.
+
+### Out-of-scope desta release (Tier 3 — future work)
+
+- Deep modules + deletion test em stage 02
+- Design It Twice (3 interfaces paralelas) em stage 02
+- Git guardrails hook (production tier)
+- Zoom-out instruction explícita em stage 00
+- SKILL.md description tightening (write-a-skill format)
+
+### Tests
+
+- 538 tests passing (+10 vs v3.2.0). Coverage mantida.
+- Novos: `test_project_root_claude_md.py` (17), `test_agent_brief_render.py` (10).
+
+### Refs
+
+- Plan: `<plans>/primeiro-fa-a-um-plano-sunny-glade.md` (gaps G1-G17 endereçados via adversarial review)
+- Source patterns: github.com/mattpocock/skills (engineering/triage, engineering/diagnose, engineering/grill-with-docs, engineering/tdd, engineering/to-issues)
+
+---
+
 ## v3.2.0 — Test infrastructure: test_specs, test-recipes, TDD evidências (2026-04-28)
 
 ### Why v3.2.0
