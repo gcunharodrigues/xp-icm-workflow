@@ -25,6 +25,9 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `BOOTSTRAP_PARTIAL` | critical | bootstrap crashou entre scaffold commit e hook install | workspace dir existe E scaffold commitado E hooks ausentes em `.git/hooks/` |
 | `CLAUDE_MD_ROOT_STALE` | warning | sessão crashou sem chamar `handoff.update_project_claude_md` | bloco do workspace em `<project_root>/CLAUDE.md` (região ICM) tem `stage_atual` ≠ `L1.stage_atual` |
 | `CLAUDE_MD_ROOT_MISSING` | warning | bloco removido manualmente, ou bootstrap pre-v3.1 | `L1.status=IN_PROGRESS` mas comentário `<!-- ICM-WORKSPACE:NNN-slug -->` ausente |
+| `WORKTREE_MISSING` (v3.4.0) | critical | `.icm-main/` worktree linkada removida ou não criada | `<project_root>/.icm-main/` ausente |
+| `WORKTREE_WRONG_BRANCH` (v3.4.0) | warning | worktree foi switched para outra branch manualmente | `git rev-parse --abbrev-ref HEAD` em `.icm-main/` ≠ `base_branch` |
+| `WRONG_BRANCH_CHECKOUT` (v3.4.0) | warning | humano abriu sessão sem ativar workspace branch | `<project_root>` checkado em branch ≠ `workspace_branch` enquanto status ≠ COMPLETED |
 
 ## Ações por inconsistência
 
@@ -37,6 +40,9 @@ NUNCA dispara: cron, timer, agente em loop, sessão mid-flight.
 | `BRANCH_MISSING` | append `recovery_warning` com sugestão `git reflog \| grep workspace/NNN` | mesmo que A | mark `BLOCKED_ERROR` (manual) |
 | `BOOTSTRAP_PARTIAL` | instalar hooks via `git-hook-installer.sh` + `context-check.sh` | rollback: `git reset --soft HEAD~1` e re-executar bootstrap | mark `BLOCKED_ERROR` |
 | `CLAUDE_MD_ROOT_STALE` / `CLAUDE_MD_ROOT_MISSING` | regerar bloco a partir de L1 (chama `handoff.update_project_claude_md`) | mesmo que A | mark `BLOCKED_ERROR` |
+| `WORKTREE_MISSING` (v3.4.0) | rodar `git worktree add .icm-main <base_branch>` | n/a (sempre A) | mark `BLOCKED_ERROR` |
+| `WORKTREE_WRONG_BRANCH` (v3.4.0) | `cd .icm-main && git checkout <base_branch>` | n/a | mark `BLOCKED_ERROR` |
+| `WRONG_BRANCH_CHECKOUT` (v3.4.0) | `git -C <project_root> checkout <workspace_branch>` | n/a | mark `BLOCKED_ERROR` |
 
 **Múltiplas inconsistências:** wizard agrupa por código e aplica em batch na ordem canônica:
 

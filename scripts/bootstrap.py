@@ -423,18 +423,23 @@ def _setup_main_worktree(project_root: Path, base_branch: str) -> None:
     """
     worktree_path = project_root / ".icm-main"
     if worktree_path.exists():
-        # Validar que ja eh worktree git valida
+        # Validar que eh worktree git linkada genuina (nao subdir do project_root).
+        # `git rev-parse --show-toplevel` retorna o toplevel do worktree atual.
+        # Se worktree_path eh worktree linkada: toplevel = worktree_path.
+        # Se eh apenas subdir do project_root: toplevel = project_root (nao bate).
         try:
             res = _run_git(
                 ["rev-parse", "--show-toplevel"],
                 cwd=worktree_path,
                 check=False,
             )
-            if res.returncode == 0 and res.stdout.strip():
-                return  # idempotente
+            if res.returncode == 0:
+                toplevel = Path(res.stdout.strip()).resolve()
+                if toplevel == worktree_path.resolve():
+                    return  # idempotente — worktree linkada genuina
         except Exception:
             pass
-        # Existe mas nao eh worktree — humano resolve manualmente
+        # Existe mas nao eh worktree linkada — humano resolve manualmente
         raise BootstrapError(
             f".icm-main/ existe em {project_root} mas nao eh worktree git valida. "
             "Remova ou rode `git worktree repair` antes de bootstrap."
@@ -603,15 +608,24 @@ def _install_hooks(project_root: Path, skill_root: Path) -> None:
             sys.stderr.write(f"warning: falha ao instalar hook {hook}: {exc}\n")
 
 
+_WORKSPACE_HOOK_FILES: tuple[str, ...] = (
+    "context-check.sh",        # PostToolUse — registrado em workspace settings.local.json
+    "icm-session-check.sh",    # SessionStart — registro vive em project_root settings.local.json (v3.4.0)
+)
+
+
 def _install_context_hook(project_root: Path, skill_root: Path, workspace: str) -> None:
-    """Idempotente: instala context-check.sh hook + registro em settings.local.json.
+    """Idempotente: instala hooks ICM do workspace + registro PostToolUse.
 
-    Cria workspaces/<workspace>/.claude/hooks/context-check.sh copiando do template
-    da skill e registra como PostToolUse hook em
-    workspaces/<workspace>/.claude/settings.local.json.
+    Copia hooks do template da skill para workspaces/<workspace>/.claude/hooks/:
+      - context-check.sh — anti-compact PostToolUse (registrado em workspace settings).
+      - icm-session-check.sh — branch/worktree validation SessionStart (v3.4.0;
+        registro vive em project_root settings.local.json renderizado via
+        _render_project_settings_example).
 
-    O hook e seu registro vivem dentro do workspace (ICM: workspace e self-contained).
-    O command registrado usa path relativo ao workspace: bash .claude/hooks/context-check.sh
+    Apenas context-check.sh é registrado em
+    workspaces/<workspace>/.claude/settings.local.json como PostToolUse hook
+    (path relativo ao workspace: bash .claude/hooks/context-check.sh).
 
     Se settings.local.json do workspace nao existe, cria com estrutura minima.
     Se ja existe, adiciona o hook sem duplicar.
@@ -624,25 +638,24 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str) 
         sys.stderr.write(f"warning: nao foi possivel criar {hooks_dir}: {exc}\n")
         return
 
-    src_hook = skill_root / "templates" / ".claude" / "hooks" / "context-check.sh"
-    dst_hook = hooks_dir / "context-check.sh"
-
-    if not src_hook.exists():
-        sys.stderr.write(f"warning: context-check.sh template ausente: {src_hook}\n")
-        return
-
-    try:
-        shutil.copy2(src_hook, dst_hook)
+    # Copia todos os hooks do workspace
+    for hook_filename in _WORKSPACE_HOOK_FILES:
+        src_hook = skill_root / "templates" / ".claude" / "hooks" / hook_filename
+        dst_hook = hooks_dir / hook_filename
+        if not src_hook.exists():
+            sys.stderr.write(f"warning: {hook_filename} template ausente: {src_hook}\n")
+            continue
         try:
-            os.chmod(dst_hook, 0o755)
-        except OSError as _chmod_exc2:
-            if os.name != "nt":
-                sys.stderr.write(
-                    f"warning: falha ao tornar hook executável: {dst_hook}: {_chmod_exc2}\n"
-                )
-    except OSError as exc:
-        sys.stderr.write(f"warning: falha ao instalar context-check.sh: {exc}\n")
-        return
+            shutil.copy2(src_hook, dst_hook)
+            try:
+                os.chmod(dst_hook, 0o755)
+            except OSError as _chmod_exc2:
+                if os.name != "nt":
+                    sys.stderr.write(
+                        f"warning: falha ao tornar hook executável: {dst_hook}: {_chmod_exc2}\n"
+                    )
+        except OSError as exc:
+            sys.stderr.write(f"warning: falha ao instalar {hook_filename}: {exc}\n")
 
     # Registrar hook em workspaces/<workspace>/.claude/settings.local.json
     # Path relativo ao workspace (onde Claude Code resolve o command)
@@ -838,6 +851,46 @@ def _render_project_claude_md(
     return update_project_claude_md(project_root, block, skill_dir)
 
 
+def _render_project_settings_example(
+    project_root: Path,
+    skill_root: Path,
+    workspace: str,
+) -> None:
+    """Idempotente: renderiza settings.local.json.example em project_root (v3.4.0).
+
+    Copia templates/project_root/.claude/settings.local.json.example para
+    <project_root>/.claude/settings.local.json.example substituindo
+    `<NNN-slug>` pelo workspace ativo.
+
+    Humano copia manualmente o .example para settings.local.json (gitignored)
+    para ativar SessionStart + PostToolUse hooks no escopo project_root.
+
+    Doc: references/worktree-model.md + references/git-hooks.md.
+    """
+    src = skill_root / "templates" / "project_root" / ".claude" / "settings.local.json.example"
+    if not src.exists():
+        sys.stderr.write(
+            f"warning: settings.local.json.example template ausente: {src}\n"
+        )
+        return
+
+    dst_dir = project_root / ".claude"
+    dst = dst_dir / "settings.local.json.example"
+    try:
+        dst_dir.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        sys.stderr.write(f"warning: nao foi possivel criar {dst_dir}: {exc}\n")
+        return
+
+    try:
+        content = src.read_text(encoding="utf-8").replace("<NNN-slug>", workspace)
+        dst.write_text(content, encoding="utf-8")
+    except OSError as exc:
+        sys.stderr.write(
+            f"warning: falha ao renderizar settings.local.json.example: {exc}\n"
+        )
+
+
 def _patch_context_with_sha(context_path: Path, commit_sha: str) -> None:
     text = context_path.read_text(encoding="utf-8")
     patched = text.replace("{{BOOTSTRAP_COMMIT_SHA}}", commit_sha)
@@ -895,15 +948,33 @@ def bootstrap(
     # Profile merge
     effective, profile_hash = _run_profile_merge(skill_root, profile, tier, override_path)
 
-    # v3.4.0: garantir docs/ scaffolding na base + criar worktree linkada
-    # `.icm-main/` ANTES de switch pra workspace branch. Worktree fica
-    # disponivel pra todas as sessoes futuras lerem/escreverem cross-branch.
+    # v3.4.0: garantir docs/ scaffolding na base ANTES de switch pra
+    # workspace branch (commit fica em base_branch).
     _ensure_base_branch_docs(project_root)
-    _setup_main_worktree(project_root, base_branch)
 
-    # Cria branch
+    # Cria workspace branch — project_root passa a ter workspace branch checada,
+    # liberando base_branch para `.icm-main/` worktree.
     workspace_branch = f"workspace/{workspace}"
     _create_workspace_branch(project_root, workspace_branch, base_branch)
+
+    # v3.4.0: workspace branch nao deve ter docs/ no tree — vive APENAS na
+    # base branch via `.icm-main/` worktree. Workspace branch herda docs/ do
+    # checkout-from-base; remover explicitamente garante que Read em
+    # <project_root>/docs/... retorne ENOENT, forcando uso de `.icm-main/`.
+    docs_dir = project_root / "docs"
+    if docs_dir.exists():
+        _run_git(["rm", "-rf", "docs/"], cwd=project_root, check=False)
+        _run_git(
+            ["commit", "--no-verify", "-m",
+             f"workspace {workspace.split('-', 1)[0]}: remove docs/ from workspace branch (cross-branch v3.4.0)"],
+            cwd=project_root,
+            check=False,
+        )
+
+    # Worktree linkada `.icm-main/` em base_branch — DEPOIS do checkout pra
+    # workspace branch (caso contrario `git worktree add` falha porque
+    # base_branch ja esta checked out no project_root).
+    _setup_main_worktree(project_root, base_branch)
 
     # Scaffold
     _scaffold_workspace_dirs(workspace_dir, skill_root, project_root)
@@ -1057,7 +1128,14 @@ def bootstrap(
 
     # Context checkpoint hook (anti-compact): detecta contexto >= 70% e
     # dispara handoff antecipado obrigatorio. Instalado apos git hooks.
+    # v3.4.0: tambem copia icm-session-check.sh (SessionStart) — registro
+    # vive em project_root settings.local.json renderizado abaixo.
     _install_context_hook(project_root, skill_root, workspace)
+
+    # v3.4.0: renderiza project_root/.claude/settings.local.json.example
+    # com <NNN-slug> resolvido. Humano copia manualmente para .local.json
+    # (gitignored) para ativar SessionStart + PostToolUse hooks no project_root.
+    _render_project_settings_example(project_root, skill_root, workspace)
 
     return {
         "workspace": workspace,

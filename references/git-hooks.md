@@ -15,6 +15,26 @@ Stages do git separam responsabilidades por timing:
 
 **Anti-pattern:** NUNCA leia `COMMIT_EDITMSG` em `pre-commit`. Se precisa validar msg, use `commit-msg` que recebe path em `$1`.
 
+## SessionStart hook — `icm-session-check.sh` (v3.4.0)
+
+Hook não-git que roda 1× quando Claude Code abre sessão no `<project_root>`. Valida estado runtime do modelo cross-branch:
+
+1. **Branch atual** = workspace branch ativo (extraído de `workspaces/.index.md`).
+2. **`.icm-main/` worktree** existe.
+3. **`.icm-main/`** está checada em `base_branch` (lido do L1 `CONTEXT.md`).
+
+Imprime warning na stdout (visível no chat) se algo errado. **Não bloqueia** session start — só sinaliza humano para corrigir antes de continuar.
+
+**Instalação:**
+- Script copiado pelo bootstrap para `workspaces/<NNN-slug>/.claude/hooks/icm-session-check.sh`.
+- Registro vai em `<project_root>/.claude/settings.local.json` (gitignored). Bootstrap renderiza `.example` no project_root para humano copiar:
+
+```bash
+cp .claude/settings.local.json.example .claude/settings.local.json
+```
+
+**Doc:** `references/worktree-model.md`.
+
 ## Pre-commit — file checks
 
 ### R1 — Skip em rebase/merge
@@ -25,27 +45,47 @@ Se `.git/rebase-merge/` ou `.git/rebase-apply/` existe -> `exit 0`. Razao: duran
 
 Regex: `^workspace/[0-9]{3}-`. Se branch atual nao casa -> `exit 0`. Trabalho em `main`, `feat/*`, `wave-NNN-N/*` nao e afetado.
 
-### R3 — Reject src edits
+### R3 — Reject src edits (whitelist apertada em v3.4.0)
 
 Em workspace branch, todo staged file deve estar em:
 
 - `workspaces/NNN-slug/...` (escopo do workspace), OU
-- `docs/decisions/*.md` (ADRs sao L3 globais), OU
-- `docs/lessons.md` (lições herdadas, stage 08 saída A), OU
-- `docs/tech_debt.md` (débito técnico, stage 06 append P2/P3), OU
 - `workspaces/.index.md` (registry de workspaces ativos/completados), OU
-- `.gitignore` (atualizações de ignore pelo bootstrap).
+- `.gitignore` (atualizações de ignore pelo bootstrap), OU
+- `CLAUDE.md` (dashboard ICM no project root — escrito por handoff/bootstrap).
 
-Outros caminhos (`src/`, `tests/`, raiz) -> reject:
+**Removidos do whitelist em v3.4.0:** `docs/decisions/*.md`, `docs/lessons.md`,
+`docs/tech_debt.md`. Esses paths agora vivem APENAS na base branch e são
+modificados via `.icm-main/` worktree linkada (`cd .icm-main && git commit`).
+Doc canônico: `references/worktree-model.md`.
+
+Outros caminhos (`src/`, `tests/`, raiz, `docs/*`) -> reject:
 
 ```
 ERROR: branch workspace/NNN-slug pode tocar APENAS workspaces/NNN-slug/* ou arquivos whitelisted.
 File offendor: <path>
+Para tocar src/, docs/decisions/, docs/lessons.md, docs/tech_debt.md
+ou demais paths da base branch, use a worktree linkada:
+  cd .icm-main && git add <path> && git commit ...
 ```
 
-**Valido:** `workspaces/042-feat-auth/CONTEXT.md`, `workspaces/042-feat-auth/stages/02/output/plan.md`, `docs/decisions/0042-auth-strategy.md`
+### R3.5 — Reject `.icm-main/*` paths (v3.4.0)
 
-**Invalido:** `src/auth/middleware.py`, `tests/test_auth.py`, `README.md` (raiz)
+`.icm-main/` é worktree linkada da base branch e deve estar em
+`.gitignore`. Se algum staged file casa `.icm-main/*`, hook rejeita
+imediatamente:
+
+```
+ERROR: file '.icm-main/<path>' esta em .icm-main/ — diretorio reservado pra worktree linkada da base branch.
+Worktree paths NAO devem ser tracked pelo workspace branch.
+```
+
+Razão: commits ao conteúdo de `.icm-main/` devem acontecer DENTRO da
+worktree (`cd .icm-main && git commit ...`), nunca pelo workspace branch.
+
+**Valido:** `workspaces/042-feat-auth/CONTEXT.md`, `workspaces/042-feat-auth/stages/02/output/plan.md`, `CLAUDE.md`
+
+**Invalido:** `src/auth/middleware.py`, `docs/decisions/0042.md` (use `.icm-main/`), `.icm-main/docs/foo.md` (use `cd .icm-main && commit`)
 
 ### R4 — Atomicidade L1<->outputs
 
@@ -199,3 +239,4 @@ CI-only via Ubuntu runner; bats nao roda em Windows local. Wave 6 configura GitH
 |---|---|
 | v1 (Wave 2 inicial) | Hook unico `pre-commit` com file checks + msg validation. **Bug:** msg validation usava `.git/COMMIT_EDITMSG` que pre-commit le stale (msg do commit anterior). Workaround temporario: instalar hook depois dos commits do bootstrap. |
 | v2 (Wave 2 fix) | Split em `pre-commit` (file checks) + `commit-msg` (msg validation). `commit-msg` recebe path em `$1` com msg atual, validacao correta. Regression test em `test_commit_msg_hook.bats`. |
+| v3.4.0 | Pre-commit whitelist apertada: removidos `docs/decisions/*.md`, `docs/lessons.md`, `docs/tech_debt.md` (vão via `.icm-main/` worktree). Adicionada R3.5 rejeita paths `.icm-main/*`. Novo SessionStart hook `icm-session-check.sh` valida branch + worktree no abrir de sessão. |

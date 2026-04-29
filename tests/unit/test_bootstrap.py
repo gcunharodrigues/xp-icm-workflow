@@ -396,15 +396,9 @@ class TestScaffoldWorkspaceDirs:
         assert "source_skill:" in sample
         assert "source_version:" in sample
 
-    def test_creates_docs_tech_debt_stub(self, tmp_path: Path) -> None:
-        ws = tmp_path / "workspaces" / "001-foo"
-        project_root = tmp_path / "project"
-        project_root.mkdir(parents=True)
-        bootstrap._scaffold_workspace_dirs(ws, SKILL_ROOT, project_root)
-        tech_debt = project_root / "docs" / "tech_debt.md"
-        assert tech_debt.is_file()
-        content = tech_debt.read_text(encoding="utf-8")
-        assert "Tech Debt" in content
+    # v3.4.0: docs/tech_debt.md scaffolding moveu de _scaffold_workspace_dirs
+    # para _ensure_base_branch_docs (vive APENAS na base branch via .icm-main/).
+    # Cobertura agora em tests/unit/test_bootstrap_v3_4_0.py.
 
 
 class TestL2ContextRendering:
