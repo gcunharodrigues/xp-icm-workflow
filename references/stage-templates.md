@@ -357,7 +357,7 @@ Produz plano arquitetural executável + ADRs formais. Cada decisão não-trivial
 6. Escrever output/plan.md: tasks com 4-block contract (O QUE / COMO / NÃO QUERO / VALIDAÇÃO), files touched, ADRs aplicáveis, requires_peer_review.
 7. Escrever output/decisions.md: INDEX (título + slug + status) — não duplica ADR.
 8. Verify: cada requisito do MVP do discovery aparece em ≥1 task do plan OU está deferred com justificativa.
-9. Atualizar L1: sub_stage `02_completed`, status `COMPLETED_AWAITING_HUMAN`, append history. Commit atômico (pre-commit hook valida).
+9. **Handoff de fim de stage:** seguir protocolo gate-inline (v3.4.2) — split em duas fases na mesma sessão. Fase 1: update L1 (`sub_stage=02_completed, status=COMPLETED_AWAITING_HUMAN, last_transition.from=02_in_progress, last_transition.to=02_completed`), commit atômico 1/2 (outputs + L1, SEM kickoff), imprime prompt de gate, aguarda humano. Fase 2 (após aprovação): update L1 (`stage_atual=03, sub_stage=03_in_progress, status=IN_PROGRESS`), render `_kickoff.md` em `stages/03_wave_planner/`, commit atômico 2/2 (kickoff + L1), imprime KICKOFF block, SAIR. Doc canônico: `references/session-handoff-protocol.md`.
 
 ## Outputs
 

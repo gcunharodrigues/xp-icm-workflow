@@ -17,7 +17,7 @@ User sinalizou que ganho em context fresh supera custo de cache miss. Decisão r
 
 Stage 04 mantém versão wave-aware: 1 sessão lead por wave (status quo, decisão 2a). Sub-waves não disparam handoff explícito — lead persiste através das sub-waves dentro da mesma sessão.
 
-## Anatomia de uma sessão de stage
+## Anatomia de uma sessão de stage (gate inline, v3.4.2)
 
 ```
 ┌─ INÍCIO ────────────────────────────────────────┐
@@ -31,28 +31,55 @@ Stage 04 mantém versão wave-aware: 1 sessão lead por wave (status quo, decis�
 ┌─ TRABALHO ──────────────────────────────────────┐
 │  Executa instruções do L2                       │
 │  Produz outputs em stages/<NN>/output/          │
-│  Handles stop points / errors / gates           │
+│  Handles stop points / errors                   │
 └─────────────────────────────────────────────────┘
                       │
                       ▼
-┌─ FIM (handoff) ─────────────────────────────────┐
-│  1. L1 update: sub_stage=<NN>_completed,        │
-│     status=COMPLETED_AWAITING_HUMAN, history    │
-│     append, last_transition pra próximo stage   │
-│  2. Render _kickoff.md no stage seguinte        │
-│  3. Commit atômico (hooks validam)              │
-│  4. Imprime KICKOFF block verbal pro user       │
-│  5. Sessão SAI                                  │
+┌─ FIM Fase 1: WORK_DONE ─────────────────────────┐
+│  1. L1 update:                                  │
+│     sub_stage=<NN>_completed                    │
+│     status=COMPLETED_AWAITING_HUMAN             │
+│     last_transition.from=<NN>_in_progress       │
+│     last_transition.to=<NN>_completed           │
+│  2. Commit atômico 1/2 (outputs + L1)           │
+│     SEM _kickoff.md ainda                       │
+│  3. Imprime prompt de gate                      │
+│  4. AGUARDA resposta humana (mesma sessão)      │
+└─────────────────────────────────────────────────┘
+                      │
+        humano: "aprovado" | "ajustar X" | "abort"
+                      │
+                      ▼
+┌─ FIM Fase 2: GATE_APPROVED ─────────────────────┐
+│  5. L1 update (segunda transição):              │
+│     stage_atual=<NN+1>                          │
+│     sub_stage=<NN+1>_in_progress                │
+│     status=IN_PROGRESS                          │
+│     (stage 07: status=COMPLETED_AWAITING_HUMAN  │
+│      auto-transit pra 08, sem segundo gate)     │
+│  6. Render _kickoff.md no stage seguinte        │
+│  7. Commit atômico 2/2 (kickoff + L1)           │
+│  8. Imprime KICKOFF block verbal pro user       │
+│  9. Sessão SAI                                  │
 └─────────────────────────────────────────────────┘
                       │
                       ▼
    ┌── User abre nova sessão Claude ──┐
-   │   Cola prompt do KICKOFF block    │
+   │   CLAUDE.md root + kickoff guiam │
    └───────────────────────────────────┘
                       │
                       ▼
                  (próximo stage)
 ```
+
+### Por que gate inline (bug v3.4.2)
+
+Antes de v3.4.2, fim-de-stage executava commit + render kickoff + print exit + SAIR sem aguardar gate humano. Sintoma: nova sessão abria, detectava `status=COMPLETED_AWAITING_HUMAN`, pedia aprovação, e re-imprimia o kickoff — loop confuso. Causa: contradição entre "Gates" section (humano aprova ANTES da transição) e "End of stage handoff" (transita SEM aguardar). Fix: split em duas fases na mesma sessão; kickoff só renderiza após aprovação.
+
+### Resposta "ajustar X" / "abort"
+
+- **"ajustar X"**: L1 status volta a `IN_PROGRESS`, history append `gate_rejected`, sub_stage permanece `<NN>_completed` (volta a `<NN>_in_progress` se mudança não-trivial). Sessão volta ao trabalho com pedido. Quando refizer outputs, repete Fase 1.
+- **"abort"**: L1 status `BLOCKED_ERROR`, history `human_abort`. Commit + sair. Workspace fica em `BLOCKED_ERROR` aguardando intervenção manual.
 
 ## Schema `_kickoff.md` (L4-kickoff)
 

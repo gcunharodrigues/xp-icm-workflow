@@ -4,6 +4,68 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.4.2 — Gate inline + tech debt drain (2026-04-29)
+
+### Why v3.4.2
+
+Bug-fix patch corrigindo loop de fim-de-stage observado em uso real
+(workspace 001-001-saas-psicologo-mvp): sessão imprimia kickoff +
+saía SEM aguardar gate humano; nova sessão detectava status pendente,
+pedia aprovação, e re-imprimia o kickoff — confuso. Plus 2 itens de
+tech debt acumulados.
+
+### Mudanças
+
+**1. Gate inline antes do kickoff em todos stages (bug fix principal):**
+- L2 templates de stages 01-07 atualizados pra split End of stage handoff
+  em duas fases dentro da MESMA sessão.
+- Fase 1 WORK_DONE: update L1 (sub_stage=NN_completed,
+  status=COMPLETED_AWAITING_HUMAN), commit atômico 1/2 (outputs + L1,
+  SEM kickoff), imprime prompt de gate, AGUARDA humano.
+- Fase 2 GATE_APPROVED (após "aprovado"): update L1
+  (stage_atual=NN+1, sub_stage=NN+1_in_progress, status=IN_PROGRESS),
+  render kickoff, commit atômico 2/2, imprime KICKOFF block, SAIR.
+- Stage 04: gate só na transição última-wave→05 (mid-wave continua auto).
+- Stage 06: gate só no caso A (sem P0/P1). Loopback ao 04 é auto.
+- Stage 07: gate aprova merge-report; após aprovação, auto-transita
+  07→08 com status=COMPLETED_AWAITING_HUMAN (workspace fica vivo
+  aguardando feedback do mundo real, sem segundo gate).
+- Doc canônico: `references/session-handoff-protocol.md` (diagrama
+  atualizado seção "Anatomia de uma sessão").
+
+**2. Recovery Wizard: novo tipo `KICKOFF_WITHOUT_GATE`:**
+- Detecta workspaces buggy (criados antes da v3.4.2) com kickoff de
+  stage NN+1 presente enquanto L1 indica `stage_atual=NN,
+  status=COMPLETED_AWAITING_HUMAN`.
+- Ação: oferece humano (a) aprovar gate retroativo (mantém kickoff,
+  transita L1) ou (b) deletar kickoff e voltar ao trabalho do stage NN.
+
+**3. Tech debt: `agent-brief-render.py` regex desatualizado:**
+- Regex buscava `### Task: <slug>` (H3) + `**O QUE:**` (bold marker).
+- Schema canônico (`references/4-block-contract-template.md`) é
+  `## Task <SLUG>:` (H2) + `### O QUE` (H3).
+- Mismatch fazia leads renderizarem briefs manualmente em fase 04.
+- Fix: regex atualizado pra schema canônico H2/H3.
+
+**4. Tech debt: bootstrap auto-merge `settings.local.json` no project_root:**
+- Antes: bootstrap renderizava só `.example`; humano copiava manualmente
+  pra ativar PostToolUse hook do `context-check.sh`.
+- Inconsistência: workspace scope (`workspaces/<NNN>/.claude/settings.local.json`)
+  já era auto-criado com merge idempotente, mas project_root scope não.
+- Fix: bootstrap agora faz merge idempotente em
+  `<project_root>/.claude/settings.local.json` (preserva customizações
+  do user + adiciona/atualiza apenas a entrada ICM identificável por
+  `command` contendo `context-check.sh`). Mantém `.example` por
+  documentação.
+
+### Compatibilidade
+
+Workspaces v3.4.0/v3.4.1 já em curso: rodar Recovery Wizard manualmente
+quando aparecer sintoma do bug (kickoff já gerado mas gate não aprovado).
+Novos workspaces criados via v3.4.2 nascem com gate-inline.
+
+---
+
 ## v3.4.1 — Backlog (migration, handoff saída A, Tier 3) (2026-04-29)
 
 ### Why v3.4.1
