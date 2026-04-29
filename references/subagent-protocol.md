@@ -165,6 +165,20 @@ Conflito de merge = humano resolve (não auto-solve). Lead retoma do task bloque
 
 **Anti-pattern:** NÃO permanecer em `{{BASE_BRANCH}}` após merge. Lead DEVE voltar para `workspace/{{WORKSPACE}}` antes de qualquer operação de state (L1 update, kickoff, commit de handoff). Hooks de workspace só validam corretamente na branch workspace.
 
+### 5.1 Cleanup pós-merge (v3.4.3)
+
+Após merge sequencial + CI gate global verde, lead DEVE remover worktrees efêmeras (criadas pelo Agent tool com `isolation: "worktree"`) E deletar branches já merged:
+
+```bash
+# Para cada task da wave (paths capturados dos Agent tool results):
+git worktree remove <path-retornado-pelo-Agent-tool>
+git branch -d wave-{{WORKSPACE_NUM}}-<N>/<task-slug>   # já merged --no-ff
+```
+
+Bug pre-v3.4.3: cleanup ausente fazia worktrees acumularem em `<project_root>/.icm-wave-*` + branches stale em `git branch` listing. Pode causar confusão em `git worktree list` e degradar performance ao longo de múltiplas waves.
+
+Falha não-fatal — lead registra warning em `wave-summary.md` mas prossegue. `git branch -d` recusa branch não-merged (intencional); não usar `-D` (mascara bugs). Recovery Wizard `WAVE_WORKTREE_ORPHAN` cobre workspaces buggy.
+
 ---
 
 ## 6. CI global entre waves

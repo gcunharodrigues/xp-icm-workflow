@@ -72,8 +72,22 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
 8. **Wave-reviewer:** subagente revisa Auto-QA Akita de cada task report + verifica que `Files touched` reais batem com declarado no plan.md.
 9. **Merge sequencial:** lead faz merge de cada branch `wave-{{WORKSPACE}}-<N>/<task-slug>` em `{{BASE_BRANCH}}` na ordem do plan. Conflict de merge → `BLOCKED_ERROR`, humano resolve manualmente.
 10. **CI gate global:** roda CI completo do projeto após todos os merges. Verde → wave concluída.
-11. **Lead escreve:** `output/wave-<N>/wave-summary.md` (tasks completadas, conflicts, decisões tomadas).
-12. **Handoff de fim de wave/stage:** seguir protocolo na seção `## End of stage handoff` deste L2. Mid-wave (wave <N> → <N+1>): handoff automático sem gate humano (Caso A). Última wave → stage 05: gate-inline obrigatório (Caso B — Fase 1 WORK_DONE → gate humano → Fase 2 GATE_APPROVED).
+11. **Cleanup wave worktrees + branches (v3.4.3):** após merge bem-sucedido + CI verde, lead remove worktrees efêmeras criadas pelos subagentes E deleta branches já merged. Bug pre-v3.4.3: worktrees em `<project_root>/.icm-wave-*` (ou path retornado pelo Agent tool) ficavam orfãs após cada wave; branches `wave-<NNN>-<N>/<task-slug>` poluíam `git branch` listing.
+
+   ```bash
+   # Para cada task da wave (paths capturados dos Agent tool results):
+   git worktree remove <path-do-worktree>           # remove worktree efemera
+   git branch -d wave-{{WORKSPACE_NUM}}-<N>/<task-slug>   # safe: ja merged --no-ff
+
+   # Fallback robusto (se path foi perdido — busca por pattern de branch):
+   git worktree list --porcelain | awk '/^worktree /{p=$2} /^branch refs\/heads\/wave-{{WORKSPACE_NUM}}-<N>/{print p}' \
+     | xargs -I {} git worktree remove {}
+   ```
+
+   Falha não-fatal: registrar warning em `wave-summary.md` (próximo passo). `git worktree remove` falha se working tree não-limpo → tentar `--force` apenas se Auto-QA Akita já passou (subagente garantiu commit limpo). `git branch -d` recusa se não-merged → não usar `-D` (forçar delete mascararia bugs do merge anterior).
+
+12. **Lead escreve:** `output/wave-<N>/wave-summary.md` (tasks completadas, conflicts, decisões tomadas, **warnings de cleanup** se houve).
+13. **Handoff de fim de wave/stage:** seguir protocolo na seção `## End of stage handoff` deste L2. Mid-wave (wave <N> → <N+1>): handoff automático sem gate humano (Caso A). Última wave → stage 05: gate-inline obrigatório (Caso B — Fase 1 WORK_DONE → gate humano → Fase 2 GATE_APPROVED).
 
 CWD: lead em `{{PROJECT_ROOT}}` (workspace branch). Subagente em `{{PROJECT_ROOT}}` na branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
 

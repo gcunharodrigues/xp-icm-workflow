@@ -110,6 +110,27 @@ Agent tool DEVEM usar `isolation: "worktree"` (parâmetro nativo do tool):
 Tool com `isolation: worktree` cleanup automático se subagente não
 modifica nada; branch + path retornados se modificou.
 
+**Cleanup obrigatório pós-merge (v3.4.3):** subagente em fase 04 SEMPRE
+modifica (TDD escreve tests + impl), logo Agent tool nunca auto-cleanup
+worktree de wave. Lead DEVE executar cleanup explícito após merge
+sequencial + CI verde, antes de escrever wave-summary.md:
+
+```bash
+# Para cada task da wave:
+git worktree remove <path-retornado-pelo-Agent-tool>
+git branch -d wave-<NNN>-<N>/<task-slug>     # safe se já merged --no-ff
+
+# Fallback se path do worktree foi perdido — busca por pattern:
+git worktree list --porcelain \
+  | awk '/^worktree /{p=$2} /^branch refs\/heads\/wave-<NNN>-<N>/{print p}' \
+  | xargs -I {} git worktree remove {}
+```
+
+Falha não-fatal: registrar warning em `wave-summary.md`. `git branch -d`
+recusa branch não-merged (intencional — não usar `-D` mascararia bugs).
+Recovery Wizard novo tipo `WAVE_WORKTREE_ORPHAN` (v3.4.3) detecta +
+auto-cleanup workspaces buggy pré-v3.4.3 onde cleanup nunca rodou.
+
 ### 4. Read code de iteração anterior — stage 00 + 04+ casos
 
 Stage 00 recon precisa scan ADRs vigentes + lessons + tech_debt vigente.
