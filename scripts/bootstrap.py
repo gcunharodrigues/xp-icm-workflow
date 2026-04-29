@@ -873,8 +873,9 @@ def _render_project_settings_example(
     <project_root>/.claude/settings.local.json.example substituindo
     `<NNN-slug>` pelo workspace ativo.
 
-    Humano copia manualmente o .example para settings.local.json (gitignored)
-    para ativar SessionStart + PostToolUse hooks no escopo project_root.
+    `.example` é mantido como documentação/referência. v3.4.2 adiciona
+    `_merge_project_settings_local` que faz auto-merge no settings.local.json
+    real (sem `.example` no caminho), eliminando o passo manual de copiar.
 
     Doc: references/worktree-model.md + references/git-hooks.md.
     """
@@ -899,6 +900,95 @@ def _render_project_settings_example(
     except OSError as exc:
         sys.stderr.write(
             f"warning: falha ao renderizar settings.local.json.example: {exc}\n"
+        )
+
+
+def _merge_project_settings_local(
+    project_root: Path,
+    workspace: str,
+) -> None:
+    """Idempotente: auto-merge ICM hooks em <project_root>/.claude/settings.local.json (v3.4.2).
+
+    Antes da v3.4.2, bootstrap apenas renderizava `.example` e humano copiava
+    manualmente. Inconsistência: workspace scope settings.local.json (em
+    workspaces/<NNN>/.claude/) já era auto-criado idempotentemente, mas
+    project_root scope não. Fix: replica padrão.
+
+    Hooks adicionados (paths relativos ao project_root):
+      - SessionStart: bash workspaces/<NNN-slug>/.claude/hooks/icm-session-check.sh
+      - PostToolUse: bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh
+
+    Preserva customizações existentes do user: só ADICIONA entradas ICM
+    identificáveis por commands contendo `<workspace>/.claude/hooks/`. Não
+    toca em hooks de outros workspaces ou hooks não-ICM.
+
+    Doc: references/git-hooks.md (seção project_root scope).
+    """
+    settings_path = project_root / ".claude" / "settings.local.json"
+
+    # Hooks ICM a registrar (commands relativos ao project_root)
+    icm_hooks = {
+        "SessionStart": (
+            f"bash workspaces/{workspace}/.claude/hooks/icm-session-check.sh"
+        ),
+        "PostToolUse": (
+            f"bash workspaces/{workspace}/.claude/hooks/context-check.sh"
+        ),
+    }
+
+    settings: dict[str, Any] = {}
+    if settings_path.exists():
+        try:
+            settings = json.loads(settings_path.read_text(encoding="utf-8"))
+            if not isinstance(settings, dict):
+                settings = {}
+        except (json.JSONDecodeError, OSError):
+            settings = {}
+
+    if "hooks" not in settings or not isinstance(settings.get("hooks"), dict):
+        settings["hooks"] = {}
+
+    changed = False
+    for hook_event, hook_command in icm_hooks.items():
+        existing_entries = settings["hooks"].get(hook_event, [])
+        if not isinstance(existing_entries, list):
+            existing_entries = []
+
+        # Detecta entrada ICM existente (mesmo command exato OU command apontando
+        # pra mesmo script no mesmo workspace, p.ex. matcher diferente).
+        already_present = False
+        for entry in existing_entries:
+            if not isinstance(entry, dict):
+                continue
+            for h in entry.get("hooks", []) or []:
+                if not isinstance(h, dict):
+                    continue
+                if h.get("command") == hook_command:
+                    already_present = True
+                    break
+            if already_present:
+                break
+
+        if not already_present:
+            existing_entries.append({
+                "matcher": ".*",
+                "hooks": [{"type": "command", "command": hook_command}],
+            })
+            settings["hooks"][hook_event] = existing_entries
+            changed = True
+
+    if not changed:
+        return  # idempotente — nada pra escrever
+
+    try:
+        settings_path.parent.mkdir(parents=True, exist_ok=True)
+        settings_path.write_text(
+            json.dumps(settings, indent=2, ensure_ascii=False) + "\n",
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        sys.stderr.write(
+            f"warning: falha ao escrever {settings_path}: {exc}\n"
         )
 
 
@@ -1145,9 +1235,13 @@ def bootstrap(
     _install_context_hook(project_root, skill_root, workspace, tier=tier)
 
     # v3.4.0: renderiza project_root/.claude/settings.local.json.example
-    # com <NNN-slug> resolvido. Humano copia manualmente para .local.json
-    # (gitignored) para ativar SessionStart + PostToolUse hooks no project_root.
+    # com <NNN-slug> resolvido. Mantido como documentação/referência.
     _render_project_settings_example(project_root, skill_root, workspace)
+
+    # v3.4.2: auto-merge ICM hooks em <project_root>/.claude/settings.local.json
+    # idempotentemente (preserva customizações do user). Substitui passo
+    # manual de copiar .example.
+    _merge_project_settings_local(project_root, workspace)
 
     return {
         "workspace": workspace,
