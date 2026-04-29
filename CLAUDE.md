@@ -2,6 +2,43 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Workflow de modificações
+
+**Toda modificação não-trivial segue este fluxo:**
+
+```bash
+# 1. Criar branch a partir de main
+git checkout main
+git checkout -b feat/<short-slug>
+
+# 2. Executar mudanças (edits, tests, etc)
+# ...
+
+# 3. Commit(s) na branch
+git add <paths>
+git commit -m "feat: descrição"
+
+# 4. Run tests (obrigatório antes do merge)
+bash tests/run.sh --no-bats   # ou: python -m pytest tests/unit/
+
+# 5. Merge para main (fast-forward) + push (se houver remote)
+git checkout main
+git merge --ff-only feat/<short-slug>
+git push origin main          # apenas se remote configurado
+
+# 6. Apagar branch (local + remote se aplicável)
+git branch -d feat/<short-slug>
+git push origin --delete feat/<short-slug>   # apenas se remote
+```
+
+**Regras:**
+- Branch é descartada após merge — não acumular branches stale.
+- Tests devem passar antes do merge (`538+/538+ tests` baseline).
+- `--ff-only` força merge linear; conflito = rebase a branch antes.
+- Trivial fix (typo, comentário) pode commit direto em `main` sem branch.
+- Sem remote configurado nesse repo skill — passos `git push` viram no-op
+  até remote ser adicionado.
+
 ## Commands
 
 ```bash
