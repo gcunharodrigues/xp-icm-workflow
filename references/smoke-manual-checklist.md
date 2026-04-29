@@ -185,3 +185,36 @@ Bootstrap com qualquer profile (ex: `agent_ia`, `ml_project`).
 ## Lessons
 - ...
 ```
+
+---
+
+## v3.3.0 — novos itens de smoke manual
+
+Após bootstrap em `tier=development`, verificar:
+
+- [ ] `<project_root>/CLAUDE.md` criado com região ICM (`<!-- ICM-START/END -->`)
+- [ ] `<workspace>/_config/CONTEXT.md` (L3 ubiquitous language) presente, frontmatter `layer: L3, scope: ubiquitous_language`
+- [ ] `<workspace>/_out-of-scope/README.md` presente
+- [ ] `<workspace>/_references/runtime/agent-brief-template.md` presente
+- [ ] `<workspace>/_references/runtime/context-format.md` presente
+- [ ] `<workspace>/_references/runtime/adr-format.md` presente
+- [ ] `<workspace>/_references/runtime/diagnose-protocol.md` presente
+- [ ] `<workspace>/_references/runtime/triage-state-machine.md` presente
+- [ ] `<workspace>/_references/runtime/out-of-scope-kb.md` presente
+- [ ] `<workspace>/_references/runtime/design-it-twice.md` presente
+- [ ] `<workspace>/_config/hitl-loop.template.sh` presente
+- [ ] `docs/decisions/_template.md` presente
+
+Em workspace branch:
+- [ ] Editar `<project_root>/CLAUDE.md` e `git add CLAUDE.md` — pre-commit hook permite (G6 whitelist)
+- [ ] Recovery wizard detecta `CLAUDE_MD_ROOT_STALE` quando L1.stage_atual diverge do bloco em CLAUDE.md root
+
+Brownfield:
+- [ ] Bootstrap em projeto com CLAUDE.md preexistente preserva conteúdo fora dos marcadores ICM byte-a-byte
+- [ ] Sem marcadores: insere região ICM logo após primeiro `^# ` (título principal)
+
+Multi-workspace:
+- [ ] Bootstrap segundo workspace adiciona bloco preservando o primeiro
+
+Saída A do último workspace:
+- [ ] Região ICM substituída por mensagem "Nenhum workspace ICM ativo + rode /init"

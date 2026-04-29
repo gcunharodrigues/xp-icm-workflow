@@ -279,3 +279,22 @@ Pipeline (`tier=development`, `profile=app_web_backend`, cap=5):
 7. **Output:** wave-plan.md conforme §11.
 
 Saída de stdout: `total_tasks=4 total_waves=2 total_sub_waves=2 ambiguities=0`.
+
+---
+
+## v3.3.0 — HITL/AFK rule
+
+Wave planner respeita campo `**Type:**` em cada task do plan.md.
+
+- **AFK tasks** (default): agrupadas em sub-waves topológicas até cap por
+  tier (experimental: 2, tool: 3, development: 5, production: 5).
+- **HITL tasks**: cada uma vira sub-wave **isolada cap=1**. Lead session
+  NÃO spawna subagent — gera AGENT-BRIEF, exibe ao humano, status
+  `COMPLETED_AWAITING_HUMAN, sub_stage=04_wave_N_hitl_pending`, SAIR.
+
+Função `subdivide_waves(waves, cap, task_types)`. Se `task_types` é None
+ou vazio, todas tasks tratadas como AFK (compat backward).
+
+Output `wave-plan.md` adiciona coluna `Type` na tabela por sub-wave.
+
+Doc canônico: `references/task-types-hitl-afk.md`.

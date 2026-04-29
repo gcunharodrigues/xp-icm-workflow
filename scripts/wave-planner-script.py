@@ -84,6 +84,7 @@ class Task:
     slug: str
     files_touched: list[str] = field(default_factory=list)
     depends_on: list[str] = field(default_factory=list)
+    type: str = "AFK"  # T2.6: HITL | AFK. Default AFK; HITL ativa wave isolada cap=1.
 
 
 # ----------------------------------------------------------------------------
@@ -135,6 +136,18 @@ def _extract_section(block: str, section_title: str) -> list[str]:
     return items
 
 
+def _extract_type_field(block: str) -> str:
+    """Extrai `**Type:**` field do bloco da task. Default AFK se ausente.
+
+    Formato esperado: `**Type:** HITL` ou `**Type:** AFK`.
+    Doc canônico: references/task-types-hitl-afk.md.
+    """
+    match = re.search(r"\*\*Type:\*\*\s*(HITL|AFK)\b", block, re.IGNORECASE)
+    if not match:
+        return "AFK"
+    return match.group(1).upper()
+
+
 def parse_plan(path: Path) -> list[Task]:
     """Le plan.md e devolve lista ordenada de Task. Aborta em slug duplicado."""
     if not path.exists():
@@ -154,6 +167,7 @@ def parse_plan(path: Path) -> list[Task]:
             slug=slug,
             files_touched=_extract_section(block, "Files touched"),
             depends_on=_extract_section(block, "Depends on"),
+            type=_extract_type_field(block),
         ))
     return tasks
 
@@ -269,18 +283,40 @@ def topological_waves(tasks: list[Task], *, edges: set[tuple[str, str]]) -> list
     return waves
 
 
-def subdivide_waves(waves: list[list[str]], *, cap: int) -> list[list[list[str]]]:
-    """Quebra cada wave em sub-waves de tamanho <= cap."""
+def subdivide_waves(
+    waves: list[list[str]],
+    *,
+    cap: int,
+    task_types: dict[str, str] | None = None,
+) -> list[list[list[str]]]:
+    """Quebra cada wave em sub-waves de tamanho <= cap.
+
+    T2.6: tasks com `type=HITL` ficam em sub-waves isoladas (cap=1) — lead
+    session NÃO spawna subagent, gera AGENT-BRIEF e aguarda humano. AFK
+    tasks agrupadas normalmente até `cap`.
+
+    Args:
+        waves: list[list[str]] de raw waves (Kahn output).
+        cap: cap efetivo (tier × profile).
+        task_types: dict slug → "HITL"|"AFK". Se None ou ausente, default AFK.
+    """
     if cap <= 0:
         raise WavePlannerError(f"invalid cap: {cap}")
+    types = task_types or {}
     result: list[list[list[str]]] = []
     for wave in waves:
-        sub_waves = [wave[i:i + cap] for i in range(0, len(wave), cap)] or [[]]
-        # Se wave vazia (nao deveria acontecer), preserva como []
-        if wave:
-            result.append(sub_waves)
-        else:
+        if not wave:
             result.append([[]])
+            continue
+        # Separar HITL vs AFK preservando ordem do plan.md
+        hitl_subs: list[list[str]] = [[s] for s in wave if types.get(s, "AFK") == "HITL"]
+        afk_slugs: list[str] = [s for s in wave if types.get(s, "AFK") != "HITL"]
+        afk_subs: list[list[str]] = [
+            afk_slugs[i:i + cap] for i in range(0, len(afk_slugs), cap)
+        ]
+        # AFK primeiro, HITL depois (humano resolve em ordem após AFK done)
+        sub_waves = afk_subs + hitl_subs or [[]]
+        result.append(sub_waves)
     return result
 
 
@@ -341,7 +377,8 @@ def plan_waves(*, plan_path: Path, tier: str, profile: str) -> dict:
     tasks = parse_plan(plan_path)
     edges = build_graph(tasks)
     raw_waves = topological_waves(tasks, edges=edges)
-    sub = subdivide_waves(raw_waves, cap=cap)
+    task_types = {t.slug: t.type for t in tasks}
+    sub = subdivide_waves(raw_waves, cap=cap, task_types=task_types)
     ambiguities = detect_ambiguities(tasks)
 
     total_sub_waves = sum(len(w) for w in sub)

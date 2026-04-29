@@ -428,9 +428,17 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
 
     runtime_dst = refs_dir / "runtime"
     runtime_dst.mkdir(parents=True)
-    # Copia subset de references/ que sao consumidos em runtime pelos subagentes
-    # (R2.5 do plan). Skill formal em references/ continua sendo a fonte; workspace
-    # ganha copia self-contained pra continuar trabalhando se skill mudar.
+    # Bootstrap copia refs canônicos de <skill_root>/references/<file>.md PARA
+    # <workspace>/_references/runtime/<file>.md no scaffold (R2.5 do plan v3).
+    #
+    # Por que: workspace ICM é self-contained pós-bootstrap. Sessões só leem
+    # do <workspace>/_references/runtime/ — nunca cruzam para <skill_root>/.
+    # Bootstrap é o único bridge, frozen no momento da criação. Skill pode
+    # evoluir sem quebrar workspaces antigos.
+    #
+    # Por que não há `templates/_references/runtime/` no skill source: evitar
+    # duplicação. Fonte canônica em `references/` é única. Lista abaixo
+    # define o subset copiado. Doc: templates/_references/runtime/README.md.
     runtime_refs = (
         "subagent-protocol.md",
         "wave-planner-algorithm.md",

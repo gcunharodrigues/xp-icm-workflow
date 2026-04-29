@@ -40,9 +40,12 @@ L0 é a constituição imutável deste workspace. Todo agente em qualquer estág
 | Estágios | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<NN>_*/` |
 | Config | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/` |
 | Conventions | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md` |
+| Ubiquitous Language (L3) | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/CONTEXT.md` |
+| OUT-OF-SCOPE kb | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_out-of-scope/` |
 | Runtime refs | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/` |
 | Sumários superpowers | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/` |
 | Skill dir | `{{SKILL_DIR}}` (diretório raiz da skill xp-icm-workflow — scripts, templates, references) |
+| Project CLAUDE.md | `{{PROJECT_ROOT}}/CLAUDE.md` (dashboard externo do estado; mantido por handoff.py — ver `_references/runtime/project-root-claude-md.md`) |
 | ADRs do projeto | `{{PROJECT_ROOT}}/docs/decisions/` |
 | Lessons do projeto | `{{PROJECT_ROOT}}/docs/lessons.md` |
 | Tech debt | `{{PROJECT_ROOT}}/docs/tech_debt.md` |

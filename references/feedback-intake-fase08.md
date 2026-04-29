@@ -385,3 +385,28 @@ Pre-commit hook valida que `output-iteration-<N>/` é apenas criado em commits c
 - **Pre-commit hook valida transição** como qualquer outra (atomicidade L1 ↔ outputs/lessons, prefixo `feedback:` ou `intake:`).
 - **Stop points raros mas possíveis:** item 11 `workspace_corrupt` se `intake-report.md` não escreve (disco cheio, permissão), ou se humano interrompe a sessão antes de decidir A/B/C (status fica `IN_PROGRESS` em `08_in_progress`; próxima sessão retoma).
 - **Lições novas só em saída A.** Saídas B e C reaproveitam lições naturalmente (B via intake-report do iteration N+1; C via herança em recon-report do 043). Saída A é o único caminho de append explícito em `docs/lessons.md`.
+
+---
+
+## v3.3.0 — Triage classification (precede A/B/C)
+
+ANTES da inferência A/B/C, classificar feedback em **(category, state)**:
+
+| Categoria | Estado | Saída |
+|---|---|---|
+| bug | ready-for-action | **B** restart fase X |
+| enhancement | ready-for-action | **C** spawn novo workspace |
+| enhancement | wontfix | **A** close + append `_out-of-scope/` |
+| qualquer | needs-info | pausa (status=COMPLETED_AWAITING_HUMAN) |
+| nada | tudo OK | **A** close |
+
+Cada item classificado como B ou C **gera AGENT-BRIEF** (formato:
+`agent-brief-template.md`) que vira input para próxima sessão / spawn.
+
+Enhancement rejeitado (wontfix) registra em
+`<workspace>/_out-of-scope/<conceito>.md` (formato: `out-of-scope-kb.md`).
+
+CLAUDE.md root atualizado por handoff.py em todas as 3 saídas (ver
+`session-handoff-protocol.md` §"Saídas A/B/C e CLAUDE.md root").
+
+Doc canônico: `references/triage-state-machine.md`.

@@ -1,6 +1,6 @@
 # xp-icm-workflow
 
-Skill de orquestração de projetos via filesystem (ICM). v3.0.0-beta5.
+Skill de orquestração de projetos via filesystem (ICM). v3.3.0.
 
 ![tests](https://img.shields.io/badge/tests-502%20passed-brightgreen)
 ![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)
@@ -74,4 +74,27 @@ CI: `.github/workflows/test-skill.yml` — Ubuntu runner com Python 3.13 + bats.
 
 ## Versão
 
-v3.0.0-beta5 — reescrita completa em 7 waves. v2.4 preservada em `references/v2.4-snapshot/`. Promoção a v3.0.0 condicionada aos critérios em `references/smoke-manual-checklist.md`.
+v3.3.0 — reescrita completa em 7 waves. v2.4 preservada em `references/v2.4-snapshot/`. Promoção a v3.0.0 condicionada aos critérios em `references/smoke-manual-checklist.md`.
+
+## v3.3.0 — Patterns adopted from mattpocock/skills
+
+8 patterns adotados (Tier 1 + Tier 2 + dependência) + Design It Twice (T3 promovido):
+
+| Pattern | Doc canônico | Usado em |
+|---|---|---|
+| Project root CLAUDE.md | `references/project-root-claude-md.md` | bootstrap + handoff (cross-session signaling) |
+| AGENT-BRIEF template | `references/agent-brief-template.md` | stage 04 (lead → subagent context injection) |
+| Ubiquitous Language | `references/context-format.md` | stage 01 (grilling) → stages 02+ (consume) |
+| ADR 3-criteria gate | `references/adr-format.md` | stage 02 (decisions) |
+| Diagnose 6-fase | `references/diagnose-protocol.md` | stage 05 fallback (CI fail) |
+| HITL/AFK | `references/task-types-hitl-afk.md` | stage 02 (plan) → stage 03 (waves) → stage 04 (lead) |
+| Triage state machine | `references/triage-state-machine.md` | stage 08 (feedback intake) |
+| OUT-OF-SCOPE kb | `references/out-of-scope-kb.md` | stage 02 (iter>0 check) + stage 08 (wontfix) |
+| Design It Twice | `references/design-it-twice.md` | stage 02 (módulos core) |
+
+Future work (Tier 3): Deep modules + deletion test, Git guardrails hook
+(production tier), PreToolUse anti-/init durante workspace ativo.
+
+Source: [github.com/mattpocock/skills](https://github.com/mattpocock/skills)
+(engineering/triage, engineering/diagnose, engineering/grill-with-docs,
+engineering/tdd, engineering/to-issues, engineering/improve-codebase-architecture).

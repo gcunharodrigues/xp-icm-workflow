@@ -285,3 +285,40 @@ flowchart TD
 | `references/stop-points-canonical.md` | 12 stop points + escalonamento |
 | `references/recovery-wizard.md` | Recuperação se lead crashou mid-wave |
 | `templates/workspace/CLAUDE.md.tpl` | L0 — identidade imutável do workspace |
+---
+
+## v3.3.0 — AGENT-BRIEF format (refactor §2.1)
+
+A partir de v3.3.0, o context injection (§2.1) é estruturado como
+**AGENT-BRIEF** (formato canônico em
+`<workspace>/_references/runtime/agent-brief-template.md`).
+
+Lead session usa CLI determinístico para gerar brief:
+
+```bash
+python {{SKILL_DIR}}/scripts/agent-brief-render.py \
+    --task <slug> \
+    --plan stages/02_design/output/plan.md \
+    --adrs {{PROJECT_ROOT}}/docs/decisions
+```
+
+Output (markdown) é injetado no prompt do Agent tool junto com:
+- L0 (`workspaces/{{WORKSPACE}}/CLAUDE.md`)
+- L2 (`workspaces/{{WORKSPACE}}/stages/04_implementation_waves/CONTEXT.md`)
+- L3 ubiquitous language (`_config/CONTEXT.md`)
+- 4-block-contract-template + lições top-3 + branch setup obrigatório
+
+**Anti-patterns detectados pelo render:** paths absolutos em acceptance
+criteria, line numbers — geram warnings (e exit 1 se `--strict`). Brief
+deve ser **comportamental** (durability over precision), não procedimental.
+
+**HITL handling:** se task é `Type: HITL`, lead **NÃO** spawna subagent.
+Gera AGENT-BRIEF, exibe ao humano, atualiza L1
+`status=COMPLETED_AWAITING_HUMAN, sub_stage=04_wave_N_hitl_pending`,
+SAIR. Próxima sessão (após humano resolver) retoma.
+
+Mapping 4-block ↔ AGENT-BRIEF:
+- O QUE → Summary + Desired behavior
+- COMO → Key interfaces (sem paths)
+- NÃO QUERO → Out of scope
+- VALIDAÇÃO → Acceptance criteria

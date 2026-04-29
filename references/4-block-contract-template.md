@@ -291,3 +291,23 @@ Cobertura 94%.
 | `references/recovery-wizard.md` | Recuperação se ciclo trava no passo 7 sem COMPLETE |
 | `_references/superpowers-summary/test-driven-development-200tok.md` | Sumário TDD |
 | `_references/superpowers-summary/verification-before-completion-200tok.md` | Sumário CI gate |
+
+---
+
+## v3.3.0 — AGENT-BRIEF compatibility
+
+A partir de v3.3.0, todo 4-block deve ser parseável pelo
+`scripts/agent-brief-render.py` em fase 04. Mapping:
+
+| 4-block | AGENT-BRIEF section |
+|---|---|
+| **O QUE:** | `Summary:` (1ª linha) + `Desired behavior:` (corpo) |
+| **COMO:** | `Key interfaces:` (sem paths absolutos / line numbers) |
+| **NÃO QUERO:** | `Out of scope:` |
+| **VALIDAÇÃO:** | `Acceptance criteria:` (lista testável) |
+
+Adicionalmente, o bloco da task no plan.md DEVE ter:
+- `**Type:** AFK` ou `**Type:** HITL` (ver `task-types-hitl-afk.md`)
+- `**Files touched:** path1, path2` (sem line numbers)
+
+Doc canônico do AGENT-BRIEF: `references/agent-brief-template.md`.

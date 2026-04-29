@@ -598,3 +598,77 @@ def test_property_no_subwave_exceeds_cap(num_tasks, cap):
     for wave in sub:
         for sw in wave:
             assert len(sw) <= cap
+
+
+# ============================================================================
+# T2.6 — HITL/AFK classification (subdivide_waves com task_types)
+# ============================================================================
+
+
+def test_subdivide_hitl_isolated_in_own_subwave():
+    """Tasks HITL viram sub-waves cap=1 mesmo com cap maior."""
+    waves = [["a", "b", "c", "d"]]
+    types = {"a": "AFK", "b": "HITL", "c": "AFK", "d": "HITL"}
+    sub = subdivide_waves(waves, cap=5, task_types=types)
+    flat = [s for sw in sub[0] for s in sw]
+    # Todas tasks ainda presentes
+    assert sorted(flat) == ["a", "b", "c", "d"]
+    # HITL tasks ficam sozinhas em suas sub-waves
+    hitl_subs = [sw for sw in sub[0] if sw == ["b"] or sw == ["d"]]
+    assert len(hitl_subs) == 2
+
+
+def test_subdivide_afk_grouped_under_cap():
+    """AFK tasks agrupadas até cap; HITL ficam isoladas após."""
+    waves = [["a", "b", "c", "d", "e"]]
+    types = {"a": "AFK", "b": "AFK", "c": "AFK", "d": "HITL", "e": "AFK"}
+    sub = subdivide_waves(waves, cap=2, task_types=types)
+    # Esperado: [[a, b], [c, e], [d]]
+    afk_subs = [sw for sw in sub[0] if "d" not in sw]
+    hitl_subs = [sw for sw in sub[0] if "d" in sw]
+    # AFK em sub-waves de tamanho <= 2
+    for sw in afk_subs:
+        assert len(sw) <= 2
+    # HITL isolada em cap=1
+    assert len(hitl_subs) == 1
+    assert hitl_subs[0] == ["d"]
+
+
+def test_subdivide_no_types_defaults_to_afk():
+    """Sem task_types, comportamento idêntico ao default (todos AFK)."""
+    waves = [["a", "b", "c"]]
+    sub_with = subdivide_waves(waves, cap=2, task_types={})
+    sub_without = subdivide_waves(waves, cap=2)
+    assert sub_with == sub_without
+
+
+def test_subdivide_all_hitl_each_isolated():
+    """Wave inteira HITL → N sub-waves cap=1."""
+    waves = [["a", "b", "c"]]
+    types = {"a": "HITL", "b": "HITL", "c": "HITL"}
+    sub = subdivide_waves(waves, cap=5, task_types=types)
+    assert sub[0] == [["a"], ["b"], ["c"]]
+
+
+def test_parse_plan_extracts_type_field(tmp_path):
+    """Parser extrai `**Type:**` do bloco. Default AFK quando ausente."""
+    plan = tmp_path / "plan.md"
+    plan.write_text(
+        "# plan\n\n"
+        "## Task task-a:\n\n"
+        "**Type:** HITL\n\n"
+        "### Files touched\n\n"
+        "- src/a.ts\n\n"
+        "### Depends on\n\n"
+        "- nenhum\n\n"
+        "## Task task-b:\n\n"
+        "### Files touched\n\n"
+        "- src/b.ts\n\n"
+        "### Depends on\n\n"
+        "- nenhum\n",
+        encoding="utf-8",
+    )
+    tasks = parse_plan(plan)
+    by_slug = {t.slug: t for t in tasks}
+    assert by_slug["task-a"].type == "HITL"
+    assert by_slug["task-b"].type == "AFK"  # default

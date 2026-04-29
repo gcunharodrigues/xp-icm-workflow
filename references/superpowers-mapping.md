@@ -172,3 +172,28 @@ Para criar/atualizar um sumário 200tok, ver `references/extending-skill.md` §"
 | `references/v2.4-snapshot/superpowers-mapping.md` | Versão anterior (referência histórica) |
 | `templates/_references/superpowers-summary/` | Templates dos 11 sumários |
 | `SKILL.md` §Instruction Priority | Priority order completa (1-5) |
+
+---
+
+## v3.3.0 — Diagnose protocol mapping
+
+Stage 05 (verification) ativa **diagnose 6-fase** quando CI fail OU coverage
+fail. Stage 04 (subagent) pode usar antes de declarar BLOCKED.
+
+NÃO é invocação de skill via Skill tool (anti-superpowers). É protocolo
+inline com referência canônica em `_references/runtime/diagnose-protocol.md`.
+
+Pipeline:
+1. Build feedback loop (THE skill — sem loop, não avança)
+2. Reproduce — confirma symptom exato
+3. Hypothesise — 3-5 ranked falsifiable
+4. Instrument — tag logs `[DEBUG-xxxx]`, debugger > logs
+5. Fix + regression test (se há correct seam)
+6. Cleanup + post-mortem
+
+Output stage 05: `output/diagnose-report.md` com repro evidence,
+hypotheses, root cause, fix, test path.
+
+Para bugs HITL: `_config/hitl-loop.template.sh` template bash.
+
+Doc canônico: `references/diagnose-protocol.md`.

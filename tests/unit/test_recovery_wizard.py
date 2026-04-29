@@ -474,3 +474,119 @@ class TestCLI:
                 "--workspace", str(ws), "--apply", "Q"
             ])
         assert exc_info.value.code != 0
+
+
+# ============================================================================
+# G5 — CLAUDE_MD_ROOT_STALE / CLAUDE_MD_ROOT_MISSING (T1.1)
+# ============================================================================
+
+
+CODE_CLAUDE_MD_ROOT_STALE = recovery_wizard.CODE_CLAUDE_MD_ROOT_STALE
+CODE_CLAUDE_MD_ROOT_MISSING = recovery_wizard.CODE_CLAUDE_MD_ROOT_MISSING
+
+
+def _make_minimal_workspace(tmp_path: Path, *, stage_atual: str = "03",
+                             status: str = "IN_PROGRESS") -> Path:
+    """Cria workspace mínimo com L1 válido em tmp_path/project/workspaces/001-test."""
+    project = tmp_path / "project"
+    workspace = project / "workspaces" / "001-test"
+    workspace.mkdir(parents=True)
+    (workspace / "_config").mkdir()
+    # profile-effective.yaml com hash conhecido
+    eff = workspace / "_config" / "profile-effective.yaml"
+    eff.write_text("dummy: data\n", encoding="utf-8")
+    h = hashlib.sha256(eff.read_bytes()).hexdigest()
+    # L1 com stage_atual e workspace
+    l1 = workspace / "CONTEXT.md"
+    l1.write_text(
+        f"---\n"
+        f"workspace: '001-test'\n"
+        f"workspace_branch: 'workspace/001-test'\n"
+        f"profile_base: 'app_web_backend'\n"
+        f"tier: 'development'\n"
+        f"profile_effective_hash: '{h}'\n"
+        f"project_root: '{project}'\n"
+        f"stage_atual: '{stage_atual}'\n"
+        f"sub_stage: '{stage_atual}_in_progress'\n"
+        f"status: '{status}'\n"
+        f"iteration: 0\n"
+        f"history: []\n"
+        f"---\n\n# L1\n",
+        encoding="utf-8",
+    )
+    return workspace
+
+
+def test_claude_md_root_missing_when_no_file(tmp_path, mock_git):
+    """workspace IN_PROGRESS + project_root sem CLAUDE.md → MISSING detectado."""
+    workspace = _make_minimal_workspace(tmp_path)
+    project = workspace.parent.parent
+    incs = detect_inconsistencies(workspace, project_root=project)
+    codes = [i.code for i in incs]
+    assert CODE_CLAUDE_MD_ROOT_MISSING in codes
+
+
+def test_claude_md_root_missing_when_no_block(tmp_path, mock_git):
+    """CLAUDE.md existe mas sem bloco do workspace → MISSING."""
+    workspace = _make_minimal_workspace(tmp_path)
+    project = workspace.parent.parent
+    (project / "CLAUDE.md").write_text(
+        "# Project\n\n<!-- ICM-START -->\n## ICM\n(empty)\n<!-- ICM-END -->\n",
+        encoding="utf-8",
+    )
+    incs = detect_inconsistencies(workspace, project_root=project)
+    codes = [i.code for i in incs]
+    assert CODE_CLAUDE_MD_ROOT_MISSING in codes
+
+
+def test_claude_md_root_stale_when_stage_diverges(tmp_path, mock_git):
+    """L1.stage_atual=03 mas bloco no CLAUDE.md mostra 02 → STALE."""
+    workspace = _make_minimal_workspace(tmp_path, stage_atual="03")
+    project = workspace.parent.parent
+
+    # Lazy import handoff para escrever bloco
+    sys.path.insert(0, str(SCRIPT_DIR))
+    import handoff
+    block = handoff.WorkspaceBlock(
+        workspace="001-test", profile="app_web_backend", tier="development",
+        stage_atual="02", stage_dir="02_design", sub_stage="02_in_progress",
+        iteration=0, status="IN_PROGRESS", last_action="stale", last_action_at="x",
+        next_action="x",
+    )
+    handoff.update_project_claude_md(project, block, "/skill")
+
+    incs = detect_inconsistencies(workspace, project_root=project)
+    codes = [i.code for i in incs]
+    assert CODE_CLAUDE_MD_ROOT_STALE in codes
+
+
+def test_claude_md_root_consistent_no_inconsistency(tmp_path, mock_git):
+    """L1 e bloco em sync → não detecta nada."""
+    workspace = _make_minimal_workspace(tmp_path, stage_atual="03")
+    project = workspace.parent.parent
+
+    sys.path.insert(0, str(SCRIPT_DIR))
+    import handoff
+    block = handoff.WorkspaceBlock(
+        workspace="001-test", profile="app_web_backend", tier="development",
+        stage_atual="03", stage_dir="03_wave_planner", sub_stage="03_in_progress",
+        iteration=0, status="IN_PROGRESS", last_action="ok", last_action_at="x",
+        next_action="x",
+    )
+    handoff.update_project_claude_md(project, block, "/skill")
+
+    incs = detect_inconsistencies(workspace, project_root=project)
+    codes = [i.code for i in incs]
+    assert CODE_CLAUDE_MD_ROOT_STALE not in codes
+    assert CODE_CLAUDE_MD_ROOT_MISSING not in codes
+
+
+def test_claude_md_root_skipped_when_status_not_in_progress(tmp_path, mock_git):
+    """status=COMPLETED → não dispara MISSING/STALE."""
+    workspace = _make_minimal_workspace(tmp_path, status="COMPLETED")
+    project = workspace.parent.parent
+    # sem CLAUDE.md
+    incs = detect_inconsistencies(workspace, project_root=project)
+    codes = [i.code for i in incs]
+    assert CODE_CLAUDE_MD_ROOT_MISSING not in codes
+    assert CODE_CLAUDE_MD_ROOT_STALE not in codes
