@@ -38,7 +38,7 @@ This file provides guidance ...
 |---|---|---|
 | Bootstrap de workspace novo | `bootstrap.py:_render_project_claude_md` | Adiciona bloco do novo workspace à região ICM. Brownfield: preserva resto byte-a-byte. |
 | Handoff de transição de stage | `handoff.py:update_project_claude_md` | Atualiza só o bloco do workspace dono da transição. Demais blocos intactos. |
-| Saída A (close), Saída C (spawn) | `handoff.py:remove_workspace_block` | Remove o bloco do workspace que finalizou. Se zero workspaces ativos restam, `deactivate_project_claude_md` substitui região por mensagem "nenhum ativo". |
+| Saída A (close), Saída C (spawn) | `handoff.py:remove_workspace_block` | Remove o bloco do workspace que finalizou. Se zero workspaces ativos restam, `deactivate_project_claude_md` substitui região por mensagem "nenhum ativo" **e migra o CLAUDE.md root para a base branch via `.icm-main/`** (v3.4.1). |
 | Recovery wizard | `recovery-wizard.py` (Plan A) | Regenera bloco a partir do L1 quando detecta `CLAUDE_MD_ROOT_STALE` ou `CLAUDE_MD_ROOT_MISSING`. |
 
 ## Algoritmo de inserção idempotente (brownfield)
@@ -86,7 +86,27 @@ Exemplo:
 
 | Saída | Função | Estado pós-saída |
 |---|---|---|
-| **A** (close) | `remove_workspace_block(workspace)` | Bloco do workspace removido. Se era o último: região ICM substituída por "nenhum ativo + rode /init". |
+| **A** (close) | `remove_workspace_block(workspace)` | Bloco do workspace removido. Se era o último: região ICM substituída por "nenhum ativo + rode /init"; CLAUDE.md root também é copiado para `.icm-main/CLAUDE.md` + commit em base branch (v3.4.1). |
+
+### Owner transition na saída A (v3.4.1)
+
+Durante o ciclo ICM, o `<project_root>/CLAUDE.md` vive na **workspace branch**
+(escrito por bootstrap/handoff). Quando a workspace branch é arquivada/deletada
+após saída A, esse CLAUDE.md sumiria sem deixar rastro na base.
+
+Para garantir continuidade, `deactivate_project_claude_md` (chamado quando
+zero workspaces ativos restam) faz:
+
+1. Reescreve `<project_root>/CLAUDE.md` com região idle (workspace branch tree).
+2. Copia o mesmo conteúdo para `<project_root>/.icm-main/CLAUDE.md` e commita
+   na base branch via worktree (`cd .icm-main && git commit ...`).
+
+Resultado: dashboard idle persistido tanto na workspace branch (vai sumir
+quando branch deletada) quanto na base branch (sobrevive). Sessões futuras
+no project_root abertas em base branch lêem o idle direto.
+
+Idempotente: re-execução com mesmo conteúdo não gera commit extra
+(`git status` detecta no-op).
 | **B** (restart fase X, iteration++) | `update_project_claude_md(workspace, stage_target=X, iteration=N+1, ...)` | Bloco atualizado mostrando nova fase e iteration. |
 | **C** (spawn novo workspace) | `remove_workspace_block(workspace)` na sessão A; bootstrap em sessão B adiciona bloco novo | Bloco do workspace dono removido. Sessão B (separada) bootstrappa novo workspace e adiciona seu bloco. |
 

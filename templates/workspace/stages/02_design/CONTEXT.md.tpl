@@ -211,6 +211,13 @@ Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
   Agent tool calls em paralelo com constraints distintos (minimize
   interface / maximize flexibility / optimize common caller). Output em
   `output/design-alternatives-<module>.md` + decisão final em decisions.md.
+- **Deep modules (`_references/runtime/deep-modules.md`, v3.4.1):** para
+  cada módulo novo introduzido pelo design, validar checklist de 5 itens:
+  interface mínima (≤5 métodos), information hiding (API não expõe estado),
+  single responsibility (nome sem and/or), deletion test (blast radius
+  <30% callers precisarem adaptar lógica), alternativa considerada em ADR.
+  ≥2 itens falhando = voltar à prancheta. Skip para bug fix puro ou módulo
+  trivial single-function.
 
 ## Ubiquitous Language
 

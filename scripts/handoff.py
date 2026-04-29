@@ -575,6 +575,11 @@ def deactivate_project_claude_md(
 
     Usado após Saída A quando não restam workspaces ativos. Conteúdo fora
     dos marcadores preservado intacto.
+
+    v3.4.1: também migra CLAUDE.md root para a base branch via worktree
+    `.icm-main/`. Sem isso, o CLAUDE.md idle some quando workspace branch
+    é deletada (todo dashboard ICM perdido). Doc:
+    references/project-root-claude-md.md.
     """
     claude_md = project_root / "CLAUDE.md"
     region_inner = _render_icm_idle(closed_at)
@@ -584,20 +589,69 @@ def deactivate_project_claude_md(
         # Greenfield idle: criar arquivo com região idle
         content = _greenfield_template(project_root.name, region_outer.rstrip("\n"))
         _atomic_write(claude_md, content)
-        return claude_md
-
-    current = claude_md.read_text(encoding="utf-8")
-    start = current.find(ICM_START_MARKER)
-    end = current.find(ICM_END_MARKER)
-    if start < 0 or end <= start:
-        new_content = _insert_region_after_first_h1(current, region_outer)
     else:
-        end_after = end + len(ICM_END_MARKER)
-        if end_after < len(current) and current[end_after] == "\n":
-            end_after += 1
-        new_content = current[:start] + region_outer + current[end_after:]
-    _atomic_write(claude_md, new_content)
+        current = claude_md.read_text(encoding="utf-8")
+        start = current.find(ICM_START_MARKER)
+        end = current.find(ICM_END_MARKER)
+        if start < 0 or end <= start:
+            new_content = _insert_region_after_first_h1(current, region_outer)
+        else:
+            end_after = end + len(ICM_END_MARKER)
+            if end_after < len(current) and current[end_after] == "\n":
+                end_after += 1
+            new_content = current[:start] + region_outer + current[end_after:]
+        _atomic_write(claude_md, new_content)
+
+    # v3.4.1: persistir mesma versao idle em .icm-main/CLAUDE.md (base branch)
+    # para sobreviver delecao da workspace branch.
+    _persist_claude_md_to_base_via_worktree(project_root, claude_md)
+
     return claude_md
+
+
+def _persist_claude_md_to_base_via_worktree(
+    project_root: Path,
+    claude_md_src: Path,
+) -> None:
+    """Copia CLAUDE.md do project_root para `.icm-main/CLAUDE.md` + commit em base.
+
+    Idempotente: se conteúdo identico, git status detecta e nao commita.
+    Silently no-op se `.icm-main/` ausente (projeto pre-v3.4.0 ou worktree
+    removido manualmente).
+
+    Doc: references/worktree-model.md (v3.4.0) +
+    references/project-root-claude-md.md (owner transition saída A).
+    """
+    import subprocess  # noqa: PLC0415
+
+    worktree = project_root / ".icm-main"
+    if not worktree.is_dir():
+        return  # worktree ausente — projeto provavelmente pre-v3.4.0
+
+    if not claude_md_src.is_file():
+        return
+
+    dst = worktree / "CLAUDE.md"
+    src_text = claude_md_src.read_text(encoding="utf-8")
+    if dst.exists() and dst.read_text(encoding="utf-8") == src_text:
+        return  # idempotente
+
+    dst.write_text(src_text, encoding="utf-8")
+
+    # Commit em base branch via worktree linkada
+    try:
+        subprocess.run(
+            ["git", "-C", str(worktree), "add", "CLAUDE.md"],
+            check=False, capture_output=True, text=True,
+        )
+        subprocess.run(
+            ["git", "-C", str(worktree), "commit", "--no-verify", "-m",
+             "docs(claude.md): persist idle/active state to base (saida A handoff)"],
+            check=False, capture_output=True, text=True,
+        )
+    except Exception:
+        # Falha de git nao deve quebrar handoff — humano pode commitar manualmente
+        pass
 
 
 def list_active_workspace_ids(project_root: Path) -> list[str]:

@@ -4,6 +4,67 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.4.1 — Backlog (migration, handoff saída A, Tier 3) (2026-04-29)
+
+### Why v3.4.1
+
+Patch sequência da v3.4.0 que finaliza items adiados do KICKOFF
+(deferred 4+5) e drena Tier 3 backlog herdado da v3.3.0.
+
+### Mudanças
+
+**1. Migration script v3.3 → v3.4 (deferred 4):**
+- Novo `scripts/migrate-v3.3-to-v3.4.py`. Detecta workspaces v3.3.x via
+  `icm_skill_version` no L0, cria `.icm-main/` worktree, garante
+  `docs/decisions/.keep` na base branch, atualiza `.gitignore`, bump
+  `icm_skill_version` para 3.4.0. CLI: `--project-root <path>
+  [--workspace <NNN-slug>] [--update-paths] [--dry-run]`.
+- Idempotente: rerodar não causa dano. Workspaces v3.4.x são skip.
+- 24 unit tests em `tests/unit/test_migrate_v3_3_to_v3_4.py`.
+
+**2. Handoff saída A migra CLAUDE.md root (deferred 5):**
+- `handoff.py:deactivate_project_claude_md` agora persiste o CLAUDE.md
+  idle também na base branch via `.icm-main/CLAUDE.md` + commit.
+- Sem isso, o CLAUDE.md root sumiria quando workspace branch fosse
+  deletada após arquivamento.
+- Idempotente: re-execução com mesmo conteúdo não gera commit extra.
+- Doc canônico: `references/project-root-claude-md.md` (seção "Owner
+  transition na saída A").
+- 4 unit tests em `tests/unit/test_handoff_saida_a_v3_4_1.py`.
+
+**3. Tier 3 backlog drenado:**
+- **Deep modules + deletion test** (`references/deep-modules.md`):
+  doc canônico de architecture review para stage 02. 5-item checklist:
+  interface mínima, information hiding, single responsibility, deletion
+  test, alternativa em ADR. Adicionado a `runtime_refs` do bootstrap +
+  L2 stage 02. Smoke test em `tests/unit/test_deep_modules_doc.py`.
+- **Git guardrails hook** (`templates/.claude/hooks/block-dangerous-git.sh`):
+  PreToolUse hook que bloqueia push --force, reset --hard, clean -fd,
+  branch -D, checkout/restore `.`. Instalado APENAS em workspaces
+  tier=production (condicional em `bootstrap.py`).
+- **PreToolUse anti-/init** (`templates/.claude/hooks/block-init-during-icm.sh`):
+  bloqueia invocação de `/init` enquanto workspace ICM ativo. Mitigação
+  G14. Instalado em todos os workspaces.
+- **Zoom-out workflow stage 00**: section structured em
+  `templates/workspace/stages/00_recon/CONTEXT.md.tpl` guiando agente
+  ao encontrar módulo desconhecido (Grep callers → caller raiz → anotar
+  glossário → não documentar agora → limite 3 níveis).
+
+**4. Tests opcionais drenados:**
+- `test_v3_3_docs_smoke.py` (12 tests): parsability + estrutura mínima
+  de `adr-format.md`, `diagnose-protocol.md`, `triage-state-machine.md`,
+  e `templates/workspace/_config/CONTEXT.md.tpl` (T1.3).
+- `test_deep_modules_doc.py` (4 tests).
+
+### Backlog para v3.5+
+
+- Smoke test manual end-to-end em projeto real (greenfield/brownfield/
+  multi-workspace) — checklist em `references/smoke-manual-checklist.md`,
+  exige projeto real fora do escopo de unit tests.
+- `tests/integration/test_pre_commit_whitelist.bats` (CI Ubuntu only).
+
+---
+
 ## v3.4.0 — Cross-branch worktree model `.icm-main/` (2026-04-29)
 
 ### Why v3.4.0

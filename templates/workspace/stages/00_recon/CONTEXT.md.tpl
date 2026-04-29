@@ -167,3 +167,37 @@ Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
   `_config/CONTEXT.md`).
 - **Output:** `_config/CONTEXT.md` é criado vazio pelo bootstrap; stage 01
   populará.
+
+### Zoom-out workflow (v3.4.1) — quando encontra módulo desconhecido
+
+Você está fazendo recon do projeto e tropeçou num arquivo/módulo cujo
+propósito não está claro pelo conteúdo direto. NÃO mergulhe nele linha-a-linha.
+Faça zoom-out:
+
+1. **Mapear callers** — execute `Grep` ou Bash:
+   ```
+   Grep -r "from <module>" {{PROJECT_ROOT}}/.icm-main/src/
+   Grep -r "import <module>" {{PROJECT_ROOT}}/.icm-main/src/
+   ```
+   Liste 3-5 callers principais. Não cite todos — só os representativos.
+
+2. **Identificar 1 caller que parece "raiz"** — geralmente o que está no
+   topo do call graph (menos chamado por outros). Lê esse caller primeiro.
+
+3. **Anotar termos novos no recon-report** — quaisquer nomes técnicos
+   (classes, funções, conceitos de domínio) que apareceram durante esse
+   zoom-out devem virar candidatos a vocabulário ubíquo. Adicione seção
+   `### Glossary candidates` no `output/recon-report.md`. Stage 01 vai
+   resolver para entradas oficiais em `_config/CONTEXT.md`.
+
+4. **Não documente o módulo agora** — recon não é design. Apenas registre:
+   "Módulo X é tocado por callers A, B, C. Aprofundar em stage 01 (discovery)
+   se relevante para o objetivo do workspace." Pular detalhes evita
+   spending de contexto em código irrelevante.
+
+5. **Limite explícito** — se zoom-out exigir mais de 3 níveis de
+   indireção (caller → caller → caller), pare. Anote no recon-report:
+   "Profundidade > 3 — investigação adiada para stage 01 sob demanda".
+
+Anti-pattern: ler arquivo desconhecido linha-a-linha sem contexto. Custa
+contexto sem ganho proporcional. Recon é mapa, não exploração.

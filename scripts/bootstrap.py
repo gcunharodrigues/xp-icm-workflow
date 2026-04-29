@@ -29,7 +29,7 @@ from typing import Any
 # Constantes
 # ============================================================================
 
-SKILL_VERSION = "3.4.0"  # template prepends `v`
+SKILL_VERSION = "3.4.1"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
@@ -529,6 +529,7 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "triage-state-machine.md",        # T2.7
         "out-of-scope-kb.md",             # T2.8
         "design-it-twice.md",             # T3 — parallel interface design
+        "deep-modules.md",                # T3 — architecture review (v3.4.1)
     )
     refs_src = skill_root / "references"
     for fname in runtime_refs:
@@ -609,12 +610,18 @@ def _install_hooks(project_root: Path, skill_root: Path) -> None:
 
 
 _WORKSPACE_HOOK_FILES: tuple[str, ...] = (
-    "context-check.sh",        # PostToolUse — registrado em workspace settings.local.json
-    "icm-session-check.sh",    # SessionStart — registro vive em project_root settings.local.json (v3.4.0)
+    "context-check.sh",            # PostToolUse — registrado em workspace settings.local.json
+    "icm-session-check.sh",        # SessionStart — registro vive em project_root settings.local.json (v3.4.0)
+    "block-init-during-icm.sh",    # PreToolUse — bloqueia /init enquanto workspace ICM ativo (v3.4.1)
+)
+
+# Hooks instalados apenas para tier=production (v3.4.1)
+_PRODUCTION_HOOK_FILES: tuple[str, ...] = (
+    "block-dangerous-git.sh",      # PreToolUse — bloqueia push --force, reset --hard, etc.
 )
 
 
-def _install_context_hook(project_root: Path, skill_root: Path, workspace: str) -> None:
+def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, tier: str = "") -> None:
     """Idempotente: instala hooks ICM do workspace + registro PostToolUse.
 
     Copia hooks do template da skill para workspaces/<workspace>/.claude/hooks/:
@@ -638,8 +645,12 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str) 
         sys.stderr.write(f"warning: nao foi possivel criar {hooks_dir}: {exc}\n")
         return
 
-    # Copia todos os hooks do workspace
-    for hook_filename in _WORKSPACE_HOOK_FILES:
+    # Copia todos os hooks do workspace + production hooks se aplicavel
+    hooks_to_install = list(_WORKSPACE_HOOK_FILES)
+    if tier == "production":
+        hooks_to_install.extend(_PRODUCTION_HOOK_FILES)
+
+    for hook_filename in hooks_to_install:
         src_hook = skill_root / "templates" / ".claude" / "hooks" / hook_filename
         dst_hook = hooks_dir / hook_filename
         if not src_hook.exists():
@@ -1130,7 +1141,8 @@ def bootstrap(
     # dispara handoff antecipado obrigatorio. Instalado apos git hooks.
     # v3.4.0: tambem copia icm-session-check.sh (SessionStart) — registro
     # vive em project_root settings.local.json renderizado abaixo.
-    _install_context_hook(project_root, skill_root, workspace)
+    # v3.4.1: tier=production tambem ganha block-dangerous-git.sh.
+    _install_context_hook(project_root, skill_root, workspace, tier=tier)
 
     # v3.4.0: renderiza project_root/.claude/settings.local.json.example
     # com <NNN-slug> resolvido. Humano copia manualmente para .local.json

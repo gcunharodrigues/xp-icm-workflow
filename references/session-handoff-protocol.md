@@ -161,6 +161,20 @@ gera erro git → sessão aborta com `BLOCKED_ERROR`. Recovery wizard
 própria região. Após Saída A do último workspace, `/init` opera livremente
 (região ICM já está substituída por mensagem idle).
 
+### Saída A migra CLAUDE.md root para base branch (v3.4.1)
+
+A partir da v3.4.1, quando Saída A (close) finaliza o último workspace ativo,
+`deactivate_project_claude_md` faz dois writes:
+
+1. `<project_root>/CLAUDE.md` (workspace branch tree) — região idle.
+2. `<project_root>/.icm-main/CLAUDE.md` (base branch via worktree) — mesmo
+   conteúdo + commit em base.
+
+Sem o passo 2, o CLAUDE.md root sumiria quando a workspace branch fosse
+deletada após arquivamento, deixando o project_root sem nenhum dashboard
+ICM persistente. Doc canônico: `references/project-root-claude-md.md`
+(seção "Owner transition na saída A").
+
 ## Stage 04 (waves) — exceção
 
 Stage 04 = **1 sessão lead por wave**. Wave 1 termina, lead handoff pra próxima sessão de wave 2 (mesmo stage 04). Sub_stage vai de `04_wave_1_completed` pra `04_wave_2_in_progress`.
