@@ -62,7 +62,7 @@ Roda o wave-planner determinístico em cima do `plan.md` da fase 02 design. Cons
      --workspace-context {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md
    ```
    Se skip threshold bater (≤2 tasks ou ≤1 wave) → sai com `SKIPPED` no frontmatter. Se `--llm-response` fornecido → valida e aplica. Se nenhum response fornecido → script imprime prompt formatado (exit 2); humano/algoritmo externo roda LLM e repassa JSON via `--llm-response`. `--update-wave-plan` atualiza frontmatter do `wave-plan.md` com `llm_review: APPROVE|PROPOSE_CHANGES|SKIPPED` e incrementa `llm_review_iterations`.
-7. Atualizar L1: sub_stage `03_completed`, status `COMPLETED_AWAITING_HUMAN`, append `history`. Commit atômico.
+7. **Handoff de fim de stage:** seguir protocolo gate-inline na seção `## End of stage handoff` deste L2 (Fase 1 WORK_DONE → gate humano → Fase 2 GATE_APPROVED).
 
 ## Outputs
 
@@ -99,39 +99,79 @@ Skill formal: `superpowers:dispatching-parallel-agents` (escape hatch — só se
 - **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`.
 - **Aprovação para transitar:** humano aprova explicitamente; sub_stage vira `03_completed` no próximo commit.
 
-## End of stage handoff (1-stage-1-sessão)
+## End of stage handoff (gate inline + 1-stage-1-sessão)
 
-Ao concluir este estágio, sessão deve:
+Handoff é split em DUAS fases dentro da MESMA sessão. Gate humano fica entre elas — `_kickoff.md` só é renderizado APÓS aprovação. Bug v3.4.2 corrigido: render+exit prematuros antes da aprovação criavam loop "kickoff → user aprova em sessão nova → kickoff de novo". Doc canônico: `<skill_root>/references/session-handoff-protocol.md`.
+
+### Fase 1: WORK_DONE (após outputs prontos)
 
 1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
    - `sub_stage = 03_completed`
-   - `status = COMPLETED_AWAITING_HUMAN` (ou `IN_PROGRESS` se transição automática pro próximo stage)
-   - `last_transition.from = 03_completed`
-   - `last_transition.to = 04_wave_1_in_progress` (ou conforme `next_stage` do frontmatter — entrada em fase 04 começa pela wave 1)
+   - `status = COMPLETED_AWAITING_HUMAN`
+   - `last_transition.from = 03_in_progress`
+   - `last_transition.to = 03_completed`
    - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note}`
+   - `history` append: `{at, event: "stage_transition", from: "03_in_progress", to: "03_completed", commit_sha, note: "work done, awaiting gate"}`
 
-2. **Renderizar `_kickoff.md`** no stage seguinte:
-   - Path: `<workspace>/stages/04_implementation_waves/_kickoff.md`
-   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
-   - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
-   - Corpo: prev_outputs com summary + prev_decisions + pending pra próximo stage (incluindo wave 1 a executar)
-
-3. **Commit atômico** (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+2. **Commit atômico 1/2** (outputs + L1; pre-commit hook valida atomicidade):
    ```
-   workspace <NNN>: stage 03 completo + kickoff stage 04
+   workspace <NNN>: stage 03 work done, awaiting gate
    ```
-   Files no commit: outputs do stage atual + L1 + `_kickoff.md` do próximo.
+   Files: outputs do stage atual + L1. **NÃO** inclui `_kickoff.md` (não renderizado ainda).
 
-4. **Imprimir KICKOFF block verbal** pro user (copy-paste). Template (substitua placeholders):
+3. **Imprimir prompt de gate** pro humano. NÃO sair da sessão. NÃO renderizar `_kickoff.md`:
 
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ✅ Stage 03 (wave_planner) COMPLETO — workspace <NNN-slug>
+   ✅ Stage 03 (wave_planner) trabalho COMPLETO — workspace <NNN-slug>
+
+   Outputs prontos pra revisão:
+     - <lista de paths>
+
+   L1: sub_stage=03_completed, status=COMPLETED_AWAITING_HUMAN
+   Commit 1/2: <sha>
+
+   🛑 Gate humano: revise wave-plan.md (cap aplicado, ambiguidades resolvidas).
+   Responda no chat:
+     - "aprovado" / "ok prosseguir 04" → renderizo kickoff e saio
+     - "ajustar X" → volto ao trabalho com seu pedido (status=IN_PROGRESS)
+     - "abort" → marco workspace BLOCKED_ERROR
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+4. **AGUARDAR resposta humana** na MESMA sessão.
+
+### Fase 2: GATE_APPROVED (após humano responder "aprovado")
+
+5. **Atualizar L1** (segunda transição — entrada em fase 04 começa pela wave 1):
+   - `stage_atual = 04`
+   - `sub_stage = 04_wave_1_in_progress`
+   - `status = IN_PROGRESS`
+   - `last_transition.from = 03_completed`
+   - `last_transition.to = 04_wave_1_in_progress`
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{at, event: "stage_transition", from: "03_completed", to: "04_wave_1_in_progress", commit_sha, note: "gate approved by human"}`
+
+6. **Renderizar `_kickoff.md`** no stage seguinte:
+   - Path: `<workspace>/stages/04_implementation_waves/_kickoff.md`
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
+   - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
+   - Corpo: prev_outputs + prev_decisions + pending pra próximo stage (incluindo wave 1 a executar)
+
+7. **Commit atômico 2/2** (kickoff + L1):
+   ```
+   workspace <NNN>: gate aprovado, kickoff stage 04
+   ```
+   Files: `_kickoff.md` do próximo + L1 atualizado.
+
+8. **Imprimir KICKOFF block verbal** pro user (copy-paste pra próxima sessão):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Stage 03 (wave_planner) GATE APROVADO — workspace <NNN-slug>
 
    Workspace atualizado em commit <sha>:
-     - L1: stage_atual=04, sub_stage=04_wave_1_in_progress
-     - Outputs: <lista>
+     - L1: stage_atual=04, sub_stage=04_wave_1_in_progress, status=IN_PROGRESS
      - Kickoff: stages/04_implementation_waves/_kickoff.md gerado
 
    🔄 KICKOFF próxima sessão — copy/paste:
@@ -149,9 +189,20 @@ Ao concluir este estágio, sessão deve:
    no project_root, depois cole o prompt acima.
    ```
 
-5. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
+9. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
 
-Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+### Resposta "ajustar X" (gate rejeitado)
+
+Se humano responder texto livre pedindo ajuste:
+- Atualizar L1: `status = IN_PROGRESS`, append history `{event: "gate_rejected", note: "humano pediu ajuste: X"}`. Sub_stage permanece `03_completed` (volta a `03_in_progress` se mudança não-trivial).
+- Voltar ao trabalho conforme pedido.
+- Quando refizer outputs, voltar à Fase 1 (novo commit 1/2 + novo gate prompt).
+
+### Resposta "abort"
+
+Se humano responder "abort":
+- Atualizar L1: `status = BLOCKED_ERROR`, append history `{event: "blocked_error", error_type: "human_abort", note: "humano abortou em gate"}`.
+- Commit + sair. Workspace fica em BLOCKED_ERROR aguardando intervenção manual.
 
 ---
 

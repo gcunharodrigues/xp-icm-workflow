@@ -55,9 +55,7 @@ Finaliza ciclo de implementação: integra a `workspace_branch` rebased em `base
    - B: push da branch + `gh pr create` com link para review-report.
    - C: `git tag -a v<X>.<Y>.<Z>` + push de tag.
 6. **Escrever `output/merge-report.md`:** decisão tomada (A/B/C), comandos executados, commit_sha resultante (merge commit, PR URL, ou tag), status do CI pós-merge se aplicável.
-7. **Atualizar L1:** `sub_stage: "07_completed"`, depois transita imediatamente `stage_atual: "08"`, `sub_stage: "08_in_progress"`, `status: COMPLETED_AWAITING_HUMAN` (workspace ativo aguardando feedback humano). Append `history` 2 eventos: `stage_transition from:07_in_progress to:07_completed` + `stage_transition from:07_completed to:08_in_progress`. Commit atômico.
-8. **Render `_kickoff.md` em stage 08** com prev_outputs (merge-report) + prev_decisions_summary (merge feito + commit_sha). Próxima sessão (disparada quando user voltar com feedback) lê este kickoff.
-9. **Gate humano final do merge:** humano confirma merge-report. Workspace transita pra 08 (não fecha como COMPLETED — fechamento só em stage 08-A).
+7. **Handoff de fim de stage:** seguir protocolo gate-inline na seção `## End of stage handoff` deste L2 (Fase 1 WORK_DONE → gate humano sobre merge-report → Fase 2 GATE_APPROVED com auto-transição imediata 07→08). Stage 07 é especial: após gate aprovado, workspace transita imediatamente pra stage 08 com `status: COMPLETED_AWAITING_HUMAN` (workspace fica vivo aguardando feedback do mundo real). Workspace só fecha (`COMPLETED`) em stage 08 saída A.
 
 ## Outputs
 
@@ -108,41 +106,85 @@ Skill formal (escape hatch): `superpowers:finishing-a-development-branch`.
 - **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`. Pós-merge, CI da `base_branch` valida o estado integrado.
 - **Aprovação para transitar:** humano confirma merge-report; sub_stage vira `07_completed` e status transita imediatamente para `COMPLETED_AWAITING_HUMAN` (stage 08). `COMPLETED` NÃO é setado neste stage — fechamento definitivo só em stage 08 saída A.
 
-## End of stage handoff (1-stage-1-sessão)
+## End of stage handoff (gate inline + auto-transição 07→08)
 
-Ao concluir este estágio, sessão deve:
+Stage 07 tem gate-inline + auto-transição pra 08 (sem segundo gate). Bug v3.4.2 corrigido: render+exit prematuros antes da aprovação do merge-report criavam loop. Stage 08 NÃO tem gate de saída próprio — `COMPLETED_AWAITING_HUMAN` em 08 significa "aguardando feedback do mundo real", não "aguardando approval de output". Doc canônico: `<skill_root>/references/session-handoff-protocol.md`.
+
+### Fase 1: WORK_DONE (após merge executado + merge-report.md escrito)
 
 1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
-   - Primeira transição: `sub_stage = 07_completed`
-   - Segunda transição imediata: `stage_atual = "08"`, `sub_stage = 08_in_progress`, `status = COMPLETED_AWAITING_HUMAN`
+   - `sub_stage = 07_completed`
+   - `status = COMPLETED_AWAITING_HUMAN`
+   - `last_transition.from = 07_in_progress`
+   - `last_transition.to = 07_completed`
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{event: "stage_transition", from: "07_in_progress", to: "07_completed", commit_sha, note: "merge done, awaiting gate"}`
+
+2. **Commit atômico 1/2** (outputs + L1; **NÃO** inclui `_kickoff.md`):
+   ```
+   workspace <NNN>: stage 07 merge done, awaiting gate
+   ```
+   Files: `output/merge-report.md` + L1.
+
+3. **Imprimir prompt de gate** pro humano. NÃO sair. NÃO renderizar `_kickoff.md`:
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Stage 07 (merge) trabalho COMPLETO — workspace <NNN-slug>
+   Decisão A/B/C: <decisão executada>. commit_sha/PR/tag: <ref>.
+
+   Outputs prontos pra revisão:
+     - stages/07_merge/output/merge-report.md
+
+   L1: sub_stage=07_completed, status=COMPLETED_AWAITING_HUMAN
+   Commit 1/2: <sha>
+
+   🛑 Gate humano: confirme merge-report.md.
+   Responda no chat:
+     - "aprovado" / "ok transita 08" → renderizo kickoff de 08 e saio
+     - "ajustar X" → volto ao trabalho com seu pedido (status=IN_PROGRESS)
+     - "abort" → marco workspace BLOCKED_ERROR
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+4. **AGUARDAR resposta humana** na MESMA sessão.
+
+### Fase 2: GATE_APPROVED (após humano confirmar) — auto-transição 07→08
+
+Stage 07 é único: após gate aprovado, workspace TRANSITA imediatamente pra stage 08 com status `COMPLETED_AWAITING_HUMAN` (semântica diferente: workspace fica vivo aguardando feedback do mundo real, não review de output). Sem segundo gate.
+
+5. **Atualizar L1** (segunda transição — auto-transit 07→08):
+   - `stage_atual = 08`
+   - `sub_stage = 08_in_progress`
+   - `status = COMPLETED_AWAITING_HUMAN` (workspace ativo aguardando feedback humano após uso real)
    - `last_transition.from = 07_completed`
    - `last_transition.to = 08_in_progress`
    - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append 2 eventos: `stage_transition 07_in_progress→07_completed` + `stage_transition 07_completed→08_in_progress`
+   - `history` append: `{event: "stage_transition", from: "07_completed", to: "08_in_progress", commit_sha, note: "gate approved, auto-transit 07→08 (workspace alive awaiting real-world feedback)"}`
 
-2. **Renderizar `_kickoff.md` em `stages/08_feedback_intake/_kickoff.md`** via `python {{SKILL_DIR}}/scripts/handoff.py render`. Campos:
+6. **Renderizar `_kickoff.md`** em `<workspace>/stages/08_feedback_intake/_kickoff.md` via `python {{SKILL_DIR}}/scripts/handoff.py render`. Campos:
    - `prev_outputs`: `output/merge-report.md` (path + summary "merge feito A/B/C, commit_sha=X")
    - `prev_decisions_summary`: linha curta com decisão A/B/C + commit/tag/PR resultante
    - `pending_for_this_stage`: ["aguardar feedback humano após uso real do projeto", "interpretar intenção pra A/B/C"]
 
-3. **Commit atômico** (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+7. **Commit atômico 2/2** (kickoff + L1):
    ```
-   workspace <NNN>: stage 07 completo + transita pra 08 (awaiting feedback)
+   workspace <NNN>: gate aprovado, auto-transita 07→08 (awaiting feedback)
    ```
-   Files no commit: `output/merge-report.md` + L1 + `stages/08_feedback_intake/_kickoff.md`.
+   Files: L1 + `stages/08_feedback_intake/_kickoff.md`.
 
-4. **Imprimir KICKOFF block verbal** pro user. Texto canônico (sem menu A/B/C — sessão 08 inferirá pela intenção do feedback):
+8. **Imprimir KICKOFF block verbal** pro user. Texto canônico (sem menu A/B/C — sessão 08 inferirá pela intenção do feedback):
 
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ✅ Stage 07 (merge) COMPLETO — workspace <NNN-slug>
+   ✅ Stage 07 (merge) GATE APROVADO — workspace <NNN-slug>
 
    Workspace transitou pra stage 08 (feedback intake) em status
    COMPLETED_AWAITING_HUMAN. Workspace fica vivo até você voltar
    com feedback após uso real do projeto.
 
    Workspace atualizado em commit <sha>:
-     - L1: stage_atual=08, sub_stage=08_in_progress
+     - L1: stage_atual=08, sub_stage=08_in_progress, status=COMPLETED_AWAITING_HUMAN
      - Outputs: stages/07_merge/output/merge-report.md
      - Kickoff: stages/08_feedback_intake/_kickoff.md gerado
 
@@ -162,6 +204,15 @@ Ao concluir este estágio, sessão deve:
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
 
-5. **SAIR** da sessão.
+9. **SAIR** da sessão.
 
-Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+### Resposta "ajustar X" (gate rejeitado)
+
+Se humano responder texto livre pedindo ajuste no merge-report (re-rodar merge com decisão diferente, refazer push, etc.):
+- Atualizar L1: `status = IN_PROGRESS`, append history `{event: "gate_rejected", note: "humano pediu ajuste no merge: X"}`. Sub_stage permanece `07_completed`.
+- Voltar ao trabalho conforme pedido. Pode envolver re-execução de Process step 5 (executar nova escolha A/B/C).
+- Quando refizer outputs, voltar à Fase 1.
+
+### Resposta "abort"
+
+- Atualizar L1: `status = BLOCKED_ERROR`, append history `{event: "blocked_error", error_type: "human_abort"}`. Commit + sair.

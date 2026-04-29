@@ -73,7 +73,7 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
 9. **Merge sequencial:** lead faz merge de cada branch `wave-{{WORKSPACE}}-<N>/<task-slug>` em `{{BASE_BRANCH}}` na ordem do plan. Conflict de merge → `BLOCKED_ERROR`, humano resolve manualmente.
 10. **CI gate global:** roda CI completo do projeto após todos os merges. Verde → wave concluída.
 11. **Lead escreve:** `output/wave-<N>/wave-summary.md` (tasks completadas, conflicts, decisões tomadas).
-12. **Atualizar L1:** sub_stage `04_wave_<N>_completed`, append `history` evento `wave_completed`. Se houver mais waves: spawn próxima (`04_wave_<N+1>_in_progress`). Se foi a última: status `COMPLETED_AWAITING_HUMAN`, transição para estágio 05.
+12. **Handoff de fim de wave/stage:** seguir protocolo na seção `## End of stage handoff` deste L2. Mid-wave (wave <N> → <N+1>): handoff automático sem gate humano (Caso A). Última wave → stage 05: gate-inline obrigatório (Caso B — Fase 1 WORK_DONE → gate humano → Fase 2 GATE_APPROVED).
 
 CWD: lead em `{{PROJECT_ROOT}}` (workspace branch). Subagente em `{{PROJECT_ROOT}}` na branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
 
@@ -126,69 +126,126 @@ Skill formal: `superpowers:test-driven-development` + `superpowers:subagent-driv
 - **Automático (CI):** commit-msg hook valida prefixo `workspace {{WORKSPACE_NUM}}:` em branch workspace (R6); wave branches e base branch usam Conventional Commits (`feat:`, `fix:`, etc.) sem validação de hook; CI global roda após merge de cada wave; auto-QA Akita validado por wave-reviewer.
 - **Aprovação para transitar:** wave fecha automaticamente quando merge + CI global verde + wave-summary escrito. Última wave precisa de aprovação humana explícita para transitar para estágio 05.
 
-## End of stage handoff (1-stage-1-sessão)
+## End of stage handoff (gate inline + 1-stage-1-sessão, wave-aware)
 
 **Stage 04 exception (wave-aware):** cada wave = 1 sessão lead. Lead encerra wave gerando kickoff para próxima wave (mesmo stage 04, sub_stage `04_wave_<N+1>_in_progress`) OU para stage 05 (após última wave). Sub-waves (subdivisões dentro de uma wave) NÃO disparam kickoff — lead persiste através das sub-waves dentro da mesma sessão.
 
-Ao concluir esta wave (ou o estágio inteiro se for última wave), sessão deve:
+### Caso A: handoff mid-wave (wave <N> → wave <N+1>) — SEM gate humano
 
-1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
-   - `sub_stage = 04_wave_<N>_completed`
-   - `status = COMPLETED_AWAITING_HUMAN` (ou `IN_PROGRESS` se transição automática pra próxima wave / stage)
-   - `last_transition.from = 04_wave_<N>_completed`
-   - `last_transition.to = 04_wave_<N+1>_in_progress` (se houver mais waves) **OU** `05_in_progress` (se última wave — conforme `next_stage` do frontmatter)
-   - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append: `{at, event: "stage_transition" | "wave_completed", from, to, commit_sha, note}`
+Mid-wave handoff é automático (sem gate) quando merge + CI global verde + wave-summary escrito. Bug v3.4.2 não afeta este caminho — wave intermediária não tem gate humano por design (gate só na transição para 05).
 
-2. **Renderizar `_kickoff.md`** no destino seguinte:
-   - Próxima wave: `<workspace>/stages/04_implementation_waves/_kickoff.md` (overwrite — `stage_target = 04`, com `wave_target` no corpo apontando wave <N+1>)
-   - Última wave → stage 05: `<workspace>/stages/05_verification/_kickoff.md`
-   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
-   - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
-   - Corpo: prev_outputs com summary (task reports + wave-summary) + prev_decisions + pending pra próxima sessão (próxima wave ou stage 05)
+1. **Atualizar L1**:
+   - `sub_stage = 04_wave_<N+1>_in_progress` (transição imediata, sem persistir `04_wave_<N>_completed` em status)
+   - `status = IN_PROGRESS`
+   - `last_transition.from = 04_wave_<N>_in_progress`
+   - `last_transition.to = 04_wave_<N+1>_in_progress`
+   - `history` append: 2 eventos (`wave_completed` + `stage_transition`)
 
-3. **Commit atômico** (pre-commit hook valida outputs↔L1; commit-msg valida prefix):
+2. **Renderizar `_kickoff.md`** em `<workspace>/stages/04_implementation_waves/_kickoff.md` (overwrite — `wave_target` no corpo aponta wave <N+1>).
+
+3. **Commit atômico** (outputs + L1 + kickoff):
    ```
    workspace <NNN>: wave <N> completa + kickoff wave <N+1>
    ```
-   ou (última wave):
-   ```
-   workspace <NNN>: stage 04 completo + kickoff stage 05
-   ```
-   Files no commit: outputs da wave + L1 + `_kickoff.md` do próximo.
 
-4. **Imprimir KICKOFF block verbal** pro user (copy-paste). Template (substitua placeholders — variante wave-em-andamento OU stage-completo):
+4. **Imprimir KICKOFF block verbal** pro user (copy-paste). SAIR da sessão.
+
+### Caso B: handoff última wave → stage 05 — COM gate humano (gate inline)
+
+Após última wave concluída, gate humano é OBRIGATÓRIO antes de transitar pra 05. Bug v3.4.2 corrigido aqui: render+exit prematuros antes da aprovação criavam loop "kickoff → user aprova em sessão nova → kickoff de novo". Doc canônico: `<skill_root>/references/session-handoff-protocol.md`.
+
+#### Fase 1: WORK_DONE (após última wave merged + CI global verde)
+
+1. **Atualizar L1**:
+   - `sub_stage = 04_wave_<N>_completed` (N = última wave)
+   - `status = COMPLETED_AWAITING_HUMAN`
+   - `last_transition.from = 04_wave_<N>_in_progress`
+   - `last_transition.to = 04_wave_<N>_completed`
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{event: "wave_completed", note: "última wave, awaiting gate"}`
+
+2. **Commit atômico 1/2** (outputs da wave + L1; **NÃO** inclui `_kickoff.md`):
+   ```
+   workspace <NNN>: stage 04 work done (última wave), awaiting gate
+   ```
+
+3. **Imprimir prompt de gate** pro humano. NÃO sair. NÃO renderizar `_kickoff.md`:
 
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ✅ Wave <N> COMPLETA (stage 04) — workspace <NNN-slug>
-   (ou: ✅ Stage 04 COMPLETO — workspace <NNN-slug> — última wave)
+   ✅ Stage 04 (implementation_waves) trabalho COMPLETO — workspace <NNN-slug>
+   Última wave (<N>) merged + CI global verde.
+
+   Outputs prontos pra revisão:
+     - <task reports + wave-summary>
+
+   L1: sub_stage=04_wave_<N>_completed, status=COMPLETED_AWAITING_HUMAN
+   Commit 1/2: <sha>
+
+   🛑 Gate humano: revise wave-summary + task reports.
+   Responda no chat:
+     - "aprovado" / "ok prosseguir 05" → renderizo kickoff e saio
+     - "ajustar X" → volto ao trabalho com seu pedido (status=IN_PROGRESS)
+     - "abort" → marco workspace BLOCKED_ERROR
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ```
+
+4. **AGUARDAR resposta humana** na MESMA sessão.
+
+#### Fase 2: GATE_APPROVED (após humano responder "aprovado")
+
+5. **Atualizar L1** (segunda transição):
+   - `stage_atual = 05`
+   - `sub_stage = 05_in_progress`
+   - `status = IN_PROGRESS`
+   - `last_transition.from = 04_wave_<N>_completed`
+   - `last_transition.to = 05_in_progress`
+   - `last_transition.at = <ISO 8601 UTC now>`
+   - `history` append: `{event: "stage_transition", from: "04_wave_<N>_completed", to: "05_in_progress", note: "gate approved by human"}`
+
+6. **Renderizar `_kickoff.md`** em `<workspace>/stages/05_verification/_kickoff.md`.
+
+7. **Commit atômico 2/2** (kickoff + L1):
+   ```
+   workspace <NNN>: gate aprovado, kickoff stage 05
+   ```
+
+8. **Imprimir KICKOFF block verbal** pro user (copy-paste pra próxima sessão):
+
+   ```
+   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+   ✅ Stage 04 (implementation_waves) GATE APROVADO — workspace <NNN-slug>
 
    Workspace atualizado em commit <sha>:
-     - L1: stage_atual=04, sub_stage=04_wave_<N+1>_in_progress
-       (ou: stage_atual=05, sub_stage=05_in_progress)
-     - Outputs: <task reports + wave-summary>
-     - Kickoff: <path do _kickoff.md gerado>
+     - L1: stage_atual=05, sub_stage=05_in_progress, status=IN_PROGRESS
+     - Kickoff: stages/05_verification/_kickoff.md gerado
 
    🔄 KICKOFF próxima sessão — copy/paste:
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Continuar workspace <NNN-slug> no estágio 04 (implementation_waves) — wave <N+1>.
-   (ou: Continuar workspace <NNN-slug> no estágio 05 (verification).)
+   Continuar workspace <NNN-slug> no estágio 05 (verification).
 
    Read order:
      workspaces/<NNN-slug>/CLAUDE.md
      workspaces/<NNN-slug>/CONTEXT.md
-     workspaces/<NNN-slug>/stages/<stage-dir>/CONTEXT.md
-     workspaces/<NNN-slug>/stages/<stage-dir>/_kickoff.md
+     workspaces/<NNN-slug>/stages/05_verification/CONTEXT.md
+     workspaces/<NNN-slug>/stages/05_verification/_kickoff.md
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
    Encerre esta sessão (Ctrl+D ou /exit) e abra nova sessão Claude
    no project_root, depois cole o prompt acima.
    ```
 
-5. **SAIR** da sessão. NÃO continuar pra próxima wave / próximo stage na mesma sessão.
+9. **SAIR** da sessão.
 
-Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+#### Resposta "ajustar X" (gate rejeitado)
+
+- Atualizar L1: `status = IN_PROGRESS`, append history `{event: "gate_rejected"}`. Sub_stage permanece `04_wave_<N>_completed`.
+- Voltar ao trabalho conforme pedido. Pode envolver re-spawn de subagentes ou correção direta.
+- Quando refizer outputs, voltar à Fase 1.
+
+#### Resposta "abort"
+
+- Atualizar L1: `status = BLOCKED_ERROR`, append history `{event: "blocked_error", error_type: "human_abort"}`. Commit + sair.
 
 ---
 
