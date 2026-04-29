@@ -1,4 +1,4 @@
-"""Migration script v3.3.x -> v3.4.0 (cross-branch worktree model).
+"""Migration script v3.3.x -> v3.4.x (cross-branch worktree model).
 
 Detecta workspaces criados pela skill v3.3.x e aplica migracao idempotente:
 
@@ -6,7 +6,7 @@ Detecta workspaces criados pela skill v3.3.x e aplica migracao idempotente:
   2. Adiciona `.icm-main/` ao `.gitignore` do project_root.
   3. Garante `docs/decisions/.keep`, `docs/lessons.md`, `docs/tech_debt.md`
      na base branch (commit se ausente).
-  4. Atualiza `icm_skill_version: v3.3.x -> v3.4.0` no L0 do workspace.
+  4. Atualiza `icm_skill_version: v3.3.x -> v3.4.1` no L0 do workspace.
   5. (Opcional --update-paths) Substring replace
      `{{PROJECT_ROOT}}/docs/` -> `{{PROJECT_ROOT}}/.icm-main/docs/` em L0/L2
      CONTEXT.md.
@@ -26,7 +26,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-SKILL_VERSION_TARGET = "3.4.0"
+SKILL_VERSION_TARGET = "3.4.1"
 
 VERSION_RE = re.compile(r'^icm_skill_version:\s*"?(?P<ver>[^"\s]+)"?\s*$', re.MULTILINE)
 
@@ -289,7 +289,7 @@ def migrate_project(
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(description="Migrate ICM workspaces v3.3.x -> v3.4.0.")
+    p = argparse.ArgumentParser(description="Migrate ICM workspaces v3.3.x -> v3.4.x.")
     p.add_argument("--project-root", required=True, help="Path do projeto com workspaces/")
     p.add_argument("--workspace", default=None, help="Filtrar 1 workspace (NNN-slug). Default: todos.")
     p.add_argument("--update-paths", action="store_true",
