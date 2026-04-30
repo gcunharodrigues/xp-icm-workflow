@@ -37,6 +37,10 @@ VALID_STATUSES: frozenset[str] = frozenset(
     }
 )
 
+# Alias public stable (v3.5.0+) — single source of truth pra drift detector
+# (test_no_drift.py importa esse symbol). Não renomear sem atualizar drift test.
+ALLOWED_STATUSES: frozenset[str] = VALID_STATUSES
+
 VALID_STAGES: frozenset[str] = frozenset(
     {"00", "01", "02", "03", "04", "05", "06", "07", "08"}
 )
