@@ -87,7 +87,7 @@ Stage 04 exception: each wave = 1 lead session; subagentes spawnados via `Agent(
 ### Key Scripts (`/scripts/`)
 
 - **bootstrap.py** — One-shot workspace creation (folder structure, L0/L1/L2 files, git branch, pre-commit hooks, atomic commit, project-root CLAUDE.md render)
-- **profile-merge.py** — Merges 10 profiles × 4 tiers → deterministic effective hash (sha256)
+- **profile-merge.py** — Merges 11 profiles × 4 tiers → deterministic effective hash (sha256)
 - **handoff.py** — Renders `_kickoff.md` (L4) + manages `<project_root>/CLAUDE.md` ICM region (update/remove/deactivate)
 - **wave-planner-script.py** — Parses `plan.md` → DAG → cycle detection (DFS 3-color) → topological sort (Kahn) → sub-wave subdivision (HITL tasks isolated cap=1)
 - **wave-planner-llm-review.py** — Optional LLM review subagent for wave plan validation
@@ -98,7 +98,7 @@ Stage 04 exception: each wave = 1 lead session; subagentes spawnados via `Agent(
 
 ### Profile System
 
-10 profiles (e.g., `app_web_backend`, `ml_project`, `agent_ia`) × 4 tiers (`experimental`, `tool`, `development`, `production`). Config keys: `stages_skipped`, `tdd_required`, `security_gate`, `stop_points_calibration`. See `templates/_config/profile-matrix.md`.
+11 profiles (e.g., `app_web_backend`, `app_web_frontend`, `fullstack`, `ml_project`, `agent_ia`) × 4 tiers (`experimental`, `tool`, `development`, `production`). Config keys: `stages_skipped`, `tdd_required`, `security_gate`, `stop_points_calibration`. See `templates/_config/profile-matrix.md`.
 
 ### Naming Conventions
 
