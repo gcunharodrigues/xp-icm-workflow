@@ -12,7 +12,7 @@ Skill de orquestração de projetos via filesystem (ICM). v3.4.0 — modelo cros
 
 ## O que faz
 
-Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto e SAI. A partir daí o filesystem governa o ciclo — sessões novas leem L0+L1+L2 do estágio atual e trabalham. 9 estágios (00 recon → 08 feedback intake), 10 profiles × 4 tiers calibrando rigor, subagentes via Agent Tool na fase 04 (paralelismo sem worktrees), Wave Planner determinístico + LLM review subagent, Recovery Wizard pra workspaces órfãos.
+Bootstrap one-shot que cria estrutura ICM (L0/L1/L2/L3) num projeto e SAI. A partir daí o filesystem governa o ciclo — sessões novas leem L0+L1+L2 do estágio atual e trabalham. 9 estágios (00 recon → 08 feedback intake), 11 profiles × 4 tiers calibrando rigor, subagentes via Agent Tool na fase 04 (paralelismo via `Agent(isolation: "worktree")` — worktree efêmera por task), Wave Planner determinístico + LLM review subagent, Recovery Wizard pra workspaces órfãos.
 
 ## Setup
 
