@@ -27,7 +27,7 @@ CANONICAL_TIERS = profile_merge.CANONICAL_TIERS
 
 
 # ----------------------------------------------------------------------------
-# 1. Cobertura completa: 10 profiles x 4 tiers
+# 1. Cobertura completa: 11 profiles x 4 tiers
 # ----------------------------------------------------------------------------
 
 def test_canonical_profiles_count():

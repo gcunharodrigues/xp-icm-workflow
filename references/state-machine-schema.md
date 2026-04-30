@@ -23,7 +23,7 @@
 | Campo | Tipo | Valores / formato | Origem |
 |---|---|---|---|
 | `workspace` | string | `NNN-slug` (ex: `042-feat-auth`) | Bootstrap |
-| `profile_base` | string | um de 10 profiles canônicos | Bootstrap |
+| `profile_base` | string | um de 11 profiles canônicos | Bootstrap |
 | `profile_effective_hash` | string | sha256 hex (64 chars) | `<SKILL_DIR>/scripts/profile-merge.py` |
 | `tier` | string | `experimental` \| `tool` \| `development` \| `production` | Bootstrap |
 | `project_root` | string | path absoluto | Bootstrap (CWD ou `--project-root`) |

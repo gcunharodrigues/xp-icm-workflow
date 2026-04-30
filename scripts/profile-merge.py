@@ -1,6 +1,6 @@
 """Merge de profile base + override local em profile efetivo + hash deterministico.
 
-Cobre 10 profiles canonicos x 4 tiers, com regras de override seguro
+Cobre 11 profiles canonicos x 4 tiers, com regras de override seguro
 (`confirm_unsafe`) e validacao estrita de schema.
 """
 from __future__ import annotations
