@@ -23,6 +23,7 @@ import yaml
 CANONICAL_PROFILES: tuple[str, ...] = (
     "app_web_backend",
     "app_web_frontend",
+    "fullstack",
     "dashboard",
     "data_analysis",
     "ml_project",
@@ -192,6 +193,36 @@ def _test_specs(profile: str, tier: str) -> dict[str, Any]:
             "e2e_required": e2e_required,
             "visual_regression": visual_regression,
             "a11y_testing": a11y_testing,
+            "design_system_required": True,
+        }
+
+    if profile == "fullstack":
+        # Superset de backend + frontend. Ex: Next.js com API routes,
+        # Remix + Prisma, T3 stack, Django + React colocated.
+        e2e_required = tier in ("development", "production")
+        visual_regression = tier == "production"
+        a11y_testing = tier in ("development", "production")
+        return {
+            "test_types_required": (
+                ["unit", "integration", "component", "e2e"]
+                if e2e_required
+                else ["unit", "integration", "component"]
+            ),
+            "coverage_threshold": base_threshold,
+            "test_location": "tests/",
+            "http_integration": True,
+            "db_integration": True,
+            "component_testing": True,
+            "e2e_required": e2e_required,
+            "visual_regression": visual_regression,
+            "a11y_testing": a11y_testing,
+            "design_system_required": True,
+            "note": (
+                "fullstack — backend + frontend coexistem no mesmo repo "
+                "(Next.js com API routes, Remix+Prisma, T3 stack, etc). "
+                "Pra monorepo apps/web + apps/api separados, prefira "
+                "2 workspaces (1 app_web_backend + 1 app_web_frontend)."
+            ),
         }
 
     if profile == "dashboard":
@@ -292,7 +323,11 @@ def _apply_profile_rules(profile: str, tier: str, base: dict[str, Any]) -> dict[
         out["cap_subagents_per_wave"] = 3
 
     # Apps web ligam security_gate em qualquer tier acima de experimental
-    if profile in ("app_web_backend", "app_web_frontend") and tier != "experimental":
+    # (fullstack tambem — backend + frontend ambos expostos a rede)
+    if (
+        profile in ("app_web_backend", "app_web_frontend", "fullstack")
+        and tier != "experimental"
+    ):
         out["security_gate"] = True
 
     return out

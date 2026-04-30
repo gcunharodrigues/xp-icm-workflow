@@ -5,12 +5,13 @@ profile + tier (+ override). O script tem cópia hardcoded por
 performance/atomicidade — em caso de divergência, o script é a fonte da verdade
 operacional; este documento existe para revisão e onboarding.
 
-## Profiles canônicos (10)
+## Profiles canônicos (11)
 
 | Profile             | Descrição curta                                              |
 |---------------------|--------------------------------------------------------------|
 | `app_web_backend`   | API/serviço backend HTTP (FastAPI, Django, Express…)         |
 | `app_web_frontend`  | SPA/SSR navegador (Next.js, SvelteKit, Remix…)               |
+| `fullstack`         | Backend + frontend coexistem mesmo repo (Next.js+API routes, T3, Remix+Prisma, Django+React colocated). Pra monorepo apps/web+apps/api separados, prefira 2 workspaces. |
 | `dashboard`         | Painel analítico (Streamlit, Dash, Looker, Superset…)        |
 | `data_analysis`     | Análise pontual, notebook orientado a relatório              |
 | `ml_project`        | Pipeline ML completo (treino, eval, serving)                 |
@@ -74,7 +75,8 @@ test_specs:
 | Profile | test_types_required | Notas |
 |---|---|---|
 | `app_web_backend` | `[unit, integration]` | `http_integration: True`, `db_integration: True` |
-| `app_web_frontend` | `[unit, component, e2e]` | `component_testing: True`, `e2e_required: True` (dev+prod), `visual_regression: True` (prod), `a11y_testing: True` (dev+prod), `test_location: src/` (co-located) |
+| `app_web_frontend` | `[unit, component, e2e]` | `component_testing: True`, `e2e_required: True` (dev+prod), `visual_regression: True` (prod), `a11y_testing: True` (dev+prod), `test_location: src/` (co-located), `design_system_required: True` |
+| `fullstack` | `[unit, integration, component, e2e]` | Superset backend+frontend: `http_integration: True`, `db_integration: True`, `component_testing: True`, `e2e_required: True` (dev+prod), `visual_regression: True` (prod), `a11y_testing: True` (dev+prod), `design_system_required: True`, `test_location: tests/` |
 | `dashboard` | `[unit, integration]` | `http_integration: True`, semelhante a backend |
 | `data_analysis` | `[unit]` | Notebooks: testar funções de transformação; sem integration obrigatória |
 | `ml_project` | `[unit, pipeline, model_eval]` | `pipeline_testing: True`, `model_regression: True` (dev+prod) |
@@ -106,10 +108,17 @@ test_specs:
 - `cap_subagents_per_wave` = 3 (pipelines ML demandam continuidade de
   hiperparâmetros e dados; paralelismo alto fragmenta entendimento).
 
-### `app_web_backend` e `app_web_frontend`
+### `app_web_backend`, `app_web_frontend` e `fullstack`
 
 - `security_gate` = True em qualquer tier ≠ `experimental`. App web exposto à
   rede sempre passa por gate de segurança, mesmo em `tool`.
+
+### `app_web_frontend` e `fullstack`
+
+- `design_system_required` = True (todos os tiers). Stage 02 design cria/atualiza
+  `<project_root>/.icm-main/DESIGN.md` (formato Google Stitch DESIGN.md spec).
+  Doc canônico: `references/design-system.md`. Subagentes em fase 04 ganham
+  DESIGN.md no canal 2 quando task tem files frontend.
 
 ## Override local: `.icm-profile.local.yaml`
 
