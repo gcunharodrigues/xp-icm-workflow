@@ -23,6 +23,8 @@ next_stage: "05"
 
 Execução paralela em waves. Lead session orquestra subagentes via Agent tool respeitando o cap por tier (2/3/5/5). Cada subagente trabalha numa task em branch isolada `wave-{{WORKSPACE}}-<N>/<task-slug>` (a partir de `{{BASE_BRANCH}}`), segue o ciclo TDD 7 passos, valida via auto-QA Akita 15-itens. Subagentes comunicam resultados diretamente ao lead via Agent tool output. Wave-reviewer audita ao fim. Lead faz merge sequencial em `{{BASE_BRANCH}}`. Uma sub_stage por wave: `04_wave_<N>_in_progress` → `04_wave_<N>_completed`. Repete até esgotar `wave-plan.md`.
 
+**Doc canônico consolidado:** `references/wave-execution-protocol.md` (single source of truth do pipeline 12-passos).
+
 ## Inputs (lê SOMENTE estes, na ordem)
 
 | # | Path | Layer | Obrigatório? |
