@@ -4,6 +4,18 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.5.0 — Stage 04 protocol gaps fix (2026-04-29)
+
+### Why v3.5.0
+
+10 gaps de protocolo identificados no stage 04 wave execution durante revisão de execução real. Cada gap mascarava edge cases que produziam estado inconsistente (worktrees órfãs, merge order não-determinístico, conflict mid-wave sem fluxo de retomada, HITL granularidade insuficiente). Detalhes preenchidos na Task 14 do plan.
+
+### Mudanças
+
+(detalhes preenchidos na Task 14 do plan `docs/plans/2026-04-29-stage-04-gaps-fix.md`)
+
+---
+
 ## v3.4.4 — Profile fullstack + Design system (DESIGN.md format) (2026-04-29)
 
 ### Why v3.4.4
