@@ -257,7 +257,7 @@ Fonte: `templates/_config/profile-matrix.md`. Skill resolve `stages_skipped` no 
 |---|---|
 | `experiment` | `["03", "05", "06", "08"]` (todos os tiers) |
 | `technical_article` | `["03"]` (todos os tiers) |
-| Demais 8 profiles | `[]` |
+| Demais 9 profiles | `[]` |
 
 Override local em `.icm-profile.local.yaml` pode adicionar/remover (sujeito a `confirm_unsafe` para gates críticos). L1 declara `stages_skipped` final no `_config/profile-effective.yaml`; bootstrap NÃO cria pastas dos estágios pulados.
 
