@@ -276,7 +276,7 @@ Permissions allowlist sugerida em `system-requirements.md`.
 | `references/changelog.md` | Versões da skill |
 | `references/v2.4-snapshot/` | Snapshot da v2.4 anterior (pra referência histórica) |
 | `system-requirements.md` | Runtime + permissions allowlist |
-| `templates/_config/profile-matrix.md` | Matriz canônica 10 profiles × 4 tiers |
+| `templates/_config/profile-matrix.md` | Matriz canônica 11 profiles × 4 tiers |
 | `templates/workspace/CLAUDE.md.tpl` | Template L0 com placeholders |
 | `templates/workspace/CONTEXT.md.tpl` | Template L1 com placeholders |
 
