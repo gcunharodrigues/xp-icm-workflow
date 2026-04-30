@@ -96,3 +96,20 @@ Próxima sessão (após humano resolver) retoma na wave seguinte.
 - Path técnico está claro (mesmo que múltiplos passos)
 - Tests podem confirmar correctness automaticamente
 - Sem dependências externas humanas
+
+## Task-level HITL granularity (v3.5.0)
+
+Antes de v3.5.0: wave inteira pausava se 1+ task HITL (lead saía, próxima sessão retomava). Resultado: tasks não-HITL da mesma wave esperavam desnecessariamente.
+
+A partir de v3.5.0:
+- **Wave HITL pura** (todas tasks `type: HITL`, ou wave-planner isolou em sub-wave cap=1): comportamento legacy mantido. Lead não spawna Agent, gera AGENT-BRIEFs, sai com `BLOCKED_HITL`.
+- **Wave mista** (tasks HITL + não-HITL): lead spawna Agents só pra não-HITL EM PARALELO. Tasks HITL: AGENT-BRIEF inline em `task-<slug>.md` + `status: AWAITING_HITL`. Lead aguarda Agents retornarem. Se ainda há `AWAITING_HITL`: L1 `status: BLOCKED_HITL`, sai. Próxima sessão valida tasks HITL viraram COMPLETE (humano editou) e retoma wave-reviewer.
+
+### Status canônico associado
+
+`BLOCKED_HITL` (distinto de `BLOCKED_ERROR` — não é falha, é espera externa). Listado em `references/state-machine-schema.md`.
+
+### Cross-ref
+
+- Pipeline detalhado: `references/wave-execution-protocol.md`
+- L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` § HITL handling
