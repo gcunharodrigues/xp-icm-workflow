@@ -52,7 +52,7 @@
 | `custom_stop_points` | list | yaml override declarou (D3) | omisso |
 | `revisit_after` | string | yaml override declarou (Q16) | omisso |
 
-## Status canônicos (5 valores)
+## Status canônicos (6 valores)
 
 | Status | Quando | Próxima ação típica |
 |---|---|---|
@@ -60,6 +60,7 @@
 | `COMPLETED_AWAITING_HUMAN` | estágio concluído, gate humano pendente | humano aprova/rejeita; transition para próximo estágio |
 | `BLOCKED_STOP_POINT` | menu A/B/C disparado | humano responde menu; `IN_PROGRESS` |
 | `BLOCKED_ERROR` | falha runtime/CI/merge | humano resolve manualmente; `IN_PROGRESS` |
+| `BLOCKED_HITL` | wave mista, task `type: HITL` aguarda humano (não-falha) | humano completa task report; `IN_PROGRESS` |
 | `COMPLETED` | workspace inteiro fechado (fase 07 saída ou fase 08 A) | none — workspace arquivado |
 
 **Variação especial:** `RESTARTING_AT_PHASE_X` (H1) é registrado em `history` como evento de `iteration++`, mas o `status` em si volta para `IN_PROGRESS` no estágio X com `iteration` incrementado.

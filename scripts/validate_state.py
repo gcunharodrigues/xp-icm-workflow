@@ -32,6 +32,7 @@ VALID_STATUSES: frozenset[str] = frozenset(
         "COMPLETED_AWAITING_HUMAN",
         "BLOCKED_STOP_POINT",
         "BLOCKED_ERROR",
+        "BLOCKED_HITL",
         "COMPLETED",
     }
 )
