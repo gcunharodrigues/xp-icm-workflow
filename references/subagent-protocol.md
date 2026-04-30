@@ -1,10 +1,12 @@
 # Subagent Protocol
 
-> **Versão:** v3.1.0
+> **Versão:** v3.1.0 (atualizado v3.5.0)
 > **Skill:** `xp-icm-workflow`
-> **Propósito:** Doc canônico do protocolo de subagentes usado na fase 04 `implementation_waves`. Lead session orquestra N subagentes via Claude Code Agent tool, cada um executando uma task da wave em paralelo. Sem git worktrees, sem mailbox custom, sem sync barrier manual. O Agent tool fornece isolamento de contexto.
+> **Propósito:** Doc canônico do protocolo de subagentes usado na fase 04 `implementation_waves`. Lead session orquestra N subagentes via Claude Code Agent tool, cada um executando uma task da wave em paralelo. A partir de v3.4.0: subagentes spawnados com `Agent(isolation: "worktree")` — harness cria worktree efêmera por task. Wave-reviewer (v3.5.0) spawnado SEM `isolation` — lê via `git show`/`git diff`.
 
-> **Decisão de origem:** Q2/Q7/Q17 + §4.2-4.4 do plan, simplificado em v3.1 para usar Agent tool nativo em vez de worktrees + mailbox.
+> **Decisão de origem:** Q2/Q7/Q17 + §4.2-4.4 do plan, simplificado em v3.1 para usar Agent tool nativo em vez de worktrees + mailbox custom.
+
+> **Single source of truth do pipeline 12-passos:** `references/wave-execution-protocol.md` (v3.5.0). Este doc cobre detalhes específicos de subagent dispatch (cap por tier, subagent-driven-development pattern). Cross-refs evitam duplicação.
 
 ---
 
