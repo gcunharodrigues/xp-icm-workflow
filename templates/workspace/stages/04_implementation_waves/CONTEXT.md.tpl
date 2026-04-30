@@ -72,7 +72,12 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
 5. **Stop points dentro do ciclo:** se subagente detecta `new_dep`, `irreversible`, `over_eng`, `prod_migration` ou `adr_drift` → pausa estado atual, escreve menu A/B/C, retorna sinalização ao lead via Agent tool output, lead seta L1 `status: BLOCKED_STOP_POINT`. Humano responde, ciclo retoma do passo onde parou.
 6. **Cap 3 voltas auto-QA:** subagente marca `status: BLOCKED_ERROR` no task-report e retorna ao lead via Agent tool; lead decide reduzir wave (ver subagent-protocol) ou escalar humano.
 7. **Lead recebe resultado de cada subagente via Agent tool:** lead aguarda retorno COMPLETE de cada subagente da wave. Resultados chegam diretamente pelo Agent tool output — sem polling de diretório.
-8. **Wave-reviewer:** subagente revisa Auto-QA Akita de cada task report + verifica que `Files touched` reais batem com declarado no plan.md.
+8. **Wave-reviewer:** lead spawna `Agent(subagent_type: "general-purpose", description: "wave <N> review")` SEM `isolation: "worktree"` — reviewer roda em CWD do lead (workspace branch), lê código das wave branches via:
+   - `git show wave-{{WORKSPACE_NUM}}-<N>/<task-slug>:<file-path>` para conteúdo final.
+   - `git diff {{BASE_BRANCH}}...wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` para diff completo.
+   - `git log {{BASE_BRANCH}}..wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` para commits da branch.
+
+   Reviewer audita: (a) Auto-QA Akita 15-itens de cada `task-<slug>.md`; (b) `Files touched` reais (via `git diff --name-only`) batem com declarado em plan.md task; (c) acceptance criteria cumpridos. Retorna ao lead via Agent tool output: `approved: true|false`, `issues: [<list>]`. Issues → lead re-spawna subagente original (com `isolation: "worktree"`) para correção.
 9. **Merge sequencial:** lead faz merge de cada branch `wave-{{WORKSPACE}}-<N>/<task-slug>` em `{{BASE_BRANCH}}` na ordem do plan. Conflict de merge → `BLOCKED_ERROR`, humano resolve manualmente.
 10. **CI gate global:** roda CI completo do projeto após todos os merges. Verde → wave concluída.
 11. **Cleanup wave worktrees + branches (v3.4.3):** após merge bem-sucedido + CI verde, lead remove worktrees efêmeras criadas pelos subagentes E deleta branches já merged. Bug pre-v3.4.3: worktrees em `<project_root>/.icm-wave-*` (ou path retornado pelo Agent tool) ficavam orfãs após cada wave; branches `wave-<NNN>-<N>/<task-slug>` poluíam `git branch` listing.
