@@ -498,6 +498,17 @@ history append:
 
 ---
 
+## v3.5.0 — fields adicionais ao walkthrough stage 04
+
+Workspaces v3.5.0+ acrescentam ao L1 history e task reports:
+
+- **L1 history evento `wave_started`:** inclui `pre_wave_sha: <BASE_BRANCH HEAD sha>` capturado no passo 1. Usado por `references/ci-rollback-protocol.md` como ponto de reset se CI global vermelho.
+- **Task report frontmatter:** subagente grava `qa_loops_used: <N>` (counter de voltas Auto-QA Akita) + `auto_qa_passed: <bool>` (decisão final). Wave-reviewer audita contra git log da wave branch (anti-fraude).
+- **Status canônico novo:** `BLOCKED_HITL` — wave mista com 1+ task `type: HITL` aguardando humano (não-falha). Distinto de `BLOCKED_ERROR`.
+- **Sort buffer pré-merge:** lead bufferiza `{task_slug: agent_result}`; merge sequencial usa ordem do `plan.md > tasks[]`, não retorno order do Agent.
+
+Os outros estágios (00-03, 05-08) permanecem idênticos ao walkthrough acima.
+
 ## Referências cruzadas
 
 | Doc | Conteúdo relacionado |
@@ -507,6 +518,9 @@ history append:
 | `references/stop-points-canonical.md` | 12 stop points + thresholds (paid_service §1.1) |
 | `references/wave-planner-algorithm.md` | DAG construction + LLM review subagent |
 | `references/subagent-protocol.md` | Spawn, saída do Agent tool, sync barreira, wave-reviewer |
+| `references/wave-execution-protocol.md` | Pipeline 12-passos canônico (v3.5.0) |
+| `references/conflict-resolution-protocol.md` | Conflict mid-wave (gate humano A/B/C) |
+| `references/ci-rollback-protocol.md` | CI global red (diagnose → rollback → gate) |
 | `references/4-block-contract-template.md` | Schema da task no plan.md + ciclo TDD 7 passos + Akita 15-item |
 | `references/feedback-intake-fase08.md` | Fase 08 detalhada (3 saídas A/B/C) |
 | `references/v2.4-snapshot/example-run.md` | Versão v2.4 anterior (transição estágio 02→03 isolada) |
