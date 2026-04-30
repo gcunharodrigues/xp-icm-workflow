@@ -55,7 +55,7 @@ Execução paralela em waves. Lead session orquestra subagentes via Agent tool r
 
 Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
 
-1. **Lead pre-flight:** lê wave-plan.md; identifica wave atual via L1 `waves.current`. Sub_stage transita para `04_wave_<N>_in_progress`.
+1. **Lead pre-flight:** lê wave-plan.md; identifica wave atual via L1 `waves.current`. Sub_stage transita para `04_wave_<N>_in_progress`. Lead grava em L1 history evento `{event: "wave_started", wave: <N>, pre_wave_sha: <git rev-parse {{BASE_BRANCH}}>}` — usado por ci-rollback-protocol.md como ponto de reset.
 2. **Lead spawn subagentes via Agent tool:** para cada task da wave (até cap):
    1. Lead cria branch ANTES do spawn: `git branch wave-{{WORKSPACE_NUM}}-<N>/<task-slug> {{BASE_BRANCH}}`. Lead permanece em workspace branch (sem checkout). Branch órfã (caso Agent falhe pré-checkout) é detectável via `git branch --merged {{BASE_BRANCH}}` e limpa no passo 11.
    2. Lead invoca `Agent(isolation: "worktree", subagent_type: "general-purpose", description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + canal-2>)`. Harness faz `git worktree add` apontando pra branch já existente — NÃO cria branch novo. Path do worktree retornado no Agent tool result; lead persiste em estrutura local pra cleanup posterior.
@@ -84,7 +84,7 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
 
    Reviewer audita: (a) Auto-QA Akita 15-itens de cada `task-<slug>.md`; (b) `Files touched` reais (via `git diff --name-only`) batem com declarado em plan.md task; (c) acceptance criteria cumpridos. Retorna ao lead via Agent tool output: `approved: true|false`, `issues: [<list>]`. Issues → lead re-spawna subagente original (com `isolation: "worktree"`) para correção.
 9. **Merge sequencial:** lead faz merge de cada branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` em `{{BASE_BRANCH}}` usando ordem buferizada do passo 7 (= ordem do plan). Comando: `git checkout {{BASE_BRANCH}} && git merge --no-ff wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` por task. `--no-ff` preserva grupo de commits da wave branch (auditável). Conflict de merge → ver `references/conflict-resolution-protocol.md`.
-10. **CI gate global:** roda CI completo do projeto após todos os merges. Verde → wave concluída.
+10. **CI gate global:** roda CI completo do projeto após todos os merges. Verde → wave concluída, segue passo 11. Vermelho → ver `references/ci-rollback-protocol.md` (diagnose protocol → rollback se inconclusive → gate humano A/B/C).
 11. **Cleanup wave worktrees + branches (v3.4.3):** após merge bem-sucedido + CI verde, lead remove worktrees efêmeras criadas pelos subagentes E deleta branches já merged. Bug pre-v3.4.3: worktrees em `<project_root>/.icm-wave-*` (ou path retornado pelo Agent tool) ficavam orfãs após cada wave; branches `wave-<NNN>-<N>/<task-slug>` poluíam `git branch` listing.
 
    ```bash
