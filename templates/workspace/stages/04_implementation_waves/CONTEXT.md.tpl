@@ -67,10 +67,15 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
    3. CI gate local 1ª — lint + type + tests verde.
    4. REFACTOR — limpa mantendo tests verde.
    5. CI gate local 2ª — garante refactor não quebrou.
-   6. Auto-QA Akita 15-itens — `❌` força volta ao passo 4 ou 3 (cap 3 voltas).
+   6. Auto-QA Akita 15-itens — `❌` força volta ao passo 4 ou 3. Cap 3 voltas; subagente incrementa counter local a cada volta e grava `qa_loops_used: <N>` no frontmatter de `task-<slug>.md`. Volta 4ª = aborta com `BLOCKED_ERROR`.
    7. COMPLETE — escreve `output/wave-<N>/task-<slug>.md` com auto-QA registrado.
 5. **Stop points dentro do ciclo:** se subagente detecta `new_dep`, `irreversible`, `over_eng`, `prod_migration` ou `adr_drift` → pausa estado atual, escreve menu A/B/C, retorna sinalização ao lead via Agent tool output, lead seta L1 `status: BLOCKED_STOP_POINT`. Humano responde, ciclo retoma do passo onde parou.
-6. **Cap 3 voltas auto-QA:** subagente marca `status: BLOCKED_ERROR` no task-report e retorna ao lead via Agent tool; lead decide reduzir wave (ver subagent-protocol) ou escalar humano.
+6. **Cap 3 voltas auto-QA:** se `qa_loops_used` chegou a 3 e Auto-QA ainda `❌`, subagente:
+   1. Marca `status: BLOCKED_ERROR` + `qa_loops_used: 3` + `auto_qa_passed: false` no frontmatter.
+   2. Escreve `output/wave-<N>/task-<slug>-blocked.md` com último Auto-QA failed.
+   3. Retorna ao lead via Agent tool output.
+
+   Lead recebe → seta L1 `status: BLOCKED_ERROR` → wave-reviewer (passo 8) audita git log da wave branch contando commits RED/GREEN/REFACTOR; se `qa_loops_used` declarado < commits reais, flagra fraude. Lead decide: reduzir wave (subagent-protocol) ou escalar humano.
 7. **Lead recebe resultado de cada subagente via Agent tool:** lead aguarda retorno COMPLETE de cada subagente da wave. Resultados chegam diretamente pelo Agent tool output — sem polling de diretório.
 8. **Wave-reviewer:** lead spawna `Agent(subagent_type: "general-purpose", description: "wave <N> review")` SEM `isolation: "worktree"` — reviewer roda em CWD do lead (workspace branch), lê código das wave branches via:
    - `git show wave-{{WORKSPACE_NUM}}-<N>/<task-slug>:<file-path>` para conteúdo final.
