@@ -49,6 +49,7 @@ cases and error conditions.
 - [ ] Specific, testable criterion 1
 - [ ] Specific, testable criterion 2
 - [ ] Specific, testable criterion 3
+- [ ] `git log --oneline main..HEAD` ≥1 commit (branch persiste o trabalho — não retornar Status COMPLETE com zero commits).
 
 **Out of scope:**
 - Thing that should NOT be changed or addressed in this issue
@@ -71,6 +72,19 @@ Stage 02 (design) escreve plan.md no formato 4-block. Stage 04 (lead session)
 gera AGENT-BRIEF a partir da seção da task no plan.md via
 `scripts/agent-brief-render.py`.
 
+## Antes de retornar summary ao lead
+
+Subagent (AFK) DEVE verificar antes de declarar Status COMPLETE no task report:
+
+- [ ] `git log --oneline main..HEAD` mostra ≥1 commit (≠ zero).
+- [ ] working tree clean OR remaining files explicitamente declarados.
+- [ ] task report escrito em path absoluto.
+
+Origem: incidente sessao-recorrencia (workspace 001 wave 6) — subagent terminou
+TDD 7 passos sem `git commit`, branch HEAD = main HEAD, working tree dirty.
+Lead recovery teve que salvar trabalho manualmente. Gate explícito previne
+recorrência.
+
 ## Anti-padrões
 
 - **File paths absolutos** (`src/triage/handler.ts:42`) — vão stale.
@@ -79,3 +93,4 @@ gera AGENT-BRIEF a partir da seção da task no plan.md via
 - **Sem acceptance criteria** — agent não sabe quando terminou.
 - **Sem scope boundary** — agent gold-plata ou modifica features adjacentes.
 - **Procedimental** ("open file X, line Y, change Z") — quebra ao primeiro refactor.
+- **Async pytest desnecessário**: `Bash run_in_background=true + Monitor` pra pytest <5min é overkill; use Bash síncrono. Reserve async pra builds/dev-servers longos.

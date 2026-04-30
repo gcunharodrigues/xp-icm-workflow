@@ -242,7 +242,32 @@ Para tasks `Requires_peer_review: true`, lead spawn subagente adicional `peer-re
 
 ---
 
-## 9. Token budget alvo
+## 9. Workflow synchronous-first
+
+**Regra padrão:** subagentes preferem ferramentas síncronas (Bash sem
+`run_in_background`, pytest direto, ruff direto) quando duração esperada
+<5min. Async (`Bash run_in_background=true` + `Monitor`) reservado pra
+processos longos: dev server, build watch, deploy, tests >5min.
+
+**Por quê:** subagentes têm dificuldade em saber quando retornar após
+Monitor — wave 6 sessao-recorrencia incidente: subagent invocou Monitor
+pra aguardar pytest 14s, ficou confuso sobre completion, saiu sem
+`git commit`. Causa: async overhead não justificado pra duração curta.
+
+**Anti-padrão concreto:**
+
+```
+# ANTI-PADRÃO (wave 6 incidente):
+Bash run_in_background=true: "pytest tests/ > /tmp/out.log"
+Monitor "until grep passed /tmp/out.log; do sleep 5; done"
+
+# CERTO:
+Bash: "pytest tests/" (síncrono, bloqueia, retorna exit code)
+```
+
+---
+
+## 10. Token budget alvo
 
 Referência (sem enforcement automático — vide Q19):
 
@@ -257,7 +282,7 @@ Wave de 5 subagentes ≈ 30-50k tok totais. `>2× estimativa` dispara mid-wave r
 
 ---
 
-## 10. Diagrama de fluxo
+## 11. Diagrama de fluxo
 
 ```mermaid
 flowchart TD
@@ -290,7 +315,7 @@ flowchart TD
 
 ---
 
-## 11. Referências cruzadas
+## 12. Referências cruzadas
 
 | Doc | Conteúdo relacionado |
 |---|---|

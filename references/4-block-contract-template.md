@@ -96,9 +96,9 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 
 ---
 
-## 3. Ciclo TDD 7 passos — ordem canônica
+## 3. Ciclo TDD 7+1 passos — ordem canônica
 
-Todo subagente executa **exatamente** esta sequência por task. CI gate roda 2x (passos 3 e 5) — princípio "verde antes do refactor, verde depois do refactor".
+Todo subagente executa **exatamente** esta sequência por task. CI gate roda 2x (passos 3 e 5) — princípio "verde antes do refactor, verde depois do refactor". Passo 6.5 (commit-verify gate) adicionado pós-incidente sessao-recorrencia (wave 6 workspace 001) onde subagent terminou sem `git commit`, deixando branch HEAD = main HEAD e working tree dirty.
 
 | Passo | Nome | Ação | Saída |
 |---|---|---|---|
@@ -108,6 +108,7 @@ Todo subagente executa **exatamente** esta sequência por task. CI gate roda 2x 
 | 4 | REFACTOR | Melhorar código mantendo tests verde | Código limpo, tests inalterados |
 | 5 | CI gate local (2ª) | `lint` + `type-check` + `tests` | Garante que refactor não quebrou |
 | 6 | Auto-QA Akita | Checklist 15-item (vide §5) | Todos ✅ ou volta passo 4/3 |
+| 6.5 | Verify git commits | `git log --oneline main..HEAD` deve mostrar ≥1 commit; se zero, voltar passos GREEN/REFACTOR e commitar progresso TDD por etapa | git history persistido |
 | 7 | COMPLETE | Escreve `task-<slug>.md` em `stages/04/output/wave-N/`, sinaliza COMPLETE | Lead detecta e procede |
 
 ### 3.1 Cap de iterações
@@ -164,7 +165,7 @@ Fonte autoritativa dos critérios de estilo (itens 4-10): `_config/xp-convention
 | 12 | Secrets/PII protegidos (não em logs, não em tests)? | Segurança |
 | 13 | ADR compliance (segue stack/padrão declarado em `docs/decisions`)? | Aderência |
 | 14 | Tech debt declarado (qualquer atalho/TODO commitado em `docs/tech_debt.md`)? | Aderência |
-| 15 | Commit message segue convenção do repo (conventional commits, scope correto)? | Aderência |
+| 15 | Commits feitos + message segue convenção. **Evidência obrigatória:** `git log --oneline main..HEAD` mostra ≥1 commit antes de declarar COMPLETE. Branch HEAD ≠ main HEAD. | Aderência |
 
 ### 5.1 Como subagente registra checklist no task report
 
