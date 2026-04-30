@@ -87,7 +87,12 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
      | xargs -I {} git worktree remove {}
    ```
 
-   Falha não-fatal: registrar warning em `wave-summary.md` (próximo passo). `git worktree remove` falha se working tree não-limpo → tentar `--force` apenas se Auto-QA Akita já passou (subagente garantiu commit limpo). `git branch -d` recusa se não-merged → não usar `-D` (forçar delete mascararia bugs do merge anterior).
+   **Decision matrix `--force`:**
+   - `git worktree remove <path>` falha se working tree não-limpo → lead lê task report `output/wave-<N>/task-<slug>.md`:
+     - `auto_qa_passed: true` no frontmatter → safe usar `git worktree remove --force <path>` (lock file órfão é a única causa restante).
+     - `auto_qa_passed: false` ou ausente → NÃO força. Set `status: BLOCKED_ERROR`, registrar em `wave-summary.md`, humano inspeciona manualmente.
+   - `git branch -d` recusa se não-merged → JAMAIS usar `-D`. Branch não-merged pós-merge step indica bug no merge sequencial; investigar antes.
+   - Falha cleanup não-fatal (após force válido): registrar warning em `wave-summary.md` (próximo passo).
 
 12. **Lead escreve:** `output/wave-<N>/wave-summary.md` (tasks completadas, conflicts, decisões tomadas, **warnings de cleanup** se houve).
 13. **Handoff de fim de wave/stage:** seguir protocolo na seção `## End of stage handoff` deste L2. Mid-wave (wave <N> → <N+1>): handoff automático sem gate humano (Caso A). Última wave → stage 05: gate-inline obrigatório (Caso B — Fase 1 WORK_DONE → gate humano → Fase 2 GATE_APPROVED).
