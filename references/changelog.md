@@ -8,11 +8,120 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ### Why v3.5.0
 
-10 gaps de protocolo identificados no stage 04 wave execution durante revisão de execução real. Cada gap mascarava edge cases que produziam estado inconsistente (worktrees órfãs, merge order não-determinístico, conflict mid-wave sem fluxo de retomada, HITL granularidade insuficiente). Detalhes preenchidos na Task 14 do plan.
+10 gaps de protocolo identificados no stage 04 wave execution durante
+revisão de execução real. Cada gap mascarava edge cases que produziam
+estado inconsistente (worktrees órfãs, merge order não-determinístico,
+conflict mid-wave sem fluxo de retomada, HITL granularidade insuficiente).
+Adicionalmente: 12 arquivos com drift cross-file e introdução de drift
+prevention test gate.
 
 ### Mudanças
 
-(detalhes preenchidos na Task 14 do plan `docs/plans/2026-04-29-stage-04-gaps-fix.md`)
+**1. Doc drift fix (CLAUDE.md skill root + README.md):**
+- Linha "no worktrees" removida; substituída por referência a
+  `Agent(isolation: "worktree")` (alinhamento com v3.4.0+).
+- README.md "10 profiles" → "11 profiles" (drift pré-existente desde v3.4.4).
+
+**2. Branch lifecycle determinismo (L2 stage 04):**
+- Passo 2 explicita: lead cria branch ANTES do spawn (`git branch
+  wave-<NNN>-<N>/<slug> <BASE_BRANCH>`), Agent harness faz worktree
+  add em branch existente. Branch órfã detectável via `git branch
+  --merged`.
+- Passo 11 ganha decision matrix `--force` determinística:
+  `auto_qa_passed: true` no task report → safe `--force`; senão
+  BLOCKED_ERROR.
+
+**3. Subagent protocol additions (L2 stage 04):**
+- Passo 8 declara wave-reviewer SEM `isolation: "worktree"` — lê
+  via `git show wave-<branch>:<file>` / `git diff <BASE>...<wave>`.
+- Passo 4.6 + passo 6: subagente grava `qa_loops_used: <N>` no
+  frontmatter de `task-<slug>.md`; reviewer audita contra git log
+  da wave branch (anti-fraude).
+- HITL handling reescrito com granularity task-level: wave mista
+  spawna Agents pra tasks não-HITL em paralelo, tasks HITL
+  registradas com `status: AWAITING_HITL`. Status novo:
+  `BLOCKED_HITL` (distinto de `BLOCKED_ERROR`).
+
+**4. Merge orchestration (L2 stage 04):**
+- Passo 7 ganha sort buffer: `{task_slug: agent_result}` → ordena
+  por índice em `plan.md > tasks[]` antes do passo 9. Merge order =
+  plan order, não retorno order.
+- Passo 1 grava `pre_wave_sha` em L1 history evento `wave_started`
+  (usado por rollback).
+- Novo doc `references/conflict-resolution-protocol.md`: lead pausa
+  em `BLOCKED_ERROR`, escreve `merge-conflict-<slug>.md`, gate
+  humano A/B/C (resolvido / abort task / abort wave). Lead JAMAIS
+  resolve conflict autonomamente.
+- Novo doc `references/ci-rollback-protocol.md`: passo 10 vermelho
+  → diagnose-protocol obrigatório (cap 3 attempts, fix < 50 LOC) →
+  rollback (`git reset --hard <pre_wave_sha>`) → gate humano A/B/C
+  (redo wave / redo task / abandon). Wave branches preservadas
+  durante BLOCKED_ERROR.
+
+**5. `.icm-main` robustness (L2 stage 04):**
+- Sync `cd .icm-main && git pull --ff-only` agora condicional:
+  só executa se `git worktree list --porcelain | grep -q
+  ".icm-main"` retorna match. Skip silencioso senão (`.icm-main` é
+  convenção opcional setup pelo recovery wizard / bootstrap).
+
+**6. Doc canônico consolidado:**
+- Novo `references/wave-execution-protocol.md` consolida pipeline
+  12-passos, atores, branches, status, cross-references.
+  Single source of truth — outros docs apontam pra cá.
+
+**7. Stale files audit (Chunk 6):**
+- `scripts/bootstrap.py` SKILL_VERSION 3.4.1 → 3.5.0 (CRÍTICO —
+  versão real injetada em workspaces novos).
+- `scripts/validate_state.py` ALLOWED_STATUSES const + BLOCKED_HITL
+  no enum.
+- `references/state-machine-schema.md` row BLOCKED_HITL.
+- `references/design-system.md` v3.4.4 → v3.5.0.
+- CLAUDE.md + SKILL.md + profile-merge.py + test_profile_merge.py:
+  10 → 11 profiles (drift pré-existente).
+- `scripts/recovery-wizard.py` detector novo `MISSING_PRE_WAVE_SHA`
+  + auto-fix marca `unknown` para waves pré-v3.5.0.
+- `references/task-types-hitl-afk.md`: seção task-level granularity
+  + status BLOCKED_HITL.
+- `references/subagent-protocol.md`: cross-ref pra
+  wave-execution-protocol.md (anti-duplicação).
+- `references/example-run.md`: walkthrough sync com fields
+  `pre_wave_sha` / `qa_loops_used`.
+- `references/smoke-manual-checklist.md`: 10 checks v3.5.0.
+
+**8. Drift prevention permanente (Chunk 7):**
+- Novo `tests/unit/test_no_drift.py` (5 detectores):
+  - Versão consistente (canonical = `bootstrap.py:SKILL_VERSION`).
+  - Profile count (canonical = `len(CANONICAL_PROFILES)`).
+  - Status enum sync (validate_state.py ↔ schema.md).
+  - Cross-refs markdown resolvem em `references/`.
+- `validate_state.py` exporta `ALLOWED_STATUSES` const module-level
+  → single source pra drift test.
+- CLAUDE.md ganha seção "Pre-merge drift audit (mandatory)" — test
+  gate bloqueia drift no commit, sem precisar lembrar.
+
+### Migrations / breaking changes
+
+Não há breaking changes pra workspaces v3.4.x existentes:
+- Status novo `BLOCKED_HITL` é additive (workspaces antigos não
+  usam, mas validador aceita).
+- `qa_loops_used` no task report é additive (workspaces antigos
+  sem o field continuam válidos; reviewer trata ausente como N/A).
+- `pre_wave_sha` em L1 history é additive (recovery wizard ganha
+  detector novo `MISSING_PRE_WAVE_SHA` opcional para waves
+  iniciadas pré-v3.5.0; auto-fix marca `pre_wave_sha: unknown`).
+
+### Tests
+
+- `tests/unit/test_v3_5_0_wave_protocol.py` — 14 tests cobrindo
+  todos os gaps fechados (presença de seções em L2, existência
+  dos novos docs, version bump, changelog entry).
+- `tests/unit/test_no_drift.py` — 5 tests cobrindo drift detection
+  permanente. Bloqueia regressão automaticamente.
+
+### Plan
+
+- `docs/plans/2026-04-29-stage-04-gaps-fix.md` — implementation
+  plan completo (7 chunks, 30 tasks).
 
 ---
 
