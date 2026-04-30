@@ -82,7 +82,7 @@ This is a **filesystem-based project orchestration skill** for Claude Code imple
 
 `00:recon → 01:discovery → 02:design → 03:wave-planner → 04:implementation-waves → 05:verification → 06:review → 07:merge → 08:feedback-intake`
 
-Stage 04 exception: each wave = 1 lead session; subagents spawned via `Agent` tool (no worktrees), branch setup mandatory.
+Stage 04 exception: each wave = 1 lead session; subagentes spawnados via `Agent(isolation: "worktree")` (worktree efêmera por task, criada pelo harness), branch `wave-<NNN>-<N>/<task-slug>` derivada de `BASE_BRANCH`. Doc canônico: `references/wave-execution-protocol.md`.
 
 ### Key Scripts (`/scripts/`)
 
