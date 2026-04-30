@@ -305,9 +305,19 @@ Após última wave concluída, gate humano é OBRIGATÓRIO antes de transitar pr
   `workspace/{{WORKSPACE}}`). Lead permanece no `{{PROJECT_ROOT}}/`
   workspace branch durante toda a wave. Após subagente terminar, lead
   inspeciona resultado do worktree retornado e merge a wave branch em
-  `{{BASE_BRANCH}}` conforme protocol da fase 04. Após merge:
-  `cd {{PROJECT_ROOT}}/.icm-main && git pull --ff-only` para sincronizar
-  worktree linkada com novo HEAD da base.
+  `{{BASE_BRANCH}}` conforme protocol da fase 04.
+
+  **Sync `.icm-main` (condicional v3.5.0):** após merge, lead checa se
+  `{{PROJECT_ROOT}}/.icm-main` existe E é worktree linkada:
+  ```bash
+  if git worktree list --porcelain | grep -q "worktree {{PROJECT_ROOT}}/.icm-main"; then
+      cd {{PROJECT_ROOT}}/.icm-main && git pull --ff-only
+  fi
+  ```
+  Se ausente: skip silencioso (`.icm-main` é convenção opcional setup
+  por recovery wizard / bootstrap em alguns workspaces). Falha do
+  `pull --ff-only` (ex: divergence): warning não-fatal em
+  `wave-summary.md`, lead segue.
 
 - **HITL handling (task-level granularity):**
   - **Wave-level HITL** (todas tasks da wave têm `type: HITL`, ou
