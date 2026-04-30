@@ -1,11 +1,13 @@
 """Drift detection — bloqueia inconsistências cross-file.
 
-5 detectores:
+6 detectores:
 A. Versão consistente (canonical = scripts/bootstrap.py SKILL_VERSION)
 B. Profile count consistente (canonical = len(CANONICAL_PROFILES))
 C. Status enum sync (validate_state.py ALLOWED_STATUSES vs schema doc)
 D. Status canônicos esperados presentes (allow-list anti-typo)
 E. Cross-refs markdown resolvem em references/
+F. Shell templates sem CRLF (CRLF no shebang quebra exec — kernel
+   procura interpretador 'bash\\r' e falha com "No such file or directory")
 
 Whitelist exceptions explícitas — nunca grep-and-update silencioso.
 """
@@ -196,6 +198,59 @@ def test_validator_schema_in_sync():
 # ============================================================
 
 MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
+
+
+# ============================================================
+# F. Shell templates sem CRLF
+# ============================================================
+
+# Templates whitelist (CRLF aceitável) — vazio por padrão. Adicionar entry
+# APENAS se o arquivo NÃO é executado via shebang (ex: doc/example).
+SHELL_CRLF_WHITELIST: set[str] = set()
+
+
+def test_shell_templates_no_crlf():
+    """Templates .sh em templates/ não devem ter CRLF.
+
+    Bug: shutil.copy2 preserva bytes; CRLF do template cai no destino.
+    Kernel exec do shebang procura literal 'bash\\r' → "No such file
+    or directory". bootstrap.py normaliza na cópia, mas template-source
+    com CRLF arrisca regressão se alguma cópia futura voltar a copy2.
+    """
+    templates_root = REPO_ROOT / "templates"
+    if not templates_root.exists():
+        pytest.skip("templates/ não existe")
+    violations = []
+    for sh in templates_root.rglob("*.sh"):
+        rel = sh.relative_to(REPO_ROOT).as_posix()
+        if rel in SHELL_CRLF_WHITELIST:
+            continue
+        raw = sh.read_bytes()
+        if b"\r\n" in raw:
+            violations.append(rel)
+    assert not violations, (
+        "Templates .sh com CRLF (use LF; rode `python -c \"import "
+        "pathlib; [p.write_bytes(p.read_bytes().replace(b'\\r\\n',b'\\n')) "
+        "for p in pathlib.Path('templates').rglob('*.sh')]\"`):\n  "
+        + "\n  ".join(violations)
+    )
+
+
+def test_git_hook_templates_no_crlf():
+    """Templates .git-hooks/ — git executa via shebang exec mesma classe."""
+    hooks_root = REPO_ROOT / "templates" / ".git-hooks"
+    if not hooks_root.exists():
+        pytest.skip("templates/.git-hooks/ não existe")
+    violations = []
+    for hook in hooks_root.iterdir():
+        if not hook.is_file():
+            continue
+        raw = hook.read_bytes()
+        if b"\r\n" in raw:
+            violations.append(hook.relative_to(REPO_ROOT).as_posix())
+    assert not violations, (
+        "Git hook templates com CRLF:\n  " + "\n  ".join(violations)
+    )
 
 
 def test_markdown_cross_refs_resolve_in_references():

@@ -1,0 +1,19 @@
+# Force LF on shell scripts cross-platform.
+# CRLF no shebang faz kernel exec falhar (procura "bash\r" como interpretador).
+*.sh         text eol=lf
+*.bash       text eol=lf
+
+# Git hooks templates seguem mesma regra (executados via shebang).
+templates/.git-hooks/* text eol=lf
+
+# Python + markdown + JSON: LF cross-platform (consistência repo).
+*.py         text eol=lf
+*.md         text eol=lf
+*.json       text eol=lf
+*.yml        text eol=lf
+*.yaml       text eol=lf
+*.toml       text eol=lf
+
+# Templates Windows-only (.bat, .cmd) mantêm CRLF nativo.
+*.bat        text eol=crlf
+*.cmd        text eol=crlf

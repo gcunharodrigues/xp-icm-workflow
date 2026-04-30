@@ -374,11 +374,13 @@ Cap por tier (Q17):
 O projeto inclui um hook `PostToolUse` que detecta contexto ≥70% automaticamente:
 
 - **Arquivo:** `<project_root>/workspaces/<NNN-slug>/.claude/hooks/context-check.sh`
-- **Registro:** `<project_root>/.claude/settings.local.json` → `hooks.PostToolUse`
+- **Registro (dois pontos, ambos escritos pelo bootstrap):**
+  1. `<project_root>/.claude/settings.local.json` → `hooks.PostToolUse` com command `bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh` (escopo project_root, registro primário).
+  2. `<project_root>/workspaces/<NNN-slug>/.claude/settings.local.json` → `hooks.PostToolUse` com command `bash .claude/hooks/context-check.sh` (escopo workspace, ativado quando Claude Code roda com cwd = workspace).
 - **Lógica:** lê transcript diretamente de `~/.claude/projects/`, calcula `ctx_pct` (independente de statusline.sh), threshold 70%, cooldown 60s
 - **Ação:** stdout = protocolo de handoff obrigatório. Agente vê a mensagem e DEVE parar tudo, executar handoff, e SAIR.
-- **Bootstrap:** instalado pelo ICM stage 00 como infraestrutura de governança. Dependência `jq` em `_config/xp-conventions.md`.
-- **Escopo:** roda para todo o projeto, não apenas stage 04. Context pressure existe em qualquer stage.
+- **Bootstrap:** instalado pelo ICM stage 00 como infraestrutura de governança. Dependência `jq` em `_config/xp-conventions.md`. Bytes do template normalizados CRLF→LF na cópia (kernel exec do shebang falha em CRLF — procura interpretador `bash\r`).
+- **Escopo:** roda para a sessão principal (lead) no project_root. Subagentes em worktrees efêmeras (`Agent(isolation: "worktree")`) **NÃO** recebem o hook — `<project_root>/.claude/settings.local.json` não está acessível à worktree, e `workspaces/` não existe na branch `wave-N-M/<task>`. Subagent auto-compact é aceito por design (token budget alvo §9 do `subagent-protocol.md` mantém ctx longe do threshold).
 
 O hook NÃO força parada via código (exit 0 = continua). Enforcement é por protocolo: agente instruído a obedecer a mensagem. Se o agente ignorar repetidamente, o compact do LLM eventualmente degrada o contexto além da recuperação — o hook continua disparando a cada tool call com cooldown de 60s.
 

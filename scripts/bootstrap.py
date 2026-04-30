@@ -32,6 +32,9 @@ from typing import Any
 SKILL_VERSION = "3.6.0"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
+# Bootstrap auto-prefixa NNN- ao slug. Slug que JÁ comece com NNN- gera ID
+# duplicado tipo "001-001-foo". Reject explicito com hint pro usuário.
+NNN_PREFIX_RE = re.compile(r"^\d{3}-")
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
 INDEX_ROW_RE = re.compile(
     r"^\|\s*(\d{3})\s*\|\s*([a-z0-9-]+)\s*\|"
@@ -217,9 +220,19 @@ def update_gitignore(gitignore_path: Path, lines_to_add: list[str]) -> None:
 
 
 def validate_slug(slug: str) -> None:
-    """Aceita kebab-case `^[a-z0-9-]+$`. Raise BootstrapError caso contrario."""
+    """Aceita kebab-case `^[a-z0-9-]+$`. Raise BootstrapError caso contrario.
+
+    Reject extra: slug que começa com `NNN-` (3 dígitos + hífen) — bootstrap
+    já prefixa NNN, então slug `001-foo` viraria workspace `001-001-foo`.
+    """
     if not slug:
         raise BootstrapError("slug nao pode ser vazio")
+    if NNN_PREFIX_RE.match(slug):
+        raise BootstrapError(
+            f"slug invalido: {slug!r} comeca com prefix NNN- "
+            "(bootstrap auto-prefixa o ID). Use slug puro sem o NNN-, "
+            f"ex: {slug.split('-', 1)[1] if '-' in slug else slug!r}"
+        )
     if not SLUG_RE.match(slug):
         raise BootstrapError(
             f"slug invalido: {slug!r} (esperado kebab-case [a-z0-9-]+, "
@@ -616,15 +629,17 @@ def _install_hooks(project_root: Path, skill_root: Path) -> None:
             continue
         dst = dst_dir / hook
         try:
+            # Normaliza CRLF→LF — git hooks rodam via shebang exec; CRLF
+            # faz kernel procurar interpretador "bash\r" e falhar.
+            new = src.read_bytes().replace(b"\r\n", b"\n")
             if dst.exists():
                 current = dst.read_bytes()
-                new = src.read_bytes()
                 if current == new:
                     continue
                 ts = _now_iso().replace(":", "").replace("-", "")
                 backup = dst.with_suffix(f".bak.{ts}")
                 shutil.copy2(dst, backup)
-            shutil.copy2(src, dst)
+            dst.write_bytes(new)
             try:
                 os.chmod(dst, 0o755)
             except OSError as _chmod_exc:
@@ -687,7 +702,11 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, 
             sys.stderr.write(f"warning: {hook_filename} template ausente: {src_hook}\n")
             continue
         try:
-            shutil.copy2(src_hook, dst_hook)
+            # Bytes copy + CRLF→LF normalize. shutil.copy2 preservaria CRLF do
+            # template em Windows; CRLF no shebang faz kernel exec falhar com
+            # "No such file or directory" (kernel procura interpretador "bash\r").
+            raw = src_hook.read_bytes()
+            dst_hook.write_bytes(raw.replace(b"\r\n", b"\n"))
             try:
                 os.chmod(dst_hook, 0o755)
             except OSError as _chmod_exc2:

@@ -160,6 +160,33 @@ class TestInstallContextHook:
         assert any("context-check.sh" in c for c in commands)
         assert not any("icm-session-check.sh" in c for c in commands)
 
+    def test_hooks_copied_have_lf_line_endings(
+        self, project_root_with_main: Path
+    ) -> None:
+        """CRLF no shebang faz kernel exec falhar (procura interpretador
+        'bash\\r'). Bootstrap DEVE normalizar templates Windows-CRLF para LF.
+        Regression: se shutil.copy2 voltar, este teste pega.
+        """
+        ws_dir = project_root_with_main / "workspaces" / "001-test"
+        ws_dir.mkdir(parents=True)
+        bootstrap._install_context_hook(
+            project_root_with_main, SKILL_ROOT, "001-test", tier="production"
+        )
+        hooks_dir = ws_dir / ".claude" / "hooks"
+        for hook_name in (
+            "context-check.sh",
+            "icm-session-check.sh",
+            "block-init-during-icm.sh",
+            "block-dangerous-git.sh",  # production-tier
+        ):
+            hook_path = hooks_dir / hook_name
+            assert hook_path.exists(), f"hook ausente: {hook_path}"
+            raw = hook_path.read_bytes()
+            assert b"\r\n" not in raw, (
+                f"{hook_name} contém CRLF — quebra exec do shebang em Linux/Git Bash"
+            )
+            assert raw.startswith(b"#!"), f"{hook_name} sem shebang"
+
 
 # =========================================================================
 # _render_project_settings_example (deferred 2)
