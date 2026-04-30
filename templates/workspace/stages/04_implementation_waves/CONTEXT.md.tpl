@@ -132,7 +132,8 @@ Transição `04_wave_<N>_completed` → `04_wave_<N+1>_in_progress` (se houver m
 - `IN_PROGRESS` — wave em execução (lead orquestrando, subagentes trabalhando).
 - `COMPLETED_AWAITING_HUMAN` — última wave concluída, aguardando humano aprovar transição para 05.
 - `BLOCKED_STOP_POINT` — subagente disparou menu A/B/C; humano responde.
-- `BLOCKED_ERROR` — merge conflict, CI global vermelho, ou cap 3 voltas auto-QA estourado em alguma task.
+- `BLOCKED_ERROR` — merge conflict, CI global vermelho, cap 3 voltas auto-QA estourado, ou cleanup --force unsafe.
+- `BLOCKED_HITL` — wave mista com 1+ task `type: HITL` aguardando humano (não é falha; espera externa).
 
 ## Stop points aplicáveis
 
@@ -308,10 +309,24 @@ Após última wave concluída, gate humano é OBRIGATÓRIO antes de transitar pr
   `cd {{PROJECT_ROOT}}/.icm-main && git pull --ff-only` para sincronizar
   worktree linkada com novo HEAD da base.
 
-- **HITL handling:** se wave é `Type: HITL`, lead session NÃO spawna
-  subagent. Gera AGENT-BRIEF, exibe ao humano, atualiza L1 para
-  `status=COMPLETED_AWAITING_HUMAN, sub_stage=04_wave_N_hitl_pending`,
-  SAIR. Próxima sessão (após humano resolver) retoma wave seguinte.
+- **HITL handling (task-level granularity):**
+  - **Wave-level HITL** (todas tasks da wave têm `type: HITL`, ou
+    wave-planner isolou tasks HITL em sub-wave cap=1): lead NÃO spawna
+    Agent para nenhuma task. Gera AGENT-BRIEF de cada, exibe ao humano,
+    atualiza L1 `status=COMPLETED_AWAITING_HUMAN,
+    sub_stage=04_wave_N_hitl_pending`, SAIR. Próxima sessão (após humano
+    resolver) lê task reports preenchidos pelo humano e prossegue.
+  - **Task-level HITL** (wave mista — algumas tasks `type: HITL`, outras
+    não): lead spawna Agents para tasks não-HITL EM PARALELO; para cada
+    task HITL gera AGENT-BRIEF + escreve `output/wave-<N>/task-<slug>.md`
+    com frontmatter `status: AWAITING_HITL` + brief inline. Lead aguarda
+    Agents não-HITL retornarem. Após retorno: se ainda há tasks
+    AWAITING_HITL, lead atualiza L1 `status=BLOCKED_HITL,
+    sub_stage=04_wave_N_partial_hitl_pending`, SAIR. Próxima sessão
+    valida que tasks HITL viraram `status: COMPLETE` (humano editou) e
+    retoma passo 8 (wave-reviewer) com a wave inteira.
+  - Status canônico novo: `BLOCKED_HITL` (distinto de `BLOCKED_ERROR` —
+    não é falha, é espera externa).
 
 - **Diagnose protocol nota (`_references/runtime/diagnose-protocol.md`):**
   subagent que detecta bug recorrente em sua task PODE ativar diagnose
