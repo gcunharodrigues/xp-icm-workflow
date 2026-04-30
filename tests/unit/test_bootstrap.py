@@ -287,6 +287,31 @@ class TestValidateSlug:
         with pytest.raises(BootstrapError):
             validate_slug(slug)
 
+    @pytest.mark.parametrize("slug", [
+        "001-foo",
+        "042-saas-mvp",
+        "999-x",
+        "000-bar",
+    ])
+    def test_rejects_NNN_prefix(self, slug: str) -> None:
+        """Slug com prefix NNN- gera workspace duplicado tipo '001-001-foo'.
+
+        Bootstrap auto-prefixa o ID, então slug deve ser puro (sem NNN).
+        Reject + hint na mensagem.
+        """
+        with pytest.raises(BootstrapError, match="prefix NNN-"):
+            validate_slug(slug)
+
+    @pytest.mark.parametrize("slug", [
+        "01-feature",  # 2 dígitos — não bate ^\d{3}-
+        "1234-foo",    # 4 dígitos — não bate ^\d{3}-
+        "abc-001",     # NNN no meio, não no início
+        "12-3-foo",    # dígitos quebrados
+    ])
+    def test_NNN_guard_does_not_overreject(self, slug: str) -> None:
+        """Guard só pega EXATAMENTE 3 dígitos + hífen no início."""
+        validate_slug(slug)  # não deve raise
+
 
 # ============================================================================
 # parse_profile_merge_output
