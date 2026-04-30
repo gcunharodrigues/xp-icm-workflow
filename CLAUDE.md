@@ -39,6 +39,28 @@ git push origin --delete feat/<short-slug>   # apenas se remote
 - Sem remote configurado nesse repo skill — passos `git push` viram no-op
   até remote ser adicionado.
 
+## Pre-merge drift audit (mandatory)
+
+**Toda PR que toca `references/`, `templates/`, `scripts/`, `SKILL.md`, `CLAUDE.md`, `README.md` DEVE rodar:**
+
+```bash
+pytest tests/unit/test_no_drift.py -v
+```
+
+**Detectores ativos (5):**
+- Versão consistente (canonical = `scripts/bootstrap.py:SKILL_VERSION`).
+- Profile count (canonical = `len(CANONICAL_PROFILES)` em `profile-merge.py`).
+- Status enum sync (`validate_state.py:ALLOWED_STATUSES` ↔ `references/state-machine-schema.md` table rows).
+- Status canônicos esperados presentes (allow-list anti-typo).
+- Cross-refs markdown resolvem em `references/`.
+
+**Se test falha:**
+- NÃO mergear até fix.
+- Adicionar entrada no whitelist do test (`VERSION_WHITELIST` / `PROFILE_COUNT_WHITELIST`) APENAS se a divergência é legítima (changelog histórico, kickoff arquivado, fixture legacy explícita).
+- Caso contrário: fix o drift no arquivo que diverge.
+
+**Por que automatizado:** repo é highly-coupled (versão em 5+ arquivos, profile count em 8+, status enum em 3+). Auditar manualmente em sessão fresh é não-confiável. Test gate bloqueia drift no commit, sem precisar lembrar.
+
 ## Commands
 
 ```bash
