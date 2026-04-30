@@ -44,6 +44,8 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
 | 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
 | 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
 | 17 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/wave-planner-algorithm.md | L3 | condicional: referenciado no mapeamento discovery → tasks técnicas |
+| 18 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/design-system.md | L3 | condicional: profile efetivo tem `design_system_required: True` (atualmente: `app_web_frontend`, `fullstack`) |
+| 19 | {{PROJECT_ROOT}}/.icm-main/DESIGN.md | L3 | condicional: profile com `design_system_required: True` AND brownfield (arquivo já existe). Lido via worktree `.icm-main/`. |
 
 ## Não Lê (negative constraint)
 
@@ -71,6 +73,23 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
    ```
    Numeração contínua a partir do maior NNNN existente em `.icm-main/docs/decisions/`. Validar 3-criteria gate antes (`adr-format.md`).
 7. **Detectar adr_drift:** se proposta de design diverge de ADR vigente sem superseding declarado → stop point `adr_drift`. Resolução: superseding ADR (`NNNN-supersedes-MMMM.md`) OU revisão da proposta para alinhar.
+7.5. **Design System (apenas profiles `app_web_frontend` + `fullstack`):** se profile efetivo tem `design_system_required: True` (lido em `_config/profile-effective.yaml`):
+   - **Brownfield:** ler `{{PROJECT_ROOT}}/.icm-main/DESIGN.md` se existe; design respeita tokens declarados.
+   - **Greenfield (arquivo ausente):** apresentar menu A/B/C ao humano:
+     - **A) Criar do zero** — designer propõe tokens iniciais baseado em brand voice + audience capturados em discovery.md.
+     - **B) Inspirar em exemplo** — escolha brand de referência da galeria [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) (airbnb, apple, claude, figma, framer, ferrari, etc.).
+     - **C) Extrair de URL existente** — humano fornece URL e roda `npx designlang <url>` externamente. Designer adapta output base.
+   - Após escolha, designer escreve/atualiza `<project_root>/.icm-main/DESIGN.md` seguindo schema canônico Google Stitch (YAML frontmatter + section order: Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts).
+   - Commit em base branch via worktree:
+     ```
+     cd {{PROJECT_ROOT}}/.icm-main
+     git add DESIGN.md
+     git commit -m "design: {{WORKSPACE}} — design system v<N>"
+     cd {{PROJECT_ROOT}}
+     ```
+   - Plan.md cita componentes não-triviais com Component Spec table (Default/Hover/Active/Disabled) referenciando tokens declarados.
+   - Tasks com files frontend ganham flag `requires_design_system: true` no metadata (consumido pelo lead na fase 04 — canal 2 inject).
+   - Doc canônico: `_references/runtime/design-system.md`.
 8. **Definir Test Strategy global do workspace** (uma vez no plan.md, não por task). Ler `test_specs` do `_config/profile-effective.yaml` para calibrar. Seção obrigatória com:
    - **Framework**: linguagem → framework principal (ex: Python → pytest + httpx; TS → vitest + @testing-library/react)
    - **Test pyramid**: proporção unit/integration/e2e justificada pelo profile

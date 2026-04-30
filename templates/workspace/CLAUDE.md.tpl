@@ -50,6 +50,7 @@ L0 é a constituição imutável deste workspace. Todo agente em qualquer estág
 | ADRs do projeto | `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` | base |
 | Lessons do projeto | `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` | base |
 | Tech debt | `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` | base |
+| Design System (profiles `app_web_frontend`, `fullstack`) | `{{PROJECT_ROOT}}/.icm-main/DESIGN.md` | base |
 | Código existente (read-only de leitura cross-branch) | `{{PROJECT_ROOT}}/.icm-main/src/`, `{{PROJECT_ROOT}}/.icm-main/tests/` etc. | base |
 
 **Regra:** TODA referência a docs resolve absoluta a partir de `{{PROJECT_ROOT}}`. Scripts da skill resolvem absoluta a partir de `{{SKILL_DIR}}/scripts/`. NUNCA use `scripts/` relativo (assumir CWD errado). NUNCA use `../../` relativo. Vazamento de path = bug B2 do diagnóstico.

@@ -530,6 +530,7 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "out-of-scope-kb.md",             # T2.8
         "design-it-twice.md",             # T3 — parallel interface design
         "deep-modules.md",                # T3 — architecture review (v3.4.1)
+        "design-system.md",               # v3.4.4 — DESIGN.md format pra frontend/fullstack
     )
     refs_src = skill_root / "references"
     for fname in runtime_refs:

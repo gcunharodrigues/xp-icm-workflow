@@ -57,7 +57,7 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
 
 1. **Lead pre-flight:** lê wave-plan.md; identifica wave atual via L1 `waves.current`. Sub_stage transita para `04_wave_<N>_in_progress`.
 2. **Lead spawn subagentes via Agent tool:** para cada task da wave (até cap), cria branch `wave-{{WORKSPACE}}-<N>/<task-slug>` a partir de `{{BASE_BRANCH}}` e invoca subagente via Agent tool com o contexto da task.
-3. **Lead injeta canal 2:** injeta no prompt do subagente apenas o subset de ADRs + lições críticas + conventions extras declarados no plan.md daquela task. Subagente NÃO lê o `docs/` global do projeto.
+3. **Lead injeta canal 2:** injeta no prompt do subagente apenas o subset de ADRs + lições críticas + conventions extras declarados no plan.md daquela task. Subagente NÃO lê o `docs/` global do projeto. **Se task tem flag `requires_design_system: true`** (profile `app_web_frontend` ou `fullstack`): lead também injeta subset relevante do DESIGN.md (tokens aplicáveis + components section da task) — subagente lê via `Read {{PROJECT_ROOT}}/.icm-main/DESIGN.md` se precisar de detalhe extra. Doc: `_references/runtime/design-system.md`.
 4. **Subagente (CWD = project root, branch `wave-{{WORKSPACE}}-<N>/<task-slug>`):** executa ciclo TDD 7 passos do `4-block-contract-template.md`:
    1. RED — test que falha cobre VALIDAÇÃO da task.
    2. GREEN — implementação mínima.
