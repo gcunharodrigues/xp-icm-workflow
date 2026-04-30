@@ -31,10 +31,11 @@ CANONICAL_TIERS = profile_merge.CANONICAL_TIERS
 # ----------------------------------------------------------------------------
 
 def test_canonical_profiles_count():
-    assert len(CANONICAL_PROFILES) == 10
+    assert len(CANONICAL_PROFILES) == 11
     assert set(CANONICAL_PROFILES) == {
         "app_web_backend",
         "app_web_frontend",
+        "fullstack",
         "dashboard",
         "data_analysis",
         "ml_project",
@@ -52,9 +53,9 @@ def test_canonical_tiers_count():
 
 
 @pytest.mark.parametrize("profile", [
-    "app_web_backend", "app_web_frontend", "dashboard", "data_analysis",
-    "ml_project", "agent_ia", "cli_tool", "framework_library",
-    "technical_article", "experiment",
+    "app_web_backend", "app_web_frontend", "fullstack", "dashboard",
+    "data_analysis", "ml_project", "agent_ia", "cli_tool",
+    "framework_library", "technical_article", "experiment",
 ])
 @pytest.mark.parametrize("tier", ["experimental", "tool", "development", "production"])
 def test_all_combos_return_valid_dict(profile, tier):
@@ -182,13 +183,73 @@ def test_technical_article_cap_is_5():
 
 
 def test_app_web_security_gate_above_experimental():
-    # Regra: security_gate True para app_web_* em qualquer tier != experimental
-    for profile in ["app_web_backend", "app_web_frontend"]:
+    # Regra: security_gate True para app_web_* + fullstack em qualquer tier != experimental
+    for profile in ["app_web_backend", "app_web_frontend", "fullstack"]:
         eff_exp, _ = merge_profile(profile=profile, tier="experimental")
         assert eff_exp["security_gate"] is False
         for tier in ["tool", "development", "production"]:
             eff, _ = merge_profile(profile=profile, tier=tier)
             assert eff["security_gate"] is True, f"{profile}/{tier} deveria ter security_gate"
+
+
+# ----------------------------------------------------------------------------
+# v3.4.4: profile fullstack — superset backend + frontend
+# ----------------------------------------------------------------------------
+
+class TestFullstackProfile:
+    def test_test_types_required_superset(self):
+        # development+: inclui e2e
+        for tier in ["development", "production"]:
+            eff, _ = merge_profile(profile="fullstack", tier=tier)
+            assert eff["test_specs"]["test_types_required"] == [
+                "unit", "integration", "component", "e2e"
+            ]
+        # experimental/tool: sem e2e
+        for tier in ["experimental", "tool"]:
+            eff, _ = merge_profile(profile="fullstack", tier=tier)
+            assert eff["test_specs"]["test_types_required"] == [
+                "unit", "integration", "component"
+            ]
+
+    def test_backend_audit_dimensions_present(self):
+        eff, _ = merge_profile(profile="fullstack", tier="development")
+        assert eff["test_specs"]["http_integration"] is True
+        assert eff["test_specs"]["db_integration"] is True
+
+    def test_frontend_audit_dimensions_present(self):
+        eff, _ = merge_profile(profile="fullstack", tier="development")
+        assert eff["test_specs"]["component_testing"] is True
+        assert eff["test_specs"]["e2e_required"] is True
+        assert eff["test_specs"]["a11y_testing"] is True
+
+    def test_visual_regression_only_production(self):
+        eff_prod, _ = merge_profile(profile="fullstack", tier="production")
+        assert eff_prod["test_specs"]["visual_regression"] is True
+        for tier in ["experimental", "tool", "development"]:
+            eff, _ = merge_profile(profile="fullstack", tier=tier)
+            assert eff["test_specs"]["visual_regression"] is False
+
+    def test_design_system_required(self):
+        # Frontend e fullstack ambos têm design_system_required: True
+        for profile in ["app_web_frontend", "fullstack"]:
+            for tier in CANONICAL_TIERS:
+                eff, _ = merge_profile(profile=profile, tier=tier)
+                assert eff["test_specs"].get("design_system_required") is True
+
+    def test_design_system_NOT_required_for_other_profiles(self):
+        # Backend, cli_tool, ml_project etc. NÃO têm design_system_required
+        for profile in ["app_web_backend", "cli_tool", "ml_project", "agent_ia"]:
+            eff, _ = merge_profile(profile=profile, tier="development")
+            assert "design_system_required" not in eff["test_specs"], (
+                f"{profile} não deveria ter design_system_required"
+            )
+
+    def test_hash_fullstack_distinct_from_backend_and_frontend(self):
+        # Hash deterministico, mas distinto entre os 3 profiles
+        _, h_back = merge_profile(profile="app_web_backend", tier="development")
+        _, h_front = merge_profile(profile="app_web_frontend", tier="development")
+        _, h_full = merge_profile(profile="fullstack", tier="development")
+        assert len({h_back, h_front, h_full}) == 3
 
 
 # ----------------------------------------------------------------------------
