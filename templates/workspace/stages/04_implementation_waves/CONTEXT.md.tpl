@@ -76,14 +76,14 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
    3. Retorna ao lead via Agent tool output.
 
    Lead recebe → seta L1 `status: BLOCKED_ERROR` → wave-reviewer (passo 8) audita git log da wave branch contando commits RED/GREEN/REFACTOR; se `qa_loops_used` declarado < commits reais, flagra fraude. Lead decide: reduzir wave (subagent-protocol) ou escalar humano.
-7. **Lead recebe resultado de cada subagente via Agent tool:** lead aguarda retorno COMPLETE de cada subagente da wave. Resultados chegam diretamente pelo Agent tool output — sem polling de diretório.
+7. **Lead recebe resultado de cada subagente via Agent tool:** lead aguarda retorno COMPLETE de cada subagente da wave. Resultados chegam diretamente pelo Agent tool output — sem polling de diretório. Ordem de retorno é não-determinística (paralelismo). Lead bufferiza resultados em estrutura `{task_slug: agent_result}`. Antes do passo 9 (merge sequencial), lead ordena tasks por índice no `plan.md > tasks[]` da wave atual — merge order = plan order, NÃO retorno order. Auditável: `wave-summary.md` lista tasks na ordem do plan.
 8. **Wave-reviewer:** lead spawna `Agent(subagent_type: "general-purpose", description: "wave <N> review")` SEM `isolation: "worktree"` — reviewer roda em CWD do lead (workspace branch), lê código das wave branches via:
    - `git show wave-{{WORKSPACE_NUM}}-<N>/<task-slug>:<file-path>` para conteúdo final.
    - `git diff {{BASE_BRANCH}}...wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` para diff completo.
    - `git log {{BASE_BRANCH}}..wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` para commits da branch.
 
    Reviewer audita: (a) Auto-QA Akita 15-itens de cada `task-<slug>.md`; (b) `Files touched` reais (via `git diff --name-only`) batem com declarado em plan.md task; (c) acceptance criteria cumpridos. Retorna ao lead via Agent tool output: `approved: true|false`, `issues: [<list>]`. Issues → lead re-spawna subagente original (com `isolation: "worktree"`) para correção.
-9. **Merge sequencial:** lead faz merge de cada branch `wave-{{WORKSPACE}}-<N>/<task-slug>` em `{{BASE_BRANCH}}` na ordem do plan. Conflict de merge → `BLOCKED_ERROR`, humano resolve manualmente.
+9. **Merge sequencial:** lead faz merge de cada branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` em `{{BASE_BRANCH}}` usando ordem buferizada do passo 7 (= ordem do plan). Comando: `git checkout {{BASE_BRANCH}} && git merge --no-ff wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` por task. `--no-ff` preserva grupo de commits da wave branch (auditável). Conflict de merge → ver `references/conflict-resolution-protocol.md`.
 10. **CI gate global:** roda CI completo do projeto após todos os merges. Verde → wave concluída.
 11. **Cleanup wave worktrees + branches (v3.4.3):** após merge bem-sucedido + CI verde, lead remove worktrees efêmeras criadas pelos subagentes E deleta branches já merged. Bug pre-v3.4.3: worktrees em `<project_root>/.icm-wave-*` (ou path retornado pelo Agent tool) ficavam orfãs após cada wave; branches `wave-<NNN>-<N>/<task-slug>` poluíam `git branch` listing.
 
