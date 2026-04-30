@@ -56,7 +56,10 @@ Execução paralela em waves. Lead session orquestra subagentes via Agent tool r
 Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
 
 1. **Lead pre-flight:** lê wave-plan.md; identifica wave atual via L1 `waves.current`. Sub_stage transita para `04_wave_<N>_in_progress`.
-2. **Lead spawn subagentes via Agent tool:** para cada task da wave (até cap), cria branch `wave-{{WORKSPACE}}-<N>/<task-slug>` a partir de `{{BASE_BRANCH}}` e invoca subagente via Agent tool com o contexto da task.
+2. **Lead spawn subagentes via Agent tool:** para cada task da wave (até cap):
+   1. Lead cria branch ANTES do spawn: `git branch wave-{{WORKSPACE_NUM}}-<N>/<task-slug> {{BASE_BRANCH}}`. Lead permanece em workspace branch (sem checkout). Branch órfã (caso Agent falhe pré-checkout) é detectável via `git branch --merged {{BASE_BRANCH}}` e limpa no passo 11.
+   2. Lead invoca `Agent(isolation: "worktree", subagent_type: "general-purpose", description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + canal-2>)`. Harness faz `git worktree add` apontando pra branch já existente — NÃO cria branch novo. Path do worktree retornado no Agent tool result; lead persiste em estrutura local pra cleanup posterior.
+   3. Tasks paralelas: múltiplos `Agent` calls em UMA mensagem (multi tool-use). Tasks sequenciais (HITL ou dependentes): chamadas sequenciais.
 3. **Lead injeta canal 2:** injeta no prompt do subagente apenas o subset de ADRs + lições críticas + conventions extras declarados no plan.md daquela task. Subagente NÃO lê o `docs/` global do projeto. **Se task tem flag `requires_design_system: true`** (profile `app_web_frontend` ou `fullstack`): lead também injeta subset relevante do DESIGN.md (tokens aplicáveis + components section da task) — subagente lê via `Read {{PROJECT_ROOT}}/.icm-main/DESIGN.md` se precisar de detalhe extra. Doc: `_references/runtime/design-system.md`.
 4. **Subagente (CWD = project root, branch `wave-{{WORKSPACE}}-<N>/<task-slug>`):** executa ciclo TDD 7 passos do `4-block-contract-template.md`:
    1. RED — test que falha cobre VALIDAÇÃO da task.
