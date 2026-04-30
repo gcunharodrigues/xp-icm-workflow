@@ -90,6 +90,15 @@ Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan
    - Plan.md cita componentes não-triviais com Component Spec table (Default/Hover/Active/Disabled) referenciando tokens declarados.
    - Tasks com files frontend ganham flag `requires_design_system: true` no metadata (consumido pelo lead na fase 04 — canal 2 inject).
    - Doc canônico: `_references/runtime/design-system.md`.
+7.6. **Preview Loop — schema mock data + preview pages flag (v3.6.0):** se profile efetivo tem `preview_loop.preview_loop_enabled: true` (lido em `_config/profile-effective.yaml`):
+   - **Mock data strategy** lida do efetivo (`preview_loop.mock_data_strategy`):
+     - `fixtures` (experimental/tool): designer NÃO escreve schema formal; plan.md menciona apenas paths de `fixtures/*.json` esperados.
+     - `msw_faker` (development): designer descreve em plan.md os endpoints `/api/*` esperados pelo frontend + shape do payload (em pseudo-TS), suficiente pra lead/subagente em fase 04 escrever `mocks/handlers.ts` usando MSW + Faker.
+     - `msw_faker_zod` (production): designer escreve schema **Zod** completo em plan.md (bloco de código), salvo em `mocks/schema.ts` na fase 04. Schema é fonte de verdade do contrato API que o backend real implementará depois — refatorar mock → real = trocar handler MSW por chamada HTTP real, sem mexer em componente.
+   - **Componentes reusáveis** ganham flag `requires_preview_page: true` no metadata da task. Indica ao subagente em fase 04 que junto com o componente deve escrever `preview/<component>/page.tsx` (Next.js app router) ou equivalente do build tool detectado, com ≥4 estados (Default/Hover/Active/Disabled). Path canônico em `preview_loop.preview_pages_path` (default `preview/`).
+   - **Routes map (fallback CDP):** designer popula `output/routes.md` listando rotas planejadas + componente principal por rota + fixture/handler associado. Ativa fallback automático quando CDP indisponível em fase 04.
+   - **Wireframe ASCII opcional:** plan.md task com layout não-trivial (ex: dashboard multi-grid) inclui wireframe ASCII no bloco `COMO`. Stage 04 lead injeta wireframe no canal 2 do subagente. Wireframe NÃO substitui DESIGN.md tokens; é aux pra layout coords.
+   - Doc canônico: `_references/runtime/preview-loop-protocol.md`.
 8. **Definir Test Strategy global do workspace** (uma vez no plan.md, não por task). Ler `test_specs` do `_config/profile-effective.yaml` para calibrar. Seção obrigatória com:
    - **Framework**: linguagem → framework principal (ex: Python → pytest + httpx; TS → vitest + @testing-library/react)
    - **Test pyramid**: proporção unit/integration/e2e justificada pelo profile

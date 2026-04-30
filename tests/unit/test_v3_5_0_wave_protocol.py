@@ -137,10 +137,17 @@ def test_wave_execution_protocol_canonical_exists():
         assert status in text, f"wave-execution-protocol falta status {status}"
 
 
-def test_skill_version_v3_5_0():
-    """Task 2: SKILL.md bumped para v3.5.0."""
+def test_skill_version_at_least_v3_5_0():
+    """Task 2: SKILL.md bumped para v3.5.0+. Aceita versões mais recentes
+    pq esse teste cobria o bump original v3.5.0; versões futuras seguem
+    seu próprio gate (test_no_drift garante consistência cross-file)."""
     text = SKILL_MD.read_text(encoding="utf-8")
-    assert "v3.5.0" in text, "SKILL.md deve estar em v3.5.0"
+    import re
+    match = re.search(r"# xp-icm-workflow v(\d+)\.(\d+)\.(\d+)", text)
+    assert match, "SKILL.md deve declarar versão no header"
+    major, minor, patch = map(int, match.groups())
+    assert (major, minor, patch) >= (3, 5, 0), \
+        f"SKILL.md em versão {major}.{minor}.{patch} < 3.5.0"
 
 
 def test_changelog_v3_5_0_entry():

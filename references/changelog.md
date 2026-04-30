@@ -4,6 +4,91 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.6.0 — Preview loop (build-iterate visual) (2026-04-30)
+
+### Why v3.6.0
+
+Frontend ICM até v3.5.0 cobria DESIGN.md tokens (Google Stitch) mas
+faltava ciclo build-iterate visual. Humano pedia "mostra como vai
+ficar" e ICM não tinha resposta integrada além de "spawn subagente
+implementa". Sem hot-reload coordenado, sem feedback loop visual,
+sem mock data automático, sem CDP integration.
+
+v3.6.0 fecha a lacuna: profile `app_web_frontend` + `fullstack`
+ganham preview loop opt-in-by-default que orquestra dev server,
+mock data tier-based, Chrome CDP live, preview pages, verificação
+uniforme, feedback combo livre, design system cascade, e replay
+multi-tela. Doc canônico: `references/preview-loop-protocol.md`.
+
+### Mudanças
+
+**1. Doc canônico novo (`references/preview-loop-protocol.md`):**
+- 10 decisões consolidadas (dev server lifecycle, mock data
+  tier-based, feedback combo, CDP live, verificação uniforme,
+  preview pages, screenshot livre, sem cap iter, design cascade
+  threshold 5, multi-tela sob pedido).
+- Cobre stack canônico, comandos por package manager, helper
+  scripts, scope de leitura CDP, fallback gracioso.
+- Anti-patterns + recovery wizard tipos novos documentados.
+
+**2. Helper scripts CDP (`templates/.claude/scripts/`):**
+- `launch-chrome-cdp.bat` (Windows): lança Chrome com
+  `--remote-debugging-port=9222 --user-data-dir=.icm-chrome-profile`.
+- `launch-chrome-cdp.sh` (POSIX): mesma função, autodetecta
+  Chrome/Chromium em macOS/Linux.
+
+**3. Profile flags (`profile-merge.py` + `profile-matrix.md`):**
+- Função nova `_preview_loop_config(profile, tier)` emite bloco
+  `preview_loop` em `profile-effective.yaml`:
+  - `preview_loop_enabled: true`
+  - `mock_data_strategy` tier-based (`fixtures` | `msw_faker` | `msw_faker_zod`)
+  - `cdp_live_enabled: true`
+  - `visual_iter_cap: null`
+  - `design_cascade_threshold: 5`
+  - `preview_pages_path: preview/`
+- Aplica APENAS em `app_web_frontend` + `fullstack`.
+
+**4. Stage 02 design template — step 7.6:**
+- Preview Loop schema mock data + preview pages flag.
+- Tier ≥ development: designer escreve schema Zod em plan.md.
+- Tasks com componente reusável ganham `requires_preview_page: true`.
+- Routes map `output/routes.md` populado pra fallback CDP.
+- Wireframe ASCII opcional pra layout não-trivial.
+
+**5. Stage 04 implementation template — entry/exit hooks + sub-steps:**
+- Entry hook: detect package manager via lockfile, start dev server
+  em background, salvar PID em `.icm-main/.dev-server.pid`,
+  imprimir kickoff priming.
+- Verificação tier-aware reescrita: `tsc` cada Edit, lint+Playwright
+  wave-end, full sob pedido.
+- Stop points novos `feedback_ambiguous` + `design_system_cascade`.
+- Exit hook: matar PID, apagar PID file, preservar `.icm-chrome-profile/`.
+
+**6. Recovery wizard tipos novos (`scripts/recovery-wizard.py`):**
+- `DEV_SERVER_ORPHAN`: PID file existe + processo morto. Plan A:
+  apaga PID file + log, registra warning. Cross-platform (POSIX
+  via `os.kill(pid, 0)`, Windows via `ctypes.OpenProcess`).
+- `CDP_DISCONNECTED`: `.icm-chrome-profile/` existe + Chrome não
+  listening em :9222. Plan A: warning, sugere helper relaunch
+  (não mata profile dir).
+- Helpers `_is_pid_alive(pid)` + `_is_port_listening(host, port)`
+  adicionados (sem deps externas).
+
+**7. Bootstrap (`scripts/bootstrap.py`):**
+- `SKILL_VERSION = "3.6.0"`.
+- `.icm-chrome-profile/` adicionado a `GITIGNORE_LINES`.
+- Função nova `detect_package_manager(project_root)` retorna
+  `(pm, dev_cmd)` baseado em lockfile (prioridade
+  `bun > pnpm > yarn > npm`).
+
+**8. Cross-refs:**
+- `references/design-system.md` v3.6.0 → seção "Build-iterate visual
+  loop" + cross-ref ao novo doc.
+- `templates/_config/profile-matrix.md` → tabela de flags preview loop
+  na seção `app_web_frontend` e `fullstack`.
+
+---
+
 ## v3.5.0 — Stage 04 protocol gaps fix (2026-04-29)
 
 ### Why v3.5.0

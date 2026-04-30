@@ -24,7 +24,10 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import os
+import platform
 import re
+import socket
 import subprocess
 import sys
 from dataclasses import dataclass, field
@@ -56,6 +59,9 @@ CODE_WAVE_WORKTREE_ORPHAN = "WAVE_WORKTREE_ORPHAN"
 # Workspaces v3.4.x iniciaram waves sem gravar esse field — detector
 # permite migração suave (auto-fix marca "unknown").
 CODE_MISSING_PRE_WAVE_SHA = "MISSING_PRE_WAVE_SHA"
+# v3.6.0: preview loop dev server + CDP browser
+CODE_DEV_SERVER_ORPHAN = "DEV_SERVER_ORPHAN"
+CODE_CDP_DISCONNECTED = "CDP_DISCONNECTED"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -72,6 +78,8 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_KICKOFF_WITHOUT_GATE,
     CODE_WAVE_WORKTREE_ORPHAN,
     CODE_MISSING_PRE_WAVE_SHA,
+    CODE_DEV_SERVER_ORPHAN,
+    CODE_CDP_DISCONNECTED,
 )
 
 # Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).
@@ -301,6 +309,47 @@ def _is_branch_merged(
         ["merge-base", "--is-ancestor", branch, base_branch], cwd=cwd
     )
     return result.returncode == 0
+
+
+def _is_pid_alive(pid: int) -> bool:
+    """Cross-platform PID liveness check.
+
+    POSIX: os.kill(pid, 0) raises ProcessLookupError if dead.
+    Windows: usa OpenProcess via ctypes (sem psutil dep).
+    Falsa-positivo aceitavel (warning-level recovery).
+    """
+    if pid <= 0:
+        return False
+    try:
+        if platform.system() == "Windows":
+            import ctypes  # noqa: PLC0415
+
+            PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+            handle = ctypes.windll.kernel32.OpenProcess(
+                PROCESS_QUERY_LIMITED_INFORMATION, False, pid
+            )
+            if not handle:
+                return False
+            ctypes.windll.kernel32.CloseHandle(handle)
+            return True
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        # POSIX: processo existe mas inacessivel. Considera alive.
+        return True
+    except OSError:
+        return False
+
+
+def _is_port_listening(host: str, port: int, timeout: float = 0.3) -> bool:
+    """True se houver listener TCP aceitando conexao em host:port."""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except (OSError, socket.timeout):
+        return False
 
 
 def _last_workspace_commit_at(
@@ -740,6 +789,65 @@ def detect_inconsistencies(
                 )
             )
 
+    # 12) DEV_SERVER_ORPHAN (v3.6.0)
+    # Preview loop entry hook salva PID em .icm-main/.dev-server.pid quando
+    # starta dev server. Exit hook deveria matar processo + apagar PID.
+    # Sintoma: PID file existe AND processo morto (sessao crashou ou exit
+    # hook nao rodou). Plan A: apaga PID file, registra warning.
+    if project_root is not None and project_root.is_dir():
+        pid_file = project_root / ".icm-main" / ".dev-server.pid"
+        if pid_file.is_file():
+            try:
+                pid_str = pid_file.read_text(encoding="utf-8").strip()
+                pid = int(pid_str)
+            except (OSError, ValueError):
+                pid = -1
+            if pid > 0 and not _is_pid_alive(pid):
+                found.append(
+                    Inconsistency(
+                        code=CODE_DEV_SERVER_ORPHAN,
+                        message=(
+                            f"PID file {pid_file} aponta pra processo morto "
+                            f"(pid={pid}). Stage 04 exit hook nao rodou ou "
+                            "sessao crashou. Doc: preview-loop-protocol.md."
+                        ),
+                        proposed_action=(
+                            "apagar PID file + registrar warning (proximo "
+                            "stage 04 entry rebota dev server limpo)"
+                        ),
+                        severity="warning",
+                        context={"pid_file": str(pid_file), "pid": pid},
+                    )
+                )
+
+    # 13) CDP_DISCONNECTED (v3.6.0)
+    # Preview loop usa Chrome com --remote-debugging-port=9222 e
+    # --user-data-dir=.icm-chrome-profile. Sintoma: profile dir existe
+    # mas Chrome nao listening em 9222 (Chrome fechado, porta ocupada,
+    # helper falhou). Warning-level — agente degrada via fallback (route
+    # map + screenshot manual).
+    if project_root is not None and project_root.is_dir():
+        cdp_profile_dir = project_root / ".icm-chrome-profile"
+        if cdp_profile_dir.is_dir():
+            if not _is_port_listening("127.0.0.1", 9222):
+                found.append(
+                    Inconsistency(
+                        code=CODE_CDP_DISCONNECTED,
+                        message=(
+                            f"`{cdp_profile_dir.name}/` existe mas Chrome "
+                            "nao listening em :9222. Lance helper "
+                            "`scripts/launch-chrome-cdp.{bat,sh}` ou siga "
+                            "fallback (route map + screenshot manual)."
+                        ),
+                        proposed_action=(
+                            "registrar warning; humano relança Chrome via "
+                            "helper script (skill nao mata profile)"
+                        ),
+                        severity="warning",
+                        context={"profile_dir": str(cdp_profile_dir)},
+                    )
+                )
+
     # Reordenar pra ordem canonica
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}
     ordered = [by_code[c] for c in CANONICAL_ORDER if c in by_code]
@@ -988,6 +1096,50 @@ def _apply_plan_a(
                         ),
                     },
                 )
+
+        elif inc.code == CODE_DEV_SERVER_ORPHAN:
+            # Plan A: apaga PID file + log. Proximo stage 04 entry rebota.
+            pid_file_str = inc.context.get("pid_file", "")
+            if pid_file_str:
+                pid_file = Path(pid_file_str)
+                try:
+                    pid_file.unlink()
+                except OSError:
+                    pass
+                # Apaga tambem .dev-server.log se existe
+                log_file = pid_file.with_suffix(".log")
+                if log_file.is_file():
+                    try:
+                        log_file.unlink()
+                    except OSError:
+                        pass
+            _append_history(
+                state,
+                {
+                    "at": _now_iso(now),
+                    "event": "recovery_warning",
+                    "note": (
+                        f"DEV_SERVER_ORPHAN cleanup: removed "
+                        f"{inc.context.get('pid_file', '')}"
+                    ),
+                },
+            )
+
+        elif inc.code == CODE_CDP_DISCONNECTED:
+            # Plan A: registra warning, NAO mata profile dir (humano pode
+            # querer reabrir via helper script). Sem mudanca de estado.
+            _append_history(
+                state,
+                {
+                    "at": _now_iso(now),
+                    "event": "recovery_warning",
+                    "note": (
+                        "CDP_DISCONNECTED: relance Chrome via "
+                        "scripts/launch-chrome-cdp.{bat,sh}. Profile "
+                        f"dir preservado em {inc.context.get('profile_dir', '')}"
+                    ),
+                },
+            )
 
         elif inc.code in (CODE_CLAUDE_MD_ROOT_STALE, CODE_CLAUDE_MD_ROOT_MISSING):
             # Plan A: regerar bloco do workspace no <project_root>/CLAUDE.md

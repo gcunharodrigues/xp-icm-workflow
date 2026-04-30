@@ -1,11 +1,14 @@
-# Design System — DESIGN.md format (v3.5.0)
+# Design System — DESIGN.md format (v3.6.0)
 
-> **Versão:** v3.5.0
+> **Versão:** v3.6.0
 > **Skill:** `xp-icm-workflow`
 > **Aplica quando:** profile efetivo tem `design_system_required: True`
 > (atualmente: `app_web_frontend` e `fullstack`).
 > **Path canônico:** `<project_root>/.icm-main/DESIGN.md` (base branch,
 > persistente cross-iteration via worktree v3.4.0).
+> **Complementa:** `references/preview-loop-protocol.md` — DESIGN.md fornece
+> tokens; preview loop fornece o ciclo build-iterate visual que consome esses
+> tokens em telas reais com hot-reload.
 
 ## Por que DESIGN.md e não outro formato
 
@@ -342,12 +345,38 @@ Stage 02 designer SÓ escreve em DESIGN.md (e plan.md). NÃO toca
 `src/`, `tests/` — isso é fase 04. Pre-commit hook do workspace branch
 rejeita.
 
+## Build-iterate visual loop (v3.6.0)
+
+DESIGN.md tokens cobrem fonte de verdade declarativa. Mas frontend NÃO é
+construído via mockup-first em canvas externo (Figma/Penpot exigem trabalho
+manual em GUI ou plano pago). Em vez disso, ICM v3.6.0 adota loop
+**code-first**: agente gera UI com mock data, humano olha em browser real,
+dá feedback verbal/visual/screenshot, agente itera via hot-reload.
+
+Doc canônico: `references/preview-loop-protocol.md`. Cobre:
+
+- Dev server lifecycle (start entry stage 04, kill exit).
+- Mock data tier-based (fixtures → MSW+Faker → MSW+Faker+Zod).
+- Chrome CDP live integration (`--remote-debugging-port=9222`).
+- Verificação uniforme (`tsc` cada edit + lint/Playwright wave-end).
+- Preview pages (`preview/<component>` ao invés de Storybook).
+- Feedback combo livre (texto, screenshot anotado, URL, HTML).
+- Iteração visual sem cap (humano fecha quando OK).
+- Design system cascade threshold (≤5 cascata direto, >5 stop point).
+- Multi-tela replay sob pedido + auto-detect keywords.
+- Recovery wizard tipos `DEV_SERVER_ORPHAN` + `CDP_DISCONNECTED`.
+
+DESIGN.md continua fonte canônica de tokens. Preview loop é o ciclo de
+execução que consome esses tokens em telas reais. Os dois docs operam
+juntos: design-system.md = O QUÊ; preview-loop-protocol.md = COMO ITERAR.
+
 ## Referências cruzadas
 
 - [Spec DESIGN.md (Google Stitch)](https://stitch.withgoogle.com/docs/design-md/overview/)
 - [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) — 69 exemplos
 - [Manavarya09/design-extract (designlang)](https://github.com/Manavarya09/design-extract) — extração de URL
 - [W3C Design Token JSON spec](https://www.designtokens.org/tr/2025.10/format/)
+- `references/preview-loop-protocol.md` — ciclo build-iterate visual (v3.6.0)
 - `references/worktree-model.md` — modelo de escritas em base branch via `.icm-main/`
 - `templates/_config/profile-matrix.md` — `design_system_required` por profile
 - `references/4-block-contract-template.md` — schema de tasks no plan.md

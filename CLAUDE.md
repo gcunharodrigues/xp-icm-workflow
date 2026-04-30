@@ -152,6 +152,32 @@ Templates in `/templates/` use `{{WORKSPACE}}`, `{{PROFILE}}`, `{{TIER}}`, `{{PR
 
 Playwright plugin disabled in `pyproject.toml` (workaround — leave it).
 
+## v3.6.0 — Preview loop (build-iterate visual)
+
+Profile `app_web_frontend` + `fullstack` ganham preview loop opt-in-by-default.
+Doc canônico: `references/preview-loop-protocol.md`. Cobre 10 decisões consolidadas:
+
+| # | Tópico | Decisão |
+|---|---|---|
+| 1 | Dev server lifecycle | Starta entry stage 04, mata exit. PID em `.icm-main/.dev-server.pid` |
+| 2 | Mock data | Tier-based: exp/tool=fixtures; dev=msw_faker; prod=msw_faker_zod |
+| 3 | Feedback comm | Combo livre + priming kickoff. Stop `feedback_ambiguous` |
+| 4 | URL atual | CDP live (`--remote-debugging-port=9222 --user-data-dir=.icm-chrome-profile`) |
+| 5 | Verificação | `tsc` cada Edit; lint+Playwright wave-end ou sob pedido |
+| 6 | Storybook? | Vite/Next preview pages em `preview/` excluídos do production build |
+| 7 | Screenshot tool | Sem padronização; tip kickoff (Win+Shift+S, ShareX) |
+| 8 | Iter cap | Sem cap. Humano fecha quando OK |
+| 9 | Design cascade | Threshold 5 componentes afetados → confirma |
+| 10 | Multi-tela | CDP só URL default; replay sob pedido + auto-detect keywords |
+
+Mudanças ativas em:
+- `scripts/profile-merge.py:_preview_loop_config` emite bloco `preview_loop` em frontend/fullstack
+- `scripts/bootstrap.py:detect_package_manager` (npm/pnpm/yarn/bun via lockfile)
+- `scripts/recovery-wizard.py` tipos novos `DEV_SERVER_ORPHAN` + `CDP_DISCONNECTED`
+- `templates/.claude/scripts/launch-chrome-cdp.{bat,sh}` helpers
+- `templates/workspace/stages/02_design/CONTEXT.md.tpl` step 7.6 (mock schema)
+- `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` entry/exit hooks + stop points novos
+
 ## v3.3.0 — patterns adopted from mattpocock/skills
 
 8 patterns (Tier 1+2) + Design It Twice (T3 promovido). Doc canônico de cada em `references/`:

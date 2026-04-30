@@ -431,6 +431,30 @@ def _check_unsafe_overrides(
 # API publica
 # ============================================================================
 
+def _preview_loop_config(profile: str, tier: str) -> dict[str, Any] | None:
+    """Retorna preview_loop config para profiles frontend/fullstack.
+
+    None para profiles sem `design_system_required`. v3.6.0+.
+    Doc canonico: references/preview-loop-protocol.md.
+    """
+    if profile not in ("app_web_frontend", "fullstack"):
+        return None
+    mock_data_by_tier = {
+        "experimental": "fixtures",
+        "tool": "fixtures",
+        "development": "msw_faker",
+        "production": "msw_faker_zod",
+    }
+    return {
+        "preview_loop_enabled": True,
+        "mock_data_strategy": mock_data_by_tier[tier],
+        "cdp_live_enabled": True,
+        "visual_iter_cap": None,
+        "design_cascade_threshold": 5,
+        "preview_pages_path": "preview/",
+    }
+
+
 def merge_profile(
     profile: str,
     tier: str,
@@ -445,6 +469,9 @@ def merge_profile(
     effective["profile"] = profile
     effective["tier"] = tier
     effective["test_specs"] = _test_specs(profile, tier)
+    preview_loop = _preview_loop_config(profile, tier)
+    if preview_loop is not None:
+        effective["preview_loop"] = preview_loop
 
     if override_path is not None:
         override = _load_override(Path(override_path))

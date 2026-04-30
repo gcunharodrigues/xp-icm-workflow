@@ -8,7 +8,7 @@ Resolução **Q5** do plan: lista fixa de 12 stops; itens 5, 7, 8 calibrados por
 
 ---
 
-## 1. Lista canônica (12 itens)
+## 1. Lista canônica (14 itens)
 
 | # | id | Descrição |
 |---|---|---|
@@ -24,6 +24,8 @@ Resolução **Q5** do plan: lista fixa de 12 stops; itens 5, 7, 8 calibrados por
 | 10 | `adr_drift` | Stack que difere do declarado em ADR existente |
 | 11 | `workspace_corrupt` | Workspace ICM corrupted (L1/L2 inconsistentes — para e pede recovery) |
 | 12 | `profile_mismatch` | Profile/tier inconsistente com escopo da task |
+| 13 | `feedback_ambiguous` | (v3.6.0 preview loop) Feedback visual humano com baixa confidence — agente NÃO mexe especulando |
+| 14 | `design_system_cascade` | (v3.6.0 preview loop) Mudança de token afeta > `design_cascade_threshold` componentes |
 
 ### 1.1 Detalhe por item
 
@@ -147,6 +149,28 @@ Profile/tier escolhido no bootstrap não corresponde ao escopo real da task em c
   - Escopo cresceu além do declarado em L0.
 - **Trade-offs típicos:** mudar profile/tier (regenera matriz, custo de re-validação) vs spawn novo workspace com profile correto vs reduzir escopo da task atual.
 
+#### 13 — `feedback_ambiguous` (v3.6.0 preview loop)
+Feedback visual humano com baixa confidence: descrição vaga, screenshot sem anotação clara, contradição entre texto e visual.
+
+- **Sinais:**
+  - Humano fala "não gostei" sem apontar elemento específico.
+  - Screenshot anotado com setas em múltiplos elementos sem descrição textual cruzada.
+  - Texto pede mudança X mas screenshot anotado mostra elemento diferente.
+- **Trade-offs típicos:** agente especula (risco mexer no errado) vs pausa e pergunta (atrito mas correto).
+- **Calibração:** sempre `hard` (qualquer tier). Disparável só durante stage 04 com `preview_loop_enabled: true`.
+- Doc: `references/preview-loop-protocol.md`.
+
+#### 14 — `design_system_cascade` (v3.6.0 preview loop)
+Mudança em token (cor, spacing, typography) afeta mais componentes que `preview_loop.design_cascade_threshold` (default 5).
+
+- **Sinais:**
+  - Humano pede "muda primary pra verde", agente Grep mostra 17 componentes afetados.
+  - Mudança em `spacing.md` propaga pra todo o app.
+  - Override de typography afeta múltiplas seções.
+- **Trade-offs típicos:** cascata global (DESIGN.md fica fonte de verdade, mudança visual ampla) vs override local (só esse componente, DESIGN.md fica aspiracional) vs cancela.
+- **Calibração:** sempre `hard` (qualquer tier). Disparável só durante stage 04 com `preview_loop_enabled: true`.
+- Doc: `references/preview-loop-protocol.md`.
+
 ---
 
 ## 2. Thresholds calibrados por tier (itens 5, 7, 8)
@@ -159,7 +183,7 @@ Source: `templates/_config/profile-matrix.md` (chaves `stop_points_calibration.i
 | 7 — `over_eng` | warning | warning | hard | hard |
 | 8 — `pii` | warning | hard | hard | hard+DPO |
 
-Demais 9 stops (1, 2, 3, 4, 6, 9, 10, 11, 12) sempre `hard` em qualquer tier.
+Demais 11 stops (1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14) sempre `hard` em qualquer tier.
 
 ### 2.1 Modos de severidade
 

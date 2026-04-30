@@ -27,6 +27,8 @@ CANONICAL_STOP_POINT_IDS = {
     "stack", "db", "external_api", "new_dep", "paid_service",
     "irreversible", "over_eng", "pii", "prod_migration", "adr_drift",
     "workspace_corrupt", "profile_mismatch",
+    # v3.6.0 preview loop
+    "feedback_ambiguous", "design_system_cascade",
 }
 
 # Sub_stage enum canônico do state-machine-schema.md §Sub-stage enum

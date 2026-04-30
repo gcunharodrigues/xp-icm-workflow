@@ -12,6 +12,8 @@ applicable_stop_points:
   - "over_eng"
   - "prod_migration"
   - "adr_drift"
+  - "feedback_ambiguous"
+  - "design_system_cascade"
 output_files:
   - "output/wave-<N>/task-<slug>.md"
   - "output/wave-<N>/wave-summary.md"
@@ -146,6 +148,8 @@ Catálogo canônico em `references/stop-points-canonical.md`. IDs disparáveis e
 - `over_eng` — 3+ camadas de abstração novas sem requisito (calibrado: warning experimental/tool, hard development/production).
 - `prod_migration` — migration toca tabela com volume produção sem janela acordada.
 - `adr_drift` — implementação diverge de ADR vigente sem superseding declarado.
+- `feedback_ambiguous` — (preview loop v3.6.0) feedback visual humano com baixa confidence: descrição vaga, screenshot sem anotação clara, contradição entre texto e visual. Sempre `hard`.
+- `design_system_cascade` — (preview loop v3.6.0) mudança em token afeta > `preview_loop.design_cascade_threshold` componentes. Sempre `hard`.
 
 ## Skill superpowers de referência
 
@@ -344,3 +348,100 @@ Após última wave concluída, gate humano é OBRIGATÓRIO antes de transitar pr
   subagent que detecta bug recorrente em sua task PODE ativar diagnose
   protocol (build feedback loop → reproduce → hypothesise → fix) antes
   de declarar BLOCKED. Reportar resultado em `task-<slug>.md`.
+
+## Preview Loop entry/exit hooks (v3.6.0)
+
+Aplica APENAS quando profile efetivo tem
+`preview_loop.preview_loop_enabled: true` (lido em
+`_config/profile-effective.yaml`). Doc canônico:
+`_references/runtime/preview-loop-protocol.md`.
+
+### Entry hook (1ª sessão da wave 1, OU sessão fresca de wave>1)
+
+Lead executa ANTES do passo 1 (pre-flight) acima:
+
+1. **Detectar package manager** via lockfile em `{{PROJECT_ROOT}}`:
+   - `bun.lockb` ou `bun.lock` → `bun dev`
+   - `pnpm-lock.yaml` → `pnpm dev`
+   - `yarn.lock` → `yarn dev`
+   - `package-lock.json` → `npm run dev`
+   - Múltiplos: prioridade `bun > pnpm > yarn > npm`.
+   - Nenhum: stop point `BLOCKED_ERROR` — falta scaffold inicial (deve
+     ter sido criado em wave 1 task 1).
+
+2. **Verificar PID anterior** em
+   `{{PROJECT_ROOT}}/.icm-main/.dev-server.pid`:
+   - Se existe + processo vivo → reutiliza, skip start.
+   - Se existe + processo morto → recovery wizard `DEV_SERVER_ORPHAN`
+     (Plan A: apaga PID file).
+   - Se ausente → start novo.
+
+3. **Start dev server em background:**
+   ```bash
+   cd {{PROJECT_ROOT}}
+   <pm> run dev > .icm-main/.dev-server.log 2>&1 &
+   echo $! > .icm-main/.dev-server.pid
+   ```
+   Aguardar 3-5s pra Vite/Next bootear (lê stderr do log até ver
+   "ready" ou "Local:"). Falha = `BLOCKED_ERROR`.
+
+4. **Imprimir kickoff priming** ao humano:
+
+   ```
+   🎨 Preview loop ativo — workspace {{WORKSPACE}}
+
+   Dev server: http://localhost:3000 (PID <pid>)
+   Chrome CDP helper: scripts/launch-chrome-cdp.{bat,sh}
+   Preview pages: localhost:3000/preview/<component>
+
+   Pra dar feedback visual, qualquer combo funciona:
+     - Texto: "botão direita, mais padding"
+     - Print anotado (Win+Shift+S Snipping ou ShareX): cola PNG
+     - URL: "/checkout, header torto"
+     - HTML: cola outerHTML do elemento problemático
+
+   Se ambíguo, eu pergunto antes de mexer (stop point feedback_ambiguous).
+   ```
+
+### Verificação tier-aware durante implementação
+
+Substituem/complementam Auto-QA Akita do passo 4.6:
+
+- **Cada Edit** em arquivo `.ts/.tsx/.vue/.svelte` → subagente roda
+  `tsc --noEmit` (~1s). Falha = NÃO declara task done, fix imediato.
+- **Wave end** (após passo 9 merge) → lead roda lint completo + Playwright
+  headless sample-check (1 click em cada componente novo da wave, valida
+  render sem crash).
+- **Sob pedido humano** ("ok testa" / "valida") → lead roda full suite +
+  e2e relevantes.
+- **Sempre ativo:** Vite/Next overlay nativo mostra erros de compile na
+  tela do humano direto.
+
+### Stop point novo: `feedback_ambiguous`
+
+Disparável durante a wave quando humano dá feedback visual de baixa
+confidence (descrição vaga, screenshot sem anotação clara, contradição
+entre texto e visual). Lead/subagente NÃO mexe especulando: pausa,
+escreve menu A/B/C com interpretações candidatas, atualiza L1
+`status: BLOCKED_STOP_POINT`. Calibração: sempre `hard` (qualquer tier).
+
+### Stop point novo: `design_system_cascade`
+
+Disparável quando mudança de token afeta > `preview_loop.design_cascade_threshold`
+(default 5) componentes. Menu A/B/C: cascata global / limita escopo /
+cancela. Sempre `hard`.
+
+### Exit hook (handoff final stage 04 — Caso B Fase 2 GATE_APPROVED)
+
+Lead executa APÓS commit 2/2 do gate aprovado (passo 7 do Caso B), antes
+de imprimir KICKOFF block:
+
+1. **Ler PID** de `{{PROJECT_ROOT}}/.icm-main/.dev-server.pid`.
+2. **Matar processo** (POSIX: `kill <pid>`; Windows: `taskkill /PID <pid> /F`).
+   Falha silenciosa OK (processo já morto).
+3. **Apagar PID file** + `.dev-server.log`.
+4. **NÃO apaga** `.icm-chrome-profile/` — humano pode querer manter
+   abas abertas pra próximo workspace; recovery wizard limpa quando
+   detecta orphan persistente.
+
+Stage 05 (verification) NÃO depende do dev server. Stage 06+ idem.

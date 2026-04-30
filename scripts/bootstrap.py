@@ -29,7 +29,7 @@ from typing import Any
 # Constantes
 # ============================================================================
 
-SKILL_VERSION = "3.5.0"  # template prepends `v`
+SKILL_VERSION = "3.6.0"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
@@ -64,10 +64,39 @@ STAGE_NAMES: dict[int, str] = {
 GITIGNORE_LINES: tuple[str, ...] = (
     ".icm-profile.local.yaml",
     ".icm-main/",  # v3.4.0 — worktree linkada da base branch (modelo cross-branch)
+    ".icm-chrome-profile/",  # v3.6.0 — preview loop CDP profile dir
     "__pycache__/",
     ".pytest_cache/",
     ".coverage",
 )
+
+
+# ============================================================================
+# Package manager detection (v3.6.0 preview loop)
+# ============================================================================
+
+# Prioridade: bun > pnpm > yarn > npm. Lockfile mais especifico ganha.
+# Lookup tuple ordem-sensivel.
+PACKAGE_MANAGERS: tuple[tuple[str, str, str], ...] = (
+    ("bun.lockb", "bun", "bun dev"),
+    ("bun.lock", "bun", "bun dev"),
+    ("pnpm-lock.yaml", "pnpm", "pnpm dev"),
+    ("yarn.lock", "yarn", "yarn dev"),
+    ("package-lock.json", "npm", "npm run dev"),
+)
+
+
+def detect_package_manager(project_root: Path) -> tuple[str, str] | None:
+    """Detecta package manager por lockfile presente em project_root.
+
+    Returns:
+        (pm_name, dev_cmd) ou None se nenhum lockfile encontrado.
+        Ex.: ("pnpm", "pnpm dev")
+    """
+    for lockfile, pm, dev_cmd in PACKAGE_MANAGERS:
+        if (project_root / lockfile).is_file():
+            return pm, dev_cmd
+    return None
 
 
 def yaml_safe_list(items: list[str]) -> str:

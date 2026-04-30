@@ -119,6 +119,24 @@ test_specs:
   `<project_root>/.icm-main/DESIGN.md` (formato Google Stitch DESIGN.md spec).
   Doc canônico: `references/design-system.md`. Subagentes em fase 04 ganham
   DESIGN.md no canal 2 quando task tem files frontend.
+- **Preview loop config (v3.6.0):** flags adicionais derivadas pelo
+  `profile-merge.py`, alimentam o ciclo build-iterate visual descrito em
+  `references/preview-loop-protocol.md`:
+
+  | Chave                       | Valor por tier                                                                                       |
+  |-----------------------------|------------------------------------------------------------------------------------------------------|
+  | `preview_loop_enabled`      | `True` em todos os tiers                                                                              |
+  | `mock_data_strategy`        | experimental → `fixtures` · tool → `fixtures` · development → `msw_faker` · production → `msw_faker_zod` |
+  | `cdp_live_enabled`          | `True` em todos os tiers (opt-out via override `cdp_live_enabled: false`)                              |
+  | `visual_iter_cap`           | `null` em todos os tiers (sem cap — humano fecha quando OK)                                            |
+  | `design_cascade_threshold`  | `5` em todos os tiers (calibrável via override)                                                       |
+  | `preview_pages_path`        | `preview/` (convenção, não-configurável)                                                              |
+
+  Defaults aplicáveis: dev server starta entry stage 04 + mata exit
+  (`scripts/bootstrap.py` detecta package manager via lockfile);
+  Chrome CDP via `templates/.claude/scripts/launch-chrome-cdp.{bat,sh}`;
+  preview pages em `preview/<component>/page.tsx` excluídos do build
+  production. Recovery wizard cobre `DEV_SERVER_ORPHAN` + `CDP_DISCONNECTED`.
 
 ## Override local: `.icm-profile.local.yaml`
 

@@ -51,6 +51,10 @@ VERSION_WHITELIST = {
 VERSION_MUST_MATCH = [
     ("SKILL.md", r"# xp-icm-workflow v(\d+\.\d+\.\d+)"),
     ("references/design-system.md", r"format \(v(\d+\.\d+\.\d+)\)"),
+    (
+        "references/preview-loop-protocol.md",
+        r"build-iterate visual \(v(\d+\.\d+\.\d+)\)",
+    ),
 ]
 
 

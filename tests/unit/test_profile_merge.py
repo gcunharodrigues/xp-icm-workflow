@@ -253,6 +253,62 @@ class TestFullstackProfile:
 
 
 # ----------------------------------------------------------------------------
+# 4b. Preview loop config (v3.6.0)
+# ----------------------------------------------------------------------------
+
+class TestPreviewLoopConfig:
+    """profile-effective.yaml emite bloco preview_loop em frontend/fullstack."""
+
+    def test_preview_loop_present_in_frontend_and_fullstack(self):
+        for profile in ["app_web_frontend", "fullstack"]:
+            for tier in CANONICAL_TIERS:
+                eff, _ = merge_profile(profile=profile, tier=tier)
+                assert "preview_loop" in eff, (
+                    f"{profile}/{tier}: preview_loop ausente"
+                )
+                assert eff["preview_loop"]["preview_loop_enabled"] is True
+
+    def test_preview_loop_absent_in_other_profiles(self):
+        for profile in [
+            "app_web_backend", "cli_tool", "ml_project",
+            "agent_ia", "dashboard", "data_analysis",
+            "framework_library", "technical_article", "experiment",
+        ]:
+            eff, _ = merge_profile(profile=profile, tier="development")
+            assert "preview_loop" not in eff, (
+                f"{profile}: preview_loop não deveria existir"
+            )
+
+    def test_mock_data_strategy_tier_based(self):
+        expected = {
+            "experimental": "fixtures",
+            "tool": "fixtures",
+            "development": "msw_faker",
+            "production": "msw_faker_zod",
+        }
+        for tier, strategy in expected.items():
+            eff, _ = merge_profile(profile="app_web_frontend", tier=tier)
+            assert eff["preview_loop"]["mock_data_strategy"] == strategy
+            eff_full, _ = merge_profile(profile="fullstack", tier=tier)
+            assert eff_full["preview_loop"]["mock_data_strategy"] == strategy
+
+    def test_preview_loop_canonical_keys(self):
+        eff, _ = merge_profile(profile="fullstack", tier="development")
+        pl = eff["preview_loop"]
+        assert pl["preview_loop_enabled"] is True
+        assert pl["cdp_live_enabled"] is True
+        assert pl["visual_iter_cap"] is None
+        assert pl["design_cascade_threshold"] == 5
+        assert pl["preview_pages_path"] == "preview/"
+
+    def test_preview_loop_changes_hash(self):
+        # Adicionar preview_loop muda hash em frontend/fullstack vs backend.
+        _, h_front = merge_profile(profile="app_web_frontend", tier="development")
+        _, h_back = merge_profile(profile="app_web_backend", tier="development")
+        assert h_front != h_back
+
+
+# ----------------------------------------------------------------------------
 # 5. Override via .icm-profile.local.yaml
 # ----------------------------------------------------------------------------
 
