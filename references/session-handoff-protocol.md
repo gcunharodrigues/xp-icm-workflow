@@ -383,6 +383,10 @@ O projeto inclui um hook `PostToolUse` que detecta contexto ≥70% automaticamen
 - **Bootstrap:** instalado pelo ICM stage 00 como infraestrutura de governança. Dependência `jq` em `_config/xp-conventions.md`. Bytes do template normalizados CRLF→LF na cópia (kernel exec do shebang falha em CRLF — procura interpretador `bash\r`).
 - **Escopo:** roda para a sessão principal (lead) no project_root. Subagentes em worktrees efêmeras (`Agent(isolation: "worktree")`) **NÃO** recebem o hook — `<project_root>/.claude/settings.local.json` não está acessível à worktree, e `workspaces/` não existe na branch `wave-N-M/<task>`. Subagent auto-compact é aceito por design (token budget alvo §9 do `subagent-protocol.md` mantém ctx longe do threshold).
 
+### Hook adicional — tier=production: block-dangerous-git.sh
+
+Workspaces criados com `tier=production` recebem uma 4ª entry em `hooks.PreToolUse` (matcher `Bash`) registrando `block-dangerous-git.sh`. Bloqueia `git push --force`, `reset --hard`, `clean -fd`, `branch -D`, `checkout/restore .` antes da execução. Hook .sh é copiado pelo bootstrap (vide `_PRODUCTION_HOOK_FILES`) e registrado por `_merge_project_settings_local(..., tier="production")`. Em outros tiers, hook não é copiado nem registrado.
+
 O hook NÃO força parada via código (exit 0 = continua). Enforcement é por protocolo: agente instruído a obedecer a mensagem. Se o agente ignorar repetidamente, o compact do LLM eventualmente degrada o contexto além da recuperação — o hook continua disparando a cada tool call com cooldown de 60s.
 
 ### Template: mid-wave _kickoff.md update

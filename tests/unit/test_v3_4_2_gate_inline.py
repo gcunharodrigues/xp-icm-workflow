@@ -329,6 +329,59 @@ class TestMergeProjectSettings:
             f"matcher esperado conter SlashCommand+Bash, got: {matcher!r}"
         )
 
+    def test_block_dangerous_git_registered_for_production(self, tmp_path):
+        """tier=production registra block-dangerous-git como PreToolUse(Bash).
+
+        Hook .sh é COPIADO em tier=production (vide _PRODUCTION_HOOK_FILES).
+        Pre-fix: registro em settings.local.json estava ausente — hook
+        inerte. Este test bloqueia regressão.
+        """
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        bootstrap_mod._merge_project_settings_local(
+            project_root, "001-test", tier="production"
+        )
+        data = json.loads(
+            (project_root / ".claude" / "settings.local.json").read_text(encoding="utf-8")
+        )
+        pre_tool = data["hooks"]["PreToolUse"]
+        # 2 entries em PreToolUse: block-init (SlashCommand|Bash) + block-dangerous (Bash)
+        commands = [
+            (entry["matcher"], h["command"])
+            for entry in pre_tool
+            for h in entry.get("hooks", [])
+        ]
+        assert any(
+            "block-dangerous-git.sh" in cmd and matcher == "Bash"
+            for matcher, cmd in commands
+        ), f"block-dangerous-git ausente ou matcher errado em production: {commands}"
+        # E command com $CLAUDE_PROJECT_DIR (cwd-independent)
+        dangerous_cmd = next(
+            cmd for matcher, cmd in commands if "block-dangerous-git.sh" in cmd
+        )
+        assert "$CLAUDE_PROJECT_DIR" in dangerous_cmd
+
+    def test_block_dangerous_git_NOT_registered_for_non_production(self, tmp_path):
+        """tier != production: hook .sh nem é copiado, registro NÃO existe."""
+        for tier in ("experimental", "tool", "development", ""):
+            project_root = tmp_path / f"project-{tier or 'empty'}"
+            project_root.mkdir()
+            bootstrap_mod._merge_project_settings_local(
+                project_root, "001-test", tier=tier
+            )
+            data = json.loads(
+                (project_root / ".claude" / "settings.local.json").read_text(encoding="utf-8")
+            )
+            commands = [
+                h.get("command", "")
+                for entries in data["hooks"].values()
+                for entry in entries
+                for h in entry.get("hooks", [])
+            ]
+            assert not any(
+                "block-dangerous-git.sh" in c for c in commands
+            ), f"tier={tier!r}: block-dangerous-git registrado indevidamente"
+
     def test_idempotent_rerun_no_change(self, tmp_path):
         project_root = tmp_path / "project"
         project_root.mkdir()

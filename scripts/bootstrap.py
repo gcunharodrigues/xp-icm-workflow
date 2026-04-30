@@ -962,6 +962,7 @@ def _render_project_settings_example(
 def _merge_project_settings_local(
     project_root: Path,
     workspace: str,
+    tier: str = "",
 ) -> None:
     """Idempotente: auto-merge ICM hooks em <project_root>/.claude/settings.local.json (v3.4.2).
 
@@ -974,6 +975,7 @@ def _merge_project_settings_local(
     ver §"Path absoluto vs relativo" abaixo):
       - SessionStart (matcher .*): icm-session-check.sh
       - PreToolUse (matcher SlashCommand|Bash): block-init-during-icm.sh
+      - PreToolUse (matcher Bash, APENAS tier=production): block-dangerous-git.sh
       - PostToolUse (matcher .*): context-check.sh
 
     **Path absoluto vs relativo:** commands usam $CLAUDE_PROJECT_DIR (env var
@@ -990,19 +992,28 @@ def _merge_project_settings_local(
     """
     settings_path = project_root / ".claude" / "settings.local.json"
 
-    # Hooks ICM a registrar. Tuple (matcher, command) por event. Command usa
-    # $CLAUDE_PROJECT_DIR (Claude Code env var) pra ser cwd-independent.
+    # Hooks ICM a registrar. Lista de (event, matcher, command) — múltiplas
+    # entries por event suportadas (p.ex. 2 PreToolUse com matchers distintos).
+    # Command usa $CLAUDE_PROJECT_DIR (Claude Code env var) pra ser cwd-independent.
     def _cmd(hook_filename: str) -> str:
         return (
             f'bash "$CLAUDE_PROJECT_DIR/workspaces/{workspace}/'
             f'.claude/hooks/{hook_filename}"'
         )
 
-    icm_hooks: dict[str, tuple[str, str]] = {
-        "SessionStart": (".*", _cmd("icm-session-check.sh")),
-        "PreToolUse": ("SlashCommand|Bash", _cmd("block-init-during-icm.sh")),
-        "PostToolUse": (".*", _cmd("context-check.sh")),
-    }
+    icm_hooks: list[tuple[str, str, str]] = [
+        ("SessionStart", ".*", _cmd("icm-session-check.sh")),
+        ("PreToolUse", "SlashCommand|Bash", _cmd("block-init-during-icm.sh")),
+        ("PostToolUse", ".*", _cmd("context-check.sh")),
+    ]
+
+    # Conditional: tier=production adiciona block-dangerous-git (matcher Bash).
+    # Hook .sh só é COPIADO em tier=production (vide _PRODUCTION_HOOK_FILES);
+    # registro segue o mesmo gate.
+    if tier == "production":
+        icm_hooks.append(
+            ("PreToolUse", "Bash", _cmd("block-dangerous-git.sh"))
+        )
 
     settings: dict[str, Any] = {}
     if settings_path.exists():
@@ -1017,7 +1028,7 @@ def _merge_project_settings_local(
         settings["hooks"] = {}
 
     changed = False
-    for hook_event, (matcher, hook_command) in icm_hooks.items():
+    for hook_event, matcher, hook_command in icm_hooks:
         existing_entries = settings["hooks"].get(hook_event, [])
         if not isinstance(existing_entries, list):
             existing_entries = []
@@ -1309,7 +1320,7 @@ def bootstrap(
     # v3.4.2: auto-merge ICM hooks em <project_root>/.claude/settings.local.json
     # idempotentemente (preserva customizações do user). Substitui passo
     # manual de copiar .example.
-    _merge_project_settings_local(project_root, workspace)
+    _merge_project_settings_local(project_root, workspace, tier=tier)
 
     return {
         "workspace": workspace,

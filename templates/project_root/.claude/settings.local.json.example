@@ -1,5 +1,5 @@
 {
-  "_comment": "Exemplo de project-root .claude/settings.local.json para skill xp-icm-workflow v3.6.1+. Copie para .claude/settings.local.json (gitignored). Substitua <NNN-slug> pelo workspace ativo. Commands usam $CLAUDE_PROJECT_DIR (env var Claude Code expõe ao processo do hook) — cwd-independent, funciona mesmo quando sessão roda em worktree .icm-main/ ou subdir.",
+  "_comment": "Exemplo de project-root .claude/settings.local.json para skill xp-icm-workflow v3.6.1+. Copie para .claude/settings.local.json (gitignored). Substitua <NNN-slug> pelo workspace ativo. Commands usam $CLAUDE_PROJECT_DIR (env var Claude Code expõe ao processo do hook) — cwd-independent, funciona mesmo quando sessão roda em worktree .icm-main/ ou subdir. **tier=production extra:** adiciona uma 4ª entry em PreToolUse (matcher \"Bash\") com command bash \"$CLAUDE_PROJECT_DIR/workspaces/<NNN-slug>/.claude/hooks/block-dangerous-git.sh\" — bloqueia push --force, reset --hard, branch -D etc. Bootstrap auto-merge faz isso condicionalmente.",
   "hooks": {
     "SessionStart": [
       {
