@@ -52,6 +52,10 @@ CODE_WRONG_BRANCH_CHECKOUT = "WRONG_BRANCH_CHECKOUT"
 CODE_KICKOFF_WITHOUT_GATE = "KICKOFF_WITHOUT_GATE"
 # v3.4.3: wave worktree cleanup
 CODE_WAVE_WORKTREE_ORPHAN = "WAVE_WORKTREE_ORPHAN"
+# v3.5.0: ci-rollback-protocol.md depends on pre_wave_sha em L1 history.
+# Workspaces v3.4.x iniciaram waves sem gravar esse field — detector
+# permite migração suave (auto-fix marca "unknown").
+CODE_MISSING_PRE_WAVE_SHA = "MISSING_PRE_WAVE_SHA"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -67,6 +71,7 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_WRONG_BRANCH_CHECKOUT,
     CODE_KICKOFF_WITHOUT_GATE,
     CODE_WAVE_WORKTREE_ORPHAN,
+    CODE_MISSING_PRE_WAVE_SHA,
 )
 
 # Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).
@@ -699,6 +704,41 @@ def detect_inconsistencies(
                         },
                     )
                 )
+
+    # 11) MISSING_PRE_WAVE_SHA (v3.5.0)
+    # ci-rollback-protocol.md exige pre_wave_sha em L1 history evento
+    # `wave_started` (gravado no passo 1 do Process). Workspaces v3.4.x
+    # iniciaram waves antes do field existir — detect via varredura de
+    # history events `wave_started` em stage 04 sem pre_wave_sha. Auto-fix
+    # marca "unknown" (não tenta inferir SHA — humano decide rollback).
+    if isinstance(history, list) and stage_atual == "04":
+        wave_started_missing = []
+        for ev in history:
+            if not isinstance(ev, dict):
+                continue
+            if ev.get("event") != "wave_started":
+                continue
+            if not ev.get("pre_wave_sha"):
+                wave_started_missing.append(ev.get("wave"))
+        if wave_started_missing and sub_stage.startswith("04_wave_"):
+            waves_listed = ", ".join(str(w) for w in wave_started_missing)
+            found.append(
+                Inconsistency(
+                    code=CODE_MISSING_PRE_WAVE_SHA,
+                    message=(
+                        f"history evento(s) wave_started sem pre_wave_sha: "
+                        f"waves={waves_listed}. Workspace iniciou wave(s) "
+                        "pre-v3.5.0; ci-rollback-protocol cego se acionado."
+                    ),
+                    proposed_action=(
+                        "auto-fix: marcar pre_wave_sha: 'unknown' nos "
+                        "eventos afetados (humano decide rollback se "
+                        "BLOCKED_ERROR ci_global_red disparar)"
+                    ),
+                    severity="warning",
+                    context={"waves": wave_started_missing},
+                )
+            )
 
     # Reordenar pra ordem canonica
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}
