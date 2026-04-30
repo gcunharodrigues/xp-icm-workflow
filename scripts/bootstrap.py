@@ -717,9 +717,16 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, 
         except OSError as exc:
             sys.stderr.write(f"warning: falha ao instalar {hook_filename}: {exc}\n")
 
-    # Registrar hook em workspaces/<workspace>/.claude/settings.local.json
-    # Path relativo ao workspace (onde Claude Code resolve o command)
-    hook_command = "bash .claude/hooks/context-check.sh"
+    # Registrar hook em workspaces/<workspace>/.claude/settings.local.json.
+    # Usa $CLAUDE_PROJECT_DIR (cwd-independent) — Claude Code roda hooks com
+    # cwd potencialmente != project_root (worktree .icm-main/, subdir, etc).
+    # Path relativo "workspaces/..." quebra com bash "No such file or
+    # directory". $CLAUDE_PROJECT_DIR sempre aponta pro project_root onde
+    # a sessão foi iniciada.
+    hook_command = (
+        f'bash "$CLAUDE_PROJECT_DIR/workspaces/{workspace}/'
+        f'.claude/hooks/context-check.sh"'
+    )
     settings_path = workspace_dir / ".claude" / "settings.local.json"
     hook_entry = {
         "matcher": "",
@@ -963,9 +970,17 @@ def _merge_project_settings_local(
     workspaces/<NNN>/.claude/) já era auto-criado idempotentemente, mas
     project_root scope não. Fix: replica padrão.
 
-    Hooks adicionados (paths relativos ao project_root):
-      - SessionStart: bash workspaces/<NNN-slug>/.claude/hooks/icm-session-check.sh
-      - PostToolUse: bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh
+    Hooks adicionados (commands cwd-independent via $CLAUDE_PROJECT_DIR —
+    ver §"Path absoluto vs relativo" abaixo):
+      - SessionStart (matcher .*): icm-session-check.sh
+      - PreToolUse (matcher SlashCommand|Bash): block-init-during-icm.sh
+      - PostToolUse (matcher .*): context-check.sh
+
+    **Path absoluto vs relativo:** commands usam $CLAUDE_PROJECT_DIR (env var
+    Claude Code expõe ao processo do hook, sempre apontando project_root).
+    Path relativo "workspaces/..." quebra quando sessão Claude Code roda com
+    cwd != project_root (p.ex. dentro de worktree .icm-main/) — bash falha
+    com "No such file or directory".
 
     Preserva customizações existentes do user: só ADICIONA entradas ICM
     identificáveis por commands contendo `<workspace>/.claude/hooks/`. Não
@@ -975,14 +990,18 @@ def _merge_project_settings_local(
     """
     settings_path = project_root / ".claude" / "settings.local.json"
 
-    # Hooks ICM a registrar (commands relativos ao project_root)
-    icm_hooks = {
-        "SessionStart": (
-            f"bash workspaces/{workspace}/.claude/hooks/icm-session-check.sh"
-        ),
-        "PostToolUse": (
-            f"bash workspaces/{workspace}/.claude/hooks/context-check.sh"
-        ),
+    # Hooks ICM a registrar. Tuple (matcher, command) por event. Command usa
+    # $CLAUDE_PROJECT_DIR (Claude Code env var) pra ser cwd-independent.
+    def _cmd(hook_filename: str) -> str:
+        return (
+            f'bash "$CLAUDE_PROJECT_DIR/workspaces/{workspace}/'
+            f'.claude/hooks/{hook_filename}"'
+        )
+
+    icm_hooks: dict[str, tuple[str, str]] = {
+        "SessionStart": (".*", _cmd("icm-session-check.sh")),
+        "PreToolUse": ("SlashCommand|Bash", _cmd("block-init-during-icm.sh")),
+        "PostToolUse": (".*", _cmd("context-check.sh")),
     }
 
     settings: dict[str, Any] = {}
@@ -998,7 +1017,7 @@ def _merge_project_settings_local(
         settings["hooks"] = {}
 
     changed = False
-    for hook_event, hook_command in icm_hooks.items():
+    for hook_event, (matcher, hook_command) in icm_hooks.items():
         existing_entries = settings["hooks"].get(hook_event, [])
         if not isinstance(existing_entries, list):
             existing_entries = []
@@ -1020,7 +1039,7 @@ def _merge_project_settings_local(
 
         if not already_present:
             existing_entries.append({
-                "matcher": ".*",
+                "matcher": matcher,
                 "hooks": [{"type": "command", "command": hook_command}],
             })
             settings["hooks"][hook_event] = existing_entries

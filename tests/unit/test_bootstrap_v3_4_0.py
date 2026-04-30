@@ -160,6 +160,32 @@ class TestInstallContextHook:
         assert any("context-check.sh" in c for c in commands)
         assert not any("icm-session-check.sh" in c for c in commands)
 
+    def test_workspace_hook_command_uses_claude_project_dir(
+        self, project_root_with_main: Path
+    ) -> None:
+        """Command DEVE usar $CLAUDE_PROJECT_DIR (cwd-independent).
+
+        Path relativo "workspaces/..." quebra quando sessão Claude Code roda
+        com cwd != project_root (worktree .icm-main/, subdir). Regression:
+        se voltar pra path relativo, este teste pega.
+        """
+        ws_dir = project_root_with_main / "workspaces" / "001-test"
+        ws_dir.mkdir(parents=True)
+        bootstrap._install_context_hook(project_root_with_main, SKILL_ROOT, "001-test")
+        settings = json.loads(
+            (ws_dir / ".claude" / "settings.local.json").read_text(encoding="utf-8")
+        )
+        post_tool = settings["hooks"]["PostToolUse"]
+        command = post_tool[0]["hooks"][0]["command"]
+        assert "$CLAUDE_PROJECT_DIR" in command, (
+            f"command sem $CLAUDE_PROJECT_DIR — path relativo quebra em "
+            f"cwd != project_root. Got: {command!r}"
+        )
+        assert "workspaces/001-test" in command
+        assert command.startswith("bash ")
+        # Aspas duplas em torno do path expandido (necessário pra paths com espaços)
+        assert '"$CLAUDE_PROJECT_DIR/' in command
+
     def test_hooks_copied_have_lf_line_endings(
         self, project_root_with_main: Path
     ) -> None:

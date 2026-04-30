@@ -1,5 +1,5 @@
 {
-  "_comment": "Exemplo de project-root .claude/settings.local.json para skill xp-icm-workflow v3.4.0. Copie para .claude/settings.local.json (gitignored). Substitua <NNN-slug> pelo workspace ativo.",
+  "_comment": "Exemplo de project-root .claude/settings.local.json para skill xp-icm-workflow v3.6.1+. Copie para .claude/settings.local.json (gitignored). Substitua <NNN-slug> pelo workspace ativo. Commands usam $CLAUDE_PROJECT_DIR (env var Claude Code expõe ao processo do hook) — cwd-independent, funciona mesmo quando sessão roda em worktree .icm-main/ ou subdir.",
   "hooks": {
     "SessionStart": [
       {
@@ -7,7 +7,18 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash workspaces/<NNN-slug>/.claude/hooks/icm-session-check.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/workspaces/<NNN-slug>/.claude/hooks/icm-session-check.sh\""
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "SlashCommand|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash \"$CLAUDE_PROJECT_DIR/workspaces/<NNN-slug>/.claude/hooks/block-init-during-icm.sh\""
           }
         ]
       }
@@ -18,7 +29,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR/workspaces/<NNN-slug>/.claude/hooks/context-check.sh\""
           }
         ]
       }

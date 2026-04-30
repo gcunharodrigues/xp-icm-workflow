@@ -291,15 +291,43 @@ class TestMergeProjectSettings:
         assert settings_path.is_file()
         data = json.loads(settings_path.read_text(encoding="utf-8"))
         assert "hooks" in data
-        # Ambos hooks ICM presentes
+        # 3 hooks ICM presentes (SessionStart, PreToolUse, PostToolUse)
         cmds = []
-        for event in ("SessionStart", "PostToolUse"):
+        for event in ("SessionStart", "PreToolUse", "PostToolUse"):
             for entry in data["hooks"].get(event, []):
                 for h in entry.get("hooks", []):
                     cmds.append(h.get("command", ""))
         assert any("icm-session-check.sh" in c for c in cmds)
+        assert any("block-init-during-icm.sh" in c for c in cmds)
         assert any("context-check.sh" in c for c in cmds)
         assert any("workspaces/001-test/" in c for c in cmds)
+        # Commands cwd-independent via $CLAUDE_PROJECT_DIR (worktree-safe)
+        assert all("$CLAUDE_PROJECT_DIR" in c for c in cmds), (
+            f"command sem $CLAUDE_PROJECT_DIR: {cmds}"
+        )
+
+    def test_pretoolse_matcher_is_slashcommand_or_bash(self, tmp_path):
+        """block-init-during-icm hook só interessa em SlashCommand ou Bash —
+        matcher deve ser específico, não `.*` (evita overhead em outros tools).
+        """
+        project_root = tmp_path / "project"
+        project_root.mkdir()
+        bootstrap_mod._merge_project_settings_local(project_root, "001-test")
+        data = json.loads(
+            (project_root / ".claude" / "settings.local.json").read_text(encoding="utf-8")
+        )
+        pre_tool = data["hooks"]["PreToolUse"]
+        block_init_entry = next(
+            entry for entry in pre_tool
+            if any(
+                "block-init-during-icm.sh" in h.get("command", "")
+                for h in entry.get("hooks", [])
+            )
+        )
+        matcher = block_init_entry["matcher"]
+        assert "SlashCommand" in matcher and "Bash" in matcher, (
+            f"matcher esperado conter SlashCommand+Bash, got: {matcher!r}"
+        )
 
     def test_idempotent_rerun_no_change(self, tmp_path):
         project_root = tmp_path / "project"

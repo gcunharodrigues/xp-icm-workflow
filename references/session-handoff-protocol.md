@@ -375,8 +375,9 @@ O projeto inclui um hook `PostToolUse` que detecta contexto ≥70% automaticamen
 
 - **Arquivo:** `<project_root>/workspaces/<NNN-slug>/.claude/hooks/context-check.sh`
 - **Registro (dois pontos, ambos escritos pelo bootstrap):**
-  1. `<project_root>/.claude/settings.local.json` → `hooks.PostToolUse` com command `bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh` (escopo project_root, registro primário).
-  2. `<project_root>/workspaces/<NNN-slug>/.claude/settings.local.json` → `hooks.PostToolUse` com command `bash .claude/hooks/context-check.sh` (escopo workspace, ativado quando Claude Code roda com cwd = workspace).
+  1. `<project_root>/.claude/settings.local.json` → `hooks.PostToolUse` com command `bash "$CLAUDE_PROJECT_DIR/workspaces/<NNN-slug>/.claude/hooks/context-check.sh"` (escopo project_root, registro primário).
+  2. `<project_root>/workspaces/<NNN-slug>/.claude/settings.local.json` → `hooks.PostToolUse` com command `bash "$CLAUDE_PROJECT_DIR/workspaces/<NNN-slug>/.claude/hooks/context-check.sh"` (escopo workspace, redundância para casos onde Claude Code lê settings de subdir).
+- **Path absoluto via `$CLAUDE_PROJECT_DIR`:** Claude Code expõe essa env var ao processo do hook, sempre apontando project_root. Necessário porque sessão pode rodar com cwd ≠ project_root (worktree `.icm-main/`, subdir). Path relativo `bash workspaces/...` quebra com `bash: workspaces/.../hook.sh: No such file or directory`. Aspas duplas em volta do path = obrigatório (paths Windows com espaços).
 - **Lógica:** lê transcript diretamente de `~/.claude/projects/`, calcula `ctx_pct` (independente de statusline.sh), threshold 70%, cooldown 60s
 - **Ação:** stdout = protocolo de handoff obrigatório. Agente vê a mensagem e DEVE parar tudo, executar handoff, e SAIR.
 - **Bootstrap:** instalado pelo ICM stage 00 como infraestrutura de governança. Dependência `jq` em `_config/xp-conventions.md`. Bytes do template normalizados CRLF→LF na cópia (kernel exec do shebang falha em CRLF — procura interpretador `bash\r`).
