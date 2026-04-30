@@ -218,3 +218,16 @@ Multi-workspace:
 
 Saída A do último workspace:
 - [ ] Região ICM substituída por mensagem "Nenhum workspace ICM ativo + rode /init"
+
+## v3.5.0 — wave protocol checks
+
+- [ ] L1 history grava `pre_wave_sha` em evento `wave_started` (passo 1 stage 04).
+- [ ] Task report tem `qa_loops_used: <N>` + `auto_qa_passed: <bool>` no frontmatter.
+- [ ] Wave-reviewer roda sem worktree (CWD = lead workspace; lê via `git show`).
+- [ ] Sort buffer aplica plan order pré-merge (mesmo que Agents retornem fora de ordem).
+- [ ] Conflict mid-wave: lead pausa em `BLOCKED_ERROR`, escreve `merge-conflict-<slug>.md`, gate humano A/B/C.
+- [ ] CI global vermelho: diagnose-protocol primeiro, rollback com `pre_wave_sha`, gate A/B/C.
+- [ ] Wave mista com 1 task HITL: tasks não-HITL completam em paralelo, status final `BLOCKED_HITL`.
+- [ ] Cleanup `--force` apenas com `auto_qa_passed: true` no task report.
+- [ ] `.icm-main` sync condicional (skip silencioso se ausente).
+- [ ] Validator aceita `BLOCKED_HITL` em L1 status.
