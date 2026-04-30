@@ -4,6 +4,91 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.4.4 — Profile fullstack + Design system (DESIGN.md format) (2026-04-29)
+
+### Why v3.4.4
+
+Dois adds em uma versão:
+
+1. **Profile `fullstack`** — projetos onde backend + frontend coexistem
+   no mesmo repo (Next.js com API routes, Remix + Prisma, T3 stack,
+   Django + React colocated). `app_web_backend` deixava metade dos
+   gates frontend desligados (component testing, e2e, a11y, visual
+   regression); `app_web_frontend` deixava metade dos gates backend
+   (http_integration, db_integration). Resultado: bugs UI escapavam
+   audit em projetos fullstack reais.
+2. **Design system L3** — stage 02 design pra profiles
+   `app_web_frontend` e `fullstack` agora cria/atualiza
+   `<project_root>/.icm-main/DESIGN.md` (formato Google Stitch spec)
+   como fonte de verdade do visual. Subagentes em fase 04 ganham
+   subset relevante via canal 2.
+
+### Mudanças
+
+**1. Profile `fullstack` (11º profile canônico):**
+- `scripts/profile-merge.py`: `CANONICAL_PROFILES` adiciona
+  `"fullstack"`. `_test_specs` novo branch retornando superset
+  backend + frontend (`test_types_required: [unit, integration,
+  component, e2e]`, `http_integration`, `db_integration`,
+  `component_testing`, `e2e_required`, `visual_regression` (prod),
+  `a11y_testing` (dev+prod), `design_system_required: True`).
+- `_apply_profile_rules`: `fullstack` ganha `security_gate: True`
+  em qualquer tier ≠ `experimental` (igual app_web_backend e
+  app_web_frontend).
+- `templates/_config/profile-matrix.md`: tabelas atualizadas pra
+  refletir 11 profiles + nova linha de overrides combinando
+  app_web_backend, app_web_frontend, fullstack.
+
+**2. Design system L3 + DESIGN.md format:**
+- Novo `references/design-system.md` (~290 linhas) adotando spec
+  DESIGN.md do Google Stitch como formato canônico:
+  - Schema YAML frontmatter: `colors`, `typography`, `rounded`,
+    `spacing`, `components` + token reference syntax `{path.to.token}`
+  - Section order: Overview → Colors → Typography → Layout →
+    Elevation & Depth → Shapes → Components → Do's and Don'ts
+  - 3-layer token architecture (primitive → semantic → component)
+  - Component spec table template (Default/Hover/Active/Disabled)
+  - Fluxo por stage ICM 00-08 mapeado
+  - Stage 02 menu A/B/C: criar do zero / inspirar awesome-design-md /
+    extrair de URL via designlang externamente
+  - Galeria referência: VoltAgent/awesome-design-md (69 brands)
+  - Tool externa opcional: Manavarya09/design-extract (designlang)
+  - Escape hatch: ui-ux-pro-max-skill com boundary explícita
+- L0 (`templates/workspace/CLAUDE.md.tpl`): adiciona path
+  `<project_root>/.icm-main/DESIGN.md` em "Paths absolutos"
+- L2 stage 02 (`02_design/CONTEXT.md.tpl`):
+  - Inputs ganha 2 rows (design-system.md doc + DESIGN.md brownfield)
+  - Process step 7.5 NOVO condicional ao profile
+- L2 stage 04 (`04_implementation_waves/CONTEXT.md.tpl`):
+  - Process step 3 (canal 2 inject) ganha cláusula condicional
+    pra tasks com flag `requires_design_system: true`
+- Bootstrap (`scripts/bootstrap.py`): `runtime_refs` tuple adiciona
+  `"design-system.md"` (copiado pro `_references/runtime/` no workspace)
+
+### Compatibilidade
+
+Workspaces v3.4.x existentes não-fullstack continuam funcionando
+(retrocompatível). Workspace antigo querendo migrar pra fullstack:
+edit L0 + recompute hash via `profile-merge.py --profile fullstack`.
+
+Profile `app_web_frontend` ganha `design_system_required: True`
+retroativamente — workspaces antigos sem DESIGN.md continuam OK
+(stage 02 detecta ausência e oferece menu A/B/C ao retomar).
+
+### Testes
+
+18 tests novos:
+- `tests/unit/test_profile_merge.py`: classe `TestFullstackProfile`
+  com 7 tests (test types superset, dimensões backend+frontend,
+  visual_regression só prod, design_system_required pros 2 profiles,
+  ausência em outros, hash distinto)
+- `tests/unit/test_design_system_doc.py`: 11 smoke tests pro doc
+  canônico
+
+Suite total: 649 tests verde. Coverage 76% mantido.
+
+---
+
 ## v3.4.3 — Wave worktree cleanup (2026-04-29)
 
 ### Why v3.4.3

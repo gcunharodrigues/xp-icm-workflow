@@ -1,10 +1,10 @@
 ---
 name: xp-icm-workflow
-description: Bootstrap one-shot ICM (Interpretable Context Methodology) que cria estrutura L0/L1/L2/L3 + branch git + hooks num projeto e sai; sessões subsequentes leem L1+L2 do stage corrente. Suporta 9 estágios (00 recon → 08 feedback intake), 10 profiles × 4 tiers, subagents via Agent Tool fase 04, Wave Planner determinístico, Recovery Wizard, AGENT-BRIEF protocol, ubiquitous language layer, ADR 3-criteria gate, diagnose protocol, triage state machine, OUT-OF-SCOPE knowledge base. Use when starting workspace ICM novo, projeto multi-estágio com revisão humana entre passos, feature complexa que requer discovery+design+implementação+review+merge, ou implementação que precisa paralelismo via subagents. Skip when tarefa trivial (1 arquivo), bug fix simples, refinamento cosmético, ou continuar workspace existente (sessão fresh lê L1+L2 sozinha — não re-invocar).
+description: Bootstrap one-shot ICM (Interpretable Context Methodology) que cria estrutura L0/L1/L2/L3 + branch git + hooks num projeto e sai; sessões subsequentes leem L1+L2 do stage corrente. Suporta 9 estágios (00 recon → 08 feedback intake), 11 profiles × 4 tiers (incl. fullstack), subagents via Agent Tool fase 04, Wave Planner determinístico, Recovery Wizard, AGENT-BRIEF protocol, ubiquitous language layer, ADR 3-criteria gate, diagnose protocol, triage state machine, OUT-OF-SCOPE knowledge base, DESIGN.md format pra frontend/fullstack. Use when starting workspace ICM novo, projeto multi-estágio com revisão humana entre passos, feature complexa que requer discovery+design+implementação+review+merge, ou implementação que precisa paralelismo via subagents. Skip when tarefa trivial (1 arquivo), bug fix simples, refinamento cosmético, ou continuar workspace existente (sessão fresh lê L1+L2 sozinha — não re-invocar).
 type: rigid
 ---
 
-# xp-icm-workflow v3.4.3
+# xp-icm-workflow v3.4.4
 
 > **Skill é parteira, não orquestradora.** Bootstrap one-shot cria a estrutura. Filesystem governa o ciclo. **1 stage = 1 sessão**: cada estágio termina com handoff dual (verbal + arquivo `_kickoff.md`) e a sessão sai. Próxima sessão começa fresh.
 
