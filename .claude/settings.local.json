@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(mkdir -p C:/Users/guicr/.claude/skills/xp-icm-workflow/templates/_references/runtime)",
+      "Bash(cat)",
+      "Bash(cp ~/.claude/skills/xp-icm-workflow/references/preview-loop-protocol.md \"C:/Users/guicr/_projects/ollama-claude/assistente-psicologo/workspaces/001-001-saas-psicologo-mvp/_references/runtime/preview-loop-protocol.md\")",
+      "Bash(cp ~/.claude/skills/xp-icm-workflow/references/stop-points-canonical.md \"C:/Users/guicr/_projects/ollama-claude/assistente-psicologo/workspaces/001-001-saas-psicologo-mvp/_references/runtime/stop-points-canonical.md\")",
+      "Bash(cp ~/.claude/skills/xp-icm-workflow/references/design-system.md \"C:/Users/guicr/_projects/ollama-claude/assistente-psicologo/workspaces/001-001-saas-psicologo-mvp/_references/runtime/design-system.md\")",
+      "Bash(cp C:/Users/guicr/.claude/skills/xp-icm-workflow/templates/.claude/hooks/icm-session-check.sh C:/Users/guicr/_projects/ollama-claude/assistente-psicologo/workspaces/001-001-saas-psicologo-mvp/.claude/hooks/)",
+      "Bash(cp C:/Users/guicr/.claude/skills/xp-icm-workflow/templates/.claude/hooks/block-init-during-icm.sh C:/Users/guicr/_projects/ollama-claude/assistente-psicologo/workspaces/001-001-saas-psicologo-mvp/.claude/hooks/)",
+      "Bash(chmod +x 'C:/Users/guicr/_projects/ollama-claude/assistente-psicologo/workspaces/001-001-saas-psicologo-mvp/.claude/hooks/*.sh')"
+    ]
+  }
+}

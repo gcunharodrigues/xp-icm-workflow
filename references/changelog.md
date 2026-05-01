@@ -4,6 +4,155 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.7.0 — Runtime cleanup + spawn-pending + handoff fixes (2026-05-01)
+
+### Why v3.7.0
+
+20 gaps identificados durante uso real do workspace 001-001-saas-psicologo-mvp
+(transição saída C → 002). Categorias: side-effects órfãos (uvicorn, vite,
+docker, background tasks), working tree consistency (.icm-main dirt,
+gitignore incompleto, wave branch sweep, TD append durante intake),
+skill bugs cosmetic (handoff.py "Saída A" hardcoded em ambos A/C, profile-matrix
+version drift), UX/runbook (comando spawn longo, checklist runtime ausente,
+mini-menu não-strict), edge cases (mid-flow crash recovery, lessons gap C/B,
+restart B baseline dirty).
+
+v3.7.0 fecha 10 mudanças concretas:
+
+### Mudanças
+
+**1. Drift detector hardened (`tests/unit/test_no_drift.py`):**
+- `PROFILE_COUNT_PARENS_RE` pega "Profiles canônicos (N):" format.
+- `PROFILE_COMBO_RE` valida "(N × T = M combos)" tripla consistência.
+- SKILL.md L158/L162 sweep: 10→11 profiles, 40→44 combos, +fullstack.
+
+**2. handoff.py outcome-aware idle render (`scripts/handoff.py`):**
+- `_render_icm_idle(closed_at, *, outcome={A,C}, spawn_to=None)` — branch
+  por outcome em vez de hardcoded "Saída A".
+- `remove_workspace_block` + `deactivate_project_claude_md` propagam
+  outcome+spawn_to via kwargs com defaults backward-compat.
+- CLI `remove-block` + `deactivate-project-md` ganham `--outcome`+`--spawn-to`.
+- Validação: outcome=C requer spawn_to; outcome ∉ {A,C} raise.
+
+**3. Runtime registry novo (`scripts/runtime-registry.py`):**
+- CRUD em `workspaces/<NNN>/_state/runtime-registry.json` (gitignored).
+- Kinds: dev_server, background_task, docker_container, subagent_worktree.
+- `_is_pid_alive` cross-platform (POSIX `os.kill`, Windows `ctypes`
+  `OpenProcess`+`GetExitCodeProcess`).
+- `purge_dead` remove entries com PID morto.
+- `detect_legacy_pid_files`: identifica `.icm-main/.dev-server.pid` v3.6.0
+  pra migração graceful.
+- CLI: register, list, unregister, purge-dead, detect-legacy.
+
+**4. Runtime status checklist (`scripts/runtime-status.py`):**
+- 6 categorias: dev_servers, background_tasks, docker, wave_branches,
+  working_tree, untracked.
+- `check_all` agrega; CLI suporta `--check <category>`, `--format json|text`,
+  `--exit-code` (gating).
+- Falhas graceful: docker daemon down/git ausente → assumed clean.
+
+**5. Migrate workspace orquestrador (`scripts/migrate-workspace.py`):**
+- Floor v3.3.0 (beta1/beta2 unsupported).
+- Encadeia v3.3 → v3.4 → v3.5 → v3.6 → v3.7.
+- Trigger híbrido: COMPLETED/AWAITING auto-prompt; IN_PROGRESS warning-only.
+- Backup automático em `<pr>/.icm-migration-backup/<ts>/<ws>/`.
+- Idempotente. Step v3.6→v3.7 substantive: bump L0 + cria `_state/` +
+  migra `.icm-main/.dev-server.pid` → registry (se PID alive).
+
+**6. Bootstrap.py — spawn-pending + spawn-from + gitignore extend:**
+- `detect_spawn_pending` parse + valida schema 9 campos.
+- `resolve_spawn_source` consolida arquivo + CLI arg (sources: file, arg,
+  conflict, none). Conflict marca file_value/arg_value pra menu humano.
+- `consume_spawn_pending` unlink pós-bootstrap successful (idempotente).
+- CLI `--spawn-from <slug>` (dest=spawn_from, fallback explícito).
+- GITIGNORE_LINES extended: `.icm/spawn-pending.json`, `workspaces/*/_state/`,
+  `**/coverage/`, `**/coverage.json`, `**/tsconfig.tsbuildinfo`, `**/.vite/`.
+
+**7. Recovery wizard novo tipo `RUNTIME_REGISTRY_STALE` (v3.7.0):**
+- 14º entry em CANONICAL_ORDER.
+- Detecta entries com PID morto em registry; sugere `purge-dead` (humano
+  confirma, sem auto-purga).
+- `_pid_alive_for_registry` wrapper testável.
+
+**8. Pre-commit hook block `_state/` paths:**
+- Reject staged paths `workspaces/*/_state/*` (privacy: PID/port leak em
+  PRs públicos). Mensagem orienta diretório local-only gitignored.
+
+**9. L2 stage 08 substantive update:**
+- `applicable_stop_points: ["runtime_cleanup_failed"]` (era `[]`).
+- §"Runtime Cleanup Checklist" antes de §Process — 6 categorias, strict
+  universal todos tiers, comando `runtime-status.py` documented.
+- Process step 0 obrigatório (rodar checklist).
+- Saída A step 3: TD append durante intake (opcional, só se feedback cita
+  débito explícito) + step 6: handoff.py remove-block --outcome A.
+- Saída C step 3: render `.icm/spawn-pending.json` schema completo
+  (spawn_from, intake_report_*, agent_brief structured 4 campos +
+  notes_livre, proposed_*, intake_commit_sha, created_at) + step 5:
+  remove-block --outcome C --spawn-to.
+
+**10. L2 stage 04 entry/exit hook → registry calls:**
+- Entry: `runtime-registry.py list --kind dev_server`, register na start.
+- Exit: list + kill processo + unregister entries.
+- Legacy v3.6.0 PID file path documented com migration via
+  `migrate-workspace.py`.
+
+### Refs novas
+
+- `references/runtime-cleanup-protocol.md` (~150 LOC) — protocolo canônico
+  6 categorias × cleanup default × override humano + per-OS quirks +
+  recovery se cleanup falha mid-saída.
+- `references/spawn-handoff-protocol.md` — schema spawn-pending.json +
+  cross-branch read pattern via git show + bootstrap detection flow +
+  edge cases (clone, colisão slug, multi-pendentes).
+
+### Refs atualizadas
+
+- `references/feedback-intake-fase08.md` — §"Runtime cleanup obrigatório
+  pré-saída (v3.7+)" com 9 steps explícitos.
+- `references/stop-points-canonical.md` — 14 → 15 itens, #15
+  `runtime_cleanup_failed` (sinais, trade-offs, calibração strict
+  universal, menu A/B/C específico).
+
+### Templates
+
+- `workspace/CLAUDE.md.tpl` R10 nova: runtime side-effects são
+  responsabilidade humana. Skill detecta + imprime checklist + aguarda
+  confirmação per categoria. Nunca mata processo automaticamente.
+- `_config/stop-points.md` 12 → 13 itens; #13 `runtime_cleanup_failed`
+  com menu A/B/C específico.
+
+### Backward compat
+
+- Workspaces v3.6.0 in-flight: rodar `migrate-workspace.py --workspace-root <ws>`
+  pra migrar PID file → registry. Idempotente.
+- Workspaces v3.3 → v3.6: encadeia migrations no orquestrador.
+- Workspaces beta1/beta2 (pre-v3.3.0): unsupported. Migration manual.
+
+### Decisões consolidadas (12)
+
+| # | Tópico | Resolução |
+|---|---|---|
+| 1 | TD append fase 08 | (b) flexibilizar — saída A/B append opcional |
+| 2 | Cross-platform tooling | (b) Python puro `runtime-status.py`. Drop Makefile |
+| 3 | Drift profile count | (c) sweep + endurecer detector |
+| 4 | Tier override checklist | (a) strict universal |
+| 5 | Spawn handoff | (c) `.icm/spawn-pending.json` + `--spawn-from` arg fallback |
+| 6 | Registry path + migração | (c×y) `_state/` workspace-scoped + migrate dev-server graceful |
+| 7 | Pre-commit `_state/` | (a) block staged paths |
+| 8 | Migration trigger | (d) híbrido COMPLETED auto-prompt; IN_PROGRESS warning |
+| 9 | Migration floor | (b) v3.3.0 |
+| 10 | Cleanup failure | (b) stop point #13 (#15 em references/) |
+| 11 | agent_brief schema | (c+d) estruturado 4 blocos + git show cross-branch |
+| 12 | Stage 04 entry hook | (c) helper docs + custom dev server fallback |
+
+### Tests
+
+49 tests novos (handoff outcome 7, runtime-registry 13, bootstrap spawn-pending
+14, recovery RUNTIME_REGISTRY_STALE 4, runtime-status 8, migrate-workspace 15).
+Total: 781 → 781+ tests verde, zero regressão.
+
+---
+
 ## v3.6.0 — Preview loop (build-iterate visual) (2026-04-30)
 
 ### Why v3.6.0
