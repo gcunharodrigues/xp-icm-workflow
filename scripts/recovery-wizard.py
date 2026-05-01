@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import json
 import os
 import platform
 import re
@@ -62,6 +63,8 @@ CODE_MISSING_PRE_WAVE_SHA = "MISSING_PRE_WAVE_SHA"
 # v3.6.0: preview loop dev server + CDP browser
 CODE_DEV_SERVER_ORPHAN = "DEV_SERVER_ORPHAN"
 CODE_CDP_DISCONNECTED = "CDP_DISCONNECTED"
+# v3.7.0: runtime registry com entries de PID morto (sem unregister)
+CODE_RUNTIME_REGISTRY_STALE = "RUNTIME_REGISTRY_STALE"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -80,6 +83,7 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_MISSING_PRE_WAVE_SHA,
     CODE_DEV_SERVER_ORPHAN,
     CODE_CDP_DISCONNECTED,
+    CODE_RUNTIME_REGISTRY_STALE,
 )
 
 # Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).
@@ -848,10 +852,69 @@ def detect_inconsistencies(
                     )
                 )
 
+    # 14) RUNTIME_REGISTRY_STALE (v3.7.0)
+    # Detecta workspaces/<NNN>/_state/runtime-registry.json com entries
+    # de PID morto (processo finalizado sem unregister). Plan A: sugere
+    # `runtime-registry.py purge-dead`. Não auto-purga (humano confirma).
+    found.extend(_detect_runtime_registry_stale(workspace_path))
+
     # Reordenar pra ordem canonica
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}
     ordered = [by_code[c] for c in CANONICAL_ORDER if c in by_code]
     return ordered
+
+
+# ============================================================================
+# Runtime registry stale detector (v3.7.0)
+# ============================================================================
+
+def _pid_alive_for_registry(pid: int) -> bool:
+    """Wrapper testável pra _is_pid_alive de runtime-registry.
+
+    Função separada pra permitir monkeypatch em tests sem mexer na fn
+    cross-platform original.
+    """
+    return _is_pid_alive(pid)
+
+
+def _detect_runtime_registry_stale(workspace_path: Path) -> list[Inconsistency]:
+    """Detecta entries com PID morto em runtime-registry.json."""
+    registry_path = workspace_path / "_state" / "runtime-registry.json"
+    if not registry_path.is_file():
+        return []
+    try:
+        data = json.loads(registry_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return []
+    if not isinstance(data, dict):
+        return []
+    entries = data.get("entries", [])
+    dead = []
+    for entry in entries:
+        pid = entry.get("pid")
+        if pid is None:
+            continue
+        if not _pid_alive_for_registry(int(pid)):
+            dead.append(entry)
+    if not dead:
+        return []
+    pids = ", ".join(str(e.get("pid")) for e in dead)
+    rel = registry_path.relative_to(workspace_path)
+    return [Inconsistency(
+        code=CODE_RUNTIME_REGISTRY_STALE,
+        message=(
+            f"`{rel}` contém {len(dead)} entry(ies) com PID morto "
+            f"(pids: {pids}). Processos finalizados sem unregister."
+        ),
+        proposed_action=(
+            f"rodar `python {{SKILL_DIR}}/scripts/runtime-registry.py "
+            f"purge-dead --workspace-root {workspace_path}` "
+            "ou unregister manual por id"
+        ),
+        severity="warning",
+        context={"registry": str(registry_path),
+                 "dead_pids": [e.get("pid") for e in dead]},
+    )]
 
 
 def _get_root_workspace_block(project_root: Path, workspace_id: str) -> dict | None:
