@@ -253,6 +253,88 @@ def test_git_hook_templates_no_crlf():
     )
 
 
+# ============================================================
+# G. Plan.md schema sync — parser regex ↔ template doc
+# ============================================================
+#
+# Bug histórico: LLM (designer fase 02) gera plan.md com headings em
+# h4/h5 ao invés de h2/h3 do schema canônico. Wave-planner em fase 03
+# falha com "no tasks found" ou retorna lista vazia silenciosamente.
+# Causa raiz frequente: schema do template alterado sem atualizar parser
+# (ou vice-versa). Estes testes congelam o contrato.
+
+def _wave_planner_module():
+    """Importa wave-planner-script.py com registro em sys.modules ANTES
+    de exec_module — exigência do @dataclass do Task pra resolver type
+    annotations via lookup em sys.modules[cls.__module__].
+    """
+    import sys
+    name = "wave_planner_script_drift"
+    spec = importlib.util.spec_from_file_location(
+        name, REPO_ROOT / "scripts" / "wave-planner-script.py",
+    )
+    assert spec and spec.loader
+    mod = importlib.util.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_4block_template_uses_canonical_heading_levels():
+    """4-block-contract-template.md deve declarar schema com h2 (Task) e
+    h3 (subseções). Mudança aqui sem ajustar parser quebra geração.
+    """
+    template = (REPO_ROOT / "references" / "4-block-contract-template.md").read_text(
+        encoding="utf-8"
+    )
+    assert "## Task <SLUG>:" in template, \
+        "4-block-contract-template.md falta '## Task <SLUG>:' (schema h2)"
+    for section in ("### O QUE", "### COMO", "### NÃO QUERO", "### VALIDAÇÃO"):
+        assert section in template, \
+            f"4-block-contract-template.md falta '{section}' (h3)"
+    for section in ("### Files touched", "### Depends on"):
+        assert section in template, \
+            f"4-block-contract-template.md falta '{section}' (h3)"
+
+
+def test_parser_regex_matches_template_canonical_example():
+    """SLUG_RE do parser deve casar header de exemplo concreto §6.1
+    (`## Task auth-middleware: JWT validation middleware`). Drift entre
+    parser e schema canônico = LLM segue template, parser rejeita.
+    """
+    module = _wave_planner_module()
+    template = (REPO_ROOT / "references" / "4-block-contract-template.md").read_text(
+        encoding="utf-8"
+    )
+    matches = module.SLUG_RE.findall(template)
+    assert "auth-middleware" in matches, (
+        f"parser SLUG_RE não casa exemplo do template (got {matches}). "
+        "Schema canônico em references/4-block-contract-template.md §6.1."
+    )
+
+
+def test_parser_drift_detector_rejects_h4_task():
+    """`_detect_heading_drift` deve abortar em '#### Task ...' (h4).
+    Garante guard em parse_plan permanece ativo.
+    """
+    module = _wave_planner_module()
+    bad = "#### Task foo: bar\n\n##### O QUE\n- x\n"
+    with pytest.raises(module.WavePlannerError, match="heading drift"):
+        module._detect_heading_drift(bad)
+
+
+def test_parser_drift_detector_passes_canonical_h2():
+    """Plan.md correto (h2 + h3) não deve disparar drift detector."""
+    module = _wave_planner_module()
+    good = (
+        "## Task foo: Foo\n\n"
+        "### O QUE\n- x\n\n"
+        "### Files touched\n- src/foo.ts\n\n"
+        "### Depends on\n\n"
+    )
+    module._detect_heading_drift(good)  # não levanta
+
+
 def test_markdown_cross_refs_resolve_in_references():
     """Links markdown relativos em references/ devem resolver."""
     violations = []

@@ -115,6 +115,41 @@ def test_parse_empty_plan_raises(tmp_path):
         parse_plan(empty)
 
 
+def test_parse_rejects_h4_task_header(tmp_path):
+    """LLM gera plan.md com `#### Task` (h4) ao invés de `## Task` (h2).
+    Sem guard, parser retorna 'no tasks found' longe da causa.
+    """
+    bad = tmp_path / "plan.md"
+    bad.write_text(
+        "#### Task foo: Foo\n\n##### O QUE\n- x\n\n##### Files touched\n- a.ts\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(WavePlannerError, match="heading drift"):
+        parse_plan(bad)
+
+
+def test_parse_rejects_h5_subsection(tmp_path):
+    """Task header h2 OK mas subseções h5 — também é drift."""
+    bad = tmp_path / "plan.md"
+    bad.write_text(
+        "## Task foo: Foo\n\n##### O QUE\n- x\n\n##### Files touched\n- a.ts\n",
+        encoding="utf-8",
+    )
+    with pytest.raises(WavePlannerError, match="heading drift"):
+        parse_plan(bad)
+
+
+def test_parse_drift_message_actionable(tmp_path):
+    """Mensagem de erro deve apontar schema canônico + fix mecânico."""
+    bad = tmp_path / "plan.md"
+    bad.write_text("#### Task foo: Foo\n\n##### O QUE\n- x\n", encoding="utf-8")
+    with pytest.raises(WavePlannerError) as excinfo:
+        parse_plan(bad)
+    msg = str(excinfo.value)
+    assert "4-block-contract-template" in msg
+    assert "## Task" in msg
+
+
 # ----------------------------------------------------------------------------
 # 2. resolve_cap (tier + profile override Q17)
 # ----------------------------------------------------------------------------

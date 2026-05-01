@@ -53,6 +53,7 @@ PROFILE_CAP_OVERRIDE: dict[str, int] = {
 VALID_PROFILES: frozenset[str] = frozenset({
     "app_web_backend",
     "app_web_frontend",
+    "fullstack",
     "dashboard",
     "data_analysis",
     "ml_project",
@@ -68,6 +69,17 @@ VALID_TIERS: frozenset[str] = frozenset(TIER_CAP.keys())
 SLUG_RE = re.compile(r"^## Task ([a-z0-9][a-z0-9-]*):", re.MULTILINE)
 TASK_HEADER_RE = re.compile(r"^## Task (\S+):", re.MULTILINE)
 KEBAB_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+
+# Heading drift detection — schema canônico em
+# references/4-block-contract-template.md exige task header em h2 e
+# subseções 4-block + metadados em h3. LLM ocasionalmente gera plan.md
+# com offset (h4/h5/h6). Sem este pre-flight o parser retornaria
+# silenciosamente "no tasks found" longe da causa real.
+TASK_HEADING_DRIFT_RE = re.compile(r"^#{3,6}\s+Task\s+\S+\s*:", re.MULTILINE)
+SUBSECTION_DRIFT_RE = re.compile(
+    r"^#{4,6}\s+(O QUE|COMO|NÃO QUERO|VALIDAÇÃO|Files touched|Depends on)\b",
+    re.MULTILINE,
+)
 
 
 # ----------------------------------------------------------------------------
@@ -148,11 +160,37 @@ def _extract_type_field(block: str) -> str:
     return match.group(1).upper()
 
 
+def _detect_heading_drift(text: str) -> None:
+    """Pre-flight: aborta se plan.md tem task headers em h4-h6 ou
+    subseções 4-block em h5-h6. Schema canônico exige h2/h3."""
+    task_drift = TASK_HEADING_DRIFT_RE.findall(text)
+    sub_drift = SUBSECTION_DRIFT_RE.findall(text)
+    if not task_drift and not sub_drift:
+        return
+    parts: list[str] = []
+    if task_drift:
+        parts.append(
+            f"{len(task_drift)} task header(s) em nivel >h2 "
+            f"(esperado '## Task <slug>: <titulo>')"
+        )
+    if sub_drift:
+        parts.append(
+            f"{len(sub_drift)} subsecao(oes) em nivel >h3 "
+            f"(esperado '### O QUE/COMO/NAO QUERO/VALIDACAO/Files touched/Depends on')"
+        )
+    raise WavePlannerError(
+        "plan.md heading drift: " + "; ".join(parts) + ". "
+        "Schema canonico em references/4-block-contract-template.md. "
+        "Fix mecanico: ^#### Task -> ## Task; ^##### <subsec> -> ### <subsec>."
+    )
+
+
 def parse_plan(path: Path) -> list[Task]:
     """Le plan.md e devolve lista ordenada de Task. Aborta em slug duplicado."""
     if not path.exists():
         raise WavePlannerError(f"plan file not found: {path}")
     text = path.read_text(encoding="utf-8")
+    _detect_heading_drift(text)
     blocks = _split_into_task_blocks(text)
     if not blocks:
         raise WavePlannerError(f"no tasks found in plan: {path}")
