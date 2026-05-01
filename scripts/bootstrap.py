@@ -68,6 +68,12 @@ GITIGNORE_LINES: tuple[str, ...] = (
     ".icm-profile.local.yaml",
     ".icm-main/",  # v3.4.0 — worktree linkada da base branch (modelo cross-branch)
     ".icm-chrome-profile/",  # v3.6.0 — preview loop CDP profile dir
+    ".icm/spawn-pending.json",  # v3.7.0 — handoff fase 08 saída C → bootstrap
+    "workspaces/*/_state/",  # v3.7.0 — runtime registry local-only
+    "**/coverage/",  # v3.7.0 — untracked artifact (jest, playwright, etc)
+    "**/coverage.json",  # v3.7.0 — coverage summary
+    "**/tsconfig.tsbuildinfo",  # v3.7.0 — TS incremental build state
+    "**/.vite/",  # v3.7.0 — vite cache
     "__pycache__/",
     ".pytest_cache/",
     ".coverage",
@@ -121,6 +127,96 @@ INDEX_HEADER = (
 
 class BootstrapError(Exception):
     """Erro de bootstrap (validacao, IO, git, runtime)."""
+
+
+# ============================================================================
+# Spawn-pending handoff (v3.7.0 — fase 08 saída C → bootstrap)
+# ============================================================================
+
+SPAWN_PENDING_PATH = ".icm/spawn-pending.json"
+
+SPAWN_PENDING_REQUIRED_FIELDS: tuple[str, ...] = (
+    "spawn_from",
+    "intake_report_path",
+    "intake_report_branch",
+    "proposed_workspace_name",
+    "proposed_profile",
+    "proposed_tier",
+    "intake_commit_sha",
+    "agent_brief",
+    "created_at",
+)
+
+
+def detect_spawn_pending(project_root: Path) -> dict | None:
+    """Lê `<project_root>/.icm/spawn-pending.json` e valida schema.
+
+    Retorna dict parseado se válido, None se arquivo ausente.
+    Raise BootstrapError se JSON inválido ou schema incompleto.
+    """
+    pending_path = project_root / SPAWN_PENDING_PATH
+    if not pending_path.is_file():
+        return None
+    try:
+        text = pending_path.read_text(encoding="utf-8")
+        data = json.loads(text)
+    except json.JSONDecodeError as exc:
+        raise BootstrapError(
+            f"spawn-pending.json inválido: {pending_path} ({exc})"
+        ) from exc
+    if not isinstance(data, dict):
+        raise BootstrapError(
+            f"spawn-pending.json esperado dict, got {type(data).__name__}"
+        )
+    missing = [f for f in SPAWN_PENDING_REQUIRED_FIELDS if f not in data]
+    if missing:
+        raise BootstrapError(
+            f"spawn-pending.json falta campos obrigatórios: {missing}"
+        )
+    return data
+
+
+def resolve_spawn_source(
+    project_root: Path,
+    spawn_from_arg: str | None,
+) -> dict:
+    """Resolve fonte de informação de spawn (arquivo vs CLI arg).
+
+    Retorna dict com chave `source` ∈ {"file", "arg", "conflict", "none"}:
+    - "file": só arquivo presente, ou arquivo+arg matcham → arquivo wins.
+    - "arg": só arg presente. `spawn_from` populado.
+    - "conflict": arquivo+arg de workspaces diferentes. Caller decide via
+      menu humano. Inclui `file_value` + `arg_value` pra UI.
+    - "none": nenhum. Bootstrap segue fluxo normal.
+    """
+    pending = detect_spawn_pending(project_root)
+    if pending is None and spawn_from_arg is None:
+        return {"source": "none"}
+    if pending is None:
+        return {"source": "arg", "spawn_from": spawn_from_arg}
+    if spawn_from_arg is None:
+        return {"source": "file", "payload": pending,
+                "spawn_from": pending["spawn_from"]}
+    if pending["spawn_from"] == spawn_from_arg:
+        return {"source": "file", "payload": pending,
+                "spawn_from": pending["spawn_from"]}
+    return {
+        "source": "conflict",
+        "file_value": pending["spawn_from"],
+        "arg_value": spawn_from_arg,
+        "payload": pending,
+    }
+
+
+def consume_spawn_pending(project_root: Path) -> None:
+    """Remove `<project_root>/.icm/spawn-pending.json` pós-bootstrap.
+
+    Idempotente — no-op se ausente. Chamado APÓS workspace novo committed
+    pra evitar re-trigger em próxima invocação.
+    """
+    pending = project_root / SPAWN_PENDING_PATH
+    if pending.is_file():
+        pending.unlink()
 
 
 # ============================================================================
@@ -1349,6 +1445,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--logs-root", default=None)
     parser.add_argument("--override", default=None)
     parser.add_argument("--skill-root", default=None, help="default: parent of this script")
+    parser.add_argument(
+        "--spawn-from", default=None, dest="spawn_from",
+        help="slug do workspace parent (v3.7.0). Sessão fase 08 saída C "
+             "escreve .icm/spawn-pending.json automaticamente; este arg é "
+             "fallback explícito ou re-spawn manual.",
+    )
     return parser
 
 
