@@ -9,11 +9,11 @@ generated_at: "{{CREATED_AT}}"
 
 > Resolvido para tier `{{TIER}}` no bootstrap. Para visão de todos os tiers, ver `references/stop-points-canonical.md` (na skill, não no workspace).
 
-Lista canônica de 12 stop points + thresholds resolvidos para o tier deste workspace + template de menu A/B/C inline. Workspace é self-contained — esta cópia não depende da skill durante execução.
+Lista canônica de 13 stop points + thresholds resolvidos para o tier deste workspace + template de menu A/B/C inline. Workspace é self-contained — esta cópia não depende da skill durante execução.
 
 ---
 
-## 1. Lista canônica (12 itens)
+## 1. Lista canônica (13 itens)
 
 | # | id | Descrição |
 |---|---|---|
@@ -29,6 +29,7 @@ Lista canônica de 12 stop points + thresholds resolvidos para o tier deste work
 | 10 | `adr_drift` | Stack que difere do declarado em ADR existente |
 | 11 | `wave_branch_missing` | Wave branch ausente (branch esperada não encontrada no repositório) |
 | 12 | `profile_mismatch` | Profile/tier inconsistente com escopo da task |
+| 13 | `runtime_cleanup_failed` | Runtime cleanup pré-saída fase 08 falhou ou humano cancelou — **v3.7.0** |
 
 ---
 
@@ -192,6 +193,32 @@ Profile/tier escolhido no bootstrap não corresponde ao escopo real da task em c
   - `ml_project / tool` mas plan exige peer-review formal.
   - Escopo cresceu além do declarado em L0.
 - **Trade-offs típicos:** mudar profile/tier (regenera matriz, custo de re-validação) vs spawn novo workspace com profile correto vs reduzir escopo da task atual.
+
+### 13. `runtime_cleanup_failed` — Runtime cleanup pré-saída fase 08 (v3.7.0)
+
+**Modo neste tier:** `hard` (sempre — strict universal, todos tiers).
+
+Aplicável APENAS em fase 08 (saída A close, B restart, C spawn). Disparo:
+
+- Runtime checklist (`scripts/runtime-status.py`) detecta categoria não-clean (dev server vivo, branch suja, container ativo, etc.) e humano se recusa a resolver agora ou cancela mid-confirmação.
+- Comando cleanup retorna erro (port in use, branch protected, docker daemon down).
+- Humano abandona checklist sem completar todas 6 categorias.
+
+Diferente de outros stop points: NÃO escala arquitetura, escala estado runtime que precisa intervenção humana fora de ICM (kill processo, deletar branch manual, parar container). Sessão pausa, humano resolve no terminal, retoma fase 08.
+
+- **Sinais:**
+  - `runtime-status.py --exit-code` retorna 1 (alguma categoria dirty).
+  - `runtime-registry.py purge-dead` falha.
+  - Humano responde "n" no mini-confirm runtime checklist.
+- **Trade-offs típicos:** resolver agora (interromper fluxo) vs deferir cleanup (workspace fica inconsistente; recovery wizard detecta depois) vs cancelar fase 08 (status volta pra `COMPLETED_AWAITING_HUMAN`, retoma depois).
+- **Menu A/B/C específico** (não usa template padrão §4):
+  ```
+  Runtime cleanup falhou em categoria(s): <lista>
+
+  [a] resolvi manualmente, retoma checklist
+  [b] skip categoria + segue saída <A|B|C> (workspace fica inconsistente; recovery detect depois)
+  [c] cancela fase 08 (status volta COMPLETED_AWAITING_HUMAN; retoma quando estiver pronto)
+  ```
 
 ---
 

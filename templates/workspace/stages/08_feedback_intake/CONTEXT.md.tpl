@@ -7,7 +7,8 @@ sub_stage_enum:
   - "08_decided_A"
   - "08_decided_B"
   - "08_decided_C"
-applicable_stop_points: []
+applicable_stop_points:
+  - "13"  # runtime_cleanup_failed (v3.7.0 — strict universal)
 output_files:
   - "output/intake-report.md"
 next_stage: null
@@ -45,11 +46,61 @@ Gate de iteração universal do ciclo ICM. Workspace transita pra cá automatica
 - {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/ — fase 08 não revisita código.
 - Outros workspaces em {{PROJECT_ROOT}}/workspaces/<outro>/ — saída C (spawn) consulta CONTEXT.md de workspace antigo via `spawn_from`, mas isso é responsabilidade do NOVO workspace; o workspace atual não lê outros.
 - {{PROJECT_ROOT}}/.icm-main/docs/decisions/ — ADRs não são editados na fase 08; herança em saída C é responsabilidade do novo workspace.
-- {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md — não há append aqui (lições da fase 08 vão em `docs/lessons.md` somente em saída A).
+
+**v3.7.0:** `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` PODE ser **escrito** (append) em saídas A/B se feedback livre revela débito técnico durável (não-lição). Diferença lessons vs tech_debt: lição = aprendizado pra próximo workspace; débito técnico = item rastreável que precisa ser endereçado em código futuro. Ambos coexistem em saída A; B append apenas se feedback explicitamente cita débito.
+
+## Runtime Cleanup Checklist (v3.7.0 — pré-Process obrigatório)
+
+ANTES de qualquer step do Process, executar checklist runtime cleanup. Strict universal — todos tiers (`experimental` → `production`) passam pelo checklist sem opt-out.
+
+**Comando:**
+
+```bash
+python {{SKILL_DIR}}/scripts/runtime-status.py \
+    --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
+    --project-root {{PROJECT_ROOT}} \
+    --format text
+```
+
+**6 categorias verificadas:**
+
+| # | Categoria | Detecta |
+|---|---|---|
+| 1 | `dev_servers` | Entries kind=dev_server alive em runtime-registry |
+| 2 | `background_tasks` | Entries kind=background_task alive |
+| 3 | `docker` | Containers com label `icm-workspace={{WORKSPACE}}` |
+| 4 | `wave_branches` | Git branches `wave-<workspace_num>-*` órfãs |
+| 5 | `working_tree` | `git status --short` no project_root (workspace branch) |
+| 6 | `untracked` | `.icm-main/` dirty (worktree base) |
+
+**Comportamento por categoria detectada não-clean:**
+
+```
+✗ dev_servers: 1 dev server(s) alive: pid=12345
+
+[s] resolvi (dev server matado / unregistered), retoma checklist
+[n] cancela fase 08 (status volta COMPLETED_AWAITING_HUMAN)
+[edit] descreva ajuste
+```
+
+**Fluxo:**
+
+1. Sessão roda checklist completo (todas 6 categorias).
+2. Pra cada categoria não-clean, sessão imprime confirm humano (per categoria, não 1 confirm global — strict universal).
+3. Humano resolve (kill processo, deletar branch, etc.) e responde `[s]` pra retomar checklist.
+4. Re-run checklist até **todas categorias clean**.
+5. Falha persistente / cancelamento humano → stop point #13 `runtime_cleanup_failed`. Status `BLOCKED_STOP_POINT`.
+6. Sucesso → prosseguir pra Process step 1.
+
+**Output reportado em `output/intake-report.md`:** seção §"Runtime cleanup pré-saída (v3.7+)" com snapshot do checklist final + categorias resolvidas + warnings (se algum cleanup foi skipado via menu C com humano explícito).
+
+Doc canônico: `_references/runtime/runtime-cleanup-protocol.md`.
 
 ## Process
 
 1. **Pre-flight — pré-condição obrigatória:** L1 deve declarar `stage_atual: "08"` com `sub_stage: 08_in_progress` (transição automática vinda de stage 07) e `status: COMPLETED_AWAITING_HUMAN`. Se status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → workspace inconsistente (recovery wizard). Se `stage_atual ≠ 08` → recusar com "workspace ainda não chegou em 08 (termine 07 primeiro)". Se status indefinido → stop point 11 `workspace_corrupt`.
+
+   **Step 0 (v3.7.0 — strict universal):** rodar Runtime Cleanup Checklist (§acima) ANTES de step 1. Bloqueia transição se alguma categoria não-clean e humano não confirmou cleanup. Status pode disparar stop point #13 `runtime_cleanup_failed` se humano cancela.
 2. **Setar `status: IN_PROGRESS`** no L1 (sai de `COMPLETED_AWAITING_HUMAN` enquanto sessão trabalha). Append `history` evento `feedback_session_started`.
 3. **Coleta de logs** (somente se `logs_root` ≠ null em L0): sampleia últimos 30 dias de `{{LOGS_ROOT}}`. Se path inacessível/vazio, anota "logs vazios/inacessíveis" e segue.
 4. **Receber feedback livre do humano:** humano cola feedback como texto solto (não menu, não 4 blocos guiados). Sessão valida ≥1 frase substantiva. Em silêncio prolongado / mensagem vazia explicíta tipo "tudo certo, encerra" → considera intenção A close.
@@ -202,12 +253,14 @@ Detalhamento por saída:
    - `last_transition.at = <ISO 8601 UTC now>`
    - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "saida A close"}`
 2. Append lições novas (de "QUE LIÇÃO TIRAR") em `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` respeitando frontmatter strict.
-3. Commit atômico (pre-commit valida atomicidade L1↔outputs↔lessons; commit-msg prefix `intake:` ou `feedback:`):
+3. **(v3.7.0) Append tech debt durante intake — opcional:** se feedback livre revela débito técnico durável (não-lição), append em `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` respeitando frontmatter strict. Diferença: **lição** = aprendizado meta para próximo workspace; **tech debt** = item rastreável que precisa endereçar em código futuro (ex: "refator do módulo X adiado", "validação Y temporariamente flexível"). Se feedback não cita débito explícito, skip step (lessons-only).
+4. Commit atômico (pre-commit valida atomicidade L1↔outputs↔lessons; commit-msg prefix `intake:` ou `feedback:`). Tech debt append (se houve) deve commitar via `cd .icm-main && git commit ...` (workflow ADR-style — ver L0 R6):
    ```
-   intake: workspace <NNN> close (saida A) + lessons append
+   intake: workspace <NNN> close (saida A) + lessons + tech_debt append
    ```
-4. Print pro user: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md.`
-5. **NÃO gerar `_kickoff.md`.** SAIR da sessão.
+5. Print pro user: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md.` (+ "Tech debt registrado em docs/tech_debt.md." se step 3 executou).
+6. **CLAUDE.md root:** rodar `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome A`.
+7. **NÃO gerar `_kickoff.md`.** SAIR da sessão.
 
 ### Saída B — Restart phase X
 
@@ -272,20 +325,48 @@ Detalhamento por saída:
    ```
    intake: workspace <NNN> close + spawn <slug-novo> (saida C)
    ```
-3. **NÃO gerar `_kickoff.md`** (workspace novo é outro; bootstrap acontece em sessão separada).
-4. Print pro user — instrução explícita pra colar em sessão nova:
+3. **(v3.7.0) Renderizar `.icm/spawn-pending.json`** em `{{PROJECT_ROOT}}/.icm/spawn-pending.json` (gitignored). Schema:
+   ```json
+   {
+     "spawn_from": "{{WORKSPACE}}",
+     "intake_report_path": "workspaces/{{WORKSPACE}}/stages/08_feedback_intake/output/intake-report.md",
+     "intake_report_branch": "workspace/{{WORKSPACE}}",
+     "proposed_workspace_name": "<slug-novo-workspace>",
+     "proposed_profile": "<profile sugerido baseado escopo>",
+     "proposed_tier": "<tier sugerido>",
+     "intake_commit_sha": "<sha do commit step 2>",
+     "agent_brief": {
+       "por_que_spawn": "...",
+       "escopo_motivador": "...",
+       "heranca_aplicavel": "...",
+       "nao_quero": "...",
+       "notes_livre": ""
+     },
+     "created_at": "<ISO 8601>"
+   }
+   ```
+   `agent_brief` consumível pelo recon-report do workspace novo (stage 00 lê + cita herança). Bootstrap próxima sessão auto-detecta arquivo (`bootstrap.detect_spawn_pending`), propõe valores, unlinka pós-sucesso.
+4. **NÃO gerar `_kickoff.md`** (workspace novo é outro; bootstrap acontece em sessão separada).
+5. **CLAUDE.md root:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome C --spawn-to <slug-novo>`.
+6. Print pro user — instrução explícita pra próxima sessão:
 
    ```
    ✅ Workspace <NNN-slug> CLOSED + SPAWN registrado (saída C).
 
    Próximo passo (humano, sessão nova):
 
-     /xp-icm-workflow project-root={{PROJECT_ROOT}} spawn_from={{WORKSPACE}}
+     /xp-icm-workflow project-root={{PROJECT_ROOT}}
 
-   Bootstrap do novo workspace acontece em sessão dedicada — herda
-   lessons+ADRs do parent via --spawn-from.
+   Bootstrap auto-detecta .icm/spawn-pending.json e propõe:
+     - profile=<profile sugerido>
+     - tier=<tier sugerido>
+     - workspace-name=<slug-novo>
+     - spawn_from={{WORKSPACE}}
+
+   Você confirma ou ajusta no menu interativo.
+   (Fallback explícito: --spawn-from={{WORKSPACE}} arg sobre arquivo.)
    ```
-5. SAIR da sessão.
+7. SAIR da sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
 

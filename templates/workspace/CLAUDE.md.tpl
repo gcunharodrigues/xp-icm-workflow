@@ -150,6 +150,22 @@ Skills `superpowers:*` (brainstorming, executing-plans, test-driven-development,
 - **Por quê:** brainstorm/discovery vive em `stages/01_discovery/`. TDD/debug viram instruções dentro de cada L2. ICM governa o ciclo via filesystem; superpowers como skill paralela quebra atomicidade L1↔outputs e bypassa governance.
 - **Bootstrap pendente sem args:** perguntar OU inferir profile/tier. NUNCA pular pra fluxo livre superpowers.
 
+### 10. Runtime side-effects = responsabilidade humana (v3.7.0)
+
+Side-effects de runtime (dev servers, background tasks, docker containers, wave branches órfãs, working tree dirt, untracked artifacts) são **responsabilidade do humano**, não da skill ICM. A skill:
+
+- **Detecta** via `scripts/runtime-status.py` rodado entry hook fase 08 (saída A/B/C step 0 obrigatório).
+- **Imprime** checklist 6 categorias com itens detectados.
+- **Aguarda** confirmação humana per categoria antes de transitar (strict universal — todos tiers).
+- **NUNCA mata processo, deleta branch ou força cleanup automaticamente.** Ações destrutivas requerem decisão humana explícita.
+
+Se humano cancela checklist mid-confirmação ou comando cleanup falha:
+- Status fica `BLOCKED_STOP_POINT` com stop point `runtime_cleanup_failed` (#13).
+- Sessão pausa, escreve menu A/B/C; humano resolve fora de ICM e retoma.
+
+Doc canônico: `_references/runtime/runtime-cleanup-protocol.md`.
+Helpers: `runtime-registry.py` (CRUD), `runtime-status.py` (checklist).
+
 ## Read order para qualquer agente
 
 1. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md` (este arquivo, L0)

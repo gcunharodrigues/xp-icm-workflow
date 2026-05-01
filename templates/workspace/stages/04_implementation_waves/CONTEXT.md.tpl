@@ -369,21 +369,36 @@ Lead executa ANTES do passo 1 (pre-flight) acima:
    - Nenhum: stop point `BLOCKED_ERROR` — falta scaffold inicial (deve
      ter sido criado em wave 1 task 1).
 
-2. **Verificar PID anterior** em
-   `{{PROJECT_ROOT}}/.icm-main/.dev-server.pid`:
-   - Se existe + processo vivo → reutiliza, skip start.
-   - Se existe + processo morto → recovery wizard `DEV_SERVER_ORPHAN`
-     (Plan A: apaga PID file).
-   - Se ausente → start novo.
+2. **Verificar runtime registry** (v3.7.0):
+   ```bash
+   python {{SKILL_DIR}}/scripts/runtime-registry.py list \
+       --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
+       --kind dev_server
+   ```
+   - Entry com PID alive → reutiliza, skip start.
+   - Entry com PID morto → unregister (registry stale; auto-recovery via
+     `recovery-wizard.py` `RUNTIME_REGISTRY_STALE`).
+   - Sem entries → start novo (passo 3).
 
-3. **Start dev server em background:**
+   **Legacy (v3.6.0):** se workspace foi criado pré-v3.7.0 e tem
+   `.icm-main/.dev-server.pid` no lugar do registry, rodar
+   `migrate-workspace.py --workspace-root <ws>` ANTES de prosseguir.
+
+3. **Start dev server em background + register:**
    ```bash
    cd {{PROJECT_ROOT}}
    <pm> run dev > .icm-main/.dev-server.log 2>&1 &
-   echo $! > .icm-main/.dev-server.pid
+   PID=$!
+   python {{SKILL_DIR}}/scripts/runtime-registry.py register \
+       --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
+       --kind dev_server --pid $PID --port <PORT> --command "<pm> run dev"
    ```
    Aguardar 3-5s pra Vite/Next bootear (lê stderr do log até ver
    "ready" ou "Local:"). Falha = `BLOCKED_ERROR`.
+
+   **Custom dev server** (não-default): registre kind apropriado
+   (`background_task` se daemon worker, etc.) com `--metadata` extra. Doc:
+   `_references/runtime/runtime-cleanup-protocol.md`.
 
 4. **Imprimir kickoff priming** ao humano:
 
@@ -434,14 +449,35 @@ cancela. Sempre `hard`.
 ### Exit hook (handoff final stage 04 — Caso B Fase 2 GATE_APPROVED)
 
 Lead executa APÓS commit 2/2 do gate aprovado (passo 7 do Caso B), antes
-de imprimir KICKOFF block:
+de imprimir KICKOFF block.
 
-1. **Ler PID** de `{{PROJECT_ROOT}}/.icm-main/.dev-server.pid`.
-2. **Matar processo** (POSIX: `kill <pid>`; Windows: `taskkill /PID <pid> /F`).
+**v3.7.0 (registry-based):**
+
+1. **Listar entries dev_server** do registry:
+   ```bash
+   python {{SKILL_DIR}}/scripts/runtime-registry.py list \
+       --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
+       --kind dev_server --format json
+   ```
+2. **Pra cada entry com PID alive**, matar processo:
+   - POSIX: `kill <pid>` (ou `kill -9 <pid>` se não responde).
+   - Windows: `taskkill /PID <pid> /F`.
    Falha silenciosa OK (processo já morto).
-3. **Apagar PID file** + `.dev-server.log`.
-4. **NÃO apaga** `.icm-chrome-profile/` — humano pode querer manter
+3. **Unregister entries** (independente de PID alive/morto):
+   ```bash
+   python {{SKILL_DIR}}/scripts/runtime-registry.py unregister \
+       --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
+       --id <entry_id>
+   ```
+   Ou batch via `purge-dead` se todos PIDs já mortos.
+4. **Apagar `.dev-server.log`** (housekeeping).
+5. **NÃO apaga** `.icm-chrome-profile/` — humano pode querer manter
    abas abertas pra próximo workspace; recovery wizard limpa quando
    detecta orphan persistente.
 
 Stage 05 (verification) NÃO depende do dev server. Stage 06+ idem.
+
+**Legacy (v3.6.0):** workspaces pre-v3.7.0 ainda usam
+`.icm-main/.dev-server.pid` direto. Migration via
+`migrate-workspace.py` move pra registry. Após migration, este exit hook
+funciona uniformemente.

@@ -29,6 +29,10 @@ CANONICAL_STOP_POINT_IDS = {
     "workspace_corrupt", "profile_mismatch",
     # v3.6.0 preview loop
     "feedback_ambiguous", "design_system_cascade",
+    # v3.7.0 runtime cleanup (fase 08 strict universal)
+    "runtime_cleanup_failed",
+    # numeric IDs também são aceitos (yaml frontmatter usa "13" string)
+    "13",
 }
 
 # Sub_stage enum canônico do state-machine-schema.md §Sub-stage enum
@@ -70,8 +74,9 @@ STAGE_SLUGS = {
     "08": "feedback_intake",
 }
 
-# Stages cujo applicable_stop_points DEVE ser vazio (determinísticos / sem decisão)
-EMPTY_STOP_POINTS_STAGES = {"03", "05", "08"}
+# Stages cujo applicable_stop_points DEVE ser vazio (determinísticos / sem decisão).
+# v3.7.0: stage 08 ganha runtime_cleanup_failed (#13) — removido daqui.
+EMPTY_STOP_POINTS_STAGES = {"03", "05"}
 
 
 def parse_l2_template(path: Path) -> tuple[dict, str]:

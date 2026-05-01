@@ -69,6 +69,7 @@ fi
 
 offending=""
 icm_main_offender=""
+state_offender=""
 while IFS= read -r f; do
     [ -z "$f" ] && continue
     # `.icm-main/` worktree paths — esses sao da base branch (worktree linkada).
@@ -77,6 +78,15 @@ while IFS= read -r f; do
     case "$f" in
         .icm-main/*)
             icm_main_offender="$f"
+            break
+            ;;
+    esac
+    # v3.7.0: workspaces/<NNN>/_state/ é local-only (runtime registry,
+    # gitignored). Reject mesmo via `git add -f` pra evitar leak de PIDs/ports
+    # em commits/PRs públicos.
+    case "$f" in
+        workspaces/*/_state/*)
+            state_offender="$f"
             break
             ;;
     esac
@@ -98,6 +108,18 @@ while IFS= read -r f; do
 done <<EOF
 $staged
 EOF
+
+if [ -n "$state_offender" ]; then
+    cat >&2 <<EOM
+ERROR: file '${state_offender}' esta em workspaces/<NNN>/_state/.
+Esse diretorio é LOCAL-ONLY (v3.7.0): runtime registry com PIDs/ports
+de processos rodando, gitignored por design.
+NAO commitar — pode vazar topology de processos em PRs publicos.
+Doc: references/runtime-cleanup-protocol.md.
+NUNCA use --no-verify; corrija o conteudo (provavel que --force-add).
+EOM
+    exit 1
+fi
 
 if [ -n "$icm_main_offender" ]; then
     cat >&2 <<EOM
