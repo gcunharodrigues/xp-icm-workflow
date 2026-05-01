@@ -8,7 +8,7 @@ sub_stage_enum:
   - "08_decided_B"
   - "08_decided_C"
 applicable_stop_points:
-  - "13"  # runtime_cleanup_failed (v3.7.0 — strict universal)
+  - "runtime_cleanup_failed"  # v3.7.0 — strict universal, todos tiers
 output_files:
   - "output/intake-report.md"
 next_stage: null
