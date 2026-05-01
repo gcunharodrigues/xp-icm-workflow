@@ -36,6 +36,34 @@ Se status = `COMPLETED_AWAITING_HUMAN` → válido, prosseguir (transição auto
 
 ---
 
+## Runtime cleanup obrigatório pré-saída (v3.7+)
+
+ANTES de qualquer ação Process (pre-flight, coleta, inferência), sessão DEVE rodar Runtime Cleanup Checklist via `scripts/runtime-status.py`. Strict universal — todos tiers passam pelo checklist sem opt-out.
+
+**9 steps explícitos:**
+
+1. Sessão lê L0 + L1 do workspace (read order normal).
+2. Sessão executa:
+   ```
+   python {SKILL_DIR}/scripts/runtime-status.py \
+       --workspace-root <ws> --project-root <pr> --format text --exit-code
+   ```
+3. 6 categorias verificadas: dev_servers, background_tasks, docker, wave_branches, working_tree, untracked.
+4. Pra cada categoria não-clean, sessão imprime detalhes (PIDs, branches, paths) + menu humano `[s/n/edit]`.
+5. Humano resolve item (kill processo, deletar branch, commitar dirt) e responde `[s]` pra retomar.
+6. Sessão re-roda checklist completo (idempotente).
+7. Loop até **todas categorias clean** OU humano cancela com `[n]` em alguma categoria.
+8. Sucesso → prosseguir Process step 1 (pre-flight L1 validation).
+9. Falha (humano `[n]` ou comando errou após retry) → stop point #13 `runtime_cleanup_failed`. Status `BLOCKED_STOP_POINT`. Sessão pausa, escreve menu A/B/C específico (resolveu / skip / cancela).
+
+**Output reportado em `intake-report.md`:** seção §"Runtime cleanup pré-saída" com snapshot final + categorias confirmadas + warnings (se algum cleanup foi skipado via stop point #13 menu B).
+
+**Falha → BLOCKED_ERROR não usado.** v3.7.0 introduziu stop point oficial (#13). `BLOCKED_ERROR` reserve-se a workspace-corrupt + IO failures duros.
+
+Doc canônico: `references/runtime-cleanup-protocol.md`.
+
+---
+
 ## O que a sessão fase 08 faz
 
 ### Pre-flight

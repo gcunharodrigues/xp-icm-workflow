@@ -8,7 +8,7 @@ Resolução **Q5** do plan: lista fixa de 12 stops; itens 5, 7, 8 calibrados por
 
 ---
 
-## 1. Lista canônica (14 itens)
+## 1. Lista canônica (15 itens)
 
 | # | id | Descrição |
 |---|---|---|
@@ -26,6 +26,7 @@ Resolução **Q5** do plan: lista fixa de 12 stops; itens 5, 7, 8 calibrados por
 | 12 | `profile_mismatch` | Profile/tier inconsistente com escopo da task |
 | 13 | `feedback_ambiguous` | (v3.6.0 preview loop) Feedback visual humano com baixa confidence — agente NÃO mexe especulando |
 | 14 | `design_system_cascade` | (v3.6.0 preview loop) Mudança de token afeta > `design_cascade_threshold` componentes |
+| 15 | `runtime_cleanup_failed` | (v3.7.0) Runtime cleanup pré-saída fase 08 falhou ou humano cancelou — **strict universal** todos tiers |
 
 ### 1.1 Detalhe por item
 
@@ -171,6 +172,27 @@ Mudança em token (cor, spacing, typography) afeta mais componentes que `preview
 - **Calibração:** sempre `hard` (qualquer tier). Disparável só durante stage 04 com `preview_loop_enabled: true`.
 - Doc: `references/preview-loop-protocol.md`.
 
+#### 15 — `runtime_cleanup_failed` (v3.7.0)
+Runtime cleanup pré-saída fase 08 (saída A close, B restart, C spawn) detectou categoria não-clean e humano cancelou ou comando cleanup retornou erro.
+
+Aplicável APENAS em fase 08 (`applicable_stop_points: ["runtime_cleanup_failed"]`). Outros stages NÃO disparam — runtime cleanup é gate de transição final, não decisão arquitetural.
+
+- **Sinais:**
+  - `runtime-status.py --exit-code` retorna 1 e humano responde `[n]` em alguma categoria.
+  - Comando cleanup falha (kill permission denied, branch protected, docker daemon down).
+  - Humano abandona checklist mid-confirmação.
+- **Trade-offs típicos:** resolver agora (interromper fluxo) vs deferir cleanup (workspace fica inconsistente, recovery wizard detecta depois) vs cancelar fase 08 (status volta `COMPLETED_AWAITING_HUMAN`).
+- **Calibração:** sempre `hard` — strict universal todos tiers (não calibrado por tier).
+- **Menu A/B/C específico** (não usa template padrão §3):
+  ```
+  Runtime cleanup falhou em categoria(s): <lista>
+
+  [a] resolvi manualmente, retoma checklist
+  [b] skip categoria + segue saída <A|B|C> (workspace fica inconsistente)
+  [c] cancela fase 08 (status volta COMPLETED_AWAITING_HUMAN)
+  ```
+- Doc: `references/runtime-cleanup-protocol.md`.
+
 ---
 
 ## 2. Thresholds calibrados por tier (itens 5, 7, 8)
@@ -183,7 +205,7 @@ Source: `templates/_config/profile-matrix.md` (chaves `stop_points_calibration.i
 | 7 — `over_eng` | warning | warning | hard | hard |
 | 8 — `pii` | warning | hard | hard | hard+DPO |
 
-Demais 11 stops (1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14) sempre `hard` em qualquer tier.
+Demais 12 stops (1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15) sempre `hard` em qualquer tier.
 
 ### 2.1 Modos de severidade
 
