@@ -1,11 +1,11 @@
 # xp-icm-workflow
 
-Skill de orquestração de projetos via filesystem (ICM). v3.4.0 — modelo cross-branch via worktree paralelo `.icm-main/`.
+Skill de orquestração de projetos via filesystem (ICM). v3.7.0 — runtime cleanup + spawn-pending handoff + drift hardening.
 
-![tests](https://img.shields.io/badge/tests-502%20passed-brightgreen)
+![tests](https://img.shields.io/badge/tests-781%20passed-brightgreen)
 ![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)
 ![python](https://img.shields.io/badge/python-3.11%2B-blue)
-![version](https://img.shields.io/badge/version-v3.0.0--beta5-orange)
+![version](https://img.shields.io/badge/version-v3.7.0-blue)
 
 > Quando publicada como repo GitHub, substituir os badges acima por
 > `[![tests](https://github.com/<user>/xp-icm-workflow/actions/workflows/test-skill.yml/badge.svg)](...)` etc.
@@ -38,7 +38,11 @@ Detalhes em `references/`. Walkthrough E2E em `references/example-run.md`.
 | `SKILL.md` | Entrada da skill |
 | `references/state-machine-schema.md` | Schema L1 + sub_stage enum |
 | `references/stage-templates.md` | Schema canônico dos 9 L2 templates |
-| `references/stop-points-canonical.md` | 12 stop points + thresholds por tier |
+| `references/stop-points-canonical.md` | 15 stop points + thresholds por tier |
+| `references/runtime-cleanup-protocol.md` | Checklist 6 categorias pré-saída fase 08 (v3.7.0) |
+| `references/spawn-handoff-protocol.md` | `.icm/spawn-pending.json` + `--spawn-from` arg (v3.7.0) |
+| `references/preview-loop-protocol.md` | Build-iterate visual + dev server registry (v3.6.0/v3.7.0) |
+| `references/design-system.md` | DESIGN.md format frontend/fullstack |
 | `references/4-block-contract-template.md` | 4-block + ciclo TDD 7 passos + Akita 15-item |
 | `references/wave-planner-algorithm.md` | DAG + LLM review subagent |
 | `references/subagent-protocol.md` | Spawn via Agent tool + mid-wave reduce |
@@ -75,7 +79,32 @@ CI: `.github/workflows/test-skill.yml` — Ubuntu runner com Python 3.13 + bats.
 
 ## Versão
 
-v3.4.0 — cross-branch worktree model. v3.3.x ainda referenciada como v2.4 snapshot em `references/v2.4-snapshot/`. Promoção a v3.0.0 condicionada aos critérios em `references/smoke-manual-checklist.md`.
+v3.7.0 — runtime cleanup obrigatório pré-saída fase 08 + spawn-pending handoff zero-friction + drift detector hardened + migration encadeada v3.3→v3.7. Versão canônica: `scripts/bootstrap.py:SKILL_VERSION`. Histórico completo em `references/changelog.md`.
+
+## v3.7.0 — Runtime cleanup + spawn-pending handoff
+
+10 mudanças concretas:
+
+- **Runtime checklist obrigatório** (strict universal todos tiers) antes saída A/B/C fase 08. 6 categorias: dev_servers, background_tasks, docker, wave_branches, working_tree, untracked. Detector via `scripts/runtime-status.py`; humano confirma per categoria.
+- **Runtime registry** (`scripts/runtime-registry.py`) substitui `.icm-main/.dev-server.pid` ad-hoc da v3.6.0 por JSON estruturado em `workspaces/<NNN>/_state/runtime-registry.json` (gitignored). Cross-platform PID liveness (POSIX `os.kill` / Windows `ctypes.OpenProcess`).
+- **Spawn handoff via `.icm/spawn-pending.json`** (gitignored): saída C escreve schema completo (spawn_from, agent_brief estruturado 4 blocos, intake_report cross-branch path, proposed profile/tier/name, intake_commit_sha). Bootstrap próxima sessão auto-detecta + propõe + unlinka. Fallback explícito `--spawn-from <slug>` arg.
+- **handoff.py outcome-aware idle render**: bug pre-v3.7.0 que hardcoded "Saída A" mesmo em saída C — agora `--outcome {A,C}` + `--spawn-to`.
+- **Migration encadeada** (`scripts/migrate-workspace.py`): floor v3.3.0, encadeia v3.3→v3.4→v3.5→v3.6→v3.7. Trigger híbrido (COMPLETED auto-prompt; IN_PROGRESS warning-only). Backup automático.
+- **Recovery wizard tipo novo** `RUNTIME_REGISTRY_STALE` (14º entry CANONICAL_ORDER): detecta entries com PID morto, sugere `purge-dead`.
+- **Pre-commit hook block** `workspaces/*/_state/` (privacy guard: PID/port leak em commits/PRs públicos).
+- **Stop point novo #15** (refs) / **#13** (template) `runtime_cleanup_failed` — strict universal, menu A/B/C específico (resolvi / skip + warning / cancela fase 08).
+- **L0 R10 nova**: runtime side-effects = responsabilidade humana. Skill detecta + imprime checklist + aguarda confirmação. Nunca mata processo automaticamente.
+- **Drift detector hardened**: `PROFILE_COUNT_PARENS_RE` + `PROFILE_COMBO_RE` pegam formatos missados pelo regex original. Sweep SKILL.md (10→11 profiles, 40→44 combos, +fullstack).
+
+Tests: 781 passed (49 novos), zero regressão.
+
+## v3.6.0 — Preview loop (build-iterate visual)
+
+Profile `app_web_frontend` + `fullstack` ganham preview loop opt-in-by-default: dev server lifecycle automático, mock data tier-based, Chrome CDP live em `:9222`, preview pages em `preview/`, verificação tier-aware (`tsc` cada Edit, lint+Playwright wave-end), feedback combo livre (texto/screenshot/URL/HTML), design system cascade threshold 5 componentes, multi-tela sob pedido. Stop points novos `feedback_ambiguous` + `design_system_cascade`. Recovery types `DEV_SERVER_ORPHAN` + `CDP_DISCONNECTED` (legacy v3.6 — v3.7 migra dev server pra runtime-registry). Doc canônico: `references/preview-loop-protocol.md`.
+
+## v3.5.0 — Stage 04 protocol gaps fix
+
+10 gaps de protocolo wave execution (worktrees órfãs, merge order não-determinístico, conflict mid-wave sem retomada, HITL granularidade insuficiente). Drift detector introduzido em `tests/unit/test_no_drift.py`.
 
 ## v3.4.0 — Cross-branch worktree model
 

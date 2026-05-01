@@ -49,9 +49,11 @@ VERSION_WHITELIST = {
     "references/example-run.md",  # menciona v3.0.0-beta5 + v2.4 (histórico)
 }
 
-# Arquivos que DEVEM mencionar a versão canônica
+# Arquivos que DEVEM mencionar a versão canônica.
+# Toda mudança em SKILL_VERSION exige bump em TODOS estes (regra v3.7.0).
 VERSION_MUST_MATCH = [
     ("SKILL.md", r"# xp-icm-workflow v(\d+\.\d+\.\d+)"),
+    ("README.md", r"version-v(\d+\.\d+\.\d+)"),
     ("references/design-system.md", r"format \(v(\d+\.\d+\.\d+)\)"),
     (
         "references/preview-loop-protocol.md",
@@ -75,6 +77,22 @@ def test_version_consistency_canonical_files():
         assert match is not None, f"{rel_path}: pattern '{pattern}' não encontrado"
         assert match.group(1) == canonical, \
             f"{rel_path}: versão {match.group(1)} ≠ canonical {canonical}"
+
+
+def test_changelog_has_entry_for_canonical_version():
+    """Toda SKILL_VERSION nova exige entry em references/changelog.md.
+
+    Regra v3.7.0: bump SKILL_VERSION sem entry no changelog é drift.
+    Pattern aceita "## vX.Y.Z" no início de linha (header de seção).
+    """
+    canonical = _canonical_version()
+    changelog = (REPO_ROOT / "references" / "changelog.md").read_text(encoding="utf-8")
+    pattern = re.compile(rf"^## v{re.escape(canonical)}\b", re.MULTILINE)
+    assert pattern.search(changelog), (
+        f"references/changelog.md não tem entry '## v{canonical}'. "
+        f"Toda mudança de SKILL_VERSION exige changelog entry "
+        f"(regra drift v3.7.0)."
+    )
 
 
 # ============================================================
