@@ -393,25 +393,56 @@ def _render_icm_footer(skill_dir: str) -> str:
     )
 
 
-def _render_icm_idle(closed_at: str) -> str:
-    """Mensagem 'nenhum workspace ativo' (após Saída A do último)."""
+def _render_icm_idle(
+    closed_at: str,
+    *,
+    outcome: str = "A",
+    spawn_to: str | None = None,
+) -> str:
+    """Mensagem 'nenhum workspace ativo' (Saída A close ou Saída C spawn).
+
+    v3.7.0: branches por outcome.
+    - A (default): workspace fechado limpo. Próximo passo `/init`.
+    - C: workspace transicionou pra spawn_to. Próximo passo bootstrap em
+      sessão nova (humano cola `/xp-icm-workflow spawn_from=<old>`).
+    """
+    if outcome not in ("A", "C"):
+        raise ValueError(
+            f"outcome inválido: {outcome!r} (esperado 'A' ou 'C')"
+        )
+    if outcome == "C" and not spawn_to:
+        raise ValueError("outcome='C' requer spawn_to não-vazio")
     closed = closed_at if closed_at else "desconhecido"
+    if outcome == "A":
+        return (
+            "## ICM — Nenhum workspace ativo\n"
+            "\n"
+            f"> Último workspace foi finalizado em `{closed}` (Saída A — close).\n"
+            "> Histórico em `workspaces/`.\n"
+            ">\n"
+            "> **Próximo passo:** rode `/init` para regenerar a região abaixo com\n"
+            "> informações do código construído. Esta região ICM permanecerá vazia\n"
+            "> até bootstrap de novo workspace.\n"
+        )
+    # outcome == "C"
     return (
         "## ICM — Nenhum workspace ativo\n"
         "\n"
-        f"> Último workspace foi finalizado em `{closed}` (Saída A).\n"
+        f"> Último workspace transicionou em `{closed}` "
+        f"(Saída C — spawn `{spawn_to}`).\n"
+        "> Bootstrap em sessão nova: `/xp-icm-workflow` detecta "
+        "`.icm/spawn-pending.json` automaticamente,\n"
+        f"> ou cole arg explícito `--spawn-from=<NNN>` para `{spawn_to}`.\n"
         "> Histórico em `workspaces/`.\n"
-        ">\n"
-        "> **Próximo passo:** rode `/init` para regenerar a região abaixo com\n"
-        "> informações do código construído. Esta região ICM permanecerá vazia\n"
-        "> até bootstrap de novo workspace.\n"
     )
 
 
 def _render_full_icm_region(blocks: Sequence[WorkspaceBlock], skill_dir: str) -> str:
     """Conteúdo completo da região ICM (sem marcadores externos START/END).
 
-    Vazio -> mensagem idle. 1+ workspaces -> header + blocos + footer.
+    Vazio -> mensagem idle (default Saída A). Para idle outcome-aware (Saída C),
+    use `_write_icm_region` com kwargs `outcome` + `spawn_to`.
+    1+ workspaces -> header + blocos + footer.
     """
     if not blocks:
         return _render_icm_idle("")
@@ -494,14 +525,25 @@ def _write_icm_region(
     project_name: str,
     blocks: list[WorkspaceBlock],
     skill_dir: str,
+    *,
+    idle_outcome: str = "A",
+    idle_spawn_to: str | None = None,
+    idle_closed_at: str = "",
 ) -> None:
     """Helper: escreve região ICM completa preservando conteúdo fora dos marcadores.
 
     - Greenfield (arquivo ausente) -> cria via _greenfield_template.
     - Brownfield com marcadores -> substitui apenas conteúdo entre marcadores.
     - Brownfield sem marcadores -> insere após primeiro H1.
+
+    Se `blocks` vazio: usa `_render_icm_idle` com outcome+spawn_to do caller.
     """
-    region_inner = _render_full_icm_region(blocks, skill_dir)
+    if blocks:
+        region_inner = _render_full_icm_region(blocks, skill_dir)
+    else:
+        region_inner = _render_icm_idle(
+            idle_closed_at, outcome=idle_outcome, spawn_to=idle_spawn_to,
+        )
     region_outer = _wrap_outer(region_inner)
 
     if not claude_md.exists():
@@ -548,12 +590,28 @@ def remove_workspace_block(
     skill_dir: str,
     *,
     closed_at: str = "",
+    outcome: str = "A",
+    spawn_to: str | None = None,
 ) -> Path:
     """Remove o bloco do workspace do CLAUDE.md root.
 
     Se workspace não existia: no-op (return path sem escrever).
     Se era o último: substitui região por mensagem idle (deactivate).
+
+    v3.7.0:
+    - `outcome` ∈ {"A", "C"}. A = close, C = spawn novo workspace.
+    - `spawn_to` requerido se outcome="C" (mensagem idle cita slug).
+
+    Saída B usa `update_project_claude_md` (fase 08 transita pra outro stage,
+    não fecha workspace).
     """
+    if outcome not in ("A", "C"):
+        raise ValueError(
+            f"outcome inválido: {outcome!r} (esperado 'A' ou 'C'). "
+            "Saída B não remove bloco — usa update_project_claude_md."
+        )
+    if outcome == "C" and not spawn_to:
+        raise ValueError("outcome='C' requer spawn_to não-vazio")
     claude_md = project_root / "CLAUDE.md"
     blocks = _parse_workspace_blocks(claude_md)
     if workspace not in blocks:
@@ -562,7 +620,12 @@ def remove_workspace_block(
     if blocks:
         _write_icm_region(claude_md, project_root.name, list(blocks.values()), skill_dir)
     else:
-        deactivate_project_claude_md(project_root, closed_at=closed_at)
+        deactivate_project_claude_md(
+            project_root,
+            closed_at=closed_at,
+            outcome=outcome,
+            spawn_to=spawn_to,
+        )
     return claude_md
 
 
@@ -570,19 +633,33 @@ def deactivate_project_claude_md(
     project_root: Path,
     *,
     closed_at: str = "",
+    outcome: str = "A",
+    spawn_to: str | None = None,
 ) -> Path:
     """Substitui região ICM por mensagem 'nenhum workspace ativo'.
 
-    Usado após Saída A quando não restam workspaces ativos. Conteúdo fora
-    dos marcadores preservado intacto.
+    Usado após Saída A (close) ou Saída C (spawn) quando não restam workspaces
+    ativos. Conteúdo fora dos marcadores preservado intacto.
 
     v3.4.1: também migra CLAUDE.md root para a base branch via worktree
     `.icm-main/`. Sem isso, o CLAUDE.md idle some quando workspace branch
     é deletada (todo dashboard ICM perdido). Doc:
     references/project-root-claude-md.md.
+
+    v3.7.0:
+    - `outcome` ∈ {"A", "C"}. Render mensagem específica do tipo.
+    - `spawn_to` requerido se outcome="C".
     """
+    if outcome not in ("A", "C"):
+        raise ValueError(
+            f"outcome inválido: {outcome!r} (esperado 'A' ou 'C')"
+        )
+    if outcome == "C" and not spawn_to:
+        raise ValueError("outcome='C' requer spawn_to não-vazio")
     claude_md = project_root / "CLAUDE.md"
-    region_inner = _render_icm_idle(closed_at)
+    region_inner = _render_icm_idle(
+        closed_at, outcome=outcome, spawn_to=spawn_to,
+    )
     region_outer = _wrap_outer(region_inner)
 
     if not claude_md.exists():
@@ -733,6 +810,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     remove.add_argument("--workspace", required=True)
     remove.add_argument("--skill-dir", required=True)
     remove.add_argument("--closed-at", default="", help="ISO 8601 UTC")
+    remove.add_argument(
+        "--outcome", choices=("A", "C"), default="A",
+        help="A=close (default), C=spawn novo workspace",
+    )
+    remove.add_argument(
+        "--spawn-to", default=None,
+        help="slug do workspace novo (requerido se outcome=C)",
+    )
 
     deactivate = sub.add_parser(
         "deactivate-project-md",
@@ -740,6 +825,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     deactivate.add_argument("--project-root", type=Path, required=True)
     deactivate.add_argument("--closed-at", default="")
+    deactivate.add_argument(
+        "--outcome", choices=("A", "C"), default="A",
+    )
+    deactivate.add_argument("--spawn-to", default=None)
 
     args = parser.parse_args(list(argv) if argv is not None else None)
 
@@ -797,6 +886,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.workspace,
             args.skill_dir,
             closed_at=args.closed_at,
+            outcome=args.outcome,
+            spawn_to=args.spawn_to,
         )
         print(out)
         return 0
@@ -805,6 +896,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         out = deactivate_project_claude_md(
             args.project_root.resolve(),
             closed_at=args.closed_at,
+            outcome=args.outcome,
+            spawn_to=args.spawn_to,
         )
         print(out)
         return 0
