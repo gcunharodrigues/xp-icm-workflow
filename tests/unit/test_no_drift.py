@@ -91,6 +91,20 @@ PROFILE_COUNT_RE = re.compile(
 )
 # Pattern adicional: "Demais N profiles" (= total - listed)
 PROFILE_REMAINDER_RE = re.compile(r"Demais\s+(\d+)\s+profiles\b")
+
+# Hardened (v3.7.0): pega formatos missados pelo PROFILE_COUNT_RE original.
+# Cobre:
+#   - "Profiles canônicos (N):" / "Profiles canonicos (N)"
+#   - "(N × 4 = M combos)" / "(N x 4 = M combos)"
+PROFILE_COUNT_PARENS_RE = re.compile(
+    r"Profiles\s+can(?:ô|o)nicos\s*\((\d+)\)",
+    re.IGNORECASE,
+)
+PROFILE_COMBO_RE = re.compile(
+    r"\((\d+)\s*[×x]\s*(\d+)\s*=\s*(\d+)\s*combos?\)",
+    re.IGNORECASE,
+)
+
 PROFILE_COUNT_WHITELIST = {
     "references/changelog.md",
     "docs/plans",
@@ -108,6 +122,9 @@ def _is_whitelisted(rel_path: str, whitelist: set) -> bool:
         rel_path == w or rel_path.startswith(w + "/")
         for w in whitelist
     )
+
+
+CANONICAL_TIERS_COUNT = 4  # CANONICAL_TIERS em profile-merge.py
 
 
 def _check_profile_count_in_file(path: Path, canonical: int) -> list:
@@ -128,6 +145,33 @@ def _check_profile_count_in_file(path: Path, canonical: int) -> list:
         if n >= canonical:
             violations.append(
                 f"{rel}: '{match.group(0)}' >= canonical {canonical} (impossível)"
+            )
+    # Hardened v3.7.0: "Profiles canônicos (N):" format
+    for match in PROFILE_COUNT_PARENS_RE.finditer(text):
+        n = int(match.group(1))
+        if n != canonical:
+            violations.append(
+                f"{rel}: '{match.group(0)}' (canonical {canonical})"
+            )
+    # Hardened v3.7.0: "(N × T = M combos)" format
+    for match in PROFILE_COMBO_RE.finditer(text):
+        n_profiles = int(match.group(1))
+        n_tiers = int(match.group(2))
+        n_combos = int(match.group(3))
+        if n_profiles != canonical:
+            violations.append(
+                f"{rel}: '{match.group(0)}' profile count {n_profiles} ≠ "
+                f"canonical {canonical}"
+            )
+        if n_tiers != CANONICAL_TIERS_COUNT:
+            violations.append(
+                f"{rel}: '{match.group(0)}' tier count {n_tiers} ≠ "
+                f"canonical {CANONICAL_TIERS_COUNT}"
+            )
+        if n_combos != canonical * CANONICAL_TIERS_COUNT:
+            violations.append(
+                f"{rel}: '{match.group(0)}' combos {n_combos} ≠ "
+                f"{canonical}×{CANONICAL_TIERS_COUNT}={canonical * CANONICAL_TIERS_COUNT}"
             )
     return violations
 

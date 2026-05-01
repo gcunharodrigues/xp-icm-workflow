@@ -155,11 +155,11 @@ User pode invocar `/xp-icm-workflow` com **descrição livre** em vez de args (e
 2. **`.icm-profile.local.yaml`** detectado em project_root: prompt humano "usar este?".
 3. **Pergunta interativa** menu PT (Q9-A') se faltar.
 
-**Profiles canônicos (10):** `app_web_backend`, `app_web_frontend`, `dashboard`, `data_analysis`, `ml_project`, `agent_ia`, `cli_tool`, `framework_library`, `technical_article`, `experiment`.
+**Profiles canônicos (11):** `app_web_backend`, `app_web_frontend`, `fullstack`, `dashboard`, `data_analysis`, `ml_project`, `agent_ia`, `cli_tool`, `framework_library`, `technical_article`, `experiment`.
 
 **Tiers (4):** `experimental`, `tool`, `development`, `production`.
 
-Detalhes da matriz em `templates/_config/profile-matrix.md` (10 × 4 = 40 combos).
+Detalhes da matriz em `templates/_config/profile-matrix.md` (11 × 4 = 44 combos).
 
 ---
 
