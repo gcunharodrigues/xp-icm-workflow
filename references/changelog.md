@@ -4,6 +4,72 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.7.2 — Saída A/C último ativo: auto-/init + cleanup ICM opt-in (2026-05-01)
+
+### Why v3.7.2
+
+Sessão real ICM (workspace 002 spawn de 001 via saída C) revelou 4 gaps:
+
+1. Sem instrução pra rodar `/init` ao fim do stage 8 — região idle citava
+   "rode /init" mas não era ação executada na sessão.
+2. `.index.md` ficava stale com workspace fechado listado como `active`.
+   SessionStart hook lia índice e detectava 001 fechado como ativo.
+3. `.claude/settings.local.json` acumulava entries de hooks por workspace
+   (bootstrap append, saída A/C nunca removia).
+4. `.icm-main/` worktree + workspace branch + subagent worktrees órfãs
+   permaneciam pós-saída A/C, humano via raiz em workspace branch tree
+   "duplicada" da `.icm-main/`.
+
+### Mudanças
+
+**Stage 08 saída A/C último workspace ativo:**
+
+- **Auto-`/init` invocation** — `handoff.py remove-block --exit-2-if-last-active`
+  retorna exit 2 quando deactivate disparou. Stage 08 template captura e
+  invoca `Skill(skill: "init")` na MESMA sessão antes de SAIR. Saída B
+  intocada. Multi-workspace com remanescentes ativos pula (proibido).
+- **Cleanup ICM opt-in** — `scripts/icm-cleanup.py` novo: pre-checks
+  (uncommitted abort, --force bypass), remove subagent worktrees órfãs,
+  remove `.icm-main/` worktree, checkout main, deleta workspace branch,
+  prune. Menu `[s/n/dry-run]` no template stage 08 invoca o script.
+  Doc: `references/icm-cleanup-protocol.md`.
+- **`.index.md` cleanup** — `handoff.py:_update_index_status` reescreve
+  linha do workspace `active` → `COMPLETED`. Chamado em `remove_workspace_block`.
+- **`settings.local.json` hooks unregister** — `handoff.py:_unregister_workspace_hooks`
+  remove entries do workspace fechado. Preserva hooks não-ICM.
+- **SessionStart hook prefere L1** — `icm-session-check.sh` agora itera
+  `workspaces/*/CONTEXT.md` frontmatter status ao invés de `.index.md`.
+
+**Recovery wizard:**
+
+- Novo detector `STALE_ICM_MAIN_AFTER_CLOSE` (16ª na CANONICAL_ORDER):
+  dispara quando workspace COMPLETED + `.icm-main/` presente + zero outros
+  workspaces ativos. Plan A registra warning sugerindo `icm-cleanup.py`
+  (destrutivo, não auto-executa). Helper `_count_active_workspaces`.
+
+### Tests
+
+41 tests novos: `test_handoff_remove_block_exit_code.py` (5),
+`test_stage08_template_init_invocation.py` (8),
+`test_close_cleanup_v3_7_1.py` (10), `test_icm_cleanup.py` (10),
+`test_recovery_stale_icm_main.py` (8). Suite: 823 passed (era 782),
+sem regressão.
+
+### Doc
+
+- `references/icm-cleanup-protocol.md` (novo) — D1-D5 decisions, algoritmo,
+  edge cases, idempotência.
+- `references/project-root-claude-md.md` — auto-`/init` trigger.
+- `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` — saídas
+  A/C steps reescritos.
+
+### v3.7.1 (intermediária, mergeada em 3.7.2)
+
+`.index.md` + settings.local.json hooks fixes implementados em commit
+separado (`ed838ce`) mas versão pulada — agrupado em v3.7.2.
+
+---
+
 ## v3.7.0 — Runtime cleanup + spawn-pending + handoff fixes (2026-05-01)
 
 ### Why v3.7.0

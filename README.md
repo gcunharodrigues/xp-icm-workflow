@@ -1,11 +1,11 @@
 # xp-icm-workflow
 
-> **Skill de orquestração de projetos via filesystem para Claude Code.** Bootstrap one-shot cria estrutura ICM (Interpretable Context Methodology) num projeto e SAI; o filesystem governa o ciclo. Cada estágio = 1 sessão Claude. v3.7.0.
+> **Skill de orquestração de projetos via filesystem para Claude Code.** Bootstrap one-shot cria estrutura ICM (Interpretable Context Methodology) num projeto e SAI; o filesystem governa o ciclo. Cada estágio = 1 sessão Claude. v3.7.2.
 
-[![tests](https://img.shields.io/badge/tests-782%20passed-brightgreen)](tests/)
+[![tests](https://img.shields.io/badge/tests-823%20passed-brightgreen)](tests/)
 [![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)](pyproject.toml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](system-requirements.md)
-[![version](https://img.shields.io/badge/version-v3.7.0-blue)](references/changelog.md)
+[![version](https://img.shields.io/badge/version-v3.7.2-blue)](references/changelog.md)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -239,12 +239,13 @@ Detalhes de fluxo, padrões de código e regras de drift em [CONTRIBUTING.md](CO
 
 ## Versão atual
 
-**v3.7.0** — runtime cleanup obrigatório pré-saída fase 08 + spawn-pending handoff zero-friction + drift detector hardened + migration encadeada v3.3→v3.7.
+**v3.7.2** — saída A/C último ativo: auto-`/init` + cleanup ICM opt-in (`.index.md` + settings.json hooks + workspace branch + `.icm-main/`) + recovery wizard `STALE_ICM_MAIN_AFTER_CLOSE`.
 
 Versão canônica: [`scripts/bootstrap.py:SKILL_VERSION`](scripts/bootstrap.py). Histórico completo: [`references/changelog.md`](references/changelog.md).
 
 ### Highlights por versão
 
+- **v3.7.2** (2026-05-01) — Saída A/C último ativo dispara `/init` automático + menu opt-in cleanup (`scripts/icm-cleanup.py`). `.index.md` + `settings.local.json` hooks limpos. SessionStart hook prefere L1 status sobre `.index.md`. Recovery wizard novo detector `STALE_ICM_MAIN_AFTER_CLOSE`.
 - **v3.7.0** (2026-05-01) — Runtime cleanup + spawn-pending handoff. Stop point #15 `runtime_cleanup_failed`. Migration v3.3→v3.7.
 - **v3.6.0** (2026-04-30) — Preview loop frontend (build-iterate visual). Chrome CDP integration, mock data tier-based.
 - **v3.5.0** (2026-04-29) — Stage 04 protocol gaps fix (10 edge cases). Drift detector introduzido.

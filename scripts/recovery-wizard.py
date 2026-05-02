@@ -861,10 +861,82 @@ def detect_inconsistencies(
     # `runtime-registry.py purge-dead`. Não auto-purga (humano confirma).
     found.extend(_detect_runtime_registry_stale(workspace_path))
 
+    # 15) STALE_ICM_MAIN_AFTER_CLOSE (v3.7.2)
+    # Disparo: workspace atual COMPLETED + .icm-main/ presente + zero outros
+    # workspaces ativos no project_root. Sintoma de saída A/C pré-v3.7.2 que
+    # não rodou cleanup, ou humano respondeu [n] no menu opt-in. Plan A:
+    # sugere invocar scripts/icm-cleanup.py interativamente.
+    if (
+        project_root is not None
+        and project_root.is_dir()
+        and state.get("status") == "COMPLETED"
+    ):
+        icm_main = project_root / ".icm-main"
+        if icm_main.exists() and _count_active_workspaces(project_root) == 0:
+            ws_id = state.get("workspace", "")
+            found.append(
+                Inconsistency(
+                    code=CODE_STALE_ICM_MAIN_AFTER_CLOSE,
+                    message=(
+                        f"workspace {ws_id} COMPLETED + .icm-main/ presente "
+                        "+ zero workspaces ativos. Cleanup ICM pendente "
+                        "(saída A/C pré-v3.7.2 ou opt-out humano)."
+                    ),
+                    proposed_action=(
+                        f"rodar scripts/icm-cleanup.py --project-root "
+                        f"{project_root} --workspace {ws_id} --dry-run "
+                        "(humano confirma antes de executar sem --dry-run)"
+                    ),
+                    severity="warning",
+                    context={
+                        "project_root": str(project_root),
+                        "workspace": ws_id,
+                    },
+                )
+            )
+
     # Reordenar pra ordem canonica
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}
     ordered = [by_code[c] for c in CANONICAL_ORDER if c in by_code]
     return ordered
+
+
+# ============================================================================
+# v3.7.2 helpers — STALE_ICM_MAIN_AFTER_CLOSE
+# ============================================================================
+
+
+def _count_active_workspaces(project_root: Path) -> int:
+    """Conta workspaces no project_root cujo L1 status != COMPLETED.
+
+    Itera dirs em `<project_root>/workspaces/`, lê `CONTEXT.md` frontmatter,
+    extrai status. Usado pelo detector STALE_ICM_MAIN_AFTER_CLOSE pra
+    confirmar que cleanup é seguro (zero workspaces ativos restantes).
+    """
+    ws_dir = project_root / "workspaces"
+    if not ws_dir.is_dir():
+        return 0
+    active = 0
+    for entry in ws_dir.iterdir():
+        if not entry.is_dir():
+            continue
+        ctx = entry / "CONTEXT.md"
+        if not ctx.is_file():
+            continue
+        try:
+            content = ctx.read_text(encoding="utf-8")
+        except OSError:
+            continue
+        match = _FRONTMATTER_RE.match(content)
+        if not match:
+            continue
+        try:
+            data = yaml.safe_load(match.group("body")) or {}
+        except yaml.YAMLError:
+            continue
+        if isinstance(data, dict) and data.get("status") != "COMPLETED":
+            active += 1
+    return active
 
 
 # ============================================================================
@@ -1249,6 +1321,27 @@ def _apply_plan_a(
             # SKILL_DIR não está em L1; usar placeholder (workspace L0 tem skill_dir
             # absoluto, mas recovery não consulta L0). Doc canônico orienta usuário.
             handoff.update_project_claude_md(proj_root, block, skill_dir="<skill-dir>")
+
+        elif inc.code == CODE_STALE_ICM_MAIN_AFTER_CLOSE:
+            # Plan A: registra warning (NÃO executa cleanup automático —
+            # destrutivo, exige confirm humano). History inclui comando
+            # exato pra humano rodar. Doc: references/icm-cleanup-protocol.md.
+            proj_root_str = inc.context.get("project_root", "")
+            ws_id = inc.context.get("workspace", "")
+            _append_history(
+                state,
+                {
+                    "at": _now_iso(now),
+                    "event": "recovery_warning",
+                    "note": (
+                        f"STALE_ICM_MAIN_AFTER_CLOSE: rode "
+                        f"`python <skill-dir>/scripts/icm-cleanup.py "
+                        f"--project-root {proj_root_str} --workspace {ws_id} "
+                        f"--dry-run` pra preview, depois sem --dry-run pra "
+                        f"executar. Cleanup é opt-in (destrutivo)."
+                    ),
+                },
+            )
 
     # Append evento sumario recovery_applied
     _append_history(
