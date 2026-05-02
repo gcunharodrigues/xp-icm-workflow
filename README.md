@@ -202,6 +202,7 @@ Esta skill é síntese de múltiplas fontes externas. Atribuições completas em
 
 - **Base teórica:** ICM Paper (VanClief & McDermott, 2025).
 - **9 patterns adotados:** [mattpocock/skills](https://github.com/mattpocock/skills) — ADR format, AGENT-BRIEF, Ubiquitous Language, Diagnose 6-fase, Triage state machine, OUT-OF-SCOPE, HITL/AFK, Design It Twice, Deep modules.
+- **Auto-QA Akita checklist (TDD loop):** inspirado nos blogposts de [Fabio Akita](https://www.akitaonrails.com/) (clean code, naming, abstrações justificadas).
 - **Design system inspiration:** [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md), [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
 - **Ecosystem:** [Claude Code](https://docs.claude.com/en/docs/claude-code) + [Anthropic Skills system](https://docs.claude.com/en/docs/agents/skills).
 

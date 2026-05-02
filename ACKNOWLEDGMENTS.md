@@ -59,11 +59,13 @@ Esta skill incorpora 9 patterns adaptados (v3.3.0, abril 2026). Cada arquivo ada
 
 ## Auto-QA "Akita" checklist (TDD subagent loop)
 
-> Checklist 15-item aplicado no passo 6 do ciclo TDD canônico (cada subagente em fase 04). Doc: [`references/4-block-contract-template.md`](references/4-block-contract-template.md) §5.
+> **Inspirado nos blogposts de Fabio Akita** ([akitaonrails.com](https://www.akitaonrails.com/)).
 
-Nome "Akita" é convenção interna desta skill referindo-se a critérios consolidados de clean code aplicados pós-implementação. Se o termo é familiar à comunidade brasileira de engenharia (tradicionalmente atribuído a práticas educacionais de **Filipe Akita** / canal "Código Fonte TV" / palestras de clean code), agradecemos a influência cultural. Os 15 itens específicos são síntese própria, não cópia direta de material publicado.
+Checklist 15-item aplicado no passo 6 do ciclo TDD canônico (cada subagente em fase 04). Doc: [`references/4-block-contract-template.md`](references/4-block-contract-template.md) §5.
 
-Se você é o autor original ou conhece a fonte primária deste checklist, abra issue e atualizo a atribuição.
+Critérios consolidados de clean code, naming, abstrações justificadas, fluxo linear e auto-revisão pós-implementação derivam do corpo de trabalho de Fabio Akita publicado ao longo de duas décadas em [akitaonrails.com](https://www.akitaonrails.com/) (palestras, posts sobre Ruby on Rails, arquitetura, qualidade de código, code review e clean code aplicado em contexto brasileiro/multinacional).
+
+A síntese específica de 15 itens nesta skill é adaptação operacional desses princípios para o ciclo TDD de subagentes ICM; espírito original e nomenclatura "Akita" preservados em homenagem à influência educacional.
 
 ---
 
