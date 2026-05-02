@@ -261,11 +261,33 @@ Detalhamento por saída:
 5. **CLAUDE.md root + detecção último ativo:** rodar `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome A --exit-2-if-last-active`. Capturar exit code:
    - `0` = outros workspaces ativos remanescentes (região ICM continua populada).
    - `2` = era o último ativo (região ICM substituída por idle msg + persistida em base via `.icm-main/`).
-6. **(v3.7.0) Auto-invocar `/init` se foi último ativo:** se exit code do step 5 = `2`, invocar `Skill(skill: "init")` na MESMA sessão antes de SAIR. Justificativa: pós-saída A do último workspace, região ICM está idle e a região codebase precisa ser regenerada com info do código construído (último merge stage 07). Se exit = `0`, **NÃO invocar** `/init` — outros workspaces ainda ativos, região ICM populada, `/init` sobrescreveria signaling (proibido — ver `_references/runtime/project-root-claude-md.md` §"Contrato com /init").
-7. Print pro user — varia conforme exit code do step 5:
-   - exit `2`: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md. Era último ativo → /init disparado pra regenerar CLAUDE.md root com info do código.` (+ "Tech debt registrado em docs/tech_debt.md." se step 3 executou).
-   - exit `0`: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md. <K> workspace(s) ainda ativo(s) — /init NÃO disparado.`
-8. **NÃO gerar `_kickoff.md`.** SAIR da sessão.
+6. **(v3.7.0) Auto-invocar `/init` se foi último ativo:** se exit code do step 5 = `2`, invocar `Skill(skill: "init")` na MESMA sessão antes do step 7 (cleanup). Justificativa: pós-saída A do último workspace, região ICM está idle e a região codebase precisa ser regenerada com info do código construído (último merge stage 07). Se exit = `0`, **NÃO invocar** `/init` — outros workspaces ainda ativos, região ICM populada, `/init` sobrescreveria signaling (proibido — ver `_references/runtime/project-root-claude-md.md` §"Contrato com /init"). Pular pro step 8 nesse caso (sem cleanup).
+7. **(v3.7.2) Menu opt-in cleanup ICM (apenas se exit=2):** APÓS `/init`, oferecer cleanup completo do estado ICM-effemeral (deletar workspace branch, remover `.icm-main/` worktree, limpar subagent worktrees órfãs). Imprimir literal:
+
+   ```
+   🧹 ICM cleanup completo? Vai executar:
+     - git checkout main na raiz (project_root volta a refletir código produto)
+     - git worktree remove .icm-main (worktree paralelo redundante)
+     - git branch -D workspace/<NNN-slug> (workspace branch fechada)
+     - git worktree prune (subagent worktrees órfãs stage 04)
+
+   [s] sim, executar cleanup
+   [n] não, manter estado atual (cleanup manual depois via scripts/icm-cleanup.py)
+   [dry-run] mostrar o que rodaria sem executar
+   ```
+
+   - Se humano responde `[dry-run]`: invocar `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --dry-run)`. Mostrar output. Re-perguntar menu.
+   - Se humano responde `[s]`: invocar `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}})`. Imprimir output.
+   - Se humano responde `[n]`: pular cleanup, print `Estado ICM mantido. Pra cleanup manual depois: python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}}`.
+
+   Cleanup é **opt-in com confirmação** porque é destrutivo (deleta branch + worktrees). Pre-checks no script abortam automaticamente se há uncommitted changes — humano pode investigar antes.
+
+   Doc canônico: `_references/runtime/icm-cleanup-protocol.md`.
+
+8. Print pro user — varia conforme exit code do step 5:
+   - exit `2`: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md. Era último ativo → /init disparado pra regenerar CLAUDE.md root + cleanup ICM <executado/pulado/dry-run conforme escolha>.` (+ "Tech debt registrado em docs/tech_debt.md." se step 3 executou).
+   - exit `0`: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md. <K> workspace(s) ainda ativo(s) — /init e cleanup NÃO disparados.`
+9. **NÃO gerar `_kickoff.md`.** SAIR da sessão.
 
 ### Saída B — Restart phase X
 
@@ -355,8 +377,32 @@ Detalhamento por saída:
 5. **CLAUDE.md root + detecção último ativo:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome C --spawn-to <slug-novo> --exit-2-if-last-active`. Capturar exit code:
    - `0` = outros workspaces ativos remanescentes.
    - `2` = era o último ativo (região ICM substituída por idle msg).
-6. **(v3.7.0) Auto-invocar `/init` se foi último ativo:** se exit code do step 5 = `2`, invocar `Skill(skill: "init")` na MESMA sessão ANTES do print final do step 7. Justificativa: pós-saída C do último workspace, região ICM está idle e a região codebase precisa ser regenerada pra refletir código construído pré-pivô (humano ainda vai bootstrappar workspace novo em sessão separada — `/init` capta snapshot atual do código). Se exit = `0`, **NÃO invocar** `/init`.
-7. Print pro user — instrução explícita pra próxima sessão:
+6. **(v3.7.0) Auto-invocar `/init` se foi último ativo:** se exit code do step 5 = `2`, invocar `Skill(skill: "init")` na MESMA sessão ANTES do step 7 (cleanup). Justificativa: pós-saída C do último workspace, região ICM está idle e a região codebase precisa ser regenerada pra refletir código construído pré-pivô (humano ainda vai bootstrappar workspace novo em sessão separada — `/init` capta snapshot atual do código). Se exit = `0`, **NÃO invocar** `/init`. Pular pro step 8 nesse caso (sem cleanup).
+7. **(v3.7.2) Menu opt-in cleanup ICM (apenas se exit=2):** APÓS `/init`, oferecer cleanup completo do estado ICM-effemeral (deletar workspace branch, remover `.icm-main/` worktree, limpar subagent worktrees órfãs). Imprimir literal:
+
+   ```
+   🧹 ICM cleanup completo? Vai executar:
+     - git checkout main na raiz (project_root volta a refletir código produto)
+     - git worktree remove .icm-main (worktree paralelo redundante)
+     - git branch -D workspace/<NNN-slug> (workspace branch fechada)
+     - git worktree prune (subagent worktrees órfãs stage 04)
+
+   ⚠️  Saída C: workspace novo será bootstrappado em sessão separada via
+   /xp-icm-workflow. Bootstrap re-cria .icm-main/ se ausente. Limpar agora
+   é seguro — bootstrap reconstrói o que precisar.
+
+   [s] sim, executar cleanup
+   [n] não, manter estado atual (cleanup manual depois via scripts/icm-cleanup.py)
+   [dry-run] mostrar o que rodaria sem executar
+   ```
+
+   - Se humano responde `[dry-run]`: invocar `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --dry-run)`. Mostrar output. Re-perguntar menu.
+   - Se humano responde `[s]`: invocar `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}})`. Imprimir output.
+   - Se humano responde `[n]`: pular cleanup, print `Estado ICM mantido. Pra cleanup manual depois: python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}}`.
+
+   Doc canônico: `_references/runtime/icm-cleanup-protocol.md`.
+
+8. Print pro user — instrução explícita pra próxima sessão:
 
    - Se exit `2` (último ativo, /init disparado):
      ```
@@ -393,7 +439,7 @@ Detalhamento por saída:
      Você confirma ou ajusta no menu interativo.
      (Fallback explícito: --spawn-from={{WORKSPACE}} arg sobre arquivo.)
      ```
-8. SAIR da sessão.
+9. SAIR da sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
 

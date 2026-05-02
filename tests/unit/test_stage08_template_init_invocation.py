@@ -81,3 +81,27 @@ def test_outcome_B_does_not_invoke_skill_init():
         "saída B (workspace continua ativo) NÃO deve invocar /init"
     )
     assert "/init" not in sec, "saída B não deve mencionar /init"
+
+
+def test_outcome_A_offers_icm_cleanup_menu():
+    """v3.7.2 — saída A oferece menu cleanup opt-in pós /init."""
+    sec = _split_outcomes(_read())["A"]
+    assert "icm-cleanup.py" in sec, "saída A deve referenciar icm-cleanup.py"
+    assert "[s]" in sec and "[n]" in sec and "[dry-run]" in sec, (
+        "menu cleanup deve ter 3 opções: s/n/dry-run"
+    )
+
+
+def test_outcome_C_offers_icm_cleanup_menu():
+    """v3.7.2 — saída C oferece menu cleanup opt-in pós /init."""
+    sec = _split_outcomes(_read())["C"]
+    assert "icm-cleanup.py" in sec
+    assert "[s]" in sec and "[n]" in sec and "[dry-run]" in sec
+
+
+def test_outcome_B_does_not_offer_cleanup():
+    """Saída B (restart) NÃO oferece cleanup — workspace continua ativo."""
+    sec = _split_outcomes(_read())["B"]
+    assert "icm-cleanup.py" not in sec, (
+        "saída B não deve invocar icm-cleanup.py (workspace continua ativo)"
+    )

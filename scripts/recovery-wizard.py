@@ -65,6 +65,8 @@ CODE_DEV_SERVER_ORPHAN = "DEV_SERVER_ORPHAN"
 CODE_CDP_DISCONNECTED = "CDP_DISCONNECTED"
 # v3.7.0: runtime registry com entries de PID morto (sem unregister)
 CODE_RUNTIME_REGISTRY_STALE = "RUNTIME_REGISTRY_STALE"
+# v3.7.2: .icm-main worktree presente sem workspaces ativos (cleanup pendente)
+CODE_STALE_ICM_MAIN_AFTER_CLOSE = "STALE_ICM_MAIN_AFTER_CLOSE"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -84,6 +86,7 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_DEV_SERVER_ORPHAN,
     CODE_CDP_DISCONNECTED,
     CODE_RUNTIME_REGISTRY_STALE,
+    CODE_STALE_ICM_MAIN_AFTER_CLOSE,
 )
 
 # Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).
