@@ -201,6 +201,7 @@ MIT — ver [LICENSE](LICENSE).
 Esta skill é síntese de múltiplas fontes externas. Atribuições completas em [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md):
 
 - **Base teórica:** ICM Paper (VanClief & McDermott, 2025).
+- **Superpowers** ([obra/superpowers-marketplace](https://github.com/obra/superpowers-marketplace)) — Jesse Vincent (@obra). Filosofia subagent-driven-development, TDD strict, brainstorming-first, dispatching-parallel-agents permeia esta skill desde v3.0. Sumários 200tok em `_references/superpowers-summary/`.
 - **9 patterns adotados:** [mattpocock/skills](https://github.com/mattpocock/skills) — ADR format, AGENT-BRIEF, Ubiquitous Language, Diagnose 6-fase, Triage state machine, OUT-OF-SCOPE, HITL/AFK, Design It Twice, Deep modules.
 - **Auto-QA Akita checklist (TDD loop):** inspirado nos blogposts de [Fabio Akita](https://www.akitaonrails.com/) (clean code, naming, abstrações justificadas).
 - **Design system inspiration:** [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md), [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).

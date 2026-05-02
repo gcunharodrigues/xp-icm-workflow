@@ -22,6 +22,28 @@ Princípios fundadores citados pelos autores (atribuídos via paper):
 
 ---
 
+## Superpowers ([obra/superpowers-marketplace](https://github.com/obra/superpowers-marketplace))
+
+> **Jesse Vincent** ([@obra](https://github.com/obra)) — Superpowers framework de skills compostas para coding agents (Claude Code, Codex, OpenCode, Cursor). [Sponsor](https://github.com/sponsors/obra).
+
+Superpowers é referência fundamental desta skill. Princípios adotados por sumarização em `workspaces/<NNN>/_references/superpowers-summary/` (10 arquivos, ~200 tokens cada) durante o bootstrap:
+
+- **Brainstorming** (intent → spec antes de codar) — vive em stage 01 discovery.
+- **Writing plans** (plan estruturado pós-spec) — vive em stage 02 design.
+- **Executing plans** (subagent-driven-development) — vive em stage 04 implementation_waves com Agent Tool nativo.
+- **Test-driven development** (red/green strict, YAGNI, DRY) — internalizado no ciclo TDD 7-passos do 4-block contract.
+- **Systematic debugging** — fallback de stage 05 verification.
+- **Verification before completion** — princípio do auto-QA Akita 15-item.
+- **Requesting / receiving code review** — fluxo de stage 06 review.
+- **Dispatching parallel agents** — base do Wave Planner determinístico de stage 03/04.
+- **Using git worktrees** — modelo de fase 04 worktree-per-task.
+
+**Diferença arquitetural:** xp-icm-workflow é **filesystem-as-state** (1 stage = 1 sessão fresh), Superpowers é **skill-driven** (skills triggam automaticamente in-session). Esta skill INCORPORA princípios mas BLOQUEIA invocação direta via `Skill` tool durante bootstrap (regra L0 R9 do workspace) — discovery vive em `stages/01_discovery/` e TDD/debug viram instruções inline em cada L2. Sumários servem como referência de princípios; invocação real é escape hatch só com aprovação humana explícita.
+
+Crédito devido: filosofia de subagent-driven-development, TDD strict, brainstorming-first e dispatching-parallel-agents permeia esta skill desde v3.0.
+
+---
+
 ## Patterns adotados de [mattpocock/skills](https://github.com/mattpocock/skills)
 
 > Repositório: [github.com/mattpocock/skills](https://github.com/mattpocock/skills)
