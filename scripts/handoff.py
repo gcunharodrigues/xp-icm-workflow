@@ -584,6 +584,139 @@ def update_project_claude_md(
     return claude_md
 
 
+def _update_index_status(
+    project_root: Path,
+    workspace: str,
+    new_status: str,
+) -> bool:
+    """Reescreve linha do workspace em `workspaces/.index.md` mudando status.
+
+    `.index.md` formato canônico:
+      | NNN | slug | profile/tier | created_at | status |
+
+    `workspace` = "NNN-slug". Localiza linha cujo NNN+slug bate, substitui
+    último campo (status). Se index ausente ou linha não encontrada, no-op.
+
+    Retorna True se atualizou, False se no-op (idempotente).
+
+    v3.7.1: corrige bug `.index.md` stale após saída A/C — antes do fix,
+    `update_index` (bootstrap.py) só appendava `active`; saída A/C
+    nunca reescrevia status pra `COMPLETED`. Hook SessionStart lia index
+    stale e detectava workspace fechado como ativo.
+    """
+    index_path = project_root / "workspaces" / ".index.md"
+    if not index_path.exists():
+        return False
+    nnn, _, slug = workspace.partition("-")
+    nnn = nnn.strip()
+    slug = slug.strip()
+    if not nnn or not slug:
+        return False
+    text = index_path.read_text(encoding="utf-8")
+    lines = text.split("\n")
+    changed = False
+    for idx, line in enumerate(lines):
+        if not re.match(r"^\| *[0-9]{3} *\|", line):
+            continue
+        cols = [c.strip() for c in line.split("|")]
+        # cols[0]=='', cols[1]=NNN, cols[2]=slug, cols[3]=profile/tier,
+        # cols[4]=created, cols[5]=status, cols[6]=='' (trailing)
+        if len(cols) < 6:
+            continue
+        if cols[1] == nnn and cols[2] == slug:
+            cols[5] = new_status
+            new_line = "| " + " | ".join(cols[1:6]) + " |"
+            if line != new_line:
+                lines[idx] = new_line
+                changed = True
+            break
+    if changed:
+        index_path.write_text("\n".join(lines), encoding="utf-8")
+    return changed
+
+
+def _unregister_workspace_hooks(
+    project_root: Path,
+    workspace: str,
+) -> bool:
+    """Remove entries do workspace fechado de `.claude/settings.local.json`.
+
+    Bootstrap (`_merge_project_settings_local`) registra hooks por workspace
+    com command path `$CLAUDE_PROJECT_DIR/workspaces/<workspace>/.claude/hooks/...`.
+    Saída A/C precisa remover esses entries pra evitar acúmulo (settings com
+    hooks duplicados após múltiplos workspaces fechados).
+
+    Detecta entries via substring `workspaces/<workspace>/.claude/hooks/` no
+    command. Se evento fica vazio (zero entries) após remoção, remove o
+    evento. Se settings inteiro fica sem `hooks`, deixa estrutura vazia.
+
+    Idempotente: ausência de entries = no-op. Settings inválido = no-op.
+
+    Retorna True se modificou, False se no-op.
+    """
+    settings_path = project_root / ".claude" / "settings.local.json"
+    if not settings_path.exists():
+        return False
+    try:
+        settings = json.loads(settings_path.read_text(encoding="utf-8"))
+    except (json.JSONDecodeError, OSError):
+        return False
+    if not isinstance(settings, dict):
+        return False
+    hooks = settings.get("hooks")
+    if not isinstance(hooks, dict):
+        return False
+
+    target_substr = f"workspaces/{workspace}/.claude/hooks/"
+    changed = False
+    events_to_remove: list[str] = []
+    for event, entries in list(hooks.items()):
+        if not isinstance(entries, list):
+            continue
+        kept_entries: list[dict] = []
+        for entry in entries:
+            if not isinstance(entry, dict):
+                kept_entries.append(entry)
+                continue
+            inner_hooks = entry.get("hooks", []) or []
+            kept_inner: list[dict] = []
+            for h in inner_hooks:
+                if not isinstance(h, dict):
+                    kept_inner.append(h)
+                    continue
+                cmd = h.get("command", "")
+                if isinstance(cmd, str) and target_substr in cmd:
+                    changed = True
+                    continue
+                kept_inner.append(h)
+            if kept_inner:
+                if kept_inner != inner_hooks:
+                    entry = {**entry, "hooks": kept_inner}
+                kept_entries.append(entry)
+            else:
+                changed = True
+        if kept_entries != entries:
+            if kept_entries:
+                hooks[event] = kept_entries
+            else:
+                events_to_remove.append(event)
+    for event in events_to_remove:
+        hooks.pop(event, None)
+
+    if changed:
+        try:
+            settings_path.write_text(
+                json.dumps(settings, indent=2, ensure_ascii=False) + "\n",
+                encoding="utf-8",
+            )
+        except OSError as exc:
+            sys.stderr.write(
+                f"warning: falha ao escrever {settings_path}: {exc}\n"
+            )
+            return False
+    return changed
+
+
 def remove_workspace_block(
     project_root: Path,
     workspace: str,
@@ -601,6 +734,10 @@ def remove_workspace_block(
     v3.7.0:
     - `outcome` ∈ {"A", "C"}. A = close, C = spawn novo workspace.
     - `spawn_to` requerido se outcome="C" (mensagem idle cita slug).
+
+    v3.7.1:
+    - Atualiza `workspaces/.index.md` marcando workspace como COMPLETED.
+    - Remove entries do workspace de `.claude/settings.local.json` (hooks).
 
     Saída B usa `update_project_claude_md` (fase 08 transita pra outro stage,
     não fecha workspace).
@@ -626,6 +763,11 @@ def remove_workspace_block(
             outcome=outcome,
             spawn_to=spawn_to,
         )
+
+    # v3.7.1: cleanup pós-saída A/C
+    _update_index_status(project_root, workspace, "COMPLETED")
+    _unregister_workspace_hooks(project_root, workspace)
+
     return claude_md
 
 

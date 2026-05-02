@@ -19,23 +19,29 @@ set -uo pipefail
 
 project_root="$(pwd)"
 
-# Detectar workspace ativo via workspaces/.index.md.
-# Procura linha com Status != "COMPLETED" (heurística simples).
-index="$project_root/workspaces/.index.md"
+# Detectar workspace ativo via L1 (`workspaces/<NNN>/CONTEXT.md` frontmatter).
+# v3.7.1: prefere L1 ao invés de `.index.md` — L1 é canônico, index é cache
+# que pode ficar stale (bug pré-v3.7.1: saída A/C atualizava L1 mas não index).
+# Itera dirs em workspaces/, lê status do frontmatter, primeiro NÃO-COMPLETED ativo.
+ws_dir="$project_root/workspaces"
 active_workspace=""
-if [ -f "$index" ]; then
-    # Linha format: | NNN | slug | profile/tier | created | Status |
-    while IFS= read -r line; do
-        if echo "$line" | grep -Eq '^\| *[0-9]{3} *\|'; then
-            slug=$(echo "$line" | awk -F'|' '{print $3}' | sed 's/ *//g')
-            status=$(echo "$line" | awk -F'|' '{print $6}' | sed 's/ *//g')
-            id=$(echo "$line" | awk -F'|' '{print $2}' | sed 's/ *//g')
-            if [ -n "$slug" ] && [ "$status" != "COMPLETED" ]; then
-                active_workspace="${id}-${slug}"
-                break
-            fi
+if [ -d "$ws_dir" ]; then
+    # Ordena por nome (NNN-slug ascending) pra determinismo.
+    for ctx in "$ws_dir"/*/CONTEXT.md; do
+        [ -f "$ctx" ] || continue
+        # Frontmatter status: extrai linha `status: <VALUE>` no bloco YAML inicial
+        # (entre primeiras 2 ocorrências de `^---$`).
+        status=$(awk '
+            BEGIN { in_fm=0; count=0 }
+            /^---$/ { count++; if (count==1) { in_fm=1; next } else { exit } }
+            in_fm && /^status:/ { sub(/^status: */, ""); gsub(/["\047]/, ""); print; exit }
+        ' "$ctx" 2>/dev/null | head -1 | tr -d '[:space:]')
+        if [ -n "$status" ] && [ "$status" != "COMPLETED" ]; then
+            ws_basename=$(basename "$(dirname "$ctx")")
+            active_workspace="$ws_basename"
+            break
         fi
-    done < "$index"
+    done
 fi
 
 # Sem workspace ativo → não há nada a checar
