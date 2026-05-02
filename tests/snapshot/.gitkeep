@@ -1,0 +1,3 @@
+# Placeholder para preservar tests/snapshot/ no git.
+# Reservado para snapshot tests (jinja-style template render diffs).
+# Atualmente vazio; tests/run.sh referencia este dir.
