@@ -20,6 +20,9 @@ Thumbs.db
 # Local override (testers usam)
 .icm-profile.local.yaml
 
+# Claude Code local settings (per-machine permissions/hooks)
+.claude/settings.local.json
+
 # Nota: skill repo nunca tem workspaces/ — workspaces moram no projeto
 # consumidor (versionados pelo git daquele projeto, plan A2/E5). Por isso
 # este gitignore não menciona workspaces/.
