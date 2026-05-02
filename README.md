@@ -49,11 +49,43 @@ bash scripts/check-runtime.sh         # valida runtime (Python 3.11+, git 2.30+,
 
 ### 2. Bootstrappar workspace num projeto
 
-Abra Claude Code no diretório do projeto e rode:
+Abra Claude Code no diretório do projeto. Duas formas:
+
+**Opção A — Recomendada: deixe o agente inferir tudo (descrição livre).**
+
+```
+/xp-icm-workflow
+```
+
+O agente lê seu prompt, infere `profile` + `tier` + `workspace-name` via heurísticas (palavras-chave: "API/backend" → `app_web_backend`, "componente React/UI" → `app_web_frontend`, "ML/treinar modelo" → `ml_project`, "POC/spike" → tier `experimental`, etc.), e confirma com você num menu curto antes de criar a estrutura. Pendências de discovery vão pra `_seed.md` do estágio 00 — você não precisa decidir nada técnico antes do bootstrap.
+
+Exemplo de uso real:
+
+```
+/xp-icm-workflow
+
+> Quero criar uma API REST de gestão de tarefas em FastAPI com auth JWT
+> e testes pytest. Vai rodar em produção na AWS.
+```
+
+Agente responde:
+
+```
+Inferido: profile=app_web_backend tier=production workspace-name=001-api-tarefas-jwt
+[a] confirma   [b] corrige   [c] cancela
+```
+
+Você responde `a`, e o bootstrap roda.
+
+**Opção B — Avançada: passe args explícitos** (útil em scripts ou quando você sabe exatamente o que quer):
 
 ```
 /xp-icm-workflow profile=app_web_backend tier=development
 ```
+
+Tabela completa de combinações abaixo (§Profiles e §Tiers).
+
+---
 
 A skill cria:
 
@@ -83,7 +115,7 @@ Cada estágio termina escrevendo `_kickoff.md` no próximo. Você abre nova sess
 ## Características
 
 - **9 estágios canônicos:** `00 recon → 01 discovery → 02 design → 03 wave_planner → 04 implementation_waves → 05 verification → 06 review → 07 merge → 08 feedback_intake`.
-- **11 profiles × 4 tiers** calibrando rigor (TDD obrigatório, security gate, stop points, cap subagents).
+- **11 profiles × 4 tiers = 44 combinações** calibrando rigor (TDD obrigatório, security gate, stop points, cap subagents).
 - **Subagentes paralelos** em fase 04 via Agent Tool (`Agent(isolation: "worktree")`).
 - **Wave Planner determinístico:** DAG → topological sort → sub-waves (HITL isoladas cap=1).
 - **15 stop points canônicos** + thresholds calibrados por tier.
@@ -91,6 +123,41 @@ Cada estágio termina escrevendo `_kickoff.md` no próximo. Você abre nova sess
 - **Drift detector** automático: bump de versão sem sweep multi-arquivo é bloqueado em CI.
 - **Runtime cleanup obrigatório** (v3.7.0) pré-saída fase 08: 6 categorias, strict universal.
 - **Spawn handoff zero-friction** (v3.7.0): `.icm/spawn-pending.json` auto-detectado pelo bootstrap.
+
+---
+
+## Profiles (11 canônicos)
+
+Cada profile calibra estágios pulados, TDD obrigatório, security gate, peer-review, cap de subagentes, e thresholds de stop points. Detalhes operacionais: [`templates/_config/profile-matrix.md`](templates/_config/profile-matrix.md).
+
+| Profile | Quando usar | Sinais no prompt |
+|---|---|---|
+| **`app_web_backend`** | API REST/GraphQL, microservices, backend services, endpoints | "API", "backend", "endpoint", "FastAPI/Express/Django/Spring" |
+| **`app_web_frontend`** | SPA/PWA, componentes React/Vue/Svelte, páginas web | "página web", "componente React/Vue", "UI", "Next.js/Vite" |
+| **`fullstack`** | App completo backend + frontend coordenado | "fullstack", "app completo", "backend + frontend" |
+| **`dashboard`** | BI, analytics, visualização de dados, painéis admin | "dashboard", "BI", "analytics", "métricas", "Streamlit/Tableau" |
+| **`data_analysis`** | EDA, notebooks, análise estatística, relatórios | "EDA", "notebook", "análise de dados", "Jupyter/pandas" |
+| **`ml_project`** | Pipeline ML, fine-tune, treino de modelo, MLOps | "treinar modelo", "ML pipeline", "fine-tune", "PyTorch/scikit-learn" |
+| **`agent_ia`** | Skills Claude Code, agentes LLM, subagentes, MCP servers | "skill", "agente", "subagent", "LLM tool", "MCP" |
+| **`cli_tool`** | Ferramenta linha de comando, automação shell | "CLI", "comando", "ferramenta linha de comando" |
+| **`framework_library`** | Lib, SDK, framework, package distribuível | "lib", "SDK", "framework", "package", "npm/pypi" |
+| **`technical_article`** | Artigo, paper, post técnico, documentação aprofundada | "artigo", "paper", "post técnico", "blog post" |
+| **`experiment`** | POC, spike, experimento descartável, prova de conceito | "POC", "spike", "experimento", "prova de conceito" |
+
+---
+
+## Tiers (4 canônicos)
+
+Tier escala rigor independente do profile. Mesmo profile em tier `experimental` vs `production` recebe calibração diferente (TDD opcional vs obrigatório, security gate off vs on, etc.).
+
+| Tier | Quando usar | Calibração principal |
+|---|---|---|
+| **`experimental`** | POCs, spikes, throwaway code, código pra validar hipótese | TDD opcional, sem security gate, peer-review off, cap subagents=2, stop points loose (item 5 R$50, item 7/8 warning) |
+| **`tool`** | Ferramentas internas, automações pessoais, side projects | TDD opcional, security gate off, peer-review off, cap subagents=3, stop points moderado (item 5 R$200) |
+| **`development`** | Apps em desenvolvimento ativo, projetos de equipe pré-prod | TDD obrigatório, security gate on, peer-review opcional, cap subagents=5, stop points strict (item 5 R$500, item 7 hard) |
+| **`production`** | Apps em produção, sistemas críticos, dados reais de usuários | TDD obrigatório, security gate on, peer-review obrigatório, cap subagents=5, stop points strict máximo (item 5 R$1000, item 8 hard+DPO) |
+
+**Default quando não-especificado:** `tier=development` (médio). Bootstrap interativo pergunta se faltar.
 
 ---
 
