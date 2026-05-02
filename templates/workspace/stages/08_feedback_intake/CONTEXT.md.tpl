@@ -258,9 +258,14 @@ Detalhamento por saída:
    ```
    intake: workspace <NNN> close (saida A) + lessons + tech_debt append
    ```
-5. Print pro user: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md.` (+ "Tech debt registrado em docs/tech_debt.md." se step 3 executou).
-6. **CLAUDE.md root:** rodar `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome A`.
-7. **NÃO gerar `_kickoff.md`.** SAIR da sessão.
+5. **CLAUDE.md root + detecção último ativo:** rodar `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome A --exit-2-if-last-active`. Capturar exit code:
+   - `0` = outros workspaces ativos remanescentes (região ICM continua populada).
+   - `2` = era o último ativo (região ICM substituída por idle msg + persistida em base via `.icm-main/`).
+6. **(v3.7.0) Auto-invocar `/init` se foi último ativo:** se exit code do step 5 = `2`, invocar `Skill(skill: "init")` na MESMA sessão antes de SAIR. Justificativa: pós-saída A do último workspace, região ICM está idle e a região codebase precisa ser regenerada com info do código construído (último merge stage 07). Se exit = `0`, **NÃO invocar** `/init` — outros workspaces ainda ativos, região ICM populada, `/init` sobrescreveria signaling (proibido — ver `_references/runtime/project-root-claude-md.md` §"Contrato com /init").
+7. Print pro user — varia conforme exit code do step 5:
+   - exit `2`: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md. Era último ativo → /init disparado pra regenerar CLAUDE.md root com info do código.` (+ "Tech debt registrado em docs/tech_debt.md." se step 3 executou).
+   - exit `0`: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md. <K> workspace(s) ainda ativo(s) — /init NÃO disparado.`
+8. **NÃO gerar `_kickoff.md`.** SAIR da sessão.
 
 ### Saída B — Restart phase X
 
@@ -347,26 +352,48 @@ Detalhamento por saída:
    ```
    `agent_brief` consumível pelo recon-report do workspace novo (stage 00 lê + cita herança). Bootstrap próxima sessão auto-detecta arquivo (`bootstrap.detect_spawn_pending`), propõe valores, unlinka pós-sucesso.
 4. **NÃO gerar `_kickoff.md`** (workspace novo é outro; bootstrap acontece em sessão separada).
-5. **CLAUDE.md root:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome C --spawn-to <slug-novo>`.
-6. Print pro user — instrução explícita pra próxima sessão:
+5. **CLAUDE.md root + detecção último ativo:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome C --spawn-to <slug-novo> --exit-2-if-last-active`. Capturar exit code:
+   - `0` = outros workspaces ativos remanescentes.
+   - `2` = era o último ativo (região ICM substituída por idle msg).
+6. **(v3.7.0) Auto-invocar `/init` se foi último ativo:** se exit code do step 5 = `2`, invocar `Skill(skill: "init")` na MESMA sessão ANTES do print final do step 7. Justificativa: pós-saída C do último workspace, região ICM está idle e a região codebase precisa ser regenerada pra refletir código construído pré-pivô (humano ainda vai bootstrappar workspace novo em sessão separada — `/init` capta snapshot atual do código). Se exit = `0`, **NÃO invocar** `/init`.
+7. Print pro user — instrução explícita pra próxima sessão:
 
-   ```
-   ✅ Workspace <NNN-slug> CLOSED + SPAWN registrado (saída C).
+   - Se exit `2` (último ativo, /init disparado):
+     ```
+     ✅ Workspace <NNN-slug> CLOSED + SPAWN registrado (saída C). Era último ativo → /init disparado pra regenerar CLAUDE.md root.
 
-   Próximo passo (humano, sessão nova):
+     Próximo passo (humano, sessão nova):
 
-     /xp-icm-workflow project-root={{PROJECT_ROOT}}
+       /xp-icm-workflow project-root={{PROJECT_ROOT}}
 
-   Bootstrap auto-detecta .icm/spawn-pending.json e propõe:
-     - profile=<profile sugerido>
-     - tier=<tier sugerido>
-     - workspace-name=<slug-novo>
-     - spawn_from={{WORKSPACE}}
+     Bootstrap auto-detecta .icm/spawn-pending.json e propõe:
+       - profile=<profile sugerido>
+       - tier=<tier sugerido>
+       - workspace-name=<slug-novo>
+       - spawn_from={{WORKSPACE}}
 
-   Você confirma ou ajusta no menu interativo.
-   (Fallback explícito: --spawn-from={{WORKSPACE}} arg sobre arquivo.)
-   ```
-7. SAIR da sessão.
+     Você confirma ou ajusta no menu interativo.
+     (Fallback explícito: --spawn-from={{WORKSPACE}} arg sobre arquivo.)
+     ```
+
+   - Se exit `0` (outros ativos remanescentes):
+     ```
+     ✅ Workspace <NNN-slug> CLOSED + SPAWN registrado (saída C). <K> workspace(s) ainda ativo(s) — /init NÃO disparado.
+
+     Próximo passo (humano, sessão nova):
+
+       /xp-icm-workflow project-root={{PROJECT_ROOT}}
+
+     Bootstrap auto-detecta .icm/spawn-pending.json e propõe:
+       - profile=<profile sugerido>
+       - tier=<tier sugerido>
+       - workspace-name=<slug-novo>
+       - spawn_from={{WORKSPACE}}
+
+     Você confirma ou ajusta no menu interativo.
+     (Fallback explícito: --spawn-from={{WORKSPACE}} arg sobre arquivo.)
+     ```
+8. SAIR da sessão.
 
 Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
 
@@ -388,6 +415,6 @@ Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
   com decision + reason durável + prior requests.
 
 - **CLAUDE.md root atualização:**
-  - **Saída A:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO8601>`. Se era o último ativo, ativa região idle automaticamente.
-  - **Saída B:** `python {{SKILL_DIR}}/scripts/handoff.py update-project-md --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --profile {{PROFILE}} --tier {{TIER}} --stage-atual <X> --stage-dir <X_name> --sub-stage <X>_in_progress --iteration <N+1> --status IN_PROGRESS --skill-dir {{SKILL_DIR}}`.
-  - **Saída C:** `remove-block` (workspace dono vira COMPLETED). Bootstrap em sessão B adiciona bloco do novo workspace.
+  - **Saída A:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO8601> --exit-2-if-last-active`. Se era o último ativo, ativa região idle automaticamente + **(v3.7.0)** sessão auto-invoca `Skill(skill: "init")` pra regenerar região codebase do CLAUDE.md root.
+  - **Saída B:** `python {{SKILL_DIR}}/scripts/handoff.py update-project-md --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --profile {{PROFILE}} --tier {{TIER}} --stage-atual <X> --stage-dir <X_name> --sub-stage <X>_in_progress --iteration <N+1> --status IN_PROGRESS --skill-dir {{SKILL_DIR}}`. **(v3.7.0)** `/init` NÃO é disparado — workspace continua ativo.
+  - **Saída C:** `remove-block ... --outcome C --spawn-to <slug-novo> --exit-2-if-last-active` (workspace dono vira COMPLETED). Se era o último ativo, **(v3.7.0)** sessão auto-invoca `/init` igual saída A. Bootstrap em sessão B adiciona bloco do novo workspace.

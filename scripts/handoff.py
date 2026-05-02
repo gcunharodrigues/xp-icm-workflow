@@ -818,6 +818,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--spawn-to", default=None,
         help="slug do workspace novo (requerido se outcome=C)",
     )
+    remove.add_argument(
+        "--exit-2-if-last-active", action="store_true",
+        help=(
+            "Retorna exit code 2 se workspace removido era o último ativo "
+            "(deactivate disparou). Útil pra stage 08 detectar quando "
+            "auto-invocar /init na sessão. Default: sempre exit 0."
+        ),
+    )
 
     deactivate = sub.add_parser(
         "deactivate-project-md",
@@ -881,8 +889,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
 
     if args.cmd == "remove-block":
+        project_root = args.project_root.resolve()
+        claude_md_path = project_root / "CLAUDE.md"
+        pre_blocks = _parse_workspace_blocks(claude_md_path) if claude_md_path.exists() else {}
+        target_existed = args.workspace in pre_blocks
         out = remove_workspace_block(
-            args.project_root.resolve(),
+            project_root,
             args.workspace,
             args.skill_dir,
             closed_at=args.closed_at,
@@ -890,6 +902,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             spawn_to=args.spawn_to,
         )
         print(out)
+        if args.exit_2_if_last_active:
+            post_blocks = _parse_workspace_blocks(claude_md_path) if claude_md_path.exists() else {}
+            was_last_active = target_existed and len(post_blocks) == 0
+            return 2 if was_last_active else 0
         return 0
 
     if args.cmd == "deactivate-project-md":

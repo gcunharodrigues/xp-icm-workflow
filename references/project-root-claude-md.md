@@ -38,7 +38,7 @@ This file provides guidance ...
 |---|---|---|
 | Bootstrap de workspace novo | `bootstrap.py:_render_project_claude_md` | Adiciona bloco do novo workspace à região ICM. Brownfield: preserva resto byte-a-byte. |
 | Handoff de transição de stage | `handoff.py:update_project_claude_md` | Atualiza só o bloco do workspace dono da transição. Demais blocos intactos. |
-| Saída A (close), Saída C (spawn) | `handoff.py:remove_workspace_block` | Remove o bloco do workspace que finalizou. Se zero workspaces ativos restam, `deactivate_project_claude_md` substitui região por mensagem "nenhum ativo" **e migra o CLAUDE.md root para a base branch via `.icm-main/`** (v3.4.1). |
+| Saída A (close), Saída C (spawn) | `handoff.py:remove_workspace_block` | Remove o bloco do workspace que finalizou. Se zero workspaces ativos restam, `deactivate_project_claude_md` substitui região por mensagem "nenhum ativo" **e migra o CLAUDE.md root para a base branch via `.icm-main/`** (v3.4.1). **(v3.7.0)** sessão da fase 08 também auto-invoca `Skill(skill: "init")` quando exit code do CLI = `2` (`--exit-2-if-last-active`). |
 | Recovery wizard | `recovery-wizard.py` (Plan A) | Regenera bloco a partir do L1 quando detecta `CLAUDE_MD_ROOT_STALE` ou `CLAUDE_MD_ROOT_MISSING`. |
 
 ## Algoritmo de inserção idempotente (brownfield)
@@ -86,7 +86,7 @@ Exemplo:
 
 | Saída | Função | Estado pós-saída |
 |---|---|---|
-| **A** (close) | `remove_workspace_block(workspace)` | Bloco do workspace removido. Se era o último: região ICM substituída por "nenhum ativo + rode /init"; CLAUDE.md root também é copiado para `.icm-main/CLAUDE.md` + commit em base branch (v3.4.1). |
+| **A** (close) | `remove_workspace_block(workspace)` | Bloco do workspace removido. Se era o último: região ICM substituída por "nenhum ativo + rode /init"; CLAUDE.md root também é copiado para `.icm-main/CLAUDE.md` + commit em base branch (v3.4.1). **(v3.7.0)** sessão da fase 08 auto-invoca `Skill(skill: "init")` na MESMA sessão quando `remove-block --exit-2-if-last-active` retorna exit `2` (foi o último). Disparo pula se outros workspaces ativos remanescentes (`/init` proibido durante workspace ativo). |
 
 ### Owner transition na saída A (v3.4.1)
 
@@ -108,7 +108,7 @@ no project_root abertas em base branch lêem o idle direto.
 Idempotente: re-execução com mesmo conteúdo não gera commit extra
 (`git status` detecta no-op).
 | **B** (restart fase X, iteration++) | `update_project_claude_md(workspace, stage_target=X, iteration=N+1, ...)` | Bloco atualizado mostrando nova fase e iteration. |
-| **C** (spawn novo workspace) | `remove_workspace_block(workspace)` na sessão A; bootstrap em sessão B adiciona bloco novo | Bloco do workspace dono removido. Sessão B (separada) bootstrappa novo workspace e adiciona seu bloco. |
+| **C** (spawn novo workspace) | `remove_workspace_block(workspace)` na sessão A; bootstrap em sessão B adiciona bloco novo | Bloco do workspace dono removido. Sessão B (separada) bootstrappa novo workspace e adiciona seu bloco. **(v3.7.0)** sessão da fase 08 (saída C) também auto-invoca `Skill(skill: "init")` quando `remove-block --exit-2-if-last-active` retorna exit `2` (era último ativo) — captura snapshot do código pré-pivô. Pula se outros workspaces ativos. |
 
 ## Contrato com `/init` (G4)
 
@@ -122,6 +122,15 @@ quebrando signaling.
 **Após Saída A do último workspace ativo:** região ICM é substituída por
 mensagem "nenhum ativo + rode /init". A partir desse ponto, rodar `/init` é
 seguro — preencherá a região codebase com informações do código construído.
+
+**(v3.7.0) Auto-trigger `/init` na própria sessão da fase 08:** quando saída
+A ou C remove o último workspace ativo, a sessão da fase 08 invoca
+`Skill(skill: "init")` automaticamente antes de SAIR. Detecção via
+`handoff.py remove-block --exit-2-if-last-active` (exit code `2` = era
+último). Em multi-workspace com remanescentes ativos, exit `0` e `/init`
+NÃO é disparado. Saída B nunca dispara `/init` (workspace continua ativo).
+Ver `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` saídas A
+e C step 6.
 
 **Regra para `/init` consciente da skill (futuro):** uma versão futura do
 `/init` pode procurar pelos marcadores e preservá-los. Marcadores são
