@@ -196,4 +196,13 @@ MIT — ver [LICENSE](LICENSE).
 
 [@gcunharodrigues](https://github.com/gcunharodrigues)
 
-Inspirações e padrões adotados de [mattpocock/skills](https://github.com/mattpocock/skills) (engineering/triage, diagnose, grill-with-docs, tdd, to-issues, improve-codebase-architecture).
+## Acknowledgments
+
+Esta skill é síntese de múltiplas fontes externas. Atribuições completas em [ACKNOWLEDGMENTS.md](ACKNOWLEDGMENTS.md):
+
+- **Base teórica:** ICM Paper (VanClief & McDermott, 2025).
+- **9 patterns adotados:** [mattpocock/skills](https://github.com/mattpocock/skills) — ADR format, AGENT-BRIEF, Ubiquitous Language, Diagnose 6-fase, Triage state machine, OUT-OF-SCOPE, HITL/AFK, Design It Twice, Deep modules.
+- **Design system inspiration:** [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md), [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
+- **Ecosystem:** [Claude Code](https://docs.claude.com/en/docs/claude-code) + [Anthropic Skills system](https://docs.claude.com/en/docs/agents/skills).
+
+Se você identifica fonte não creditada, [abra issue](https://github.com/gcunharodrigues/xp-icm-workflow/issues) com label `attribution-fix`.
