@@ -1,4 +1,4 @@
-"""Migrate workspace — orquestrador de migrations encadeadas (v3.7.0).
+"""Migrate workspace — orquestrador de migrations encadeadas (v3.7.2).
 
 Detecta versão atual via L0 frontmatter `icm_skill_version` e aplica
 sequência de migrations até `--target` (default: SKILL_VERSION corrente).
@@ -16,7 +16,7 @@ Backup automático em <project_root>/.icm-migration-backup/<timestamp>/
 antes de cada step. Idempotente: re-rodar não duplica state.
 
 CLI:
-    python migrate-workspace.py --workspace-root <path> [--target 3.7.0] \\
+    python migrate-workspace.py --workspace-root <path> [--target 3.7.2] \\
         [--project-root <path>] [--dry-run] [--no-backup]
 """
 from __future__ import annotations
@@ -35,16 +35,19 @@ from typing import Sequence
 # Constantes
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.7.0"
+CURRENT_SKILL_VERSION = "3.7.2"
 FLOOR_VERSION = "3.3.0"
 
 # Sequência de versões suportadas. Migration steps são pares consecutivos.
+# v3.7.1 colapsada em v3.7.2 (changelog: intermediária mergeada). Migration
+# direta 3.7.0→3.7.2 cobre ambas — sem schema change em L0.
 SUPPORTED_VERSIONS: tuple[str, ...] = (
     "3.3.0",
     "3.4.0",
     "3.5.0",
     "3.6.0",
     "3.7.0",
+    "3.7.2",
 )
 
 
@@ -250,11 +253,21 @@ def migrate_3_5_to_3_6(workspace_root: Path, project_root: Path) -> None:
     _bump_version_only(workspace_root, "3.6.0")
 
 
+def migrate_3_7_0_to_3_7_2(workspace_root: Path, project_root: Path) -> None:
+    """v3.7.0 → v3.7.2: saída A/C cleanup + recovery wizard novo detector.
+
+    Sem schema change em L0 — apenas runtime/handoff behavior. v3.7.1
+    foi colapsada em v3.7.2 (changelog: intermediária mergeada). Bump-only.
+    """
+    _bump_version_only(workspace_root, "3.7.2")
+
+
 STEP_FUNCTIONS = {
     "3.3.0->3.4.0": migrate_3_3_to_3_4,
     "3.4.0->3.5.0": migrate_3_4_to_3_5,
     "3.5.0->3.6.0": migrate_3_5_to_3_6,
     "3.6.0->3.7.0": migrate_3_6_to_3_7,
+    "3.7.0->3.7.2": migrate_3_7_0_to_3_7_2,
 }
 
 

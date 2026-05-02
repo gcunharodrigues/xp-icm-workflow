@@ -1,6 +1,6 @@
 """Drift detection — bloqueia inconsistências cross-file.
 
-6 detectores:
+7 detectores:
 A. Versão consistente (canonical = scripts/bootstrap.py SKILL_VERSION)
 B. Profile count consistente (canonical = len(CANONICAL_PROFILES))
 C. Status enum sync (validate_state.py ALLOWED_STATUSES vs schema doc)
@@ -8,6 +8,10 @@ D. Status canônicos esperados presentes (allow-list anti-typo)
 E. Cross-refs markdown resolvem em references/
 F. Shell templates sem CRLF (CRLF no shebang quebra exec — kernel
    procura interpretador 'bash\\r' e falha com "No such file or directory")
+H. Scripts source-of-truth version sync — `CURRENT_SKILL_VERSION = "X.Y.Z"`
+   + última entry de `SUPPORTED_VERSIONS = (...)` em scripts/*.py devem
+   bater canonical (regra v3.7.2: pega drift em scripts auxiliares como
+   migrate-workspace.py que não estavam em VERSION_MUST_MATCH).
 
 Whitelist exceptions explícitas — nunca grep-and-update silencioso.
 """
@@ -58,6 +62,11 @@ VERSION_MUST_MATCH = [
     (
         "references/preview-loop-protocol.md",
         r"build-iterate visual \(v(\d+\.\d+\.\d+)\)",
+    ),
+    # v3.7.2: scripts canônicos de orquestração também devem bater
+    (
+        "scripts/migrate-workspace.py",
+        r'CURRENT_SKILL_VERSION\s*=\s*"(\d+\.\d+\.\d+)"',
     ),
 ]
 
@@ -395,6 +404,67 @@ def test_parser_drift_detector_passes_canonical_h2():
         "### Depends on\n\n"
     )
     module._detect_heading_drift(good)  # não levanta
+
+
+# ============================================================
+# H. Scripts source-of-truth version sync (v3.7.2)
+# ============================================================
+#
+# Detecta scripts auxiliares que mantêm cópia local de SKILL_VERSION
+# (ex: migrate-workspace.py CURRENT_SKILL_VERSION + SUPPORTED_VERSIONS
+# tuple). VERSION_MUST_MATCH cobre arquivos canônicos com pattern fixo;
+# este detector é genérico — varre scripts/**/*.py por dois padrões e
+# valida == canonical.
+
+SCRIPT_CURRENT_VERSION_RE = re.compile(
+    r'CURRENT_SKILL_VERSION\s*=\s*"(\d+\.\d+\.\d+)"'
+)
+SCRIPT_SUPPORTED_LAST_RE = re.compile(
+    r'SUPPORTED_VERSIONS[^=]*=\s*\((?P<body>[^)]*)\)',
+    re.DOTALL,
+)
+SEMVER_RE = re.compile(r'"(\d+\.\d+\.\d+)"')
+
+
+def _scripts_version_violations(canonical: str) -> list[str]:
+    violations = []
+    scripts_dir = REPO_ROOT / "scripts"
+    if not scripts_dir.is_dir():
+        return violations
+    for py in scripts_dir.rglob("*.py"):
+        rel = py.relative_to(REPO_ROOT).as_posix()
+        # migrate-v3.3-to-v3.4.py é histórico (target fixo) — whitelist
+        if rel == "scripts/migrate-v3.3-to-v3.4.py":
+            continue
+        text = py.read_text(encoding="utf-8")
+        m = SCRIPT_CURRENT_VERSION_RE.search(text)
+        if m and m.group(1) != canonical:
+            violations.append(
+                f"{rel}: CURRENT_SKILL_VERSION={m.group(1)} ≠ {canonical}"
+            )
+        m2 = SCRIPT_SUPPORTED_LAST_RE.search(text)
+        if m2:
+            versions = SEMVER_RE.findall(m2.group("body"))
+            if versions and versions[-1] != canonical:
+                violations.append(
+                    f"{rel}: SUPPORTED_VERSIONS última entry "
+                    f"{versions[-1]} ≠ {canonical}"
+                )
+    return violations
+
+
+def test_scripts_skill_version_sync():
+    """Scripts auxiliares (migrate-workspace.py etc) devem refletir SKILL_VERSION.
+
+    Regra v3.7.2: caça drift em CURRENT_SKILL_VERSION e SUPPORTED_VERSIONS
+    tuple por scripts/. Cobre futuros scripts que copiarem padrão sem
+    estarem em VERSION_MUST_MATCH.
+    """
+    canonical = _canonical_version()
+    violations = _scripts_version_violations(canonical)
+    assert not violations, (
+        "Scripts version drift:\n  " + "\n  ".join(violations)
+    )
 
 
 def test_markdown_cross_refs_resolve_in_references():

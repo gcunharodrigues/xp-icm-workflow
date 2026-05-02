@@ -112,6 +112,30 @@ def test_plan_migration_from_3_3_0_to_3_7_0(mw):
     ]
 
 
+def test_plan_migration_from_3_7_0_to_3_7_2(mw):
+    """v3.7.1 colapsada em v3.7.2 — step direto."""
+    plan = mw.plan_migration("3.7.0", "3.7.2")
+    assert plan == ["3.7.0->3.7.2"]
+
+
+def test_plan_migration_from_3_3_0_to_canonical(mw):
+    """Cadeia full do floor até CURRENT_SKILL_VERSION."""
+    plan = mw.plan_migration("3.3.0", mw.CURRENT_SKILL_VERSION)
+    assert plan == [
+        "3.3.0->3.4.0",
+        "3.4.0->3.5.0",
+        "3.5.0->3.6.0",
+        "3.6.0->3.7.0",
+        "3.7.0->3.7.2",
+    ]
+
+
+def test_current_skill_version_matches_bootstrap(mw):
+    """CURRENT_SKILL_VERSION deve refletir scripts/bootstrap.py SKILL_VERSION."""
+    bs = _load("bootstrap_for_drift", "bootstrap.py")
+    assert mw.CURRENT_SKILL_VERSION == bs.SKILL_VERSION
+
+
 def test_plan_migration_below_floor_raises(mw):
     """v3.0/v3.2 abaixo do floor v3.3.0 → unsupported."""
     with pytest.raises(mw.MigrationError, match="floor"):
@@ -120,6 +144,13 @@ def test_plan_migration_below_floor_raises(mw):
 
 def test_plan_migration_already_at_target(mw):
     plan = mw.plan_migration("3.7.0", "3.7.0")
+    assert plan == []
+
+
+def test_plan_migration_at_canonical_target_noop(mw):
+    """Workspace já em CURRENT_SKILL_VERSION: plan vazio."""
+    canonical = mw.CURRENT_SKILL_VERSION
+    plan = mw.plan_migration(canonical, canonical)
     assert plan == []
 
 
@@ -203,6 +234,38 @@ def test_migrate_idempotent(mw, workspace: Path):
     mw.migrate_3_6_to_3_7(workspace, project_root=project_root)
     v2 = mw.detect_workspace_version(workspace)
     assert v1 == v2 == "3.7.0"
+
+
+# ============================================================
+# v3.7.0 → v3.7.2 step
+# ============================================================
+
+def test_migrate_3_7_0_to_3_7_2_bumps_l0_version(mw, tmp_path: Path):
+    ws = tmp_path / "workspaces" / "010-test"
+    ws.mkdir(parents=True)
+    (ws / "CLAUDE.md").write_text(
+        "---\nicm_skill_version: \"3.7.0\"\n---\n", encoding="utf-8",
+    )
+    mw.migrate_3_7_0_to_3_7_2(ws, project_root=ws.parent.parent)
+    text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "icm_skill_version: \"3.7.2\"" in text
+
+
+def test_migrate_3_7_0_to_3_7_2_idempotent(mw, tmp_path: Path):
+    ws = tmp_path / "workspaces" / "011-test"
+    ws.mkdir(parents=True)
+    (ws / "CLAUDE.md").write_text(
+        "---\nicm_skill_version: \"3.7.0\"\n---\n", encoding="utf-8",
+    )
+    project_root = ws.parent.parent
+    mw.migrate_3_7_0_to_3_7_2(ws, project_root=project_root)
+    mw.migrate_3_7_0_to_3_7_2(ws, project_root=project_root)
+    assert mw.detect_workspace_version(ws) == "3.7.2"
+
+
+def test_step_functions_dispatcher_has_3_7_0_to_3_7_2(mw):
+    assert "3.7.0->3.7.2" in mw.STEP_FUNCTIONS
+    assert mw.STEP_FUNCTIONS["3.7.0->3.7.2"] is mw.migrate_3_7_0_to_3_7_2
 
 
 # ============================================================

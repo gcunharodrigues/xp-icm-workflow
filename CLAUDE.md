@@ -61,7 +61,7 @@ pytest tests/unit/test_no_drift.py -v
 
 **Por que automatizado:** repo é highly-coupled (versão em 5+ arquivos, profile count em 8+, status enum em 3+). Auditar manualmente em sessão fresh é não-confiável. Test gate bloqueia drift no commit, sem precisar lembrar.
 
-## Regra: bump de SKILL_VERSION exige sweep multi-arquivo (v3.7.0)
+## Regra: bump de SKILL_VERSION exige sweep multi-arquivo (v3.7.0, estendido v3.7.2)
 
 **Toda mudança em `scripts/bootstrap.py:SKILL_VERSION` requer atualização sincronizada:**
 
@@ -70,10 +70,20 @@ pytest tests/unit/test_no_drift.py -v
 3. **`references/design-system.md`** frontmatter `format (vX.Y.Z)` + linha `> **Versão:** vX.Y.Z`
 4. **`references/preview-loop-protocol.md`** título `build-iterate visual (vX.Y.Z)` + linha `> **Versão:** vX.Y.Z`
 5. **`references/changelog.md`** nova entry `## vX.Y.Z — <título> (YYYY-MM-DD)` no top com seção `### Mudanças` listando alterações concretas
+6. **`scripts/migrate-workspace.py`** `CURRENT_SKILL_VERSION = "X.Y.Z"` + última entry de `SUPPORTED_VERSIONS` tuple = X.Y.Z + nova função `migrate_<from>_to_<X_Y_Z>` (mesmo bump-only) + entry em `STEP_FUNCTIONS` dispatcher
+7. **`tests/unit/test_migrate_workspace.py`** atualizar/adicionar cases pra novo step (smoke + idempotência)
 
-**Validação automática:** `tests/unit/test_no_drift.py::test_version_consistency_canonical_files` (4 arquivos canônicos) + `test_changelog_has_entry_for_canonical_version`. Falha = NÃO mergear.
+**Validação automática:**
+- `test_no_drift.py::test_version_consistency_canonical_files` (5 arquivos canônicos — items 1-4 + #6)
+- `test_no_drift.py::test_changelog_has_entry_for_canonical_version` (#5)
+- `test_no_drift.py::test_scripts_skill_version_sync` (genérico — varre `scripts/**/*.py` por `CURRENT_SKILL_VERSION` + tuple last entry, pega futuros scripts auxiliares)
+- `test_migrate_workspace.py::test_current_skill_version_matches_bootstrap` (cross-check direto)
+
+Falha em qualquer = NÃO mergear.
 
 **Regra extra (v3.7.0):** README.md também exige entry de seção `## vX.Y.Z` resumindo mudanças (não só badge bump). Se mudanças muito amplas, README seção pode ser breve com cross-ref pra `references/changelog.md`.
+
+**Regra extra (v3.7.2):** detector H pega scripts auxiliares que copiarem padrão `CURRENT_SKILL_VERSION` no futuro — não precisa atualizar `VERSION_MUST_MATCH` cirurgicamente pra cada novo script (mas pode adicionar pattern fixo se quiser dupla cobertura).
 
 ## Commands
 

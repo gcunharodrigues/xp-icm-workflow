@@ -68,6 +68,31 @@ sem regressão.
 `.index.md` + settings.local.json hooks fixes implementados em commit
 separado (`ed838ce`) mas versão pulada — agrupado em v3.7.2.
 
+### Post-release drift fix (2026-05-01)
+
+`scripts/migrate-workspace.py` ficou em `CURRENT_SKILL_VERSION = "3.7.0"`
+após bump 3.7.0→3.7.2 do bootstrap — `test_no_drift.py` original cobria
+só 4 arquivos canônicos (SKILL.md, README.md, design-system.md,
+preview-loop-protocol.md), não scripts auxiliares.
+
+Fixes:
+
+- `scripts/migrate-workspace.py`: `CURRENT_SKILL_VERSION` 3.7.0 → 3.7.2,
+  `SUPPORTED_VERSIONS` add `"3.7.2"`, novo `migrate_3_7_0_to_3_7_2`
+  (bump-only — v3.7.1 colapsada em 3.7.2 sem schema change), dispatcher
+  entry `"3.7.0->3.7.2"`, docstring + CLI example bumped.
+- `tests/unit/test_migrate_workspace.py`: 6 tests novos cobrem step novo,
+  cadeia full 3.3.0→canonical, sync com `bootstrap.SKILL_VERSION`.
+- `tests/unit/test_no_drift.py`: detector H novo `test_scripts_skill_version_sync`
+  varre `scripts/**/*.py` por `CURRENT_SKILL_VERSION` + última entry de
+  `SUPPORTED_VERSIONS` tuple, valida == canonical. Whitelist only para
+  `migrate-v3.3-to-v3.4.py` (target histórico fixo). `VERSION_MUST_MATCH`
+  ganha entry cirúrgica pra `migrate-workspace.py`.
+- `CLAUDE.md` raiz: regra "bump SKILL_VERSION" estendida pra incluir
+  `scripts/migrate-workspace.py` na lista de arquivos sincronizados.
+
+Suite: 831 passed (era 823), 0 regressão.
+
 ---
 
 ## v3.7.0 — Runtime cleanup + spawn-pending + handoff fixes (2026-05-01)
