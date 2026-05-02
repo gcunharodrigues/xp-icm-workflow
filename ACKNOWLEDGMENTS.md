@@ -91,8 +91,47 @@ A síntese específica de 15 itens nesta skill é adaptação operacional desses
 
 ---
 
-## Ecossistema Claude Code
+## Algoritmos & princípios computacionais
 
+### Topological sort
+
+> **Kahn, A. B. (1962).** "Topological sorting of large networks." Communications of the ACM, 5(11), 558–562.
+
+`scripts/wave-planner-script.py` usa o algoritmo de Kahn (BFS por níveis) para subdividir tarefas do `plan.md` em waves paralelizáveis após construção do DAG. Doc: [`references/wave-planner-algorithm.md`](references/wave-planner-algorithm.md) §5.
+
+### Cycle detection (DFS 3-color)
+
+> Algoritmo clássico de detecção de ciclos em DAG via DFS com 3 cores (white/gray/black). Atribuição: literatura padrão de algoritmos (Cormen, Leiserson, Rivest, Stein — *Introduction to Algorithms*). Implementação em `scripts/wave-planner-script.py` antes do topological sort para rejeitar dependências circulares no plan.md.
+
+### Ports & Adapters (Hexagonal Architecture)
+
+> **Cockburn, A. (2005).** "Hexagonal architecture." [alistair.cockburn.us/hexagonal-architecture](https://alistair.cockburn.us/hexagonal-architecture/).
+
+Mencionado em [`references/design-it-twice.md`](references/design-it-twice.md) §3 como pattern recomendado para dependências cross-seam quando designer faz "design it twice" comparativo.
+
+### TDD red/green/refactor
+
+> **Beck, K. (2002).** "Test Driven Development: By Example." Addison-Wesley.
+
+Ciclo TDD canônico de 7 passos no `4-block-contract-template.md` é especialização do red/green/refactor de Kent Beck. Princípio também central no Superpowers (sumário `superpowers-summary/test-driven-development.md`).
+
+### YAGNI (You Aren't Gonna Need It)
+
+> **Beck, K. (1999).** "Extreme Programming Explained." Addison-Wesley.
+
+Princípio XP citado pelo Superpowers e internalizado em `4-block-contract-template.md` (rejeitar abstrações não-justificadas no Akita item 4) e em stop point #7 `over_eng`.
+
+### DRY (Don't Repeat Yourself)
+
+> **Hunt, A. & Thomas, D. (1999).** "The Pragmatic Programmer: From Journeyman to Master." Addison-Wesley.
+
+Princípio aplicado em revisões stage 06 (dimensão "design") e Akita item 6 (duplicação detectada).
+
+---
+
+## Ecossistema Claude Code / Anthropic
+
+> **Anthropic** — [Claude](https://www.anthropic.com/claude) (LLM Opus/Sonnet/Haiku) é o motor que opera esta skill. Sem o modelo, a skill é apenas template de filesystem.
 > [Claude Code](https://docs.claude.com/en/docs/claude-code) — CLI da Anthropic onde esta skill roda.
 > [Anthropic Skills system](https://docs.claude.com/en/docs/agents/skills) — modelo de skills/SKILL.md adotado.
 

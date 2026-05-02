@@ -205,6 +205,7 @@ Esta skill é síntese de múltiplas fontes externas. Atribuições completas em
 - **9 patterns adotados:** [mattpocock/skills](https://github.com/mattpocock/skills) — ADR format, AGENT-BRIEF, Ubiquitous Language, Diagnose 6-fase, Triage state machine, OUT-OF-SCOPE, HITL/AFK, Design It Twice, Deep modules.
 - **Auto-QA Akita checklist (TDD loop):** inspirado nos blogposts de [Fabio Akita](https://www.akitaonrails.com/) (clean code, naming, abstrações justificadas).
 - **Design system inspiration:** [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md), [Manavarya09/design-extract](https://github.com/Manavarya09/design-extract).
-- **Ecosystem:** [Claude Code](https://docs.claude.com/en/docs/claude-code) + [Anthropic Skills system](https://docs.claude.com/en/docs/agents/skills).
+- **Algoritmos:** Kahn (1962) topological sort + DFS 3-color cycle detection (Wave Planner). Cockburn — Hexagonal Architecture. Beck — TDD red/green + YAGNI (XP). Hunt & Thomas — DRY (Pragmatic Programmer).
+- **Ecosystem:** [Anthropic Claude](https://www.anthropic.com/claude) (LLM motor da skill) + [Claude Code](https://docs.claude.com/en/docs/claude-code) + [Anthropic Skills system](https://docs.claude.com/en/docs/agents/skills).
 
 Se você identifica fonte não creditada, [abra issue](https://github.com/gcunharodrigues/xp-icm-workflow/issues) com label `attribution-fix`.
