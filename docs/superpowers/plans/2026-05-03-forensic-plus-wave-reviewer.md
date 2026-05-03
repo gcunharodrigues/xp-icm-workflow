@@ -1511,14 +1511,1711 @@ git commit -m "test(forensic-plus): cover crash paths (EC1) — git/plan errors"
 
 ---
 
-## Chunks 2-6 (placeholder — to be drafted after Chunk 1 review)
+## Chunk 2: Snapshot fixtures + structural integration tests
 
-The remaining work, summarized:
+**Goal:** lock the JSON contract of `forensic-plus.py` against regression via 6 snapshot fixtures, and verify the L2 stage 04 template will be updated correctly via filesystem-shape tests.
 
-- **Chunk 2:** Snapshot fixtures (6 input/output JSON pairs) + `test_wave_reviewer_forensic_integration.py` (~6 tests with mocked Agent tool, covering re-spawn loop + EC2/EC3/EC5).
-- **Chunk 3:** New canonical doc `references/forensic-plus-protocol.md` + edits to `references/wave-execution-protocol.md` (step 8 → 8a/8b/8c/8d), `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` (step 8 detailed), `references/4-block-contract-template.md` (Estimated lines section), `references/state-machine-schema.md` (error_type comment).
-- **Chunk 4:** Flag rename `skip_wave_reviewer` → `skip_cross_task_audit` in `scripts/wave-planner-script.py` and `references/wave-planner-algorithm.md` with backward-compat alias. New drift detectors in `tests/unit/test_no_drift.py` (4 tests). Update `scripts/bootstrap.py` runtime_refs and `SKILL_VERSION = "3.8.0"`.
-- **Chunk 5:** Version sweep across `SKILL.md`, `README.md`, `references/design-system.md`, `references/preview-loop-protocol.md`, `references/changelog.md`. New migration step `migrate_3_7_2_to_3_8_0` in `scripts/migrate-workspace.py` (bump-only) + tests in `tests/unit/test_migrate_workspace.py`.
-- **Chunk 6:** Integration `tests/integration/test_forensic_plus_e2e.bats` (CI-only). Final pre-merge gate (full suite green + drift detector green + workflow per CLAUDE.md: branch → tests → ff-only merge to main).
+**Rationale for "structural" not "behavioral" integration tests:** the wave-reviewer is an Agent (LLM with prompt instructions), not a Python module. The decision logic (HARD → re-spawn, SOFT → warn, cap MAX_FORENSIC_RETRIES = 2) lives in the L2 prompt + canonical doc. Behavioral tests of that logic would require mocking the Agent tool with synthetic responses, which is fragile. Instead, we test:
+1. `forensic-plus.py` JSON output is stable (snapshot fixtures, parametrized).
+2. The L2 template (after Chunk 3 edits) contains the decision rules as text (drift-style structural assertions). This catches accidental L2 prompt drift.
 
-Each subsequent chunk follows the same Task → Steps → Commit pattern with explicit code blocks and test-first ordering.
+The "behavioral" verification of the reviewer Agent's decision happens at runtime via the existing wave-reviewer audit — Forensic+ violations land in `task-<slug>.md` frontmatter, lead session reads and acts.
+
+### Task 8: Constants module — `MAX_FORENSIC_RETRIES`
+
+Promote the cap to a Python constant in `forensic-plus.py` so canonical doc + L2 template can reference it by name and a drift detector can verify consistency.
+
+**Files:**
+- Modify: `scripts/forensic-plus.py`
+- Test: `tests/unit/test_forensic_plus.py`
+
+- [ ] **Step 1: Write the failing test**
+
+```python
+def test_max_forensic_retries_exposed_as_module_constant():
+    """Constant must be importable + value 2 (per spec §6.2)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("forensic_plus", str(SCRIPT))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert hasattr(mod, "MAX_FORENSIC_RETRIES")
+    assert mod.MAX_FORENSIC_RETRIES == 2
+```
+
+- [ ] **Step 2: Run to verify it fails**
+
+```bash
+pytest tests/unit/test_forensic_plus.py::test_max_forensic_retries_exposed_as_module_constant -v
+```
+Expected: FAIL with AttributeError.
+
+- [ ] **Step 3: Add the constant**
+
+In `scripts/forensic-plus.py` near the top (with other constants):
+
+```python
+# Per spec §6.2 — cap on Forensic+-driven re-spawns before BLOCKED_ERROR.
+# Referenced by L2 stage 04 template + canonical forensic-plus-protocol.md.
+# Drift-checked in tests/unit/test_no_drift.py.
+MAX_FORENSIC_RETRIES = 2
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+```bash
+pytest tests/unit/test_forensic_plus.py::test_max_forensic_retries_exposed_as_module_constant -v
+```
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add scripts/forensic-plus.py tests/unit/test_forensic_plus.py
+git commit -m "feat(forensic-plus): expose MAX_FORENSIC_RETRIES module constant"
+```
+
+---
+
+### Task 9: Snapshot fixture infrastructure + 1st fixture (clean pass)
+
+**Files:**
+- Create: `tests/fixtures/forensic-plus-expected/01-clean-pass.json`
+- Create: `tests/fixtures/forensic-plus-expected/01-clean-pass.input.md` (plan stub)
+- Create: `tests/fixtures/forensic-plus-expected/01-clean-pass.spec.yaml` (test recipe — git fixture description, tier, expected exit code)
+- Modify: `tests/unit/test_forensic_plus.py` (snapshot test runner)
+
+The `*.spec.yaml` recipe describes how to construct the git fixture deterministically; the runner builds the repo, invokes the script, asserts output matches `*.json` byte-for-byte.
+
+- [ ] **Step 1: Write the snapshot test runner (failing)**
+
+Append to `tests/unit/test_forensic_plus.py`:
+
+```python
+import yaml  # already in requirements.txt for state-machine YAML parsing
+
+FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "forensic-plus-expected"
+
+
+def _build_fixture_repo(tmp_path: Path, recipe: dict) -> Path:
+    """Construct a deterministic git repo from the recipe."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-b", recipe.get("base_branch", "main"))
+    _git(repo, "config", "user.email", "fixture@example.com")
+    _git(repo, "config", "user.name", "Fixture")
+    for path, content in recipe.get("base_files", {}).items():
+        full = repo / path
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_text(content, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "base")
+
+    branch = recipe["branch"]
+    _git(repo, "checkout", "-b", branch)
+    for path, content in recipe.get("branch_files", {}).items():
+        full = repo / path
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_text(content, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "branch work")
+    _git(repo, "checkout", recipe.get("base_branch", "main"))
+    return repo
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    sorted(p.stem.replace(".spec", "") for p in FIXTURE_DIR.glob("*.spec.yaml")),
+)
+def test_snapshot_fixture(fixture_name, tmp_path):
+    """Each fixture: build repo, run script, compare JSON byte-for-byte."""
+    spec_path = FIXTURE_DIR / f"{fixture_name}.spec.yaml"
+    plan_path_src = FIXTURE_DIR / f"{fixture_name}.input.md"
+    expected_path = FIXTURE_DIR / f"{fixture_name}.json"
+
+    recipe = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+    repo = _build_fixture_repo(tmp_path, recipe)
+    plan = repo / "plan.md"
+    plan.write_text(plan_path_src.read_text(encoding="utf-8"), encoding="utf-8")
+
+    rc, stdout, stderr = _run(
+        [
+            "--workspace-num", recipe["workspace_num"],
+            "--wave", str(recipe["wave"]),
+            "--task-slug", recipe["task_slug"],
+            "--base-branch", recipe.get("base_branch", "main"),
+            "--plan", str(plan),
+            "--tier", recipe["tier"],
+            "--output", "json",
+        ],
+        cwd=repo,
+    )
+    expected_rc = recipe.get("expected_exit_code", 0)
+    assert rc == expected_rc, f"exit code mismatch; stderr={stderr}"
+
+    expected = json.loads(expected_path.read_text(encoding="utf-8"))
+    actual = json.loads(stdout)
+    assert actual == expected, (
+        f"snapshot mismatch for {fixture_name}\n"
+        f"expected: {json.dumps(expected, indent=2)}\n"
+        f"actual:   {json.dumps(actual, indent=2)}"
+    )
+```
+
+- [ ] **Step 2: Run test (no fixtures yet, parametrize empty → 0 collected)**
+
+```bash
+pytest tests/unit/test_forensic_plus.py::test_snapshot_fixture -v
+```
+Expected: 0 tests collected (no fixture files yet).
+
+- [ ] **Step 3: Create the 1st fixture — clean pass**
+
+Create `tests/fixtures/forensic-plus-expected/01-clean-pass.spec.yaml`:
+
+```yaml
+workspace_num: "042"
+wave: 1
+task_slug: add-greet
+base_branch: main
+tier: development
+expected_exit_code: 0
+branch: wave-042-1/add-greet
+base_files:
+  src/greet.py: "def greet(): return 'hello'\n"
+branch_files:
+  src/greet.py: "def greet(name='world'): return f'hello {name}'\n"
+  tests/test_greet.py: |
+    from src.greet import greet
+
+    def test_default():
+        assert greet() == "hello world"
+
+    def test_named():
+        assert greet("foo") == "hello foo"
+```
+
+Create `tests/fixtures/forensic-plus-expected/01-clean-pass.input.md`:
+
+```markdown
+## Task add-greet:
+
+### O QUE
+- saudação parametrizável
+
+### Files touched
+- src/greet.py
+- tests/test_greet.py
+
+### Estimated lines
+~30
+```
+
+Create `tests/fixtures/forensic-plus-expected/01-clean-pass.json`:
+
+```json
+{
+  "task_slug": "add-greet",
+  "violations": [],
+  "forensic_passed": true,
+  "max_severity": "NONE"
+}
+```
+
+- [ ] **Step 4: Run test to verify it passes**
+
+```bash
+pytest tests/unit/test_forensic_plus.py::test_snapshot_fixture -v
+```
+Expected: 1 PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add tests/fixtures/forensic-plus-expected tests/unit/test_forensic_plus.py
+git commit -m "test(forensic-plus): snapshot fixture infra + 01-clean-pass"
+```
+
+---
+
+### Task 10: Snapshot fixtures 02-06
+
+Add the remaining 5 fixtures, each covering a distinct violation profile.
+
+**Files (all under `tests/fixtures/forensic-plus-expected/`):**
+- Create: `02-test-asserts-fail.{spec.yaml,input.md,json}` — Check 1 HARD
+- Create: `03-files-outside-dev.{spec.yaml,input.md,json}` — Check 2 HARD (development tier)
+- Create: `04-scope-creep-prod.{spec.yaml,input.md,json}` — Check 3 HARD (production tier)
+- Create: `05-todo-soft.{spec.yaml,input.md,json}` — Check 4 SOFT (development tier)
+- Create: `06-hitl-skip.{spec.yaml,input.md,json}` — Q4 task type=HITL → forensic_passed: null
+
+- [ ] **Step 1: Create fixture 02-test-asserts-fail**
+
+`02-test-asserts-fail.spec.yaml`:
+```yaml
+workspace_num: "042"
+wave: 1
+task_slug: add-shout
+base_branch: main
+tier: experimental
+expected_exit_code: 0
+branch: wave-042-1/add-shout
+base_files:
+  src/shout.py: "def shout(): return 'A'\n"
+branch_files:
+  src/shout.py: "def shout(s): return s.upper()\n"
+  tests/test_shout.py: "def test_one():\n    assert True\n"
+```
+
+`02-test-asserts-fail.input.md`:
+```markdown
+## Task add-shout:
+### Files touched
+- src/shout.py
+- tests/test_shout.py
+```
+
+`02-test-asserts-fail.json`:
+```json
+{
+  "task_slug": "add-shout",
+  "violations": [
+    {
+      "check": "test_assertions_too_few",
+      "severity": "HARD",
+      "evidence": "tests/test_shout.py: 1 non-trivial assertion(s) found, need ≥2"
+    }
+  ],
+  "forensic_passed": false,
+  "max_severity": "HARD"
+}
+```
+
+> **Note:** the evidence string is the literal output of `check_test_assertions` from Task 2. If you tightened the wording in the implementation, update this expected JSON to match exactly. Goal: byte-for-byte match.
+
+- [ ] **Step 2: Create fixture 03-files-outside-dev**
+
+`03-files-outside-dev.spec.yaml`:
+```yaml
+workspace_num: "042"
+wave: 1
+task_slug: add-foo
+base_branch: main
+tier: development
+expected_exit_code: 0
+branch: wave-042-1/add-foo
+base_files:
+  src/foo.py: "x = 1\n"
+branch_files:
+  src/foo.py: "x = 2\n"
+  tests/test_foo.py: |
+    def test_a():
+        assert 1 == 1
+        assert 2 == 2
+  src/extra.py: "y = 3\n"
+```
+
+`03-files-outside-dev.input.md`:
+```markdown
+## Task add-foo:
+### Files touched
+- src/foo.py
+- tests/test_foo.py
+```
+
+`03-files-outside-dev.json`:
+```json
+{
+  "task_slug": "add-foo",
+  "violations": [
+    {
+      "check": "files_outside_declared",
+      "severity": "HARD",
+      "evidence": "1 undeclared file(s): src/extra.py"
+    }
+  ],
+  "forensic_passed": false,
+  "max_severity": "HARD"
+}
+```
+
+- [ ] **Step 3: Create fixture 04-scope-creep-prod**
+
+`04-scope-creep-prod.spec.yaml`:
+```yaml
+workspace_num: "042"
+wave: 1
+task_slug: bulk-refactor
+base_branch: main
+tier: production
+expected_exit_code: 0
+branch: wave-042-1/bulk-refactor
+base_files:
+  src/big.py: "x = 0\n"
+branch_files:
+  # 200 lines of additions; estimate is 50 → 4× threshold (3×50 = 150)
+  src/big.py: |
+    x = 0
+    # ... (test runner generates 200 lines via inline expansion)
+  tests/test_big.py: |
+    def test_a():
+        assert 1 == 1
+        assert 2 == 2
+expansion:
+  src/big.py:
+    repeat_lines: 200
+    template: "var_{i} = {i}\n"
+```
+
+`04-scope-creep-prod.input.md`:
+```markdown
+## Task bulk-refactor:
+### Files touched
+- src/big.py
+- tests/test_big.py
+### Estimated lines
+~50
+```
+
+`04-scope-creep-prod.json`:
+```json
+{
+  "task_slug": "bulk-refactor",
+  "violations": [
+    {
+      "check": "scope_creep",
+      "severity": "HARD",
+      "evidence": "+201 lines vs 50 estimate (3× threshold = 150)"
+    }
+  ],
+  "forensic_passed": false,
+  "max_severity": "HARD"
+}
+```
+
+> **Note:** the test runner from Task 9 only handles flat `branch_files`. Fixture 04 introduces `expansion` keys. Extend `_build_fixture_repo` to honor `expansion`:
+>
+> ```python
+> for path, exp in recipe.get("expansion", {}).items():
+>     full = repo / path
+>     full.parent.mkdir(parents=True, exist_ok=True)
+>     n = exp["repeat_lines"]
+>     tmpl = exp["template"]
+>     full.write_text(
+>         "".join(tmpl.format(i=i) for i in range(n)),
+>         encoding="utf-8",
+>     )
+> _git(repo, "add", "-A")
+> _git(repo, "commit", "-m", "expansion files")
+> ```
+>
+> Modify `_build_fixture_repo` accordingly when implementing this fixture; re-commit Task 9 if needed.
+
+- [ ] **Step 4: Create fixture 05-todo-soft**
+
+`05-todo-soft.spec.yaml`:
+```yaml
+workspace_num: "042"
+wave: 1
+task_slug: add-cache
+base_branch: main
+tier: development
+expected_exit_code: 0
+branch: wave-042-1/add-cache
+base_files:
+  src/cache.py: "def get(k): return None\n"
+branch_files:
+  src/cache.py: |
+    def get(k):
+        # TODO: add LRU eviction
+        return None
+  tests/test_cache.py: |
+    from src.cache import get
+
+    def test_miss():
+        assert get("k") is None
+
+    def test_str():
+        assert get("a") is None
+```
+
+`05-todo-soft.input.md`:
+```markdown
+## Task add-cache:
+### Files touched
+- src/cache.py
+- tests/test_cache.py
+```
+
+`05-todo-soft.json`:
+```json
+{
+  "task_slug": "add-cache",
+  "violations": [
+    {
+      "check": "todo_added",
+      "severity": "SOFT",
+      "evidence": "1 TODO/FIXME/HACK added: # TODO: add LRU eviction"
+    }
+  ],
+  "forensic_passed": true,
+  "max_severity": "SOFT"
+}
+```
+
+- [ ] **Step 5: Create fixture 06-hitl-skip**
+
+`06-hitl-skip.spec.yaml`:
+```yaml
+workspace_num: "042"
+wave: 1
+task_slug: review-data
+base_branch: main
+tier: production
+expected_exit_code: 0
+branch: wave-042-1/review-data
+base_files:
+  src/data.py: "x = 1\n"
+branch_files:
+  # Multiple violations would normally fire — but task is HITL, so all skipped
+  src/data.py: "x = 2\n# TODO: review\n"
+  src/extra.py: "y = 1\n"
+```
+
+`06-hitl-skip.input.md`:
+```markdown
+## Task review-data:
+### Files touched
+- src/data.py
+### Type
+- HITL
+```
+
+`06-hitl-skip.json`:
+```json
+{
+  "task_slug": "review-data",
+  "violations": [],
+  "forensic_passed": null,
+  "max_severity": null,
+  "skipped_reason": "task type=HITL"
+}
+```
+
+- [ ] **Step 6: Run all snapshot tests to verify all pass**
+
+```bash
+pytest tests/unit/test_forensic_plus.py::test_snapshot_fixture -v
+```
+Expected: 6 PASS.
+
+- [ ] **Step 7: Run full forensic test suite**
+
+```bash
+pytest tests/unit/test_forensic_plus.py -v
+```
+Expected: original tests + 6 snapshots all green.
+
+- [ ] **Step 8: Commit**
+
+```bash
+git add tests/fixtures/forensic-plus-expected tests/unit/test_forensic_plus.py
+git commit -m "test(forensic-plus): snapshots 02-06 (asserts/files/scope/todo/hitl)"
+```
+
+---
+
+### Task 11: Structural drift test — L2 template will mention MAX_FORENSIC_RETRIES
+
+> **Note:** the L2 template hasn't been edited yet (Chunk 3 does that). This task adds a drift detector that will *fail until Chunk 3 is done*, intentionally. Mark this test xfail in this commit and remove xfail in Chunk 3 Task 13. The test exists now to prove the contract is locked.
+
+**Files:**
+- Modify: `tests/unit/test_no_drift.py` (xfail-marked stub)
+
+- [ ] **Step 1: Write the (currently xfail) test**
+
+Append to `tests/unit/test_no_drift.py`:
+
+```python
+@pytest.mark.xfail(
+    reason="L2 stage 04 template edit lands in Chunk 3 Task 13; remove xfail there.",
+    strict=True,
+)
+def test_l2_stage_04_mentions_max_forensic_retries():
+    """L2 stage 04 template must reference the cap value (sourced from forensic-plus.py)."""
+    l2_path = (
+        REPO_ROOT
+        / "templates"
+        / "workspace"
+        / "stages"
+        / "04_implementation_waves"
+        / "CONTEXT.md.tpl"
+    )
+    text = l2_path.read_text(encoding="utf-8")
+    # The L2 template must mention the constant by name AND value to allow drift detection.
+    assert "MAX_FORENSIC_RETRIES" in text
+    assert "= 2" in text  # value embedded so reading the prompt is self-explanatory
+```
+
+- [ ] **Step 2: Run to verify it xfails (required to pass strict)**
+
+```bash
+pytest tests/unit/test_no_drift.py::test_l2_stage_04_mentions_max_forensic_retries -v
+```
+Expected: XFAIL (no L2 edits yet).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add tests/unit/test_no_drift.py
+git commit -m "test(no-drift): xfail stub — L2 must reference MAX_FORENSIC_RETRIES"
+```
+
+---
+
+**End of Chunk 2.** `forensic-plus.py` JSON output is now snapshot-locked across 6 representative scenarios; one xfail-marked drift test stands ready to flip green when Chunk 3 edits L2.
+
+---
+
+## Chunk 3: Canonical doc + L2 + reference edits
+
+**Goal:** ship the canonical doc `references/forensic-plus-protocol.md`, expand step 8 of `references/wave-execution-protocol.md`, update L2 stage 04 template, add `### Estimated lines` section to the 4-block contract, comment `state-machine-schema.md` about new `error_type` values.
+
+### Task 12: Create `references/forensic-plus-protocol.md`
+
+**Files:**
+- Create: `references/forensic-plus-protocol.md`
+
+- [ ] **Step 1: Write the canonical doc**
+
+```markdown
+# Forensic+ Protocol — Canonical (v3.8.0)
+
+> **Versão:** v3.8.0
+> **Skill:** `xp-icm-workflow`
+> **Estágio consumidor:** `04_implementation_waves` (step 8a)
+> **Propósito:** documento canônico do Forensic+ — auditoria estrutural anti-fraude por task na wave-reviewer. Descreve os 4 checks, matriz tier×severidade, ações HARD/SOFT, cap de re-spawn, edge cases, e schema JSON do `scripts/forensic-plus.py`.
+
+## Resumo (1 parágrafo)
+
+Forensic+ é um audit determinístico, git-only, executado pelo wave-reviewer (step 8a do pipeline 12-passos) por cada task AFK da wave. Roda 4 checks: (1) test file com ≥2 asserções, (2) files fora de `files_touched` declarado, (3) scope creep > 3× plan estimate, (4) TODO/FIXME/HACK adicionados. Cada violation tem severidade tier-aware (HARD/SOFT). HARD bloqueia merge e força re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT acumula em `wave-summary.md`. Tasks `type: HITL` são skipped. Output via `scripts/forensic-plus.py` em JSON estruturado, parsed pelo reviewer Agent.
+
+## Os 4 checks
+
+### Check 1 — Test file com ≥2 asserções
+
+Garante que test files declarados em `files_touched` contêm ≥2 tokens reconhecidos como asserções (count-based, não filtragem semântica). Skip quando task tem `Conventions extras: doc-only` ou `config-only`.
+
+Comando: `git show wave-<NNN>-<N>/<slug>:<test-file>` por test file.
+
+Linguagem-aware regex (extensão → padrão):
+
+| Ext | Padrão | Threshold |
+|-----|--------|-----------|
+| `.py` | `\bassert\b\|pytest\.raises\|self\.assert\w+` | ≥ 2 |
+| `.ts/.tsx/.js/.jsx` | `\b(expect\|assert\|should\|it\(\|test\()\b` | ≥ 2 |
+| `.go` | `\bt\.\(Errorf\|Fatal\|Run\)\b` | ≥ 2 |
+| `.rb` | `\b(expect\|assert\|should)\b` | ≥ 2 |
+| `.rs` | `\bassert(_eq\|_ne)?!\b` | ≥ 2 |
+| `.java/.kt` | `\b(assert\|@Test\|assertEquals)` | ≥ 2 |
+| `.cs` | `\b(Assert\.\|\[Test\]\|\[Fact\]\|\[Theory\])` | ≥ 2 |
+
+Severity: **HARD** em todo tier.
+
+### Check 2 — Files fora de `files_touched` declarado
+
+Compara nome de arquivos do diff (`git diff --name-only BASE...wave`) contra declarado em plan.md task. Diferença set (atual − declarado) é violation, exceto se filename está na allowlist global de lockfiles/caches.
+
+Allowlist tier-agnóstica: `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`, `Cargo.lock`, `Gemfile.lock`, `poetry.lock`, `go.sum`, `.prettierrc.cache`, `.eslintcache`.
+
+Severity:
+
+| Tier | Severity |
+|------|----------|
+| experimental/tool | SOFT |
+| development/production | HARD |
+
+### Check 3 — Scope creep > 3× plan estimate
+
+Lê `### Estimated lines` opcional do plan.md task (ver `references/4-block-contract-template.md`). Compara com `git diff --shortstat` insertions count. Trigger se `insertions > 3 × estimate`. Se campo ausente, skip silently (backward compat).
+
+Severity:
+
+| Tier | Severity |
+|------|----------|
+| experimental/tool/development | SOFT |
+| production | HARD |
+
+### Check 4 — TODO/FIXME/HACK adicionados
+
+Conta linhas começando `+` (não `+++`) que match `(TODO|FIXME|HACK|XXX)` em arquivos de código (`.py .ts .tsx .js .jsx .go .rb .rs .java .kt .cs`). Ignora linhas removidas (`-`) e contexto.
+
+Severity:
+
+| Tier | Severity |
+|------|----------|
+| experimental/tool/development | SOFT |
+| production | HARD |
+
+## Tier × violation matrix consolidada
+
+| Check | exp | tool | dev | prod |
+|-------|-----|------|-----|------|
+| Test asserções | HARD | HARD | HARD | HARD |
+| Files fora declared | SOFT | SOFT | HARD | HARD |
+| Scope creep 3× | SOFT | SOFT | SOFT | HARD |
+| TODO/FIXME/HACK | SOFT | SOFT | SOFT | HARD |
+
+## Action HARD vs SOFT
+
+- **HARD em ≥1 check** → reviewer emit `approved_pending_ci: false`, lead re-spawn subagente original.
+- **Apenas SOFT** → reviewer emit `approved_pending_ci: true`, violations gravam em `wave-summary.md`, merge prossegue.
+- **Nenhum** → padrão approved.
+
+## Re-spawn cap + brief prescritivo
+
+Cap: `MAX_FORENSIC_RETRIES = 2` (hardcoded em `scripts/forensic-plus.py`, drift-checked). Tier-agnostic.
+
+| Tentativa | Resultado | Action |
+|-----------|-----------|--------|
+| 1ª original | HARD | re-spawn round 1 |
+| 2ª (round 1) | HARD | re-spawn round 2 |
+| 3ª (round 2) | HARD | `BLOCKED_ERROR error_type: forensic_max_retries`, escala humano |
+| Qualquer | SOFT only | merge prossegue |
+| Qualquer | NONE | merge prossegue |
+
+Brief de re-spawn injeta no AGENT-BRIEF do subagente:
+
+| Violation | Texto injetado |
+|-----------|----------------|
+| `test_assertions_too_few` | "Test file `<path>` tem `<N>` asserções. Adicione ≥2 asserções não-triviais cobrindo edge cases + happy path." |
+| `files_outside_declared` | "Você tocou `<path>` não declarado em files_touched. Reverta ou escreva `output/wave-<N>/task-<slug>-blocked.md` pra escalar (sem novo stop point — usa BLOCKED handoff existente)." |
+| `scope_creep` | "Diff `<X>` linhas vs estimate `<Y>`. Reduza ou divida. Se scope real é maior, escalar via stop point `over_eng`." |
+| `todo_added` | "TODOs adicionados: `<list>`. Remova ou converta em issues." |
+
+## Edge cases
+
+| EC | Scenario | Behavior |
+|----|----------|----------|
+| EC1 | `forensic-plus.py` crash (git missing branch / plan malformed) | Script exit 1 + stderr. Reviewer emit `forensic_passed: null, forensic_error: <stderr>`. Lead → `BLOCKED_ERROR error_type: forensic_script_crash`. Escala humano. |
+| EC2 | JSON parse fail | Treat as EC1. |
+| EC3 | Re-spawn introduz nova HARD diferente | Conta como retry. Cap 2 ainda aplica. Anti-gaming. |
+| EC4 | Wave HITL + AFK | Roda só em AFK. HITL → `forensic_passed: null`. |
+| EC5 | Wave 1-task | Forensic+ roda. Akita-tipo cross-task skipped (`skip_cross_task_audit: true`). |
+| EC6 | TODO obfuscation (`T0D0`, `F1XME`) | Out of scope. |
+| EC7 | Lockfile vulnerabilities | Allowlist ignora. Stage 05 / security_gate cobre. |
+
+## CI global step 10 interaction
+
+Inalterado. `approved_pending_ci: true` é semântica (decisão final pendente CI). Step 10 vermelho → `references/ci-rollback-protocol.md` existente. Forensic+ não dispara rollback automático.
+
+## JSON schema do `scripts/forensic-plus.py`
+
+**Input (CLI):**
+
+```bash
+python scripts/forensic-plus.py \
+    --workspace-num <NNN> \
+    --wave <N> \
+    --task-slug <slug> \
+    --base-branch <BASE> \
+    --plan <path-to-plan.md> \
+    --tier <experimental|tool|development|production> \
+    --output json
+```
+
+**Output (stdout JSON):**
+
+```json
+{
+  "task_slug": "<slug>",
+  "violations": [
+    {
+      "check": "<test_assertions_too_few|files_outside_declared|scope_creep|todo_added>",
+      "severity": "<HARD|SOFT>",
+      "evidence": "<human-readable explanation>"
+    }
+  ],
+  "forensic_passed": true | false | null,
+  "max_severity": "HARD" | "SOFT" | "NONE" | null,
+  "skipped_reason": "task type=HITL"   // present only if HITL
+}
+```
+
+**Exit codes:**
+- `0` — script ran successfully (regardless of violations).
+- `1` — script crash (git missing, plan malformed). Stderr formatted.
+
+## Cross-references
+
+- Pipeline 12-passos consumidor: `references/wave-execution-protocol.md` step 8a-8d.
+- Schema task plan.md: `references/4-block-contract-template.md` (`### Estimated lines`).
+- L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`.
+- State machine: `references/state-machine-schema.md` (`error_type: forensic_max_retries|forensic_script_crash`).
+- Stop points (tabela: este audit não é stop point, é audit pós-COMPLETE): `references/stop-points-canonical.md`.
+- Conflict / CI rollback: `references/conflict-resolution-protocol.md`, `references/ci-rollback-protocol.md`.
+```
+
+- [ ] **Step 2: No test for content (covered by drift detectors in Chunk 4); commit**
+
+```bash
+git add references/forensic-plus-protocol.md
+git commit -m "docs(forensic-plus): canonical doc forensic-plus-protocol.md"
+```
+
+---
+
+### Task 13: Update L2 stage 04 template — step 8 → 8a/8b/8c/8d
+
+**Files:**
+- Modify: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`
+- Modify: `tests/unit/test_no_drift.py` (remove xfail from Task 11 stub)
+
+- [ ] **Step 1: Edit step 8 in the L2 template**
+
+Locate the existing step 8 in `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` (`Wave-reviewer:` block). Replace with the expanded version:
+
+```markdown
+8. **Wave-reviewer (Agent sem worktree, expandido em sub-steps):**
+
+   8a. **Forensic+ checks** — pra cada task AFK da wave (skip `type: HITL`), reviewer
+       Agent invoca `python {{SKILL_DIR}}/scripts/forensic-plus.py --workspace-num {{WORKSPACE_NUM}}
+       --wave <N> --task-slug <slug> --base-branch {{BASE_BRANCH}} --plan
+       {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md
+       --tier <T> --output json`. Parse JSON. Grava em `output/wave-<N>/task-<slug>.md`
+       frontmatter campos `forensic_violations`, `forensic_passed`, `forensic_max_severity`,
+       `forensic_respawn_count`. Doc canônico: `references/forensic-plus-protocol.md`.
+       Crash do script (exit 1) → reviewer emit `forensic_error` + treat como HARD; lead → `BLOCKED_ERROR
+       error_type: forensic_script_crash`.
+
+   8b. **Audit existente** — Auto-QA Akita declarado, files touched real (`git diff
+       --name-only`), acceptance criteria. Skip cross-task audit em wave 1-task
+       (flag `skip_cross_task_audit: true` no wave-plan.md).
+
+   8c. **Forensic git log** (`qa_loops_used` declarado vs commits RED/GREEN/REFACTOR
+       reais) — mantém status quo. Acceptance criteria audit por task continua.
+
+   8d. **Emit decision:**
+       - HARD em ≥1 task → `approved_pending_ci: false`, `issues: [...]` →
+         lead re-spawn subagente original. Cap `MAX_FORENSIC_RETRIES = 2`
+         (após 3ª tentativa HARD → `BLOCKED_ERROR error_type: forensic_max_retries`).
+         AGENT-BRIEF do re-spawn injeta brief prescritivo por violation type
+         (ver `references/forensic-plus-protocol.md` § Re-spawn brief).
+       - Apenas SOFT → `approved_pending_ci: true`, warnings logged em
+         `wave-summary.md` § Forensic+ summary. Merge prossegue.
+       - Nenhum → padrão approved.
+```
+
+> **Note:** preserve existing surrounding text in the L2 template; only step 8 changes. The literal string `MAX_FORENSIC_RETRIES = 2` MUST appear so the drift detector from Task 11 passes.
+
+- [ ] **Step 2: Remove xfail from drift test**
+
+Edit `tests/unit/test_no_drift.py`:
+
+```python
+# Replace:
+# @pytest.mark.xfail(...)
+# def test_l2_stage_04_mentions_max_forensic_retries(): ...
+# with the un-marked version:
+
+def test_l2_stage_04_mentions_max_forensic_retries():
+    """L2 stage 04 template must reference the cap value (sourced from forensic-plus.py)."""
+    l2_path = (
+        REPO_ROOT
+        / "templates"
+        / "workspace"
+        / "stages"
+        / "04_implementation_waves"
+        / "CONTEXT.md.tpl"
+    )
+    text = l2_path.read_text(encoding="utf-8")
+    assert "MAX_FORENSIC_RETRIES" in text
+    assert "= 2" in text
+```
+
+- [ ] **Step 3: Run drift test to verify it passes**
+
+```bash
+pytest tests/unit/test_no_drift.py::test_l2_stage_04_mentions_max_forensic_retries -v
+```
+Expected: PASS.
+
+- [ ] **Step 4: Run full no-drift suite**
+
+```bash
+pytest tests/unit/test_no_drift.py -v
+```
+Expected: all green.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl tests/unit/test_no_drift.py
+git commit -m "feat(stage04): expand step 8 → 8a/8b/8c/8d wave-reviewer + forensic+"
+```
+
+---
+
+### Task 14: Update `references/wave-execution-protocol.md`
+
+**Files:**
+- Modify: `references/wave-execution-protocol.md` (step 8 expansion + cross-ref)
+
+- [ ] **Step 1: Edit the canonical pipeline doc**
+
+In `references/wave-execution-protocol.md`, locate "8. **Wave-reviewer**" in the "Pipeline (12 passos)" section. Replace with:
+
+```markdown
+8. **Wave-reviewer** — Agent sem worktree. Expandido em 8a/8b/8c/8d (v3.8.0):
+   - **8a Forensic+** — `scripts/forensic-plus.py` por task AFK (4 checks: test asserções, files fora declared, scope creep, TODO/FIXME). Doc canônico: `references/forensic-plus-protocol.md`.
+   - **8b Audit existente** — Auto-QA Akita declarado, files touched, acceptance.
+   - **8c Forensic git log** — `qa_loops_used` vs commits reais.
+   - **8d Decision** — HARD → `approved_pending_ci: false` + re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT → warnings; NONE → approve.
+```
+
+Add to the "Cross-references" section at the bottom:
+
+```markdown
+- Forensic+ audit: `references/forensic-plus-protocol.md`
+```
+
+- [ ] **Step 2: Add a structural drift test for this doc**
+
+Append to `tests/unit/test_no_drift.py`:
+
+```python
+def test_wave_execution_protocol_has_forensic_substeps():
+    """Pipeline canonical doc must reflect step 8 expansion."""
+    path = REPO_ROOT / "references" / "wave-execution-protocol.md"
+    text = path.read_text(encoding="utf-8")
+    assert "**8a Forensic+**" in text
+    assert "**8b Audit existente**" in text
+    assert "**8c Forensic git log**" in text
+    assert "**8d Decision**" in text
+    assert "forensic-plus-protocol.md" in text
+```
+
+- [ ] **Step 3: Run the new test**
+
+```bash
+pytest tests/unit/test_no_drift.py::test_wave_execution_protocol_has_forensic_substeps -v
+```
+Expected: PASS.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add references/wave-execution-protocol.md tests/unit/test_no_drift.py
+git commit -m "docs(wave-execution): expand step 8 → 8a/8b/8c/8d + drift test"
+```
+
+---
+
+### Task 15: Update `references/4-block-contract-template.md` — `### Estimated lines`
+
+**Files:**
+- Modify: `references/4-block-contract-template.md`
+
+- [ ] **Step 1: Add the optional section after `### Files touched`**
+
+Locate the schema example in §2 of the doc and insert `### Estimated lines` between `### Files touched` and `### Depends on`:
+
+```markdown
+### Files touched
+- src/path/file.ts
+- tests/path/file.test.ts
+
+### Estimated lines
+~250    <!-- optional. If present, forensic-plus.py Check 3 (scope creep)
+            triggers when actual diff insertions > 3 × estimate. Plan author
+            opts in for tasks where bounded scope matters. Absent → check skipped.
+            See references/forensic-plus-protocol.md § Check 3. -->
+
+### Depends on
+- <slug-de-task-pai> OR nenhum (task raiz)
+```
+
+Update the `| Campo | Quem preenche | Quem consome |` table in the same section, adding the row:
+
+```markdown
+| Estimated lines (opcional) | Designer (fase 02) | forensic-plus.py (Check 3 scope creep) |
+```
+
+- [ ] **Step 2: No drift detector needed (test fixtures in Chunk 1 already exercise the parser); commit**
+
+```bash
+git add references/4-block-contract-template.md
+git commit -m "docs(4-block): add optional ### Estimated lines section (forensic+ Check 3)"
+```
+
+---
+
+### Task 16: Update `references/state-machine-schema.md` — `error_type` comment
+
+**Files:**
+- Modify: `references/state-machine-schema.md`
+
+- [ ] **Step 1: Locate the section describing `last_transition.error_type`**
+
+Search the doc for `error_type`. Add a comment listing new v3.8.0 values without changing the enum (the field is free-form text per spec, so no enum constraint exists today):
+
+```markdown
+**`error_type`** (string, livre quando `status: BLOCKED_ERROR`):
+
+Conhecidos (lista crescente, não enum):
+- `merge_conflict`
+- `ci_red`
+- `cap_exceeded`
+- `cleanup_unsafe`
+- `runtime_cleanup_failed`
+- `forensic_max_retries`        <!-- v3.8.0 — cap MAX_FORENSIC_RETRIES esgotado -->
+- `forensic_script_crash`       <!-- v3.8.0 — forensic-plus.py exit 1 -->
+- `human_abort`
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add references/state-machine-schema.md
+git commit -m "docs(state-machine): document v3.8.0 forensic_* error_type values"
+```
+
+---
+
+**End of Chunk 3.** Canonical doc, L2 template, pipeline doc, 4-block template, and state-machine doc are all aligned with the spec.
+
+---
+
+## Chunk 4: Flag rename + drift detectors + bootstrap version
+
+**Goal:** rename `skip_wave_reviewer` → `skip_cross_task_audit` with backward-compat alias, add the remaining drift detectors, bump `SKILL_VERSION = "3.8.0"` and add forensic-plus-protocol.md to bootstrap runtime_refs.
+
+### Task 17: Rename flag in `scripts/wave-planner-script.py`
+
+**Files:**
+- Modify: `scripts/wave-planner-script.py`
+- Modify: `tests/unit/test_wave_planner_dag.py` (or relevant test file — adjust based on `Grep` for the existing flag)
+
+- [ ] **Step 1: Locate existing flag references**
+
+```bash
+# Find all references to skip_wave_reviewer in scripts/ and tests/
+grep -rn "skip_wave_reviewer" scripts/ tests/
+```
+Expected: identifies all locations. Likely 3-5 hits.
+
+- [ ] **Step 2: Write a failing test for the new flag name with backward-compat alias**
+
+Append to whichever test file currently exercises the flag (most likely `tests/unit/test_wave_planner_dag.py`):
+
+```python
+def test_skip_cross_task_audit_flag_emitted_for_one_task_wave():
+    """v3.8.0: 1-task waves emit `skip_cross_task_audit: true` in wave-plan.md frontmatter."""
+    # ... call wave-planner-script.py with a 1-task plan; parse output frontmatter;
+    # assert key `skip_cross_task_audit: true` is present.
+    # Adapt to existing test fixture API.
+    pass  # Concrete implementation depends on existing test patterns; replace with real test.
+
+
+def test_legacy_skip_wave_reviewer_alias_supported_v3_8_0():
+    """Backward compat: a wave-plan.md authored under v3.7.x with `skip_wave_reviewer: true`
+    is still recognized by any consumer in v3.8.0 (alias parser path)."""
+    # ... assert that consumer-side parser accepts both names.
+    pass
+```
+
+> **Note:** these tests are placeholders pending exact API of the existing wave-planner unit tests. Before implementing, read `tests/unit/test_wave_planner_dag.py` to find the actual fixture/assertion style and concretize.
+
+- [ ] **Step 3: Run tests to verify they fail**
+
+```bash
+pytest tests/unit/test_wave_planner_dag.py -v -k "skip_cross_task_audit or skip_wave_reviewer_alias"
+```
+Expected: FAIL.
+
+- [ ] **Step 4: Update `scripts/wave-planner-script.py`**
+
+In `scripts/wave-planner-script.py`, locate code that emits `skip_wave_reviewer`. Rename to `skip_cross_task_audit` for output. For input parsing (rare — wave-planner reads wave-plan.md only on rare debug paths), accept either flag:
+
+```python
+# Output direction (frontmatter writing):
+def _serialize_wave_meta(wave_size, ...):
+    return {
+        ...,
+        "skip_cross_task_audit": wave_size == 1,  # renamed from skip_wave_reviewer
+    }
+
+
+# Input direction (if applicable — backward compat alias):
+def _read_wave_meta(meta_dict):
+    skip = meta_dict.get("skip_cross_task_audit")
+    if skip is None:
+        skip = meta_dict.get("skip_wave_reviewer")  # legacy alias, v3.7.x and prior
+    return bool(skip)
+```
+
+- [ ] **Step 5: Run tests to verify they pass**
+
+```bash
+pytest tests/unit/test_wave_planner_dag.py -v
+```
+Expected: all green.
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add scripts/wave-planner-script.py tests/unit/test_wave_planner_dag.py
+git commit -m "refactor(wave-planner): rename skip_wave_reviewer → skip_cross_task_audit (alias)"
+```
+
+---
+
+### Task 18: Update `references/wave-planner-algorithm.md` — flag rename owner doc
+
+**Files:**
+- Modify: `references/wave-planner-algorithm.md`
+
+- [ ] **Step 1: Edit the doc**
+
+Locate §10 (Wave-reviewer skip exception). Update text to use `skip_cross_task_audit` and add a backward-compat note:
+
+```markdown
+## 10. Wave-reviewer skip exception (F2 — renamed v3.8.0)
+
+Wave com **1 task** pula o wave-reviewer **cross-task** audit (sem coherence check possível). Forensic+ (step 8a) ainda roda, e CI global cobre o escape.
+
+Schema `wave-plan.md` marca `skip_cross_task_audit: true` na wave aplicável. Lead da fase 04 lê esse flag e ajusta o protocolo (skip step 8b cross-task, mas mantém 8a Forensic+ + 8c forensic git log).
+
+> **Backward compat (v3.7.x → v3.8.0):** o nome legado `skip_wave_reviewer` é reconhecido como alias pelo wave-planner-script.py durante v3.8.0. Wave-plans novos sempre emitem `skip_cross_task_audit`. v3.9.0 remove o alias.
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add references/wave-planner-algorithm.md
+git commit -m "docs(wave-planner): rename skip_wave_reviewer → skip_cross_task_audit + alias"
+```
+
+---
+
+### Task 19: Add 4 new drift detectors
+
+**Files:**
+- Modify: `tests/unit/test_no_drift.py`
+
+(Tasks 11 and 14 already added 2 detectors; this task adds the remaining 2: bootstrap runtime_refs containing forensic-plus-protocol.md, and L2 referencing the canonical protocol doc.)
+
+- [ ] **Step 1: Write failing tests**
+
+Append to `tests/unit/test_no_drift.py`:
+
+```python
+def test_forensic_plus_doc_canonical_exists():
+    """Sanity: the canonical doc must exist and contain expected H1 + sections."""
+    path = REPO_ROOT / "references" / "forensic-plus-protocol.md"
+    assert path.is_file(), "forensic-plus-protocol.md missing"
+    text = path.read_text(encoding="utf-8")
+    assert "# Forensic+ Protocol" in text
+    assert "## Os 4 checks" in text
+    assert "## JSON schema" in text
+
+
+def test_forensic_plus_in_bootstrap_runtime_refs():
+    """bootstrap.py runtime_refs tuple must list forensic-plus-protocol.md."""
+    path = REPO_ROOT / "scripts" / "bootstrap.py"
+    text = path.read_text(encoding="utf-8")
+    assert '"forensic-plus-protocol.md"' in text
+
+
+def test_l2_stage_04_references_forensic_plus_protocol():
+    """L2 stage 04 must cross-ref the canonical doc."""
+    path = (
+        REPO_ROOT / "templates" / "workspace" / "stages"
+        / "04_implementation_waves" / "CONTEXT.md.tpl"
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "forensic-plus-protocol.md" in text
+```
+
+- [ ] **Step 2: Run tests to verify they fail (last 2 will fail until Task 20)**
+
+```bash
+pytest tests/unit/test_no_drift.py -v -k forensic
+```
+Expected: `test_forensic_plus_doc_canonical_exists` PASS (Chunk 3 created the doc); the other two FAIL (bootstrap edit lands in Task 20, L2 cross-ref must already be present from Task 13 — verify; if missing add it now).
+
+- [ ] **Step 3: Verify Task 13 left a `forensic-plus-protocol.md` mention in L2**
+
+If `test_l2_stage_04_references_forensic_plus_protocol` failed, edit the L2 template to include the cross-ref (was probably done in Task 13 step 1; verify by grepping). If absent, add a line at the bottom of the step 8a description:
+
+```markdown
+Doc canônico: `_references/runtime/forensic-plus-protocol.md` (mirrored at bootstrap from `references/forensic-plus-protocol.md`).
+```
+
+Re-run tests; expect 2 PASS, 1 FAIL (bootstrap).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add tests/unit/test_no_drift.py templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl
+git commit -m "test(no-drift): forensic-plus doc/L2/bootstrap detectors"
+```
+
+---
+
+### Task 20: Update `scripts/bootstrap.py` — version + runtime_refs
+
+**Files:**
+- Modify: `scripts/bootstrap.py`
+
+- [ ] **Step 1: Bump SKILL_VERSION + add to runtime_refs**
+
+In `scripts/bootstrap.py`:
+
+```python
+# Was:
+SKILL_VERSION = "3.7.2"
+# Becomes:
+SKILL_VERSION = "3.8.0"
+```
+
+In the `runtime_refs` tuple (around line 651), add:
+
+```python
+runtime_refs = (
+    "subagent-protocol.md",
+    "wave-planner-algorithm.md",
+    "state-machine-schema.md",
+    # ... existing entries ...
+    "design-system.md",
+    "forensic-plus-protocol.md",   # v3.8.0
+)
+```
+
+- [ ] **Step 2: Run drift detector to confirm**
+
+```bash
+pytest tests/unit/test_no_drift.py -v -k forensic_plus_in_bootstrap
+```
+Expected: PASS.
+
+- [ ] **Step 3: Run full no-drift suite (some will still fail until Chunk 5 sweep)**
+
+```bash
+pytest tests/unit/test_no_drift.py -v
+```
+Expected: most PASS; version-canonical-files test will fail until Chunk 5.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add scripts/bootstrap.py
+git commit -m "feat(bootstrap): SKILL_VERSION 3.8.0 + forensic-plus-protocol.md in runtime_refs"
+```
+
+---
+
+**End of Chunk 4.**
+
+---
+
+## Chunk 5: Version sweep + migration
+
+**Goal:** sweep version-stamping across the 6 remaining canonical files (per CLAUDE.md v3.7.0 rule) and add the `migrate_3_7_2_to_3_8_0` step.
+
+### Task 21: Update `SKILL.md`
+
+**Files:**
+- Modify: `SKILL.md`
+
+- [ ] **Step 1: Update the H1 header**
+
+```markdown
+# xp-icm-workflow v3.8.0
+```
+(was: `v3.7.2`)
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add SKILL.md
+git commit -m "chore(version): SKILL.md v3.8.0"
+```
+
+---
+
+### Task 22: Update `README.md` — badge + new section
+
+**Files:**
+- Modify: `README.md`
+
+- [ ] **Step 1: Update version badge**
+
+Replace `version-v3.7.2` with `version-v3.8.0`.
+
+- [ ] **Step 2: Add new section at top of version list**
+
+Insert before the existing topmost `## v3.7.x — ...` section:
+
+```markdown
+## v3.8.0 — Forensic+ wave reviewer
+
+Adiciona Forensic+ — auditoria estrutural anti-fraude no step 8 do wave-reviewer (stage 04). Quatro checks (test asserções, files fora declared, scope creep, TODO/FIXME) com matriz tier-aware HARD/SOFT. Re-spawn cap `MAX_FORENSIC_RETRIES = 2` antes de `BLOCKED_ERROR`. Novo arquivo `scripts/forensic-plus.py`, doc canônico `references/forensic-plus-protocol.md`. Schema task-md frontmatter ganha `forensic_*` campos opcionais; `wave-summary.md` ganha seção dedicada; plan.md task aceita `### Estimated lines` opcional pra Check 3.
+
+Pesquisa-base: AgentCoder (NeurIPS 2024) Programmer/Test-Designer split +6-26pp pass@1; Self-Correction Benchmark 2025 (+1.09% solo); GitHub Copilot Coding Agent automatic security/quality (out 2025).
+
+Detalhes: `references/changelog.md` + `references/forensic-plus-protocol.md`.
+```
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add README.md
+git commit -m "chore(version): README v3.8.0 badge + Forensic+ section"
+```
+
+---
+
+### Task 23: Update `references/design-system.md`
+
+**Files:**
+- Modify: `references/design-system.md`
+
+- [ ] **Step 1: Bump frontmatter + version line**
+
+Edit the YAML frontmatter:
+```yaml
+format (v3.8.0)    # was: format (v3.7.2)
+```
+
+Edit the line:
+```markdown
+> **Versão:** v3.8.0    <!-- was: v3.7.2 -->
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add references/design-system.md
+git commit -m "chore(version): design-system v3.8.0"
+```
+
+---
+
+### Task 24: Update `references/preview-loop-protocol.md`
+
+**Files:**
+- Modify: `references/preview-loop-protocol.md`
+
+- [ ] **Step 1: Bump title + version line**
+
+```markdown
+# Preview Loop Protocol — build-iterate visual (v3.8.0)
+```
+(was: `(v3.7.2)`)
+
+```markdown
+> **Versão:** v3.8.0
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add references/preview-loop-protocol.md
+git commit -m "chore(version): preview-loop-protocol v3.8.0"
+```
+
+---
+
+### Task 25: Update `references/changelog.md`
+
+**Files:**
+- Modify: `references/changelog.md`
+
+- [ ] **Step 1: Add new entry at top**
+
+Insert as the first version section (above current top, likely v3.7.2):
+
+```markdown
+## v3.8.0 — Forensic+ wave reviewer (2026-05-03)
+
+### Mudanças
+
+- **NEW:** `scripts/forensic-plus.py` — auditoria estrutural per task no step 8 wave-reviewer (4 checks git-only).
+- **NEW:** `references/forensic-plus-protocol.md` — doc canônico.
+- **NEW:** schema `task-<slug>.md` frontmatter ganha `forensic_violations`, `forensic_passed`, `forensic_max_severity`, `forensic_respawn_count` (opcionais, backward compat).
+- **NEW:** `wave-summary.md` ganha seção `## Forensic+ summary`.
+- **NEW:** `plan.md` task aceita `### Estimated lines` opcional (Check 3 scope creep).
+- **CHANGE:** step 8 do pipeline 12-passos expandido em 8a/8b/8c/8d (`references/wave-execution-protocol.md` + L2 stage 04 template).
+- **CHANGE:** flag wave-plan.md `skip_wave_reviewer` renomeado pra `skip_cross_task_audit`. Backward-compat alias mantido em v3.8.0; removido em v3.9.0.
+- **CHANGE:** `state-machine-schema.md` documenta novos `error_type: forensic_max_retries|forensic_script_crash` (sem enum change).
+- **DEPS:** sem novas dependências runtime. PyYAML já presente em `requirements.txt`.
+- **TESTS:** +20 unit (`test_forensic_plus.py`), +6 snapshot fixtures, +4 drift detectors, +1 bats e2e.
+
+### Migração
+
+`migrate_3_7_2_to_3_8_0` é bump-only — workspaces existentes são compatíveis sem mutação destrutiva. Campos novos no task-md frontmatter têm parser default tolerante a ausência.
+
+### Rationale
+
+Self-grading do subagente (Auto-QA Akita 15-itens) sofre de bias documentado (Huang et al. ICLR 2024, Self-Correction Benchmark 2025). Forensic+ adiciona auditoria externa estrutural sem importar prompt-only re-grade caro. Aproveita strength único do ICM (forensic git-log audit) ampliando cobertura de 1 vetor (qa_loops_used vs commits) pra 4 vetores de fraude estrutural.
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add references/changelog.md
+git commit -m "chore(changelog): v3.8.0 entry — forensic+ wave reviewer"
+```
+
+---
+
+### Task 26: Update `scripts/migrate-workspace.py` — new step
+
+**Files:**
+- Modify: `scripts/migrate-workspace.py`
+
+- [ ] **Step 1: Update `CURRENT_SKILL_VERSION` + tuple**
+
+```python
+# Was:
+CURRENT_SKILL_VERSION = "3.7.2"
+SUPPORTED_VERSIONS = ("3.0.0-beta1", "3.0.0-beta2", ..., "3.7.2")
+# Becomes:
+CURRENT_SKILL_VERSION = "3.8.0"
+SUPPORTED_VERSIONS = ("3.0.0-beta1", "3.0.0-beta2", ..., "3.7.2", "3.8.0")
+```
+
+- [ ] **Step 2: Add migration function (bump-only)**
+
+```python
+def migrate_3_7_2_to_3_8_0(workspace_root: Path) -> None:
+    """v3.7.2 → v3.8.0 migration — bump-only.
+
+    No data mutation needed:
+    - task-<slug>.md without new forensic_* fields → parser defaults.
+    - plan.md without ### Estimated lines → Check 3 silently skipped.
+    - wave-summary.md without Forensic+ section → empty display OK.
+
+    Only updates L1 CONTEXT.md frontmatter `version: 3.8.0`.
+    """
+    l1_path = workspace_root / "CONTEXT.md"
+    if not l1_path.is_file():
+        raise FileNotFoundError(f"L1 missing: {l1_path}")
+    text = l1_path.read_text(encoding="utf-8")
+    new_text = re.sub(
+        r"^(version:\s*)['\"]?3\.7\.2['\"]?",
+        r"\g<1>'3.8.0'",
+        text,
+        count=1,
+        flags=re.MULTILINE,
+    )
+    if new_text == text:
+        # Workspace might be on an older version that still chains up; skip.
+        return
+    l1_path.write_text(new_text, encoding="utf-8")
+```
+
+- [ ] **Step 3: Add to `STEP_FUNCTIONS` dispatcher**
+
+```python
+STEP_FUNCTIONS = {
+    # ... existing entries ...
+    ("3.7.1", "3.7.2"): migrate_3_7_1_to_3_7_2,
+    ("3.7.2", "3.8.0"): migrate_3_7_2_to_3_8_0,
+}
+```
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add scripts/migrate-workspace.py
+git commit -m "feat(migrate): migrate_3_7_2_to_3_8_0 (bump-only)"
+```
+
+---
+
+### Task 27: Tests for migration step
+
+**Files:**
+- Modify: `tests/unit/test_migrate_workspace.py`
+
+- [ ] **Step 1: Write failing tests**
+
+Append to `tests/unit/test_migrate_workspace.py`:
+
+```python
+def test_current_skill_version_matches_bootstrap():
+    """CURRENT_SKILL_VERSION in migrate-workspace.py must equal SKILL_VERSION in bootstrap.py."""
+    import importlib.util as _ilu
+    bootstrap = _ilu.spec_from_file_location("bootstrap", REPO_ROOT / "scripts" / "bootstrap.py")
+    bmod = _ilu.module_from_spec(bootstrap)
+    bootstrap.loader.exec_module(bmod)
+
+    migrate = _ilu.spec_from_file_location("migrate", REPO_ROOT / "scripts" / "migrate-workspace.py")
+    mmod = _ilu.module_from_spec(migrate)
+    migrate.loader.exec_module(mmod)
+
+    assert bmod.SKILL_VERSION == mmod.CURRENT_SKILL_VERSION
+
+
+def test_migrate_3_7_2_to_3_8_0_smoke(tmp_path):
+    """Migrate updates L1 frontmatter version 3.7.2 → 3.8.0."""
+    workspace = tmp_path / "001-foo"
+    workspace.mkdir()
+    l1 = workspace / "CONTEXT.md"
+    l1.write_text("---\nversion: '3.7.2'\nfoo: bar\n---\n", encoding="utf-8")
+
+    # Direct invocation
+    import importlib.util as _ilu
+    spec = _ilu.spec_from_file_location("migrate", REPO_ROOT / "scripts" / "migrate-workspace.py")
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    mod.migrate_3_7_2_to_3_8_0(workspace)
+    assert "version: '3.8.0'" in l1.read_text(encoding="utf-8")
+
+
+def test_migrate_3_7_2_to_3_8_0_idempotent(tmp_path):
+    """Running migration twice is a no-op (already at 3.8.0)."""
+    workspace = tmp_path / "001-foo"
+    workspace.mkdir()
+    l1 = workspace / "CONTEXT.md"
+    l1.write_text("---\nversion: '3.7.2'\n---\n", encoding="utf-8")
+
+    import importlib.util as _ilu
+    spec = _ilu.spec_from_file_location("migrate", REPO_ROOT / "scripts" / "migrate-workspace.py")
+    mod = _ilu.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    mod.migrate_3_7_2_to_3_8_0(workspace)
+    first = l1.read_text(encoding="utf-8")
+    mod.migrate_3_7_2_to_3_8_0(workspace)  # second invocation
+    second = l1.read_text(encoding="utf-8")
+    assert first == second
+```
+
+- [ ] **Step 2: Run tests**
+
+```bash
+pytest tests/unit/test_migrate_workspace.py -v -k "3_7_2_to_3_8_0 or current_skill_version"
+```
+Expected: 3 PASS.
+
+- [ ] **Step 3: Run full migrate test suite + drift detector**
+
+```bash
+pytest tests/unit/test_migrate_workspace.py tests/unit/test_no_drift.py -v
+```
+Expected: all green now (version sweep complete, drift detectors all pass).
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add tests/unit/test_migrate_workspace.py
+git commit -m "test(migrate): cover 3.7.2 → 3.8.0 (smoke + idempotency + drift)"
+```
+
+---
+
+**End of Chunk 5.**
+
+---
+
+## Chunk 6: bats e2e + final pre-merge gate
+
+**Goal:** add the full-pipeline e2e bats test (CI-only) and walk through the merge workflow per CLAUDE.md.
+
+### Task 28: bats e2e test
+
+**Files:**
+- Create: `tests/integration/test_forensic_plus_e2e.bats`
+
+- [ ] **Step 1: Write the bats e2e**
+
+```bash
+#!/usr/bin/env bats
+# tests/integration/test_forensic_plus_e2e.bats
+# Full-pipeline e2e: real git, real script, real plan.md fixture, asserts JSON output.
+
+setup() {
+  TMPDIR_E2E="$(mktemp -d)"
+  export TMPDIR_E2E
+}
+
+teardown() {
+  rm -rf "$TMPDIR_E2E"
+}
+
+@test "forensic-plus e2e: clean pass with all 4 checks dormant" {
+  cd "$TMPDIR_E2E"
+  git init -b main >/dev/null
+  git config user.email test@example.com
+  git config user.name Test
+
+  mkdir -p src tests
+  echo "x = 1" > src/foo.py
+  git add -A && git commit -m base >/dev/null
+
+  git checkout -b wave-001-1/add-foo >/dev/null
+  echo "x = 2" > src/foo.py
+  cat > tests/test_foo.py <<EOF
+def test_a():
+    assert 1 == 1
+    assert 2 == 2
+EOF
+  git add -A && git commit -m work >/dev/null
+  git checkout main >/dev/null
+
+  cat > plan.md <<EOF
+## Task add-foo:
+### Files touched
+- src/foo.py
+- tests/test_foo.py
+EOF
+
+  run python "$BATS_TEST_DIRNAME/../../scripts/forensic-plus.py" \
+    --workspace-num 001 --wave 1 --task-slug add-foo \
+    --base-branch main --plan plan.md --tier development --output json
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '"forensic_passed": true'
+  echo "$output" | grep -q '"max_severity": "NONE"'
+}
+
+@test "forensic-plus e2e: HARD violation flagged" {
+  cd "$TMPDIR_E2E"
+  git init -b main >/dev/null
+  git config user.email test@example.com
+  git config user.name Test
+  mkdir -p src tests
+  echo "x = 1" > src/foo.py
+  git add -A && git commit -m base >/dev/null
+  git checkout -b wave-001-1/add-foo >/dev/null
+  echo "x = 2" > src/foo.py
+  cat > tests/test_foo.py <<EOF
+def test_a():
+    assert True
+EOF
+  echo "y = 1" > src/extra.py
+  git add -A && git commit -m work >/dev/null
+  git checkout main >/dev/null
+  cat > plan.md <<EOF
+## Task add-foo:
+### Files touched
+- src/foo.py
+- tests/test_foo.py
+EOF
+
+  run python "$BATS_TEST_DIRNAME/../../scripts/forensic-plus.py" \
+    --workspace-num 001 --wave 1 --task-slug add-foo \
+    --base-branch main --plan plan.md --tier development --output json
+  [ "$status" -eq 0 ]
+  echo "$output" | grep -q '"forensic_passed": false'
+  echo "$output" | grep -q '"max_severity": "HARD"'
+  # Both Check 1 (test asserções) and Check 2 (files outside dev=HARD) fire.
+  echo "$output" | grep -q '"check": "test_assertions_too_few"'
+  echo "$output" | grep -q '"check": "files_outside_declared"'
+}
+```
+
+- [ ] **Step 2: Run bats locally if available, otherwise rely on CI**
+
+```bash
+bash tests/run.sh --ci
+```
+Expected: bats tests green (Linux CI only; on Windows the wrapper skips bats).
+
+- [ ] **Step 3: Commit**
+
+```bash
+git add tests/integration/test_forensic_plus_e2e.bats
+git commit -m "test(forensic-plus): bats e2e (clean pass + HARD violation)"
+```
+
+---
+
+### Task 29: Final pre-merge gate
+
+**Files:**
+- (none modified) — read-only verification
+
+- [ ] **Step 1: Full unit suite**
+
+```bash
+bash tests/run.sh --no-bats
+```
+Expected: all green, baseline `548+ tests` + new forensic-plus tests + new drift detectors.
+
+- [ ] **Step 2: Full no-drift suite explicitly**
+
+```bash
+pytest tests/unit/test_no_drift.py -v
+```
+Expected: all detectors green (version-canonical-files, changelog-has-entry, scripts-skill-version-sync, status-canonical, forensic-plus-doc-canonical-exists, forensic-plus-in-bootstrap-runtime-refs, l2-stage-04-mentions-max-forensic-retries, wave-execution-protocol-has-forensic-substeps, l2-stage-04-references-forensic-plus-protocol).
+
+- [ ] **Step 3: bats integration if available**
+
+```bash
+bash tests/run.sh --ci
+```
+Expected: bats green.
+
+- [ ] **Step 4: Confirm 7-file version sweep complete**
+
+```bash
+grep -l "3.8.0" scripts/bootstrap.py SKILL.md README.md references/design-system.md references/preview-loop-protocol.md references/changelog.md scripts/migrate-workspace.py
+```
+Expected: all 7 paths printed.
+
+- [ ] **Step 5: Inspect commit log for branch hygiene**
+
+```bash
+git log --oneline main..HEAD
+```
+Expected: clean commit-per-task series; each commit message follows Conventional Commits style.
+
+---
+
+### Task 30: Merge to main per CLAUDE.md workflow
+
+**Files:**
+- (none modified) — git operations
+
+- [ ] **Step 1: Confirm working tree clean**
+
+```bash
+git status
+```
+Expected: `nothing to commit, working tree clean`.
+
+- [ ] **Step 2: Switch to main + ff-only merge**
+
+```bash
+git checkout main
+git merge --ff-only feat/forensic-plus-spec
+```
+Expected: merge succeeds linear (no merge commit). If conflict: `git checkout feat/forensic-plus-spec`, `git rebase main`, resolve, retry.
+
+- [ ] **Step 3: Push if remote configured (no-op otherwise per CLAUDE.md)**
+
+```bash
+git push origin main 2>/dev/null || echo "no remote configured — skipped"
+```
+
+- [ ] **Step 4: Delete feature branch**
+
+```bash
+git branch -d feat/forensic-plus-spec
+```
+Expected: branch deleted (already merged).
+
+- [ ] **Step 5: Final smoke**
+
+```bash
+git log --oneline -10
+bash tests/run.sh --no-bats
+```
+Expected: top commit is the last forensic+ commit; all tests green.
+
+---
+
+**End of Chunk 6.** Implementation complete. v3.8.0 ready to ship.
