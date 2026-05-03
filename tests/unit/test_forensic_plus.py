@@ -382,3 +382,94 @@ def test_hitl_task_returns_skipped_payload(tmp_path):
     assert data["max_severity"] is None
     assert data["violations"] == []
     assert data.get("skipped_reason") == "task type=HITL"
+
+
+# ============================================================================
+# Check 3 — scope creep vs estimate (Task 4)
+# ============================================================================
+
+
+def test_check3_scope_creep_triggered(tmp_path):
+    """Estimated 50 lines, actual 200+ → SOFT (development) / HARD (production)."""
+    big_diff = "\n".join(f"line_{i} = {i}" for i in range(200))
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 0\n"},
+        branch_files={
+            "src/foo.py": big_diff + "\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"], estimated_lines=50)
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "development",
+         "--output", "json"],
+        cwd=repo,
+    )
+    data = json.loads(stdout)
+    c3 = [v for v in data["violations"] if v["check"] == "scope_creep"]
+    assert len(c3) == 1
+    assert c3[0]["severity"] == "SOFT"
+
+    # Same scenario, tier=production → HARD
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    data = json.loads(stdout)
+    c3 = [v for v in data["violations"] if v["check"] == "scope_creep"]
+    assert c3[0]["severity"] == "HARD"
+
+
+def test_check3_under_threshold(tmp_path):
+    """Estimated 250, actual <750 (3×) → no violation."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 0\n"},
+        branch_files={
+            "src/foo.py": "x = 1\nx = 2\nx = 3\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"], estimated_lines=250)
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "development",
+         "--output", "json"],
+        cwd=repo,
+    )
+    data = json.loads(stdout)
+    c3 = [v for v in data["violations"] if v["check"] == "scope_creep"]
+    assert len(c3) == 0
+
+
+def test_check3_skip_when_estimate_absent(tmp_path):
+    """No `### Estimated lines` block → skip Check 3 silently (backward compat)."""
+    big_diff = "\n".join(f"line_{i} = {i}" for i in range(2000))
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 0\n"},
+        branch_files={
+            "src/foo.py": big_diff + "\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])  # no estimate
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    data = json.loads(stdout)
+    c3 = [v for v in data["violations"] if v["check"] == "scope_creep"]
+    assert len(c3) == 0

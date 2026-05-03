@@ -298,6 +298,41 @@ def check_files_outside_declared(
 
 
 # ============================================================================
+# Check 3 — scope creep vs estimate
+# ============================================================================
+
+SCOPE_CREEP_MULTIPLIER = 3
+
+_SHORTSTAT_RE = re.compile(r"(\d+)\s+insertion")
+
+
+def check_scope_creep(
+    cwd: Path,
+    branch: str,
+    base_branch: str,
+    estimated_lines: int | None,
+    tier: str,
+) -> list[dict]:
+    """If estimated_lines declared, flag when insertions > N × estimate."""
+    if estimated_lines is None:
+        return []
+    raw = _git_run(cwd, "diff", "--shortstat", f"{base_branch}...{branch}")
+    m = _SHORTSTAT_RE.search(raw)
+    if not m:
+        return []
+    insertions = int(m.group(1))
+    threshold = SCOPE_CREEP_MULTIPLIER * estimated_lines
+    if insertions <= threshold:
+        return []
+    sev = _severity_for("scope_creep", tier)
+    return [{
+        "check": "scope_creep",
+        "severity": sev,
+        "evidence": f"+{insertions} lines vs {estimated_lines} estimate ({SCOPE_CREEP_MULTIPLIER}× threshold = {threshold})",
+    }]
+
+
+# ============================================================================
 # CLI
 # ============================================================================
 
@@ -356,6 +391,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         violations.extend(check_files_outside_declared(
             cwd, branch, args.base_branch, task_meta["files_touched"], args.tier,
+        ))
+    except GitError as e:
+        sys.stderr.write(f"forensic-plus: {e}\n")
+        return 1
+
+    try:
+        violations.extend(check_scope_creep(
+            cwd, branch, args.base_branch, task_meta["estimated_lines"], args.tier,
         ))
     except GitError as e:
         sys.stderr.write(f"forensic-plus: {e}\n")
