@@ -95,11 +95,18 @@ def test_cli_requires_all_args():
     assert "required" in stderr.lower() or "the following arguments" in stderr.lower()
 
 
-def test_cli_outputs_valid_json_skeleton(tmp_path):
-    """Smoke: with minimal valid args + nonexistent branch (causes graceful 0 with empty violations not yet implemented), CLI runs."""
-    # plan stub
+def test_cli_skeleton_emits_canonical_keys(tmp_path):
+    """Skeleton stage: with minimal valid args, CLI exits 0 + emits canonical JSON keys.
+
+    No git repo, no checks active yet — main() returns the empty-violations skeleton
+    populated only via argparse. This test pins the JSON contract before any check
+    is implemented.
+    """
     plan = tmp_path / "plan.md"
-    plan.write_text("## Task add-foo:\n### Files touched\n- src/foo.py\n- tests/test_foo.py\n", encoding="utf-8")
+    plan.write_text(
+        "## Task add-foo:\n### Files touched\n- src/foo.py\n- tests/test_foo.py\n",
+        encoding="utf-8",
+    )
 
     rc, stdout, stderr = _run(
         [
@@ -113,16 +120,15 @@ def test_cli_outputs_valid_json_skeleton(tmp_path):
         ],
         cwd=tmp_path,
     )
-    # In skeleton stage, exit 1 acceptable (git command fails on no repo).
-    # Verify JSON structure on stdout when exit 0; verify stderr non-empty on exit 1.
-    assert rc in (0, 1)
-    if rc == 0:
-        data = json.loads(stdout)
-        assert data["task_slug"] == "add-foo"
-        assert "violations" in data
-        assert "forensic_passed" in data
-        assert "max_severity" in data
+    assert rc == 0, f"skeleton expected exit 0, got {rc}; stderr={stderr}"
+    data = json.loads(stdout)
+    assert data["task_slug"] == "add-foo"
+    assert data["violations"] == []
+    assert data["forensic_passed"] is True
+    assert data["max_severity"] == "NONE"
 ```
+
+> **Note:** the skeleton in Task 1 has no git/check logic, so it always emits an empty result regardless of repo state. Once Task 2 wires in the first git call, this exact test will need to evolve (Task 2 swaps the inputs to a real-repo fixture). The skeleton test exists only to pin the JSON contract early.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -276,7 +282,7 @@ def _make_plan(repo, task_slug, files_touched, conventions_extras=None, estimate
 
 
 def test_check1_python_passes_with_three_asserts(tmp_path):
-    """Test file with 3 non-trivial asserts → no violation."""
+    """Test file with 3 assert statements → no violation (count threshold met)."""
     test_content = (
         "def test_a():\n"
         "    assert 1 + 1 == 2\n"
@@ -312,8 +318,8 @@ def test_check1_python_passes_with_three_asserts(tmp_path):
     assert len(check1_violations) == 0
 
 
-def test_check1_python_fails_with_assert_true_only(tmp_path):
-    """Test file with only `assert True` → HARD violation in all tiers."""
+def test_check1_python_fails_with_single_assertion(tmp_path):
+    """Test file with only one assertion → HARD violation (count below threshold)."""
     test_content = "def test_a():\n    assert True\n"
     repo = _make_repo_with_branch(
         tmp_path,
@@ -516,7 +522,11 @@ def parse_plan_for_task(plan_path: Path, task_slug: str) -> dict:
         rest = section[h_m.end():]
         next_h = re.search(r"^### ", rest, re.MULTILINE)
         block = rest[: next_h.start()] if next_h else rest
-        return [ln.lstrip("- ").strip() for ln in block.splitlines() if ln.strip().startswith("-")]
+        return [
+            re.sub(r"^-\s+", "", ln).strip()
+            for ln in block.splitlines()
+            if ln.strip().startswith("-")
+        ]
 
     files_touched = _bullets_under("Files touched")
     conventions = _bullets_under("Conventions extras")
@@ -586,7 +596,13 @@ def check_test_assertions(
     conventions_extras: list[str],
     tier: str,
 ) -> list[dict]:
-    """Verify each declared test file has ≥ ASSERT_THRESHOLD non-trivial assertions.
+    """Verify each declared test file has ≥ ASSERT_THRESHOLD assertion-shaped tokens.
+
+    The check is purely count-based — it does not distinguish `assert True` from
+    `assert x == y`. Rationale (spec §4.1): a single assertion is too easily a
+    placeholder; ≥2 indicates a minimal real suite. Quality of the assertion is
+    out of scope for forensic+; the wave-reviewer's acceptance audit (step 8c)
+    catches semantic emptiness.
 
     Returns list of violation dicts (empty if pass). Severity HARD all tiers.
     """
@@ -1158,6 +1174,51 @@ def test_check4_production_hard(tmp_path):
     data = json.loads(stdout)
     c4 = [v for v in data["violations"] if v["check"] == "todo_added"]
     assert c4[0]["severity"] == "HARD"
+
+
+def test_all_four_checks_compose_in_main(tmp_path):
+    """Integration: a single task that triggers all 4 checks → main() accumulates all violations.
+
+    Confirms `main()` does not short-circuit and that severity reduction picks
+    HARD when any HARD is present.
+    """
+    big_diff = "\n".join(f"line_{i} = {i}" for i in range(200))
+    branch_files = {
+        # +TODO triggers Check 4
+        "src/foo.py": big_diff + "\n# TODO: refactor\n",
+        # single assert triggers Check 1 (count < 2)
+        "tests/test_foo.py": "def test_a():\n    assert True\n",
+        # undeclared file triggers Check 2
+        "src/utils/extra.py": "y = 1\n",
+    }
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 0\n"},
+        branch_files=branch_files,
+        branch_name="wave-001-1/add-foo",
+    )
+    # estimated 50 → 200+ insertions triggers Check 3
+    plan = _make_plan(
+        repo, "add-foo", ["src/foo.py", "tests/test_foo.py"], estimated_lines=50,
+    )
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0
+    data = json.loads(stdout)
+    checks_seen = {v["check"] for v in data["violations"]}
+    assert checks_seen == {
+        "test_assertions_too_few",
+        "files_outside_declared",
+        "scope_creep",
+        "todo_added",
+    }
+    assert data["forensic_passed"] is False
+    assert data["max_severity"] == "HARD"
 ```
 
 - [ ] **Step 2: Run tests to verify they fail**
@@ -1275,7 +1336,7 @@ def test_json_output_always_has_required_keys(tmp_path):
 
     @given(
         slug=st.from_regex(r"^[a-z][a-z0-9-]{2,20}$", fullmatch=True),
-        tier=st.sampled_from(VALID_TIERS_FOR_TEST := ["experimental", "tool", "development", "production"]),
+        tier=st.sampled_from(["experimental", "tool", "development", "production"]),
     )
     @settings(max_examples=20, deadline=None)
     def _prop(slug, tier):
@@ -1416,12 +1477,12 @@ def test_crash_plan_missing_file(tmp_path):
     assert "not found" in stderr.lower() or "nonexistent" in stderr
 ```
 
-- [ ] **Step 2: Run tests**
+- [ ] **Step 2: Run tests to verify expected outcomes**
 
 ```bash
 pytest tests/unit/test_forensic_plus.py -v -k crash
 ```
-Expected: tests should already PASS based on existing error handling, OR show messages that need adjustment. Adjust error messages in `parse_plan_for_task` and `main()` if assertions fail; the implementation is mostly correct from Task 2.
+Expected: all 3 PASS without code changes. Error handling was wired into `parse_plan_for_task` (Task 2) and `main()` (Task 2 wiring); the assertions match the messages emitted today. If any test fails, fix the corresponding error message in `forensic-plus.py` to match the assertion (do not weaken the assertion).
 
 - [ ] **Step 3: Verify all forensic-plus tests pass**
 
