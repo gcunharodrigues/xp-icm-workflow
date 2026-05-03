@@ -234,7 +234,15 @@ TIER_SEVERITY: dict[str, dict[str, str]] = {
 
 
 def _severity_for(check: str, tier: str) -> str:
-    return TIER_SEVERITY[check][tier]
+    """Look up severity per (check, tier). Raises ValueError on unknown combos.
+
+    Defensive over `KeyError` to give better diagnostics when Checks 3/4 land
+    in subsequent tasks.
+    """
+    try:
+        return TIER_SEVERITY[check][tier]
+    except KeyError as e:
+        raise ValueError(f"unknown check/tier: {check}/{tier}") from e
 
 
 # ============================================================================
@@ -256,6 +264,7 @@ LOCKFILE_ALLOWLIST = frozenset({
 
 
 def _basename(path: str) -> str:
+    """Basename of a git-emitted path (always forward-slash, even on Windows)."""
     return path.rsplit("/", 1)[-1]
 
 

@@ -347,3 +347,38 @@ def test_check2_no_violation_when_clean(tmp_path):
     data = json.loads(stdout)
     c2 = [v for v in data["violations"] if v["check"] == "files_outside_declared"]
     assert len(c2) == 0
+
+
+def test_hitl_task_returns_skipped_payload(tmp_path):
+    """Task with `Type: HITL` short-circuits all checks and emits skipped payload."""
+    # Build a real repo so Check 2 wouldn't crash on git, but HITL skip happens before
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 1\n"},
+        branch_files={
+            # All would normally violate (single assert, undeclared file, +TODO)
+            "src/foo.py": "x = 2\n# TODO: review later\n",
+            "src/extra.py": "y = 1\n",
+        },
+        branch_name="wave-001-1/review-data",
+    )
+    plan_text = (
+        "## Task review-data:\n"
+        "### Files touched\n- src/foo.py\n"
+        "### Type\n- HITL\n"
+    )
+    plan = repo / "plan.md"
+    plan.write_text(plan_text, encoding="utf-8")
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "review-data",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0
+    data = json.loads(stdout)
+    assert data["forensic_passed"] is None
+    assert data["max_severity"] is None
+    assert data["violations"] == []
+    assert data.get("skipped_reason") == "task type=HITL"
