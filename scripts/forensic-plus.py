@@ -176,7 +176,6 @@ def check_test_assertions(
     branch: str,
     files_touched: list[str],
     conventions_extras: list[str],
-    tier: str,
 ) -> list[dict]:
     """Verify each declared test file has >= ASSERT_THRESHOLD assertion-shaped tokens.
 
@@ -186,7 +185,11 @@ def check_test_assertions(
     out of scope for forensic+; the wave-reviewer's acceptance audit (step 8c)
     catches semantic emptiness.
 
-    Returns list of violation dicts (empty if pass). Severity HARD all tiers.
+    Severity is HARD across all tiers (spec §4.1), so this check does not take
+    a tier parameter — unlike future checks (files_outside_declared, scope_creep,
+    todo_added) which vary severity by tier.
+
+    Returns list of violation dicts (empty if pass).
     """
     if any(c.lower().strip() in ("doc-only", "config-only") for c in conventions_extras):
         return []
@@ -268,7 +271,7 @@ def main(argv: list[str] | None = None) -> int:
     violations: list[dict] = []
     try:
         violations.extend(check_test_assertions(
-            cwd, branch, task_meta["files_touched"], task_meta["conventions_extras"], args.tier
+            cwd, branch, task_meta["files_touched"], task_meta["conventions_extras"]
         ))
     except GitError as e:
         sys.stderr.write(f"forensic-plus: {e}\n")

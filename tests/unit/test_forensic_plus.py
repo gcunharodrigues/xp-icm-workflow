@@ -63,7 +63,6 @@ def test_cli_skeleton_emits_canonical_keys(tmp_path):
 # Check 1 — test assertions threshold (Task 2)
 # ============================================================================
 
-import os
 import subprocess as _sp
 
 
