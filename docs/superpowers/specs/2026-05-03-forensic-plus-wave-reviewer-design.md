@@ -87,6 +87,7 @@ Step 8 do pipeline 12-passos é re-organizado em sub-steps:
 | `.rb` | `\b(expect\|assert\|should)\b` | ≥ 2 |
 | `.rs` | `\bassert(_eq\|_ne)?!\b` | ≥ 2 |
 | `.java/.kt` | `\b(assert\|@Test\|assertEquals)` | ≥ 2 |
+| `.cs` | `\b(Assert\.\|\[Test\]\|\[Fact\]\|\[Theory\])` | ≥ 2 |
 
 **Skip:** task with `Conventions extras: doc-only` or `config-only` (existing wave-planner exemption).
 
@@ -173,6 +174,14 @@ python scripts/forensic-plus.py \
     --output json
 ```
 
+**Argument source resolution (lead session populates from L1):**
+- `--workspace-num`: parsed from L1 `workspace` field (format `NNN-slug` → `NNN`).
+- `--wave`: parsed from L1 `waves.current`.
+- `--task-slug`: iterated from current wave tasks list (`wave-plan.md`).
+- `--base-branch`: from L1 `base_branch`.
+- `--plan`: resolved as `<workspace_root>/stages/02_design/output/plan.md`.
+- `--tier`: from L1 `tier`.
+
 **Stdout (JSON):**
 ```json
 {
@@ -214,10 +223,11 @@ forensic_violations:
     evidence: "src/utils/helper.ts not in files_touched"
 forensic_passed: false   # true if no HARD; null if task type=HITL
 forensic_max_severity: HARD   # HARD | SOFT | NONE | null (HITL)
+forensic_respawn_count: 1   # 0..MAX_FORENSIC_RETRIES (2). Symmetric with qa_loops_used.
 ---
 ```
 
-**Backward compat:** existing workspaces without these fields parse as `forensic_violations: []`, `forensic_passed: null`.
+**Backward compat:** existing workspaces without these fields parse as `forensic_violations: []`, `forensic_passed: null`, `forensic_respawn_count: 0`.
 
 ### 5.2 `output/wave-<N>/wave-summary.md` new section
 
@@ -244,7 +254,7 @@ Always present (empty if no violations):
 
 ### 5.3 `plan.md` task — new optional field
 
-Per `references/4-block-contract-template.md`:
+Slot in `references/4-block-contract-template.md` immediately after `### Files touched` (natural grouping: scope concerns):
 
 ```markdown
 ## Task <slug>:
@@ -255,6 +265,9 @@ Per `references/4-block-contract-template.md`:
 
 ### Estimated lines
 ~250
+
+### Depends on
+...
 ```
 
 **Logic:**
@@ -313,7 +326,7 @@ Loop until MAX_FORENSIC_RETRIES = 2 OR approved
 | Violation | Text injected into re-spawn AGENT-BRIEF |
 |-----------|----------------------------------------|
 | `test_assertions_too_few` | "Test file `<path>` has only `<N>` non-trivial assertions. Add tests covering: edge cases declared in acceptance criteria + happy path. Minimum 2 non-trivial assertions." |
-| `files_outside_declared` | "You touched `<path>` not declared in `files_touched`. Options: (a) revert the change, (b) escalate via new stop point `files_touched_drift` if legitimate need discovered." |
+| `files_outside_declared` | "You touched `<path>` not declared in `files_touched`. Options: (a) revert the change, (b) if legitimately needed, write `output/wave-<N>/task-<slug>-blocked.md` with rationale and exit so lead can update plan.md and re-spawn (no new stop point — uses existing BLOCKED handoff)." |
 | `scope_creep` | "Diff `<X>` lines vs estimate `<Y>`. Reduce scope or split into smaller commits. If real scope is larger, escalate via stop point `over_eng`." |
 | `todo_added` | "TODOs added: `<list line:content>`. Remove or convert to issues. Committed code does not carry TODOs." |
 
@@ -409,6 +422,10 @@ def test_forensic_plus_referenced_in_l2_stage_04():
 
 def test_forensic_plus_in_runtime_refs_bootstrap():
     """bootstrap.py runtime_refs list includes forensic-plus-protocol.md."""
+
+def test_wave_execution_protocol_has_forensic_substeps():
+    """references/wave-execution-protocol.md step 8 expanded into 8a/8b/8c/8d
+    matching this spec — prevents spec/canonical drift."""
 ```
 
 ## 8. Version sweep — 7 canonical files (CLAUDE.md v3.7.0 rule)
@@ -449,6 +466,7 @@ def test_forensic_plus_in_runtime_refs_bootstrap():
 | `references/4-block-contract-template.md` | optional section `### Estimated lines` |
 | `references/state-machine-schema.md` | comment about `error_type: forensic_max_retries` (no enum change) |
 | `scripts/wave-planner-script.py` | rename `skip_wave_reviewer` → `skip_cross_task_audit` (+ backward-compat alias for v3.8.0) |
+| `references/wave-planner-algorithm.md` | update §10 (the doc owns the flag name canonically); rename `skip_wave_reviewer` → `skip_cross_task_audit` with backward-compat note |
 | `scripts/bootstrap.py` | runtime_refs adds forensic-plus-protocol.md |
 
 ## 11. New canonical doc structure: `references/forensic-plus-protocol.md`
@@ -478,7 +496,7 @@ Sections (target ~150 lines):
 - `pytest tests/unit/test_forensic_plus.py` — 25+ tests green.
 - `pytest tests/unit/test_wave_reviewer_forensic_integration.py` — 6+ tests green.
 - `pytest tests/unit/test_migrate_workspace.py` — smoke + idempotency green.
-- `bash tests/run.sh --no-bats` — total suite green (538+ baseline).
+- `bash tests/run.sh --no-bats` — total suite green (548+ baseline per CLAUDE.md tests section).
 - `bash tests/run.sh --ci` (CI) — bats integration green.
 
 ## 14. Sources
