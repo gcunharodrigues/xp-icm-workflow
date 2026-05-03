@@ -222,6 +222,73 @@ def check_test_assertions(
 
 
 # ============================================================================
+# Tier × violation severity matrix (spec §4.2)
+# ============================================================================
+
+TIER_SEVERITY: dict[str, dict[str, str]] = {
+    "test_assertions_too_few":   {"experimental": "HARD", "tool": "HARD", "development": "HARD", "production": "HARD"},
+    "files_outside_declared":    {"experimental": "SOFT", "tool": "SOFT", "development": "HARD", "production": "HARD"},
+    "scope_creep":               {"experimental": "SOFT", "tool": "SOFT", "development": "SOFT", "production": "HARD"},
+    "todo_added":                {"experimental": "SOFT", "tool": "SOFT", "development": "SOFT", "production": "HARD"},
+}
+
+
+def _severity_for(check: str, tier: str) -> str:
+    return TIER_SEVERITY[check][tier]
+
+
+# ============================================================================
+# Allowlists — Check 2
+# ============================================================================
+
+LOCKFILE_ALLOWLIST = frozenset({
+    "package-lock.json",
+    "pnpm-lock.yaml",
+    "yarn.lock",
+    "bun.lockb",
+    "Cargo.lock",
+    "Gemfile.lock",
+    "poetry.lock",
+    "go.sum",
+    ".prettierrc.cache",
+    ".eslintcache",
+})
+
+
+def _basename(path: str) -> str:
+    return path.rsplit("/", 1)[-1]
+
+
+# ============================================================================
+# Check 2 — files outside declared
+# ============================================================================
+
+def check_files_outside_declared(
+    cwd: Path,
+    branch: str,
+    base_branch: str,
+    files_touched: list[str],
+    tier: str,
+) -> list[dict]:
+    """Compare actual git diff filenames against declared files_touched.
+
+    Files in actual but not declared (excluding lockfile allowlist) → violation.
+    """
+    declared = set(files_touched)
+    raw = _git_run(cwd, "diff", "--name-only", f"{base_branch}...{branch}")
+    actual = {ln.strip() for ln in raw.splitlines() if ln.strip()}
+    extras = {p for p in actual - declared if _basename(p) not in LOCKFILE_ALLOWLIST}
+    if not extras:
+        return []
+    sev = _severity_for("files_outside_declared", tier)
+    return [{
+        "check": "files_outside_declared",
+        "severity": sev,
+        "evidence": f"{len(extras)} undeclared file(s): {', '.join(sorted(extras))}",
+    }]
+
+
+# ============================================================================
 # CLI
 # ============================================================================
 
@@ -272,6 +339,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         violations.extend(check_test_assertions(
             cwd, branch, task_meta["files_touched"], task_meta["conventions_extras"]
+        ))
+    except GitError as e:
+        sys.stderr.write(f"forensic-plus: {e}\n")
+        return 1
+
+    try:
+        violations.extend(check_files_outside_declared(
+            cwd, branch, args.base_branch, task_meta["files_touched"], args.tier,
         ))
     except GitError as e:
         sys.stderr.write(f"forensic-plus: {e}\n")

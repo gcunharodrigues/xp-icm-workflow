@@ -27,41 +27,16 @@ def test_cli_requires_all_args():
     assert "required" in stderr.lower() or "the following arguments" in stderr.lower()
 
 
-def test_cli_skeleton_emits_canonical_keys(tmp_path):
-    """Skeleton stage: with minimal valid args, CLI exits 0 + emits canonical JSON keys.
-
-    Plan stub lists only a non-test file — no Check 1 work, no git access required.
-    This test pins the JSON contract: keys present, types correct, exit 0.
-    """
-    plan = tmp_path / "plan.md"
-    plan.write_text(
-        "## Task add-foo:\n### Files touched\n- src/foo.py\n",
-        encoding="utf-8",
-    )
-
-    rc, stdout, stderr = _run(
-        [
-            "--workspace-num", "001",
-            "--wave", "1",
-            "--task-slug", "add-foo",
-            "--base-branch", "main",
-            "--plan", str(plan),
-            "--tier", "development",
-            "--output", "json",
-        ],
-        cwd=tmp_path,
-    )
-    assert rc == 0, f"skeleton expected exit 0, got {rc}; stderr={stderr}"
-    data = json.loads(stdout)
-    assert data["task_slug"] == "add-foo"
-    assert data["violations"] == []
-    assert data["forensic_passed"] is True
-    assert data["max_severity"] == "NONE"
-
-
 # ============================================================================
 # Check 1 — test assertions threshold (Task 2)
 # ============================================================================
+# Note: the Task 1 skeleton test (`test_cli_skeleton_emits_canonical_keys`) was
+# removed in Task 3. Its purpose — pinning the JSON contract (keys + types +
+# exit 0) — is now fully exercised by the Check 1 / Check 2 tests below, which
+# also build real git repos. Once Check 2 calls `_git_run` directly, the
+# skeleton's no-git fixture forced a `GitError → exit 1`, and resurrecting it
+# would require initializing a full git repo just to repeat coverage already
+# present.
 
 import subprocess as _sp
 
@@ -258,3 +233,117 @@ def test_check1_typescript_pass_and_fail(tmp_path):
     check1 = [v for v in json.loads(stdout)["violations"] if v["check"] == "test_assertions_too_few"]
     assert len(check1) == 1
     assert check1[0]["severity"] == "HARD"
+
+
+# ============================================================================
+# Check 2 — files outside declared (Task 3)
+# ============================================================================
+
+
+def test_check2_files_outside_dev_hard(tmp_path):
+    """Diff touches undeclared file, tier=development → HARD violation."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "def foo(): return 1\n"},
+        branch_files={
+            "src/foo.py": "def foo(): return 2\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+            "src/utils/helper.py": "def help(): pass\n",  # NOT declared
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "development",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0
+    data = json.loads(stdout)
+    c2 = [v for v in data["violations"] if v["check"] == "files_outside_declared"]
+    assert len(c2) == 1
+    assert c2[0]["severity"] == "HARD"
+    assert "src/utils/helper.py" in c2[0]["evidence"]
+
+
+def test_check2_files_outside_experimental_soft(tmp_path):
+    """Same scenario but tier=experimental → SOFT (warn only)."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 1\n"},
+        branch_files={
+            "src/foo.py": "x = 2\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+            "src/utils/extra.py": "y = 1\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "experimental",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0
+    data = json.loads(stdout)
+    c2 = [v for v in data["violations"] if v["check"] == "files_outside_declared"]
+    assert len(c2) == 1
+    assert c2[0]["severity"] == "SOFT"
+
+
+def test_check2_lockfile_allowlist(tmp_path):
+    """package-lock.json in diff but not declared → ignored."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={
+            "src/foo.js": "export const x = 1;\n",
+            "package-lock.json": "{}\n",
+        },
+        branch_files={
+            "src/foo.js": "export const x = 2;\n",
+            "tests/foo.test.js": "test('x', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+            "package-lock.json": '{"updated": true}\n',
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.js", "tests/foo.test.js"])
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0
+    data = json.loads(stdout)
+    c2 = [v for v in data["violations"] if v["check"] == "files_outside_declared"]
+    assert len(c2) == 0  # lockfile allowlisted
+
+
+def test_check2_no_violation_when_clean(tmp_path):
+    """All touched files declared → no violation."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 1\n"},
+        branch_files={
+            "src/foo.py": "x = 2\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0
+    data = json.loads(stdout)
+    c2 = [v for v in data["violations"] if v["check"] == "files_outside_declared"]
+    assert len(c2) == 0
