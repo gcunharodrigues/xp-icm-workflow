@@ -2471,9 +2471,11 @@ Below the table, add a new subsection listing known `error_type` string values (
 ```markdown
 ### `error_type` values (conhecidos, lista crescente — não enum)
 
-Quando `status: BLOCKED_ERROR` é setado, `last_transition.error_type` (free-form
-string) é populado com um dos valores abaixo. Lista evolui por versão; não há
-enforcement automático.
+Quando o evento `blocked_error` é appended a `history` (e `status: BLOCKED_ERROR`
+é setado em paralelo), o campo `error_type` (free-form string) do evento é
+populado com um dos valores abaixo. Lista evolui por versão; não há enforcement
+automático. Schema do `last_transition` permanece `{from, to, at, commit_sha}`
+sem `error_type` — este vive apenas no event row de `history`.
 
 - `merge_conflict`
 - `ci_red`
