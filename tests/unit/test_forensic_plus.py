@@ -597,3 +597,101 @@ def test_all_four_checks_compose_in_main(tmp_path):
     }
     assert data["forensic_passed"] is False
     assert data["max_severity"] == "HARD"
+
+
+# ============================================================================
+# HITL skip + JSON schema property + exit code (Task 6)
+# ============================================================================
+
+
+def test_hitl_task_returns_null(tmp_path):
+    """Task with `Type: HITL` → forensic_passed: null, no violations checked."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 1\n"},
+        branch_files={
+            "src/foo.py": "x = 2\n# TODO: would normally violate\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan_text = (
+        "## Task add-foo:\n"
+        "### Files touched\n- src/foo.py\n"
+        "### Type\n- HITL\n"
+    )
+    plan = repo / "plan.md"
+    plan.write_text(plan_text, encoding="utf-8")
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0
+    data = json.loads(stdout)
+    assert data["forensic_passed"] is None
+    assert data["max_severity"] is None
+    assert data["violations"] == []
+    assert data.get("skipped_reason") == "task type=HITL"
+
+
+def test_json_output_always_has_required_keys(tmp_path):
+    """Property-style: every successful run emits the canonical keys."""
+    from hypothesis import given, strategies as st, settings
+
+    @given(
+        slug=st.from_regex(r"^[a-z][a-z0-9-]{2,20}$", fullmatch=True),
+        tier=st.sampled_from(["experimental", "tool", "development", "production"]),
+    )
+    @settings(max_examples=20, deadline=None)
+    def _prop(slug, tier):
+        repo = _make_repo_with_branch(
+            tmp_path / f"{slug}_{tier}",
+            base_files={f"src/{slug}.py": "x = 1\n"},
+            branch_files={
+                f"src/{slug}.py": "x = 2\n",
+                f"tests/test_{slug}.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+            },
+            branch_name=f"wave-001-1/{slug}",
+        )
+        plan = _make_plan(repo, slug, [f"src/{slug}.py", f"tests/test_{slug}.py"])
+        rc, stdout, _ = _run(
+            ["--workspace-num", "001", "--wave", "1", "--task-slug", slug,
+             "--base-branch", "main", "--plan", str(plan), "--tier", tier,
+             "--output", "json"],
+            cwd=repo,
+        )
+        if rc != 0:
+            return  # crash path tested elsewhere
+        data = json.loads(stdout)
+        assert {"task_slug", "violations", "forensic_passed", "max_severity"}.issubset(data.keys())
+        assert data["task_slug"] == slug
+        assert isinstance(data["violations"], list)
+        assert data["max_severity"] in ("HARD", "SOFT", "NONE", None)
+
+    _prop()
+
+
+def test_exit_code_zero_with_violations(tmp_path):
+    """Even with HARD violation, exit code is 0 (script ran successfully)."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 1\n"},
+        branch_files={
+            "src/foo.py": "x = 2\n",
+            "tests/test_foo.py": "def test_a():\n    assert True\n",  # violates Check 1
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0  # script ran successfully
+    data = json.loads(stdout)
+    assert data["forensic_passed"] is False
