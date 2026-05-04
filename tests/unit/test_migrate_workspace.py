@@ -322,3 +322,14 @@ def test_trigger_mode_in_progress_warning_only(mw, tmp_path: Path):
     )
     mode = mw.detect_trigger_mode(ws)
     assert mode == "warning-only"
+
+
+def test_step_functions_includes_v3_8_0(mw):
+    """Dispatcher must register the new step with the canonical 'from->to' string key."""
+    assert "3.7.2->3.8.0" in mw.STEP_FUNCTIONS
+    assert mw.STEP_FUNCTIONS["3.7.2->3.8.0"] is mw.migrate_3_7_2_to_3_8_0
+
+
+def test_supported_versions_ends_with_3_8_0(mw):
+    """Tuple must include 3.8.0 as the last entry."""
+    assert mw.SUPPORTED_VERSIONS[-1] == "3.8.0"
