@@ -530,3 +530,30 @@ def test_l2_stage_04_mentions_max_forensic_retries():
     # The L2 template must mention the constant by name AND value to allow drift detection.
     assert "MAX_FORENSIC_RETRIES" in text
     assert "= 2" in text  # value embedded so reading the prompt is self-explanatory
+
+
+def test_forensic_plus_doc_canonical_exists():
+    """Sanity: the canonical doc must exist and contain expected H1 + sections."""
+    path = REPO_ROOT / "references" / "forensic-plus-protocol.md"
+    assert path.is_file(), "forensic-plus-protocol.md missing"
+    text = path.read_text(encoding="utf-8")
+    assert "# Forensic+ Protocol" in text
+    assert "## Os 4 checks" in text
+    assert "## JSON schema" in text
+
+
+def test_forensic_plus_in_bootstrap_runtime_refs():
+    """bootstrap.py runtime_refs tuple must list forensic-plus-protocol.md."""
+    path = REPO_ROOT / "scripts" / "bootstrap.py"
+    text = path.read_text(encoding="utf-8")
+    assert '"forensic-plus-protocol.md"' in text
+
+
+def test_l2_stage_04_references_forensic_plus_protocol():
+    """L2 stage 04 must cross-ref the canonical doc."""
+    path = (
+        REPO_ROOT / "templates" / "workspace" / "stages"
+        / "04_implementation_waves" / "CONTEXT.md.tpl"
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "forensic-plus-protocol.md" in text
