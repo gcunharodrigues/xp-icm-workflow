@@ -34,7 +34,11 @@ main (= BASE_BRANCH)         ← estável, lead faz merge aqui
 5. **Stop points** — subagente detecta `new_dep`/`irreversible`/`over_eng`/`prod_migration`/`adr_drift` → menu A/B/C.
 6. **Cap 3 voltas auto-QA** — `qa_loops_used` no task report; reviewer audita.
 7. **Lead recebe** — Agent results bufferizados em `{task_slug: result}`; sort por plan order.
-8. **Wave-reviewer** — Agent sem worktree, lê via `git show`/`git diff`; aprova ou flagra issues.
+8. **Wave-reviewer** — Agent sem worktree. Expandido em 8a/8b/8c/8d (v3.8.0):
+   - **8a Forensic+** — `scripts/forensic-plus.py` por task AFK (4 checks: test asserções, files fora declared, scope creep, TODO/FIXME). Doc canônico: `references/forensic-plus-protocol.md`.
+   - **8b Audit existente** — Auto-QA Akita declarado, files touched, acceptance.
+   - **8c Forensic git log** — `qa_loops_used` vs commits reais.
+   - **8d Decision** — HARD → `approved_pending_ci: false` + re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT → warnings; NONE → approve.
 9. **Merge sequencial** — `git merge --no-ff` em `BASE_BRANCH`, ordem do plan; conflict → `conflict-resolution-protocol.md`.
 10. **CI global** — verde → 11; vermelho → `ci-rollback-protocol.md`.
 11. **Cleanup** — `git worktree remove` (decision matrix `--force`) + `git branch -d` (jamais `-D`); sync `.icm-main` condicional.
@@ -58,6 +62,7 @@ main (= BASE_BRANCH)         ← estável, lead faz merge aqui
 - Handoff: `references/session-handoff-protocol.md`
 - HITL: `references/task-types-hitl-afk.md`
 - L2 stage 04 (instruções runtime): `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`
+- Forensic+ audit: `references/forensic-plus-protocol.md`
 
 ## Invariantes globais
 

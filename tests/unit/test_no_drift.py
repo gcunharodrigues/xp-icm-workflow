@@ -497,6 +497,17 @@ def test_markdown_cross_refs_resolve_in_references():
         "Broken cross-refs em references/:\n  " + "\n  ".join(violations)
 
 
+def test_wave_execution_protocol_has_forensic_substeps():
+    """Pipeline canonical doc must reflect step 8 expansion."""
+    path = REPO_ROOT / "references" / "wave-execution-protocol.md"
+    text = path.read_text(encoding="utf-8")
+    assert "**8a Forensic+**" in text
+    assert "**8b Audit existente**" in text
+    assert "**8c Forensic git log**" in text
+    assert "**8d Decision**" in text
+    assert "forensic-plus-protocol.md" in text
+
+
 def test_l2_stage_04_mentions_max_forensic_retries():
     """L2 stage 04 template must reference the cap value (sourced from forensic-plus.py)."""
     l2_path = (
