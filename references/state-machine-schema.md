@@ -52,7 +52,7 @@
 | `custom_stop_points` | list | yaml override declarou (D3) | omisso |
 | `revisit_after` | string | yaml override declarou (Q16) | omisso |
 
-## Status canônicos (6 valores)
+## Status canônicos (7 valores)
 
 | Status | Quando | Próxima ação típica |
 |---|---|---|
@@ -61,6 +61,7 @@
 | `BLOCKED_STOP_POINT` | menu A/B/C disparado | humano responde menu; `IN_PROGRESS` |
 | `BLOCKED_ERROR` | falha runtime/CI/merge | humano resolve manualmente; `IN_PROGRESS` |
 | `BLOCKED_HITL` | wave mista, task `type: HITL` aguarda humano (não-falha) | humano completa task report; `IN_PROGRESS` |
+| `LEAD_RESOLUTION_IN_PROGRESS` | per-task loop esgotou cap (3) OR convergence trip OR catastrophic — lead executando bucket B1/B3/B4 (v3.9.0) | lead conclui bucket; sucesso → `IN_PROGRESS`; fail → escalate próximo bucket OR `BLOCKED_ERROR` |
 | `COMPLETED` | workspace inteiro fechado (fase 07 saída ou fase 08 A) | none — workspace arquivado |
 
 **Variação especial:** `RESTARTING_AT_PHASE_X` (H1) é registrado em `history` como evento de `iteration++`, mas o `status` em si volta para `IN_PROGRESS` no estágio X com `iteration` incrementado.
@@ -129,6 +130,11 @@ sem `error_type` — este vive apenas no event row de `history`.
 - `runtime_cleanup_failed`
 - `forensic_max_retries`        <!-- v3.8.0 — cap MAX_FORENSIC_RETRIES esgotado -->
 - `forensic_script_crash`       <!-- v3.8.0 — forensic-plus.py exit 1 -->
+- `lead_resolution_audit_failed`        <!-- v3.9.0 — stage 05 audit detected B1 loosen / B3 silenced critic / B4 vague rationale -->
+- `lead_resolution_all_buckets_failed`  <!-- v3.9.0 — B1+B3+B4 todos exhausted -->
+- `lead_decision_missing`               <!-- v3.9.0 — lead chose bucket sem registrar lead-decision.md -->
+- `critic_unavailable`                  <!-- v3.9.0 — Agent tool fail / quota exhausted após retry -->
+- `critic_abstain_loop`                 <!-- v3.9.0 — 2 critic ABSTAIN consecutivos -->
 - `human_abort`
 
 ## `waves` — schema (presente só se `stage_atual >= 04`)

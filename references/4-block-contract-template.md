@@ -1,10 +1,10 @@
-# 4-Block Contract Template + Ciclo TDD 7 Passos
+# 4-Block Contract Template + Vertical TDD Cycle
 
-> **Versão:** v3.0.0-beta5
+> **Versão:** v3.9.0
 > **Skill:** `xp-icm-workflow`
-> **Propósito:** Define o contrato 4-block obrigatório por task no `plan.md` (output da fase 02 design, consumido pelas fases 03 wave_planner e 04 implementation_waves) **e** o ciclo TDD canônico de 7 passos que todo subagente executa por task. Inclui o auto-QA Akita (checklist 15-item) aplicado no passo 6 e o cap de 3 voltas que dispara escalonamento ao lead.
+> **Propósito:** Define o contrato 4-block obrigatório por task no `plan.md` (output da fase 02 design, consumido pelas fases 03 wave_planner e 04 implementation_waves) **e** o ciclo TDD vertical canônico (tracer-first + 1 test → 1 impl → repeat) que todo subagente executa por task. Substitui v3.0.0-beta5 (Akita 15-item drop em v3.9.0).
 
-> **Decisão de origem:** F1 do plan `reescrever-a-skill-zazzy-wirth.md` (linha 57) + §4.4 dev↔qa loop + §4.11 canal 3 (plan.md schema).
+> **Decisão de origem:** F1 do plan `reescrever-a-skill-zazzy-wirth.md` (linha 57) + §4.4 dev↔qa loop + §4.11 canal 3 (plan.md schema). v3.9.0: drop Akita inline; QA delegado a forensic+ extended (L2) + critic ortogonal (L3) per `references/critic-protocol.md`.
 
 ---
 
@@ -32,7 +32,7 @@ Toda task no `plan.md` (fase 02 design) **deve** declarar os 4 blocos abaixo, na
 
 ### VALIDAÇÃO
 <Critérios de aceite mensuráveis + tests obrigatórios.
- Lista clara, cada item verificável.
+ Cada bullet deve mapear ≥1 test name (forensic+ Check 5 valida).
  3-7 bullets.>
 ```
 
@@ -65,10 +65,9 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 - tests/path/file.test.ts
 
 ### Estimated lines
-~250    <!-- optional. If present, forensic-plus.py Check 3 (scope creep)
-            triggers when actual diff insertions > 3 × estimate. Plan author
-            opts in for tasks where bounded scope matters. Absent → check skipped.
-            See references/forensic-plus-protocol.md § Check 3. -->
+~250    <!-- optional. forensic-plus.py Check 3 (scope creep) triggers when
+            actual diff insertions > 3 × estimate. Plan author opts in for
+            tasks where bounded scope matters. Absent → check skipped. -->
 
 ### ADRs aplicáveis
 - docs/decisions/0001-stack.md
@@ -91,9 +90,9 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 |---|---|---|
 | 4-block | Designer (fase 02) | Subagente (fase 04) |
 | Depends on | Designer (fase 02) | Wave-planner (DAG aresta explícita) |
-| Files touched | Designer; refinado wave-planner | Lead (boundary da branch); Wave-planner (valida ≥1 arquivo de teste por task com código funcional) |
+| Files touched | Designer; refinado wave-planner | Lead (boundary da branch); Wave-planner (valida ≥1 arquivo de teste) |
 | Estimated lines (opcional) | Designer (fase 02) | forensic-plus.py (Check 3 scope creep) |
-| ADRs aplicáveis | Designer | Subagente (read order) |
+| ADRs aplicáveis | Designer | Subagente (read order); forensic+ Check 7 (import drift) |
 | Lições críticas | Wave-planner (Q10 match) | Subagente (audit pré-RED) |
 | Conventions extras | Designer (raro) | Subagente |
 | Tech debt paydown | Designer | Subagente (declara em commit) |
@@ -103,31 +102,65 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 
 ---
 
-## 3. Ciclo TDD 7+1 passos — ordem canônica
+## 3. Vertical TDD cycle — tracer-first + 1 test → 1 impl → repeat
 
-Todo subagente executa **exatamente** esta sequência por task. CI gate roda 2x (passos 3 e 5) — princípio "verde antes do refactor, verde depois do refactor". Passo 6.5 (commit-verify gate) adicionado pós-incidente sessao-recorrencia (wave 6 workspace 001) onde subagent terminou sem `git commit`, deixando branch HEAD = main HEAD e working tree dirty.
+Todo subagente executa **estritamente** vertical TDD. Anti-horizontal slicing. mattpocock-aligned.
 
-| Passo | Nome | Ação | Saída |
-|---|---|---|---|
-| 1 | RED | Escrever test que falha (cobre VALIDAÇÃO da task) | Test rodando vermelho |
-| 2 | GREEN | Implementar mínimo pra test passar | Test verde |
-| 3 | CI gate local (1ª) | `lint` + `type-check` + `tests` | Tudo verde |
-| 4 | REFACTOR | Melhorar código mantendo tests verde | Código limpo, tests inalterados |
-| 5 | CI gate local (2ª) | `lint` + `type-check` + `tests` | Garante que refactor não quebrou |
-| 6 | Auto-QA Akita | Checklist 15-item (vide §5) | Todos ✅ ou volta passo 4/3 |
-| 6.5 | Verify git commits | `git log --oneline main..HEAD` deve mostrar ≥1 commit; se zero, voltar passos GREEN/REFACTOR e commitar progresso TDD por etapa | git history persistido |
-| 7 | COMPLETE | Escreve `task-<slug>.md` em `stages/04/output/wave-N/`, sinaliza COMPLETE | Lead detecta e procede |
+### 3.1 Princípio vertical
 
-### 3.1 Cap de iterações
+Vertical = **completar uma feature unit end-to-end** (test + impl + verify) antes de iniciar a próxima. Horizontal = "escrevo todos os tests primeiro, depois implemento" (proibido).
 
-- **Cap:** 3 voltas sem convergir (auto-QA falha 3× seguidas).
-- Ao atingir cap:
-  1. Subagente seta no próprio task report `status: BLOCKED_ERROR`.
-  2. Sinaliza ao lead via saída do Agent tool: `stages/04/output/wave-N/<task-slug>-blocked.md` (descreve item Akita que falha repetidamente + tentativas).
-  3. Pausa e espera lead intervir (lead pode escalar humano).
-- Cada `❌` no Akita conta como 1 ciclo (não cada item; a volta inteira).
+### 3.2 Tracer-first
 
-### 3.2 Stop points dentro do ciclo
+Antes do primeiro test unit/integration, subagente escreve **1 tracer test** — E2E golden path da task inteira, mínimo viável, espera-se que falhe inicialmente. Tracer guia a forma da impl, não cobre edge cases.
+
+| Profile | Tracer típico |
+|---------|---------------|
+| backend | HTTP request → DB assertion (ex: POST /users → user row exists) |
+| frontend | render component → user interaction → DOM assertion |
+| fullstack | browser action → API call → DB → response render |
+| ml | input fixture → model call → output shape assertion |
+| agent_ia | prompt fixture → tool sequence → final output match |
+
+Tracer é commitado vermelho como primeiro commit da task. Não conta como cobertura — é scaffold.
+
+### 3.3 Loop por feature unit
+
+Após tracer, subagente itera:
+
+```
+LOOP {
+  RED      → write 1 test (1 acceptance bullet OR 1 edge case)
+  GREEN    → minimal impl pra test passar (não adicione lógica não-testada)
+  CI scope → run tests + types + lint só nos files touched (fast feedback)
+  REFACTOR → opcional; só se redução de complexity óbvia
+}
+```
+
+**Cada iteração do loop = 1 commit.** Commits incrementais formam a história TDD verificable em `git log`. Forensic+ Check 1 valida ≥2 asserções no test file final.
+
+### 3.4 Anti-horizontal slicing
+
+❌ **Proibido:**
+- Escrever todos os tests da task de uma vez (sem impl entre)
+- Implementar todo o impl de uma vez (sem tests entre)
+- Pular `RED` ("já sei que vai funcionar")
+- Pular `GREEN minimal` (escrever lógica especulativa "pra próximo test")
+
+Sinais que disparam stop:
+- Diff > 100 LOC sem novo test correspondente
+- Test file com 5+ test names mas impl files vazios
+- Impl file com classes completas e tests file vazio
+
+Forensic+ Check 5 (acceptance ↔ test mapping) detecta quando tests não correspondem aos critérios de aceite — gating estrutural anti-horizontal.
+
+### 3.5 Cap de iterações
+
+- **Cap:** 3 attempts da task inteira (cycle inteiro do loop esgotado).
+- Falha = forensic+ HARD ou critic REJECT 3 rounds.
+- Ao atingir cap → escala lead-resolution tier (3 buckets B1/B3/B4 — ver `references/lead-resolution-protocol.md`).
+
+### 3.6 Stop points dentro do ciclo
 
 Se durante qualquer passo o subagente detecta um stop point (ex: novo paid service não declarado em ADR), ele:
 
@@ -135,6 +168,16 @@ Se durante qualquer passo o subagente detecta um stop point (ex: novo paid servi
 - Dispara menu A/B/C conforme `stop-points-canonical.md`.
 - Sinaliza lead via saída do Agent tool.
 - Espera resolução; ciclo retoma do passo onde parou.
+
+### 3.7 Commit verify gate
+
+Antes de declarar COMPLETE, subagente confirma:
+
+```
+git log --oneline <BASE>..HEAD  →  ≥1 commit visible
+```
+
+Zero commits = task report incomplete; volta ao cycle. forensic+ check estrutural detecta branch HEAD == BASE HEAD.
 
 ---
 
@@ -144,56 +187,50 @@ Subagente na fase 04 tem na pasta `_references/superpowers-summary/` (copiada pe
 
 | Sumário | Cobre passos |
 |---|---|
-| `test-driven-development-200tok.md` | 1, 2, 4 (RED → GREEN → REFACTOR) |
-| `verification-before-completion-200tok.md` | 3, 5 (CI gates) |
-| `systematic-debugging-200tok.md` | suporte quando passo 2 ou 5 trava |
+| `test-driven-development-200tok.md` | RED → GREEN → REFACTOR (vertical) |
+| `verification-before-completion-200tok.md` | CI gate scope |
+| `systematic-debugging-200tok.md` | suporte quando GREEN trava |
 
 ---
 
-## 5. Auto-QA Akita — checklist 15-item
+## 5. QA delegation — quem garante qualidade
 
-Aplicado **no passo 6**. Subagente marca cada item ✅/❌. **Qualquer `❌` força volta** ao passo 4 (refactor) ou passo 3 (impl), e conta como 1 volta no cap de 3.
+A partir de v3.9.0, QA da task é responsabilidade de:
 
-Fonte autoritativa dos critérios de estilo (itens 4-10): `_config/xp-conventions.md` no workspace (L3). Fonte autoritativa de segurança (itens 11-12): `_config/stop-points.md` + ADRs. Fonte autoritativa de TDD (itens 1-3): ciclo canônico §3 deste documento.
+| Layer | Responsabilidade | Token cost |
+|-------|------------------|------------|
+| L1 writer (subagente) | Escreve tests vertical, código passa CI scope | (writer model) |
+| L2 forensic+ extended | 7 deterministic checks git-only | 0 |
+| L3 critic ortogonal | LLM independente (tier ceiling) avalia diff | ~3-8k input |
+| L4 wave gate | suite global green + cross-task coherence (production) | (CI infra) |
+| Lead-resolution tier | Último recurso quando cap esgota OR catastrophic | (lead model) |
 
-| # | Item | Foco |
-|---|---|---|
-| 1 | Tests cobrem golden path? **Evidência obrigatória:** nome do arquivo de teste + nome do test case que exercita o caminho principal do bloco VALIDAÇÃO. Backend: ≥1 unit + ≥1 integration. Frontend: ≥1 component test com render + interação. Agent IA: ≥1 golden output comparison. ML: ≥1 pipeline smoke test. | Cobertura |
-| 2 | Tests cobrem edge cases relevantes (empty input, boundary, error)? **Evidência obrigatória:** listar cada edge case do bloco VALIDAÇÃO e confirmar test case correspondente. Coverage report mostra ≥ threshold declarado em `plan.md §Test Strategy`. Para agent_ia: seed fixo para reprodutibilidade. | Cobertura |
-| 3 | Tests não-flaky? **Evidência obrigatória:** rodar suite 3× consecutivos sem alteração de estado e registrar resultado (`3/3 verde`). Para agent_ia e ml_project: registrar seed/fixture usado. Sem `sleep` arbitrário, sem ordem implícita entre tests. | Confiabilidade |
-| 4 | Clean code re-ranqueado (Akita): nomes claros, fluxo linear, abstrações justificadas? | Estilo |
-| 5 | Tipos explícitos em fronteiras (params, returns, exports)? | Estilo |
-| 6 | Functions 4-20 linhas (excede só com justificativa)? | Estilo |
-| 7 | Comentários quando há (explicam WHY não WHAT)? | Estilo |
-| 8 | Sem código morto (funcs/imports/vars não usadas)? | Higiene |
-| 9 | Sem comentários commented-out (código fantasma)? | Higiene |
-| 10 | Imports organizados + nenhum import circular? | Higiene |
-| 11 | Error handling explícito em boundaries (input do user, API externa)? | Robustez |
-| 12 | Secrets/PII protegidos (não em logs, não em tests)? | Segurança |
-| 13 | ADR compliance (segue stack/padrão declarado em `docs/decisions`)? | Aderência |
-| 14 | Tech debt declarado (qualquer atalho/TODO commitado em `docs/tech_debt.md`)? | Aderência |
-| 15 | Commits feitos + message segue convenção. **Evidência obrigatória:** `git log --oneline main..HEAD` mostra ≥1 commit antes de declarar COMPLETE. Branch HEAD ≠ main HEAD. | Aderência |
+Subagente NÃO escreve checklist QA inline no task report. Self-grading bias documentado (ICLR 2024 Huang, arxiv 2510.11822, arxiv 2509.16533) — delegado a layers ortogonais.
 
-### 5.1 Como subagente registra checklist no task report
-
-No `task-<slug>.md` (passo 7 COMPLETE), seção dedicada:
+Task report (passo COMPLETE) é minimalista:
 
 ```markdown
-## Auto-QA Akita
-- Ciclos: <N>
-- Resultado final: ✅ all green | ❌ blocked at item <X>
-- [✅] 1. Tests cobrem golden path? — evidência: `tests/auth/middleware.test.ts::test_rejects_invalid_token`
-- [✅] 2. Tests cobrem edge cases? — evidência: `test_empty_authorization_header`, `test_malformed_jwt`
-- [✅] 3. Tests não-flaky? — evidência: 50× `pytest -p no:randomly` sem flake
-- [✅] 4. Clean code Akita? — evidência: 3 funcs ≤15 linhas, fluxo linear
-... (15 linhas)
+# Task <slug> — COMPLETE
+
+## Resumo
+<1-3 sentences sobre escopo entregue>
+
+## Files modificados
+- <list>
+
+## Tests
+- <test file>: <count> tests
+- Coverage: <%>
+
+## ADRs aplicados
+- <list>
 ```
 
 ---
 
 ## 6. Exemplo concreto — task `auth-middleware`
 
-Task fictícia que ilustra o schema completo (4-block + metadados + auto-QA registrado).
+Task fictícia que ilustra o schema completo (4-block + metadados; sem checklist Akita).
 
 ### 6.1 Entrada do `plan.md` (fase 02 design)
 
@@ -218,13 +255,14 @@ Task fictícia que ilustra o schema completo (4-block + metadados + auto-QA regi
 - Implementar refresh-token (escopo de outra task).
 - Logar valor do token nem email (PII; lição 0033).
 - Cachear resultados em memória (out-of-scope; ADR pendente).
+- Mock interno de jose nem JWKS client (use boundary mock; ver mocking-guidelines.md).
 
 ### VALIDAÇÃO
-- Test: header ausente → 401 + body `{error: "missing_auth"}`.
-- Test: token malformado → 401 + log warn sem PII.
-- Test: token expirado → 401 + body `{error: "expired"}`.
-- Test: token válido → `next()` chamado + `req.user` populado.
-- Test: pipeline order (`cors` antes, `rateLimit` depois) — integration.
+- Test `test_missing_header_returns_401`: header ausente → 401 + body `{error: "missing_auth"}`.
+- Test `test_malformed_jwt_returns_401`: token malformado → 401 + log warn sem PII.
+- Test `test_expired_jwt_returns_401`: token expirado → 401 + body `{error: "expired"}`.
+- Test `test_valid_token_attaches_user`: token válido → `next()` chamado + `req.user` populado.
+- Test `test_pipeline_order_integration`: pipeline order (`cors` antes, `rateLimit` depois) — integration.
 - Cobertura ≥90% em `src/auth/middleware.ts`.
 
 ### Depends on
@@ -236,6 +274,9 @@ Task fictícia que ilustra o schema completo (4-block + metadados + auto-QA regi
 - src/auth/errors.ts
 - tests/auth/middleware.test.ts
 - tests/auth/middleware.integration.test.ts
+
+### Estimated lines
+~120
 
 ### ADRs aplicáveis
 - docs/decisions/0001-stack.md
@@ -256,35 +297,33 @@ Task fictícia que ilustra o schema completo (4-block + metadados + auto-QA regi
 - true (path /auth, tier=production)
 ```
 
-### 6.2 Saída esperada do subagente (`task-auth-middleware.md`, passo 7)
+### 6.2 Saída esperada do subagente (`task-auth-middleware.md`, COMPLETE)
 
 ```markdown
 # Task auth-middleware — COMPLETE
 
 ## Resumo
 Middleware JWT implementado em `src/auth/middleware.ts` (47 LOC) +
-classes de erro em `src/auth/errors.ts`. 6 unit tests + 2 integration tests.
-Cobertura 94%.
+classes de erro em `src/auth/errors.ts`. Vertical TDD: tracer + 5 tests +
+2 integration. Cobertura 94%.
 
-## Auto-QA Akita
-- Ciclos: 2 (1ª volta falhou item 12; corrigido removendo `console.log(token)`)
-- Resultado final: ✅ all green
-- [✅] 1. Golden path? — `test_valid_token_attaches_user`
-- [✅] 2. Edge cases? — `test_missing_header`, `test_malformed_jwt`, `test_expired`
-- [✅] 3. Não-flaky? — 50 runs consecutivos verde
-- [✅] 4. Akita re-rank? — funcs 8/12/15 LOC, nomes claros
-- [✅] 5. Tipos? — `RequestHandler<...>` explícito
-- [✅] 6. 4-20 linhas? — sim
-- [✅] 7. Comentários WHY? — comentário em `verifyJwt` justifica `clockTolerance: 5`
-- [✅] 8. Código morto? — nenhum
-- [✅] 9. Comentários fantasma? — nenhum
-- [✅] 10. Imports? — organizados, sem circulares
-- [✅] 11. Error handling? — `AuthError`/`AuthExpiredError` em boundaries
-- [✅] 12. Secrets/PII? — log usa `req.ip` + erro tipo, nunca token nem email
-- [✅] 13. ADR compliance? — usa `jose` (0001), JWKS strategy (0004)
-- [✅] 14. Tech debt? — nenhum atalho declarado
-- [✅] 15. Commit msg? — `feat(auth): add JWT middleware (closes wave-1/task-auth-middleware)`
+## Files modificados
+- src/auth/middleware.ts (+47 LOC)
+- src/auth/errors.ts (+22 LOC)
+- tests/auth/middleware.test.ts (+158 LOC, 5 tests)
+- tests/auth/middleware.integration.test.ts (+62 LOC, 2 tests)
+
+## Tests
+- tests/auth/middleware.test.ts: 5 tests
+- tests/auth/middleware.integration.test.ts: 2 tests
+- Coverage: 94%
+
+## ADRs aplicados
+- 0001-stack (jose lib)
+- 0004-auth-strategy (JWKS verification)
 ```
+
+QA é validado pelos layers L2 (forensic+) + L3 (critic) — ver `references/critic-protocol.md` e `references/forensic-plus-protocol.md`.
 
 ---
 
@@ -296,16 +335,21 @@ Cobertura 94%.
 | `references/wave-planner-algorithm.md` | DAG, Q10 lesson match, Q6 peer-review trigger |
 | `references/subagent-protocol.md` | Lead spawn, saída do Agent tool, plan approval |
 | `references/stop-points-canonical.md` | 12 stop points + thresholds por tier |
-| `references/recovery-wizard.md` | Recuperação se ciclo trava no passo 7 sem COMPLETE |
-| `_references/superpowers-summary/test-driven-development-200tok.md` | Sumário TDD |
+| `references/forensic-plus-protocol.md` | L2 deterministic checks (7 in v3.9.0) |
+| `references/critic-protocol.md` | L3 LLM critic ortogonal |
+| `references/lead-resolution-protocol.md` | Buckets B1/B3/B4 quando cap esgota |
+| `references/mocking-guidelines.md` | Mock só boundaries; nunca internals |
+| `references/recovery-wizard.md` | Recuperação se ciclo trava sem COMPLETE |
+| `_references/superpowers-summary/test-driven-development-200tok.md` | Sumário TDD vertical |
 | `_references/superpowers-summary/verification-before-completion-200tok.md` | Sumário CI gate |
 
 ---
 
-## v3.3.0 — AGENT-BRIEF compatibility
+## 8. AGENT-BRIEF compatibility
 
 A partir de v3.3.0, todo 4-block deve ser parseável pelo
-`scripts/agent-brief-render.py` em fase 04. Mapping:
+`scripts/agent-brief-render.py` em fase 04. v3.9.0 adiciona model fields
+no header. Mapping:
 
 | 4-block | AGENT-BRIEF section |
 |---|---|
@@ -317,5 +361,12 @@ A partir de v3.3.0, todo 4-block deve ser parseável pelo
 Adicionalmente, o bloco da task no plan.md DEVE ter:
 - `**Type:** AFK` ou `**Type:** HITL` (ver `task-types-hitl-afk.md`)
 - `**Files touched:** path1, path2` (sem line numbers)
+
+v3.9.0 brief header:
+```yaml
+model_recommended_writer: <claude-haiku-4-5|claude-sonnet-4-6|claude-opus-4-7>
+model_recommended_critic: <claude-haiku-4-5|claude-sonnet-4-6|claude-opus-4-7>
+complexity_score: <int>
+```
 
 Doc canônico do AGENT-BRIEF: `references/agent-brief-template.md`.
