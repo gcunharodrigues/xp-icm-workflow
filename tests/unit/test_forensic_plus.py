@@ -20,6 +20,16 @@ def _run(args, cwd=None):
     return result.returncode, result.stdout, result.stderr
 
 
+def test_max_forensic_retries_exposed_as_module_constant():
+    """Constant must be importable + value 2 (per spec §6.2)."""
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("forensic_plus", str(SCRIPT))
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    assert hasattr(mod, "MAX_FORENSIC_RETRIES")
+    assert mod.MAX_FORENSIC_RETRIES == 2
+
+
 def test_cli_requires_all_args():
     """Missing required args → exit 2 (argparse default for missing args)."""
     rc, _, stderr = _run([])

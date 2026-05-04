@@ -25,6 +25,11 @@ from typing import Any
 
 VALID_TIERS = ("experimental", "tool", "development", "production")
 
+# Per spec §6.2 — cap on Forensic+-driven re-spawns before BLOCKED_ERROR.
+# Referenced by L2 stage 04 template + canonical forensic-plus-protocol.md.
+# Drift-checked in tests/unit/test_no_drift.py.
+MAX_FORENSIC_RETRIES = 2
+
 
 # ============================================================================
 # Constants — Check 1 language-aware regex
