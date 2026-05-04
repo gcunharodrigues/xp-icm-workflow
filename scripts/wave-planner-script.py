@@ -482,6 +482,11 @@ def render_wave_plan(result: dict, *, plan_source: str, workspace: str) -> str:
             lines.append(
                 f"## Wave {w_idx} (sub-wave {w_idx}.{label}) - {count} tasks paralelas{cap_note}"
             )
+            if count == 1:
+                lines.append("")
+                lines.append(
+                    "> **skip_cross_task_audit: true** — wave 1-task pula audit cross-task no step 8b (Forensic+ ainda roda em 8a). Doc: references/wave-planner-algorithm.md §10."
+                )
             lines.append("")
             lines.append("| Task slug | Files touched | Depends on | Branch |")
             lines.append("|---|---|---|---|")

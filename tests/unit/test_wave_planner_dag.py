@@ -707,3 +707,42 @@ def test_parse_plan_extracts_type_field(tmp_path):
     by_slug = {t.slug: t for t in tasks}
     assert by_slug["task-a"].type == "HITL"
     assert by_slug["task-b"].type == "AFK"  # default
+
+
+def test_render_wave_plan_emits_skip_cross_task_audit_for_one_task_wave(tmp_path):
+    """1-task wave's section must carry `skip_cross_task_audit: true` annotation."""
+    plan_md = (
+        "## Task add-only:\n"
+        "### Files touched\n"
+        "- src/x.py\n"
+        "- tests/test_x.py\n"
+    )
+    plan_path = tmp_path / "plan.md"
+    plan_path.write_text(plan_md, encoding="utf-8")
+    result = plan_waves(plan_path=plan_path, tier="development", profile="app_web_backend")
+    rendered = render_wave_plan(result, plan_source=str(plan_path), workspace="042-foo")
+
+    assert "skip_cross_task_audit: true" in rendered
+
+    plan_md2 = (
+        "## Task add-a:\n### Files touched\n- src/a.py\n- tests/test_a.py\n\n"
+        "## Task add-b:\n### Files touched\n- src/b.py\n- tests/test_b.py\n"
+    )
+    plan_path2 = tmp_path / "plan2.md"
+    plan_path2.write_text(plan_md2, encoding="utf-8")
+    result2 = plan_waves(plan_path=plan_path2, tier="development", profile="app_web_backend")
+    rendered2 = render_wave_plan(result2, plan_source=str(plan_path2), workspace="042-foo")
+    assert "skip_cross_task_audit" not in rendered2
+
+
+def test_legacy_skip_wave_reviewer_alias_documented():
+    """Forward-defensive: any consumer that emits the legacy `skip_wave_reviewer`
+    string should still be parseable. v3.8.0 only writes the new name; this test
+    pins the alias contract via doc inspection (the new doc must say the alias
+    exists and will be removed in v3.9.0).
+    """
+    doc_path = SKILL_ROOT / "references" / "wave-planner-algorithm.md"
+    doc = doc_path.read_text(encoding="utf-8")
+    assert "skip_cross_task_audit" in doc
+    assert "skip_wave_reviewer" in doc  # legacy alias mentioned
+    assert "v3.9.0" in doc  # deprecation horizon
