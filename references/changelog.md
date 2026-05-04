@@ -4,6 +4,31 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.8.0 — Forensic+ wave reviewer (2026-05-03)
+
+### Mudanças
+
+- **NEW:** `scripts/forensic-plus.py` — auditoria estrutural per task no step 8 wave-reviewer (4 checks git-only).
+- **NEW:** `references/forensic-plus-protocol.md` — doc canônico.
+- **NEW:** schema `task-<slug>.md` frontmatter ganha `forensic_violations`, `forensic_passed`, `forensic_max_severity`, `forensic_respawn_count` (opcionais, backward compat).
+- **NEW:** `wave-summary.md` ganha seção `## Forensic+ summary`.
+- **NEW:** `plan.md` task aceita `### Estimated lines` opcional (Check 3 scope creep).
+- **CHANGE:** step 8 do pipeline 12-passos expandido em 8a/8b/8c/8d (`references/wave-execution-protocol.md` + L2 stage 04 template).
+- **CHANGE:** flag wave-plan.md `skip_wave_reviewer` renomeado pra `skip_cross_task_audit`. Backward-compat alias mantido em v3.8.0; removido em v3.9.0.
+- **CHANGE:** `state-machine-schema.md` documenta novos `error_type: forensic_max_retries|forensic_script_crash` (sem enum change).
+- **DEPS:** sem novas dependências runtime. PyYAML já presente em `requirements.txt`.
+- **TESTS:** +20 unit (`test_forensic_plus.py`), +6 snapshot fixtures, +4 drift detectors, +1 bats e2e.
+
+### Migração
+
+`migrate_3_7_2_to_3_8_0` é bump-only — workspaces existentes são compatíveis sem mutação destrutiva. Campos novos no task-md frontmatter têm parser default tolerante a ausência.
+
+### Rationale
+
+Self-grading do subagente (Auto-QA Akita 15-itens) sofre de bias documentado (Huang et al. ICLR 2024, Self-Correction Benchmark 2025). Forensic+ adiciona auditoria externa estrutural sem importar prompt-only re-grade caro. Aproveita strength único do ICM (forensic git-log audit) ampliando cobertura de 1 vetor (qa_loops_used vs commits) pra 4 vetores de fraude estrutural.
+
+---
+
 ## v3.7.2 — Saída A/C último ativo: auto-/init + cleanup ICM opt-in (2026-05-01)
 
 ### Why v3.7.2
