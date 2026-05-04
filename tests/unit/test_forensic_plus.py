@@ -473,3 +473,127 @@ def test_check3_skip_when_estimate_absent(tmp_path):
     data = json.loads(stdout)
     c3 = [v for v in data["violations"] if v["check"] == "scope_creep"]
     assert len(c3) == 0
+
+
+# ============================================================================
+# Check 4 — TODO/FIXME/HACK added (Task 5)
+# ============================================================================
+
+
+def test_check4_todo_added(tmp_path):
+    """+ line containing TODO → violation (SOFT in dev, HARD in prod)."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 1\n"},
+        branch_files={
+            "src/foo.py": "x = 2\n# TODO: refactor later\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "development",
+         "--output", "json"],
+        cwd=repo,
+    )
+    data = json.loads(stdout)
+    c4 = [v for v in data["violations"] if v["check"] == "todo_added"]
+    assert len(c4) == 1
+    assert c4[0]["severity"] == "SOFT"
+    assert "TODO" in c4[0]["evidence"]
+
+
+def test_check4_todo_removed_no_violation(tmp_path):
+    """- line containing TODO (removed) → no violation."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 1\n# TODO: old\n"},
+        branch_files={
+            "src/foo.py": "x = 2\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    data = json.loads(stdout)
+    c4 = [v for v in data["violations"] if v["check"] == "todo_added"]
+    assert len(c4) == 0
+
+
+def test_check4_production_hard(tmp_path):
+    """tier=production with +TODO → HARD."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 1\n"},
+        branch_files={
+            "src/foo.py": "x = 2\n# FIXME: hack\n",
+            "tests/test_foo.py": "def test_a():\n    assert 1 == 1\n    assert 2 == 2\n",
+        },
+        branch_name="wave-001-1/add-foo",
+    )
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    data = json.loads(stdout)
+    c4 = [v for v in data["violations"] if v["check"] == "todo_added"]
+    assert c4[0]["severity"] == "HARD"
+
+
+def test_all_four_checks_compose_in_main(tmp_path):
+    """Integration: a single task triggers all 4 checks → main() accumulates all violations.
+
+    Confirms `main()` does not short-circuit and that severity reduction picks
+    HARD when any HARD is present.
+    """
+    big_diff = "\n".join(f"line_{i} = {i}" for i in range(200))
+    branch_files = {
+        # +TODO triggers Check 4
+        "src/foo.py": big_diff + "\n# TODO: refactor\n",
+        # single assert triggers Check 1 (count < 2)
+        "tests/test_foo.py": "def test_a():\n    assert True\n",
+        # undeclared file triggers Check 2
+        "src/utils/extra.py": "y = 1\n",
+    }
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "x = 0\n"},
+        branch_files=branch_files,
+        branch_name="wave-001-1/add-foo",
+    )
+    # estimated 50 → 200+ insertions triggers Check 3
+    plan = _make_plan(
+        repo, "add-foo", ["src/foo.py", "tests/test_foo.py"], estimated_lines=50,
+    )
+
+    rc, stdout, _ = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "production",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 0
+    data = json.loads(stdout)
+    checks_seen = {v["check"] for v in data["violations"]}
+    assert checks_seen == {
+        "test_assertions_too_few",
+        "files_outside_declared",
+        "scope_creep",
+        "todo_added",
+    }
+    assert data["forensic_passed"] is False
+    assert data["max_severity"] == "HARD"

@@ -333,6 +333,45 @@ def check_scope_creep(
 
 
 # ============================================================================
+# Check 4 — TODO/FIXME/HACK added
+# ============================================================================
+
+TODO_FILE_GLOBS = (
+    "*.py", "*.ts", "*.tsx", "*.js", "*.jsx",
+    "*.go", "*.rb", "*.rs", "*.java", "*.kt", "*.cs",
+)
+TODO_PATTERN = re.compile(r"\b(TODO|FIXME|HACK|XXX)\b")
+
+
+def check_todo_added(
+    cwd: Path,
+    branch: str,
+    base_branch: str,
+    tier: str,
+) -> list[dict]:
+    """Count + lines containing TODO/FIXME/HACK/XXX in code files."""
+    raw = _git_run(
+        cwd, "diff", f"{base_branch}...{branch}", "--", *TODO_FILE_GLOBS,
+    )
+    added: list[str] = []
+    for ln in raw.splitlines():
+        if not ln.startswith("+") or ln.startswith("+++"):
+            continue
+        if TODO_PATTERN.search(ln):
+            added.append(ln[1:].strip())
+    if not added:
+        return []
+    sev = _severity_for("todo_added", tier)
+    sample = "; ".join(added[:3])
+    suffix = f" (+{len(added) - 3} more)" if len(added) > 3 else ""
+    return [{
+        "check": "todo_added",
+        "severity": sev,
+        "evidence": f"{len(added)} TODO/FIXME/HACK added: {sample}{suffix}",
+    }]
+
+
+# ============================================================================
 # CLI
 # ============================================================================
 
@@ -400,6 +439,12 @@ def main(argv: list[str] | None = None) -> int:
         violations.extend(check_scope_creep(
             cwd, branch, args.base_branch, task_meta["estimated_lines"], args.tier,
         ))
+    except GitError as e:
+        sys.stderr.write(f"forensic-plus: {e}\n")
+        return 1
+
+    try:
+        violations.extend(check_todo_added(cwd, branch, args.base_branch, args.tier))
     except GitError as e:
         sys.stderr.write(f"forensic-plus: {e}\n")
         return 1
