@@ -4,7 +4,7 @@ description: Bootstrap one-shot ICM (Interpretable Context Methodology) que cria
 type: rigid
 ---
 
-# xp-icm-workflow v3.8.0
+# xp-icm-workflow v3.9.0
 
 > **Skill é parteira, não orquestradora.** Bootstrap one-shot cria a estrutura. Filesystem governa o ciclo. **1 stage = 1 sessão**: cada estágio termina com handoff dual (verbal + arquivo `_kickoff.md`) e a sessão sai. Próxima sessão começa fresh.
 
@@ -288,7 +288,10 @@ Permissions allowlist sugerida em `system-requirements.md`.
 - `references/4-block-contract-template.md` — O QUE / COMO / NÃO QUERO / VALIDAÇÃO
 - `references/feedback-intake-fase08.md` — 3 saídas A/B/C
 - `references/profile-matrix.md` — calibração por profile/tier (estágios pulados, etc.) — cópia em `templates/_config/profile-matrix.md`
-- `references/forensic-plus-protocol.md` — Forensic+ wave reviewer audit (4 checks anti-fraude, tier×severity, JSON schema)
+- `references/forensic-plus-protocol.md` — Forensic+ wave reviewer audit (7 checks v3.9.0: assertions count, files declared, scope creep, TODO, acceptance↔test, NÃO QUERO, ADR drift)
+- `references/critic-protocol.md` — L3 LLM critic ortogonal (v3.9.0): fresh context, anti-sycophancy, triplet output, model = TIER_CEILING
+- `references/lead-resolution-protocol.md` — buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK (v3.9.0) quando per-task loop esgota cap OR convergence trip OR catastrophic
+- `references/mocking-guidelines.md` — boundaries only (HTTP/DB/time/randomness/env); nunca internals (v3.9.0, mattpocock alignment)
 
 **Referências de testes:**
 

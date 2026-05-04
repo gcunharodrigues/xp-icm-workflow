@@ -35,7 +35,7 @@ from typing import Sequence
 # Constantes
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.8.0"
+CURRENT_SKILL_VERSION = "3.9.0"
 FLOOR_VERSION = "3.3.0"
 
 # Sequência de versões suportadas. Migration steps são pares consecutivos.
@@ -49,6 +49,7 @@ SUPPORTED_VERSIONS: tuple[str, ...] = (
     "3.7.0",
     "3.7.2",
     "3.8.0",
+    "3.9.0",
 )
 
 
@@ -273,6 +274,24 @@ def migrate_3_7_2_to_3_8_0(workspace_root: Path, project_root: Path) -> None:
     _bump_version_only(workspace_root, "3.8.0")
 
 
+def migrate_3_8_0_to_3_9_0(workspace_root: Path, project_root: Path) -> None:
+    """v3.8.0 → v3.9.0: Layered QA loop (L2 forensic+ extended + L3 critic +
+    lead-resolution tier).
+
+    Bump-only. Sem schema change destrutivo em L0/L1:
+    - Status enum ganha LEAD_RESOLUTION_IN_PROGRESS (additive); workspaces
+      existentes mid-stage 04 NÃO ativam novo flow até terminarem stage atual.
+    - Akita 15-itens drop em 4-block-contract-template.md afeta apenas tasks
+      novas; task reports legacy (com bloco Auto-QA Akita) parseiam OK
+      (campo é tolerante a ausência OR presença).
+    - Novos checks forensic+ 5/6/7 só ativam em wave novas; não re-auditam
+      tasks pre-bump.
+    - pick-model fields (model_recommended_writer/critic) são opcionais em
+      AGENT-BRIEF — workspaces existentes continuam sem.
+    """
+    _bump_version_only(workspace_root, "3.9.0")
+
+
 STEP_FUNCTIONS = {
     "3.3.0->3.4.0": migrate_3_3_to_3_4,
     "3.4.0->3.5.0": migrate_3_4_to_3_5,
@@ -280,6 +299,7 @@ STEP_FUNCTIONS = {
     "3.6.0->3.7.0": migrate_3_6_to_3_7,
     "3.7.0->3.7.2": migrate_3_7_0_to_3_7_2,
     "3.7.2->3.8.0": migrate_3_7_2_to_3_8_0,
+    "3.8.0->3.9.0": migrate_3_8_0_to_3_9_0,
 }
 
 

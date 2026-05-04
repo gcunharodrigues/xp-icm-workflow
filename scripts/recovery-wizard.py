@@ -67,6 +67,8 @@ CODE_CDP_DISCONNECTED = "CDP_DISCONNECTED"
 CODE_RUNTIME_REGISTRY_STALE = "RUNTIME_REGISTRY_STALE"
 # v3.7.2: .icm-main worktree presente sem workspaces ativos (cleanup pendente)
 CODE_STALE_ICM_MAIN_AFTER_CLOSE = "STALE_ICM_MAIN_AFTER_CLOSE"
+# v3.9.0: workspace em LEAD_RESOLUTION_IN_PROGRESS sem progresso > 24h
+CODE_LEAD_RESOLUTION_STALE = "LEAD_RESOLUTION_STALE"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -87,6 +89,7 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_CDP_DISCONNECTED,
     CODE_RUNTIME_REGISTRY_STALE,
     CODE_STALE_ICM_MAIN_AFTER_CLOSE,
+    CODE_LEAD_RESOLUTION_STALE,
 )
 
 # Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).

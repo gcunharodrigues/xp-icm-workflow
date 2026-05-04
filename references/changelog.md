@@ -4,6 +4,37 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.9.0 — Layered dev↔QA loop + lead-resolution tier (2026-05-04)
+
+### Mudanças
+
+- **NEW:** `references/critic-protocol.md` — L3 LLM critic ortogonal canonical. Fresh context, anti-sycophancy hardcoded, triplet output (claim, evidence, counterexample, severity), decision APPROVE/REJECT/ABSTAIN. Critic model = `TIER_CEILING[tier]` sempre. Cobre gap semântico do forensic+ (lógica errada, ADR drift disfarçado, edge cases ausentes).
+- **NEW:** `references/lead-resolution-protocol.md` — buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK. Trigger conditions T1 (cap 3 retries) / T2 (Jaccard ≥ 0.7 convergence trip) / T3 (catastrophic detector universal). Cap 1 attempt per bucket. Stage 05 audit trail.
+- **NEW:** `references/mocking-guidelines.md` — mattpocock alignment. Mock só boundaries (HTTP/DB/time/randomness/env); nunca internals. Per-profile guidance + tier-aware enforcement via forensic+ Check 6.
+- **NEW:** `scripts/lead-diagnose.py` — Jaccard cluster + catastrophic detector (tests broken outside scope, build globally broken, scope creep > 5×) + bucket recommendation + surgical brief render. Output diagnose.md schema.
+- **NEW:** `scripts/pick-model.py` — heurística determinística. compute_score (estimated_lines, hot_paths, security_sensitive, public_api_change, algorithm_heavy, doc_only/config_only/css_only, tier) + tier ceiling cap. Writer/critic split.
+- **NEW:** `templates/critic-prompt.md` — renderable prompt template para Agent tool (anti-sycophancy + triplet schema).
+- **EXTENDED:** `scripts/forensic-plus.py` — +Checks 5/6/7 (acceptance↔test mapping, NÃO QUERO violations, ADR import drift). JSON schema bump backward-compat (campos novos opcionais).
+- **EXTENDED:** `scripts/agent-brief-render.py` — `--tier` flag opcional integra `pick-model.py`; brief header ganha `model_recommended_writer/critic` + `complexity_score`.
+- **EXTENDED:** `scripts/migrate-workspace.py` — entry `migrate_3_8_0_to_3_9_0` (bump-only, backward-compat). SUPPORTED_VERSIONS += "3.9.0".
+- **EXTENDED:** `scripts/recovery-wizard.py` — tipo novo `LEAD_RESOLUTION_STALE` (workspace em LEAD_RESOLUTION_IN_PROGRESS sem progresso > 24h).
+- **EXTENDED:** `scripts/validate_state.py:VALID_STATUSES` += `LEAD_RESOLUTION_IN_PROGRESS` (additive, schema mantido).
+- **REWRITE:** `references/4-block-contract-template.md` — § 3 vertical TDD + tracer-first + anti-horizontal slicing seção dedicada. § 5 Akita 15-itens DELETED. § 6 exemplo `auth-middleware` atualizado sem Akita output. v3.0.0-beta5 → v3.9.0.
+- **REWRITE:** `references/forensic-plus-protocol.md` — 7 checks (4 originais + 3 novos), tier×severity matriz consolidada. v3.8.0 → v3.9.0.
+- **EXTENDED:** `references/state-machine-schema.md` — status `LEAD_RESOLUTION_IN_PROGRESS` (additive, 7º status canônico). error_types adicionais: `lead_resolution_audit_failed`, `lead_resolution_all_buckets_failed`, `lead_decision_missing`, `critic_unavailable`, `critic_abstain_loop`.
+- **REWRITE:** `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` — flow novo (TDD vertical → L2 forensic+ → L3 critic always → diagnose → retry/lead-bucket). Drop refs Akita. Step 8 expanded em 8a-8e. Step 9 novo (lead-resolution). Inputs +4 docs (critic, lead-resolution, forensic-plus, mocking-guidelines).
+- **EXTENDED:** `templates/workspace/stages/05_verification/CONTEXT.md.tpl` — sub-step 5.5 audit lead resolutions (B1 tighten / B3 critic concerns endereçados / B4 rationale concreto). FAIL → `BLOCKED_ERROR error_type: lead_resolution_audit_failed`.
+- **DROP:** Akita 15-itens inline removed do task report subagente. QA delegado a layers ortogonais (L2 forensic+ extended + L3 critic). Self-grading bias documentado (Huang ICLR 2024, arxiv 2510.11822, arxiv 2509.16533).
+- **BUMP:** SKILL_VERSION 3.8.0 → 3.9.0 (`scripts/bootstrap.py`); 5 canonical files synced (SKILL.md, README.md badge + section, design-system.md, preview-loop-protocol.md, bootstrap.py runtime_refs +3 docs novos).
+
+### Notas
+
+Self-grading drop é mudança de filosofia, não de capacidade. Forensic+ Checks 4/6/7 + critic L3 cobrem dimensões de qualidade que Akita pretendia auditar (clean code, secrets/PII, ADR compliance), com gate ortogonal imune a sycophancy. `akita-derive.py` post-hoc opcional pra telemetria — deferred até stage 08 reportar gap.
+
+Cross-family critic (E2 abandonado) e mutation testing oracle (R2) seguem out-of-scope. Compensação via stage 06 review humano + stage 08 feedback intake.
+
+---
+
 ## v3.8.0 — Forensic+ wave reviewer (2026-05-03)
 
 ### Mudanças
