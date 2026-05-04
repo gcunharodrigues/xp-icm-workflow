@@ -69,6 +69,8 @@ CODE_RUNTIME_REGISTRY_STALE = "RUNTIME_REGISTRY_STALE"
 CODE_STALE_ICM_MAIN_AFTER_CLOSE = "STALE_ICM_MAIN_AFTER_CLOSE"
 # v3.9.0: workspace em LEAD_RESOLUTION_IN_PROGRESS sem progresso > 24h
 CODE_LEAD_RESOLUTION_STALE = "LEAD_RESOLUTION_STALE"
+# v3.10.0: e2e suite > 7 dias sem update + tasks user-facing entregues
+CODE_E2E_SUITE_STALE = "E2E_SUITE_STALE"
 
 # Ordem canonica determinista (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
@@ -90,6 +92,7 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_RUNTIME_REGISTRY_STALE,
     CODE_STALE_ICM_MAIN_AFTER_CLOSE,
     CODE_LEAD_RESOLUTION_STALE,
+    CODE_E2E_SUITE_STALE,
 )
 
 # Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).

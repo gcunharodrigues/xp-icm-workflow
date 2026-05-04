@@ -66,6 +66,34 @@ VALID_PROFILES: frozenset[str] = frozenset({
 
 VALID_TIERS: frozenset[str] = frozenset(TIER_CAP.keys())
 
+
+# v3.10.0 — User-facing paths per profile (defaults).
+# Override via _config/profile-effective.yaml:e2e.user_facing_paths.
+USER_FACING_PATHS_BY_PROFILE: dict[str, tuple[str, ...]] = {
+    "app_web_backend": ("routes/", "controllers/", "handlers/", "endpoints/", "api/", "graphql/"),
+    "app_web_frontend": ("pages/", "views/", "app/", "components/pages/", "src/routes/"),
+    "fullstack": (
+        "routes/", "controllers/", "handlers/", "endpoints/", "api/", "graphql/",
+        "pages/", "views/", "app/", "components/pages/", "src/routes/",
+    ),
+    "cli_tool": ("cmd/", "cli/", "commands/"),
+    "agent_ia": ("prompts/", "agents/", "tools/"),
+    "framework_library": ("api/", "exports/"),
+    "dashboard": ("pages/", "views/", "dashboards/"),
+    "data_analysis": (),  # notebook-based, e2e não-aplicável
+    "ml_project": ("pipelines/", "inference/"),
+    "technical_article": (),  # doc-only
+    "experiment": (),  # POC, e2e opt-in
+}
+
+
+def _task_requires_e2e(files_touched: list[str], profile: str) -> bool:
+    """True if any declared file path matches user_facing_paths of profile."""
+    paths = USER_FACING_PATHS_BY_PROFILE.get(profile, ())
+    if not paths:
+        return False
+    return any(any(p in f for p in paths) for f in files_touched)
+
 SLUG_RE = re.compile(r"^## Task ([a-z0-9][a-z0-9-]*):", re.MULTILINE)
 TASK_HEADER_RE = re.compile(r"^## Task (\S+):", re.MULTILINE)
 KEBAB_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
@@ -488,15 +516,30 @@ def render_wave_plan(result: dict, *, plan_source: str, workspace: str) -> str:
                     "> **skip_cross_task_audit: true** — wave 1-task pula audit cross-task no step 8b (Forensic+ ainda roda em 8a). Doc: references/wave-planner-algorithm.md §10."
                 )
             lines.append("")
-            lines.append("| Task slug | Files touched | Depends on | Branch |")
-            lines.append("|---|---|---|---|")
+            lines.append("| Task slug | Files touched | Depends on | E2E required? | Branch |")
+            lines.append("|---|---|---|---|---|")
             for slug in slugs:
                 t = tasks_by_slug[slug]
                 files_str = ", ".join(t.files_touched) if t.files_touched else "-"
                 deps_str = ", ".join(t.depends_on) if t.depends_on else "-"
                 branch = f"wave-{workspace}-{w_idx}/{slug}"
-                lines.append(f"| {slug} | {files_str} | {deps_str} | {branch} |")
+                e2e_required = _task_requires_e2e(t.files_touched, result["profile"])
+                e2e_cell = "yes (auto)" if e2e_required else "no"
+                lines.append(f"| {slug} | {files_str} | {deps_str} | {e2e_cell} | {branch} |")
             lines.append("")
+            # v3.10.0 — annotation when ≥1 task flagged
+            flagged = [
+                slug for slug in slugs
+                if _task_requires_e2e(tasks_by_slug[slug].files_touched, result["profile"])
+            ]
+            if flagged:
+                lines.append(
+                    f"> **E2E coverage required** ({len(flagged)} task[s]): "
+                    f"{', '.join(flagged)}. Designer deve adicionar "
+                    "`### Requires E2E update\\n- true` em plan.md task. "
+                    "Forensic+ Check 8 audita (HARD em tier dev/prod)."
+                )
+                lines.append("")
 
     lines.append("## Audit")
     lines.append("")

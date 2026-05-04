@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
 """Forensic+ — anti-fraud structural audit per task in stage 04 wave-reviewer.
 
-Reads CLI args + plan.md + git state. Runs 7 checks (4 v3.8.0 + 3 v3.9.0).
-Emits JSON to stdout. Exit 0 always when script completes normally
-(regardless of violations). Exit 1 on script crash (git missing, plan
-malformed, etc.).
+Reads CLI args + plan.md + git state. Runs 8 checks (4 v3.8.0 + 3 v3.9.0
++ 1 v3.10.0). Emits JSON to stdout. Exit 0 always when script completes
+normally (regardless of violations). Exit 1 on script crash (git missing,
+plan malformed, etc.).
 
 v3.9.0 additions: Check 5 (acceptance ↔ test mapping), Check 6
 (NÃO QUERO violations), Check 7 (ADR import drift).
+v3.10.0 additions: Check 8 (user-journey coverage / e2e).
 
 Spec: docs/superpowers/specs/2026-05-03-forensic-plus-wave-reviewer-design.md
-Canonical: references/forensic-plus-protocol.md
+Canonical: references/forensic-plus-protocol.md, references/e2e-coverage-protocol.md
 """
 from __future__ import annotations
 
@@ -125,6 +126,22 @@ def parse_plan_for_task(plan_path: Path, task_slug: str) -> dict:
     validacao = _bullets_under("VALIDAÇÃO")
     adrs_aplicaveis = _bullets_under("ADRs aplicáveis")
 
+    # v3.10.0 — Requires E2E update (auto-emitted by wave-planner)
+    e2e_bullets = _bullets_under("Requires E2E update")
+    requires_e2e_update = bool(e2e_bullets) and any(
+        b.lower().strip() in ("true", "yes", "y") for b in e2e_bullets
+    )
+
+    # v3.10.0 — `**E2E:** skip - <rationale>` override (silent skip Check 8;
+    # rationale audited em Stage 05)
+    e2e_skip_match = re.search(
+        r"\*\*E2E:\*\*\s*skip(?:\s*-\s*(.+))?",
+        section,
+        re.IGNORECASE,
+    )
+    e2e_skip = e2e_skip_match is not None
+    e2e_skip_rationale = e2e_skip_match.group(1).strip() if (e2e_skip_match and e2e_skip_match.group(1)) else None
+
     # Estimated lines: parse "~250" or "250" from block (not bullet)
     est_lines = None
     est_h = re.search(r"^### Estimated lines\s*\n", section, re.MULTILINE)
@@ -145,6 +162,9 @@ def parse_plan_for_task(plan_path: Path, task_slug: str) -> dict:
         "nao_quero": nao_quero,
         "validacao": validacao,
         "adrs_aplicaveis": adrs_aplicaveis,
+        "requires_e2e_update": requires_e2e_update,
+        "e2e_skip": e2e_skip,
+        "e2e_skip_rationale": e2e_skip_rationale,
     }
 
 
@@ -249,6 +269,8 @@ TIER_SEVERITY: dict[str, dict[str, str]] = {
     "acceptance_test_unmapped":  {"experimental": "SOFT", "tool": "SOFT", "development": "HARD", "production": "HARD"},
     "nao_quero_violation":       {"experimental": "SOFT", "tool": "HARD", "development": "HARD", "production": "HARD"},
     "adr_import_drift":          {"experimental": "SOFT", "tool": "HARD", "development": "HARD", "production": "HARD"},
+    # v3.10.0 — E2E coverage
+    "e2e_coverage_missing":      {"experimental": "SOFT", "tool": "SOFT", "development": "HARD", "production": "HARD"},
 }
 
 
@@ -658,6 +680,70 @@ def check_adr_import_drift(
 
 
 # ============================================================================
+# Check 8 — user-journey coverage / E2E (v3.10.0)
+# ============================================================================
+
+E2E_DIR_PATTERNS = (
+    "e2e/",
+    "cypress/",
+    "playwright/",
+    "tests/e2e/",
+    "tests/integration/",
+    "test/e2e/",
+    "__e2e__/",
+)
+
+
+def _is_e2e_path(path: str) -> bool:
+    """True if path contains any recognized E2E directory marker."""
+    return any(d in path for d in E2E_DIR_PATTERNS)
+
+
+def check_e2e_coverage(
+    cwd: Path,
+    branch: str,
+    base_branch: str,
+    requires_e2e_update: bool,
+    e2e_skip: bool,
+    conventions_extras: list[str],
+    tier: str,
+) -> list[dict]:
+    """Validate task with `Requires E2E update: true` has ≥1 file in e2e/cypress/etc.
+
+    Skip cases:
+    - requires_e2e_update is False (no flag from wave-planner).
+    - e2e_skip is True (`**E2E:** skip - <rationale>` declared).
+    - conventions doc-only/config-only.
+
+    Detection: git diff --name-only BASE...wave matches any E2E_DIR_PATTERNS.
+    """
+    if not requires_e2e_update:
+        return []
+    if e2e_skip:
+        return []
+    if any(c.lower().strip() in ("doc-only", "config-only") for c in conventions_extras):
+        return []
+
+    raw = _git_run(cwd, "diff", "--name-only", f"{base_branch}...{branch}")
+    modified = [ln.strip() for ln in raw.splitlines() if ln.strip()]
+    e2e_files = [p for p in modified if _is_e2e_path(p)]
+
+    if e2e_files:
+        return []  # OK
+
+    sev = _severity_for("e2e_coverage_missing", tier)
+    return [{
+        "check": "e2e_coverage_missing",
+        "severity": sev,
+        "evidence": (
+            "Task declarou `Requires E2E update: true` mas diff não toca "
+            "e2e/cypress/playwright/tests/e2e. Adicione test cobrindo fluxo "
+            "end-to-end OR declare `**E2E:** skip - <rationale>` no 4-block."
+        ),
+    }]
+
+
+# ============================================================================
 # CLI
 # ============================================================================
 
@@ -759,6 +845,19 @@ def main(argv: list[str] | None = None) -> int:
     try:
         violations.extend(check_adr_import_drift(
             cwd, branch, args.base_branch, task_meta["adrs_aplicaveis"], args.tier,
+        ))
+    except GitError as e:
+        sys.stderr.write(f"forensic-plus: {e}\n")
+        return 1
+
+    # v3.10.0 — Check 8 e2e coverage
+    try:
+        violations.extend(check_e2e_coverage(
+            cwd, branch, args.base_branch,
+            task_meta["requires_e2e_update"],
+            task_meta["e2e_skip"],
+            task_meta["conventions_extras"],
+            args.tier,
         ))
     except GitError as e:
         sys.stderr.write(f"forensic-plus: {e}\n")
