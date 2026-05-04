@@ -160,11 +160,13 @@ Wave Planner aplica o JSON:
 
 ---
 
-## 10. Wave-reviewer skip exception (F2)
+## 10. Wave-reviewer skip exception (F2 — renamed v3.8.0)
 
-Wave com **1 task** pula o wave-reviewer agregado da fase 04 (sem cross-task coherence check possível). CI global da `base_branch` cobre o escape.
+Wave com **1 task** pula o wave-reviewer **cross-task** audit (sem coherence check possível). Forensic+ (step 8a) ainda roda, e CI global cobre o escape.
 
-Schema `wave-plan.md` marca `skip_wave_reviewer: true` na wave aplicável. Lead da fase 04 lê esse flag e ajusta o protocolo.
+Schema `wave-plan.md` marca `skip_cross_task_audit: true` na wave aplicável. Lead da fase 04 lê esse flag e ajusta o protocolo (skip step 8b cross-task, mas mantém 8a Forensic+ + 8c forensic git log).
+
+> **Backward compat (v3.7.x → v3.8.0):** o nome legado `skip_wave_reviewer` é reconhecido como alias pelo wave-planner-script.py durante v3.8.0. Wave-plans novos sempre emitem `skip_cross_task_audit`. v3.9.0 remove o alias.
 
 ---
 
