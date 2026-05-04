@@ -7,6 +7,8 @@ htmlcov/
 .coverage
 .coverage.*
 coverage.xml
+.venv/
+venv/
 
 # OS
 .DS_Store
