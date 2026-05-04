@@ -114,6 +114,23 @@ Lista de eventos. Ordem cronológica preservada. Cada item:
 | `workspace_bootstrapped` | Bootstrap inicial do workspace | `commit_sha` |
 | `feedback_session_started` | Humano abriu sessão de feedback (fase 08) | `from` |
 
+### `error_type` values (conhecidos, lista crescente — não enum)
+
+Quando o evento `blocked_error` é appended a `history` (e `status: BLOCKED_ERROR`
+é setado em paralelo), o campo `error_type` (free-form string) do evento é
+populado com um dos valores abaixo. Lista evolui por versão; não há enforcement
+automático. Schema do `last_transition` permanece `{from, to, at, commit_sha}`
+sem `error_type` — este vive apenas no event row de `history`.
+
+- `merge_conflict`
+- `ci_red`
+- `cap_exceeded`
+- `cleanup_unsafe`
+- `runtime_cleanup_failed`
+- `forensic_max_retries`        <!-- v3.8.0 — cap MAX_FORENSIC_RETRIES esgotado -->
+- `forensic_script_crash`       <!-- v3.8.0 — forensic-plus.py exit 1 -->
+- `human_abort`
+
 ## `waves` — schema (presente só se `stage_atual >= 04`)
 
 ```yaml

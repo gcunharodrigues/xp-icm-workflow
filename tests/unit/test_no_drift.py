@@ -497,6 +497,14 @@ def test_markdown_cross_refs_resolve_in_references():
         "Broken cross-refs em references/:\n  " + "\n  ".join(violations)
 
 
+def test_state_machine_schema_documents_v3_8_0_error_types():
+    """Schema doc must list new forensic_* error_type values."""
+    path = REPO_ROOT / "references" / "state-machine-schema.md"
+    text = path.read_text(encoding="utf-8")
+    assert "forensic_max_retries" in text
+    assert "forensic_script_crash" in text
+
+
 def test_wave_execution_protocol_has_forensic_substeps():
     """Pipeline canonical doc must reflect step 8 expansion."""
     path = REPO_ROOT / "references" / "wave-execution-protocol.md"
