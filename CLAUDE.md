@@ -47,12 +47,17 @@ git push origin --delete feat/<short-slug>   # apenas se remote
 pytest tests/unit/test_no_drift.py -v
 ```
 
-**Detectores ativos (5):**
-- Versão consistente (canonical = `scripts/bootstrap.py:SKILL_VERSION`).
-- Profile count (canonical = `len(CANONICAL_PROFILES)` em `profile-merge.py`).
-- Status enum sync (`validate_state.py:ALLOWED_STATUSES` ↔ `references/state-machine-schema.md` table rows).
-- Status canônicos esperados presentes (allow-list anti-typo).
-- Cross-refs markdown resolvem em `references/`.
+**Detectores ativos (21, agrupados):**
+- A: Versão consistente em arquivos canônicos (canonical = `scripts/bootstrap.py:SKILL_VERSION`).
+- A': Changelog tem entrada para versão canônica.
+- B: Profile count (canonical = `len(CANONICAL_PROFILES)` em `profile-merge.py`).
+- C/D: Status enum sync (`validate_state.py:ALLOWED_STATUSES` ↔ `references/state-machine-schema.md`) + allow-list anti-typo.
+- E: Cross-refs markdown em `references/` (direção `link → file` — target existe).
+- F: Shell + git-hook templates sem CRLF.
+- H: Scripts auxiliares com `CURRENT_SKILL_VERSION` sincronizam com bootstrap (genérico — pega scripts futuros).
+- 4-block parser: heading levels canônicos + regex match no template.
+- v3.8.0 (forensic+): canonical doc exists, bootstrap runtime_refs menciona, L2 stage 04 cross-ref + `MAX_FORENSIC_RETRIES`, wave-execution sub-steps, state-machine error_type values.
+- SKILL.md indexa docs canônicos (whitelist `SKILL_MD_INDEXED_DOCS`, direção `file → menção`).
 
 **Se test falha:**
 - NÃO mergear até fix.

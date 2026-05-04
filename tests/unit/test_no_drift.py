@@ -557,3 +557,34 @@ def test_l2_stage_04_references_forensic_plus_protocol():
     )
     text = path.read_text(encoding="utf-8")
     assert "forensic-plus-protocol.md" in text
+
+
+# Docs canônicos que `SKILL.md` deve indexar (seção "Referências de
+# algoritmo" / lista de runtime_refs do bootstrap). Lista crescente: ao
+# introduzir doc canônico novo em `references/`, adicione aqui.
+SKILL_MD_INDEXED_DOCS: tuple[str, ...] = (
+    "wave-planner-algorithm.md",
+    "subagent-protocol.md",
+    "stop-points-canonical.md",
+    "4-block-contract-template.md",
+    "feedback-intake-fase08.md",
+    "forensic-plus-protocol.md",
+)
+
+
+def test_skill_md_indexes_canonical_docs():
+    """SKILL.md deve mencionar cada doc canônico em SKILL_MD_INDEXED_DOCS.
+
+    Direção contrária do detector E (cross-refs link→file): aqui é
+    file→menção. Garante que docs canônicos novos sejam descobríveis a
+    partir do SKILL.md (entry point da skill).
+    """
+    skill_md = REPO_ROOT / "SKILL.md"
+    text = skill_md.read_text(encoding="utf-8")
+    missing = [doc for doc in SKILL_MD_INDEXED_DOCS if doc not in text]
+    assert not missing, (
+        "SKILL.md não menciona docs canônicos:\n  "
+        + "\n  ".join(missing)
+        + "\nAdicione bullet em § 'Referências de algoritmo' ou remova de "
+        "SKILL_MD_INDEXED_DOCS se a omissão é intencional."
+    )
