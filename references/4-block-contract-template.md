@@ -84,6 +84,14 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 
 ### Requires_peer_review
 - true | false   (true se path crítico tier=production OR profile flag)
+
+### Requires E2E update
+- true | false   <!-- v3.10.0: wave-planner auto-emite quando Files touched
+                      matches user_facing_paths do profile-effective.yaml.
+                      Subagente DEVE adicionar/atualizar ≥1 file em e2e/
+                      cypress/, playwright/, tests/e2e/. Forensic+ Check 8
+                      audita. Override via `**E2E:** skip - <rationale>`
+                      no 4-block (audit Stage 05). -->
 ```
 
 | Campo | Quem preenche | Quem consome |

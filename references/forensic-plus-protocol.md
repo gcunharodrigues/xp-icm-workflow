@@ -1,15 +1,15 @@
-# Forensic+ Protocol — Canonical (v3.9.0)
+# Forensic+ Protocol — Canonical (v3.10.0)
 
-> **Versão:** v3.9.0
+> **Versão:** v3.10.0
 > **Skill:** `xp-icm-workflow`
 > **Estágio consumidor:** `04_implementation_waves` (step 8b — L2 deterministic gate)
-> **Propósito:** documento canônico do Forensic+ — auditoria estrutural anti-fraude por task na wave-reviewer. Descreve os 7 checks (4 originais v3.8.0 + 3 novos v3.9.0), matriz tier×severidade, ações HARD/SOFT, cap de re-spawn, edge cases, e schema JSON do `scripts/forensic-plus.py`.
+> **Propósito:** documento canônico do Forensic+ — auditoria estrutural anti-fraude por task na wave-reviewer. Descreve os 8 checks (4 originais v3.8.0 + 3 v3.9.0 + 1 v3.10.0), matriz tier×severidade, ações HARD/SOFT, cap de re-spawn, edge cases, e schema JSON do `scripts/forensic-plus.py`.
 
 ## Resumo (1 parágrafo)
 
-Forensic+ é um audit determinístico, git-only, executado pelo wave-reviewer por cada task AFK da wave. Roda 7 checks: (1) test file com ≥2 asserções, (2) files fora de `files_touched` declarado, (3) scope creep > 3× plan estimate, (4) TODO/FIXME/HACK adicionados, (5) acceptance ↔ test mapping, (6) NÃO QUERO violations, (7) ADR import drift. Cada violation tem severidade tier-aware (HARD/SOFT). HARD bloqueia merge e força re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT acumula em `wave-summary.md`. Tasks `type: HITL` são skipped. Output via `scripts/forensic-plus.py` em JSON estruturado, parsed pelo reviewer Agent. v3.9.0: gate é antessala do L3 critic (`references/critic-protocol.md`); HARD violation skip L3 (não desperdiça tokens em código rejeitado por gate barato).
+Forensic+ é um audit determinístico, git-only, executado pelo wave-reviewer por cada task AFK da wave. Roda 8 checks: (1) test file com ≥2 asserções, (2) files fora de `files_touched` declarado, (3) scope creep > 3× plan estimate, (4) TODO/FIXME/HACK adicionados, (5) acceptance ↔ test mapping, (6) NÃO QUERO violations, (7) ADR import drift, (8) user-journey coverage (e2e). Cada violation tem severidade tier-aware (HARD/SOFT). HARD bloqueia merge e força re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT acumula em `wave-summary.md`. Tasks `type: HITL` são skipped. Output via `scripts/forensic-plus.py` em JSON estruturado, parsed pelo reviewer Agent. v3.9.0: gate é antessala do L3 critic (`references/critic-protocol.md`); HARD violation skip L3. v3.10.0: Check 8 fecha gap E2E coverage (ver `references/e2e-coverage-protocol.md`).
 
-## Os 7 checks
+## Os 8 checks
 
 ### Check 1 — Test file com ≥2 asserções
 
@@ -136,6 +136,45 @@ Severity:
 | experimental | SOFT |
 | tool/development/production | HARD |
 
+### Check 8 — User-journey coverage / E2E (v3.10.0)
+
+Task com `Requires E2E update: true` no metadata (auto-emitted por wave-planner quando `Files touched` matches `user_facing_paths` do profile-effective) deve ter ≥1 file modificado em diretório E2E reconhecido.
+
+Diretórios reconhecidos (allowlist):
+
+```
+e2e/
+cypress/
+playwright/
+tests/e2e/
+tests/integration/
+test/e2e/
+__e2e__/
+```
+
+Detection:
+1. Parse plan.md task → checa metadata `Requires E2E update`.
+2. Se `true` AND task NÃO tem `**E2E:** skip` no 4-block → check ativa.
+3. `git diff --name-only BASE...wave` → contém ≥1 path matching e2e dirs?
+4. Se nenhum → violation.
+
+Skip:
+- `Requires E2E update: false` ou ausente.
+- `**E2E:** skip` declarado no 4-block (rationale audit em Stage 05).
+- `Conventions extras: doc-only` ou `config-only`.
+- Task `type: HITL`.
+
+Severity:
+
+| Tier | Severity |
+|------|----------|
+| experimental | SOFT |
+| tool | SOFT |
+| development | HARD |
+| production | HARD |
+
+Doc canônico do reforço E2E: `references/e2e-coverage-protocol.md`.
+
 ## Tier × violation matrix consolidada
 
 | Check | exp | tool | dev | prod |
@@ -147,6 +186,7 @@ Severity:
 | 5. Acceptance↔test | SOFT | SOFT | HARD | HARD |
 | 6. NÃO QUERO | SOFT | HARD | HARD | HARD |
 | 7. ADR import drift | SOFT | HARD | HARD | HARD |
+| 8. User-journey (e2e) | SOFT | SOFT | HARD | HARD |
 
 ## Action HARD vs SOFT
 
@@ -177,6 +217,7 @@ Brief de re-spawn injeta no AGENT-BRIEF do subagente:
 | `acceptance_test_unmapped` | "Bullet VALIDAÇÃO `<bullet>` não tem test correspondente. Adicione test name explícito OR escreva test cobrindo o critério." |
 | `nao_quero_violation` | "Diff toca padrão proibido `<pattern>` declarado em NÃO QUERO. Reverta OR escalar via stop point se requisito mudou." |
 | `adr_import_drift` | "Import `<lib>` é proibido por ADR `<adr-file>` (§Forbidden imports). Substitua pela alternativa documentada no ADR." |
+| `e2e_coverage_missing` | "Task declarou `Requires E2E update: true` mas diff não toca `e2e/`/`cypress/`/`playwright/`/`tests/e2e/`. Adicione ≥1 test cobrindo fluxo end-to-end. Caso refactor sem mudança behavior, declare `**E2E:** skip - <rationale>` no 4-block." |
 
 ## Edge cases
 
@@ -216,7 +257,7 @@ python scripts/forensic-plus.py \
   "task_slug": "<slug>",
   "violations": [
     {
-      "check": "<test_assertions_too_few|files_outside_declared|scope_creep|todo_added|acceptance_test_unmapped|nao_quero_violation|adr_import_drift>",
+      "check": "<test_assertions_too_few|files_outside_declared|scope_creep|todo_added|acceptance_test_unmapped|nao_quero_violation|adr_import_drift|e2e_coverage_missing>",
       "severity": "<HARD|SOFT>",
       "evidence": "<human-readable explanation>"
     }

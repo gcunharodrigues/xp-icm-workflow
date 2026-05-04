@@ -135,6 +135,10 @@ sem `error_type` — este vive apenas no event row de `history`.
 - `lead_decision_missing`               <!-- v3.9.0 — lead chose bucket sem registrar lead-decision.md -->
 - `critic_unavailable`                  <!-- v3.9.0 — Agent tool fail / quota exhausted após retry -->
 - `critic_abstain_loop`                 <!-- v3.9.0 — 2 critic ABSTAIN consecutivos -->
+- `e2e_suite_failed`                    <!-- v3.10.0 — L4 wave gate e2e step 11b vermelho -->
+- `e2e_suite_missing`                   <!-- v3.10.0 — Stage 05 audit detected suite ausente em profile que requer -->
+- `e2e_suite_stale`                     <!-- v3.10.0 — Stage 05 audit suite > 7 dias com tasks user-facing entregues -->
+- `e2e_skip_unjustified`                <!-- v3.10.0 — Stage 05 audit `**E2E:** skip` sem rationale -->
 - `human_abort`
 
 ## `waves` — schema (presente só se `stage_atual >= 04`)
