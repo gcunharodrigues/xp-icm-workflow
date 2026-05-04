@@ -127,6 +127,7 @@ def test_plan_migration_from_3_3_0_to_canonical(mw):
         "3.5.0->3.6.0",
         "3.6.0->3.7.0",
         "3.7.0->3.7.2",
+        "3.7.2->3.8.0",
     ]
 
 
@@ -266,6 +267,38 @@ def test_migrate_3_7_0_to_3_7_2_idempotent(mw, tmp_path: Path):
 def test_step_functions_dispatcher_has_3_7_0_to_3_7_2(mw):
     assert "3.7.0->3.7.2" in mw.STEP_FUNCTIONS
     assert mw.STEP_FUNCTIONS["3.7.0->3.7.2"] is mw.migrate_3_7_0_to_3_7_2
+
+
+# ============================================================
+# v3.7.2 → v3.8.0 step
+# ============================================================
+
+def test_migrate_3_7_2_to_3_8_0_bumps_l0_version(mw, tmp_path: Path):
+    ws = tmp_path / "workspaces" / "012-test"
+    ws.mkdir(parents=True)
+    (ws / "CLAUDE.md").write_text(
+        "---\nicm_skill_version: \"3.7.2\"\n---\n", encoding="utf-8",
+    )
+    mw.migrate_3_7_2_to_3_8_0(ws, project_root=ws.parent.parent)
+    text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
+    assert "icm_skill_version: \"3.8.0\"" in text
+
+
+def test_migrate_3_7_2_to_3_8_0_idempotent(mw, tmp_path: Path):
+    ws = tmp_path / "workspaces" / "013-test"
+    ws.mkdir(parents=True)
+    (ws / "CLAUDE.md").write_text(
+        "---\nicm_skill_version: \"3.7.2\"\n---\n", encoding="utf-8",
+    )
+    project_root = ws.parent.parent
+    mw.migrate_3_7_2_to_3_8_0(ws, project_root=project_root)
+    mw.migrate_3_7_2_to_3_8_0(ws, project_root=project_root)
+    assert mw.detect_workspace_version(ws) == "3.8.0"
+
+
+def test_step_functions_dispatcher_has_3_7_2_to_3_8_0(mw):
+    assert "3.7.2->3.8.0" in mw.STEP_FUNCTIONS
+    assert mw.STEP_FUNCTIONS["3.7.2->3.8.0"] is mw.migrate_3_7_2_to_3_8_0
 
 
 # ============================================================
