@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Forensic+ — anti-fraud structural audit per task in stage 04 wave-reviewer.
 
-Reads CLI args + plan.md + git state. Runs 4 checks. Emits JSON to stdout.
-Exit 0 always when script completes normally (regardless of violations).
-Exit 1 on script crash (git missing, plan malformed, etc.).
+Reads CLI args + plan.md + git state. Runs 7 checks (4 v3.8.0 + 3 v3.9.0).
+Emits JSON to stdout. Exit 0 always when script completes normally
+(regardless of violations). Exit 1 on script crash (git missing, plan
+malformed, etc.).
+
+v3.9.0 additions: Check 5 (acceptance ↔ test mapping), Check 6
+(NÃO QUERO violations), Check 7 (ADR import drift).
 
 Spec: docs/superpowers/specs/2026-05-03-forensic-plus-wave-reviewer-design.md
 Canonical: references/forensic-plus-protocol.md
@@ -117,6 +121,9 @@ def parse_plan_for_task(plan_path: Path, task_slug: str) -> dict:
     files_touched = _bullets_under("Files touched")
     conventions = _bullets_under("Conventions extras")
     type_field = _bullets_under("Type")
+    nao_quero = _bullets_under("NÃO QUERO")
+    validacao = _bullets_under("VALIDAÇÃO")
+    adrs_aplicaveis = _bullets_under("ADRs aplicáveis")
 
     # Estimated lines: parse "~250" or "250" from block (not bullet)
     est_lines = None
@@ -135,6 +142,9 @@ def parse_plan_for_task(plan_path: Path, task_slug: str) -> dict:
         "conventions_extras": conventions,
         "estimated_lines": est_lines,
         "type": type_field[0].upper() if type_field else "AFK",
+        "nao_quero": nao_quero,
+        "validacao": validacao,
+        "adrs_aplicaveis": adrs_aplicaveis,
     }
 
 
@@ -235,6 +245,10 @@ TIER_SEVERITY: dict[str, dict[str, str]] = {
     "files_outside_declared":    {"experimental": "SOFT", "tool": "SOFT", "development": "HARD", "production": "HARD"},
     "scope_creep":               {"experimental": "SOFT", "tool": "SOFT", "development": "SOFT", "production": "HARD"},
     "todo_added":                {"experimental": "SOFT", "tool": "SOFT", "development": "SOFT", "production": "HARD"},
+    # v3.9.0 — extended checks
+    "acceptance_test_unmapped":  {"experimental": "SOFT", "tool": "SOFT", "development": "HARD", "production": "HARD"},
+    "nao_quero_violation":       {"experimental": "SOFT", "tool": "HARD", "development": "HARD", "production": "HARD"},
+    "adr_import_drift":          {"experimental": "SOFT", "tool": "HARD", "development": "HARD", "production": "HARD"},
 }
 
 
@@ -377,6 +391,273 @@ def check_todo_added(
 
 
 # ============================================================================
+# Check 5 — acceptance ↔ test mapping (v3.9.0)
+# ============================================================================
+
+# Test name patterns extracted from VALIDAÇÃO bullets.
+# Order matters — try direct test_name patterns first, fallback to weaker hints.
+_TEST_NAME_PATTERNS = (
+    re.compile(r"`(test_[a-zA-Z0-9_]+)`"),               # `test_foo_bar`
+    re.compile(r"\b(test_[a-zA-Z0-9_]+)\b"),             # bare test_foo_bar
+    re.compile(r"`([a-z][a-zA-Z0-9_]*Test)`"),           # `fooBarTest`
+    re.compile(r'it\("([^"]+)"'),                         # it("describes...")
+    re.compile(r"should\s+([a-z][a-z0-9_\- ]{4,})"),     # should foo bar
+)
+
+# Bullets matching these patterns are skipped (not test mappings).
+_VALIDACAO_SKIP_PATTERNS = (
+    re.compile(r"^\s*Cobertura\s+", re.IGNORECASE),
+    re.compile(r"^\s*Coverage\s+", re.IGNORECASE),
+    re.compile(r"^\s*Performance\s+", re.IGNORECASE),
+)
+
+
+def _extract_test_names_from_bullet(bullet: str) -> list[str]:
+    """Try patterns in order, return list of candidate names found."""
+    names: list[str] = []
+    for pat in _TEST_NAME_PATTERNS:
+        for m in pat.finditer(bullet):
+            names.append(m.group(1))
+    return names
+
+
+def check_acceptance_test_mapping(
+    cwd: Path,
+    branch: str,
+    files_touched: list[str],
+    validacao: list[str],
+    conventions_extras: list[str],
+    tier: str,
+) -> list[dict]:
+    """Each VALIDAÇÃO bullet should map to >=1 test name found in test files.
+
+    Skip when task is doc-only/config-only. Skip bullets matching coverage/perf
+    patterns (not test mappings).
+
+    For each bullet:
+    1. Extract candidate test names via regex.
+    2. If no candidates found, treat bullet as descriptive (skip silently).
+    3. If candidates exist, grep test files for any match.
+    4. No match → violation.
+    """
+    if any(c.lower().strip() in ("doc-only", "config-only") for c in conventions_extras):
+        return []
+    if not validacao:
+        return []
+
+    test_files = [p for p in files_touched if _is_test_file(p)]
+    if not test_files:
+        return []
+
+    # Concatenate all test file contents for grep
+    combined_test_content = ""
+    for path in test_files:
+        content = _git_show_file(cwd, branch, path)
+        if content is not None:
+            combined_test_content += content + "\n"
+
+    violations: list[dict] = []
+    for bullet in validacao:
+        if any(p.search(bullet) for p in _VALIDACAO_SKIP_PATTERNS):
+            continue
+        candidates = _extract_test_names_from_bullet(bullet)
+        if not candidates:
+            continue
+        # Match if any candidate substring appears in test content
+        if not any(c in combined_test_content for c in candidates):
+            sev = _severity_for("acceptance_test_unmapped", tier)
+            sample = ", ".join(candidates[:3])
+            violations.append({
+                "check": "acceptance_test_unmapped",
+                "severity": sev,
+                "evidence": f"VALIDAÇÃO bullet candidates [{sample}] not found in declared test files",
+            })
+    return violations
+
+
+# ============================================================================
+# Check 6 — NÃO QUERO violations (v3.9.0)
+# ============================================================================
+
+# Pattern: detect imports/mocks/literal keywords from NÃO QUERO bullets.
+_MOCK_BULLET_RE = re.compile(
+    r"^\s*Mock\s+interno\s+de\s+`?([\w./\-@]+)`?",
+    re.IGNORECASE,
+)
+_IMPORT_BULLET_RE = re.compile(
+    r"^\s*Import\s+`?([\w./\-@]+)`?",
+    re.IGNORECASE,
+)
+_KEYWORD_BULLET_RE = re.compile(r"^\s*`([A-Z][A-Z0-9_]{5,})`")
+
+
+def _diff_added_lines(cwd: Path, branch: str, base_branch: str) -> str:
+    """Return concatenated added lines from full diff (no path filter)."""
+    raw = _git_run(cwd, "diff", f"{base_branch}...{branch}")
+    return "\n".join(
+        ln for ln in raw.splitlines()
+        if ln.startswith("+") and not ln.startswith("+++")
+    )
+
+
+def check_nao_quero_violations(
+    cwd: Path,
+    branch: str,
+    base_branch: str,
+    nao_quero: list[str],
+    tier: str,
+) -> list[dict]:
+    """Bullets in NÃO QUERO declaring detectable patterns are checked.
+
+    Supported:
+    - "Mock interno de <module>" → grep diff for jest.mock("<module>") /
+      mocker.patch("<module>")
+    - "Import <lib>" → grep diff for import statements with <lib>
+    - `KEYWORD` (uppercase, ≥6 chars) → grep diff for literal occurrence
+    """
+    if not nao_quero:
+        return []
+
+    added = _diff_added_lines(cwd, branch, base_branch)
+    if not added:
+        return []
+
+    violations: list[dict] = []
+    sev = _severity_for("nao_quero_violation", tier)
+
+    for bullet in nao_quero:
+        m = _MOCK_BULLET_RE.search(bullet)
+        if m:
+            module = m.group(1)
+            # Detect jest.mock("module") / mocker.patch("module") / vi.mock("module")
+            patterns = [
+                rf'(jest|vi)\.mock\(["\']({re.escape(module)})["\']',
+                rf'mocker\.patch\(["\']({re.escape(module)})["\']',
+                rf'mock\.patch\(["\']({re.escape(module)})["\']',
+            ]
+            for pat in patterns:
+                if re.search(pat, added):
+                    violations.append({
+                        "check": "nao_quero_violation",
+                        "severity": sev,
+                        "evidence": f"NÃO QUERO violated: mock interno de {module} (pattern: {pat[:40]}...)",
+                    })
+                    break
+            continue
+
+        m = _IMPORT_BULLET_RE.search(bullet)
+        if m:
+            lib = m.group(1)
+            # ES modules + Python import patterns
+            patterns = [
+                rf'\b(import|require)\b.*["\']({re.escape(lib)})["\']',
+                rf'\b(import|from)\s+{re.escape(lib)}\b',
+            ]
+            for pat in patterns:
+                if re.search(pat, added):
+                    violations.append({
+                        "check": "nao_quero_violation",
+                        "severity": sev,
+                        "evidence": f"NÃO QUERO violated: import de {lib} detected in diff",
+                    })
+                    break
+            continue
+
+        m = _KEYWORD_BULLET_RE.search(bullet)
+        if m:
+            kw = m.group(1)
+            if re.search(rf"\b{re.escape(kw)}\b", added):
+                violations.append({
+                    "check": "nao_quero_violation",
+                    "severity": sev,
+                    "evidence": f"NÃO QUERO violated: keyword `{kw}` present in added lines",
+                })
+
+    return violations
+
+
+# ============================================================================
+# Check 7 — ADR import drift (v3.9.0)
+# ============================================================================
+
+_ADR_FORBIDDEN_HEADER_RE = re.compile(
+    r"^##\s+Forbidden\s+imports\s*\n",
+    re.MULTILINE | re.IGNORECASE,
+)
+_ADR_LIB_BULLET_RE = re.compile(r"^\s*-\s+`([\w./\-@]+)`")
+
+
+def _parse_adr_forbidden_imports(adr_path: Path) -> list[str]:
+    """Parse ADR markdown for `## Forbidden imports` section, return libs.
+
+    Returns empty list if section absent (backward compat — silent skip).
+    """
+    if not adr_path.is_file():
+        return []
+    text = adr_path.read_text(encoding="utf-8")
+    h = _ADR_FORBIDDEN_HEADER_RE.search(text)
+    if not h:
+        return []
+    rest = text[h.end():]
+    next_h = re.search(r"^## ", rest, re.MULTILINE)
+    block = rest[: next_h.start()] if next_h else rest
+    libs: list[str] = []
+    for ln in block.splitlines():
+        m = _ADR_LIB_BULLET_RE.match(ln)
+        if m:
+            libs.append(m.group(1))
+    return libs
+
+
+def check_adr_import_drift(
+    cwd: Path,
+    branch: str,
+    base_branch: str,
+    adrs_aplicaveis: list[str],
+    tier: str,
+) -> list[dict]:
+    """For each ADR with `## Forbidden imports`, grep diff for forbidden libs.
+
+    ADR paths in `adrs_aplicaveis` are relative to project root (cwd).
+    Backward compat: ADR sem seção = silently skipped.
+    """
+    if not adrs_aplicaveis:
+        return []
+
+    violations: list[dict] = []
+    sev = _severity_for("adr_import_drift", tier)
+    added = _diff_added_lines(cwd, branch, base_branch)
+    if not added:
+        return []
+
+    for adr_ref in adrs_aplicaveis:
+        # Bullet format: "docs/decisions/0001-stack.md" or with leading whitespace
+        adr_path_str = adr_ref.strip()
+        if not adr_path_str:
+            continue
+        adr_path = cwd / adr_path_str
+        forbidden = _parse_adr_forbidden_imports(adr_path)
+        if not forbidden:
+            continue
+        for lib in forbidden:
+            patterns = [
+                rf'\b(import|require)\b.*["\']({re.escape(lib)})["\']',
+                rf'\b(import|from)\s+{re.escape(lib)}\b',
+                rf'\buse\s+{re.escape(lib)}\b',
+            ]
+            for pat in patterns:
+                if re.search(pat, added):
+                    violations.append({
+                        "check": "adr_import_drift",
+                        "severity": sev,
+                        "evidence": f"ADR {adr_path_str} forbids `{lib}`; import detected in diff",
+                    })
+                    break
+
+    return violations
+
+
+# ============================================================================
 # CLI
 # ============================================================================
 
@@ -450,6 +731,35 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         violations.extend(check_todo_added(cwd, branch, args.base_branch, args.tier))
+    except GitError as e:
+        sys.stderr.write(f"forensic-plus: {e}\n")
+        return 1
+
+    # v3.9.0 — extended checks 5/6/7
+    try:
+        violations.extend(check_acceptance_test_mapping(
+            cwd, branch,
+            task_meta["files_touched"],
+            task_meta["validacao"],
+            task_meta["conventions_extras"],
+            args.tier,
+        ))
+    except GitError as e:
+        sys.stderr.write(f"forensic-plus: {e}\n")
+        return 1
+
+    try:
+        violations.extend(check_nao_quero_violations(
+            cwd, branch, args.base_branch, task_meta["nao_quero"], args.tier,
+        ))
+    except GitError as e:
+        sys.stderr.write(f"forensic-plus: {e}\n")
+        return 1
+
+    try:
+        violations.extend(check_adr_import_drift(
+            cwd, branch, args.base_branch, task_meta["adrs_aplicaveis"], args.tier,
+        ))
     except GitError as e:
         sys.stderr.write(f"forensic-plus: {e}\n")
         return 1

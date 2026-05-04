@@ -15,6 +15,7 @@ Output: AGENT-BRIEF markdown em stdout. Exit 0 se task encontrada, 1 senão.
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import re
 import sys
 from pathlib import Path
@@ -27,6 +28,21 @@ from pathlib import Path
 # Anti-pattern detector: paths absolutos / line numbers em acceptance criteria
 PATH_ABSOLUTE_RE = re.compile(r"\b(?:/[a-zA-Z0-9_./-]+|[A-Z]:\\[a-zA-Z0-9_\\-]+)")
 LINE_NUMBER_RE = re.compile(r":\d+\b")
+
+
+# ============================================================================
+# pick-model integration (v3.9.0)
+# ============================================================================
+
+def _load_pick_model_module():
+    """Load scripts/pick-model.py as a module via importlib (hyphen workaround)."""
+    pm_path = Path(__file__).parent / "pick-model.py"
+    spec = importlib.util.spec_from_file_location("pick_model", pm_path)
+    if spec is None or spec.loader is None:
+        raise AgentBriefError(f"could not load pick-model module at {pm_path}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 class AgentBriefError(Exception):
@@ -107,22 +123,39 @@ def parse_4block(task_section: str) -> dict[str, str]:
 # Render AGENT-BRIEF
 # ============================================================================
 
-def render_brief(slug: str, parsed: dict[str, str], adrs: list[str]) -> str:
+def render_brief(
+    slug: str,
+    parsed: dict[str, str],
+    adrs: list[str],
+    model_info: dict | None = None,
+) -> str:
     """Render AGENT-BRIEF markdown a partir de 4-block parseado + ADRs aplicáveis.
 
     Mapping: O QUE → Summary + Current/Desired; COMO → Key interfaces;
     NÃO QUERO → Out of scope; VALIDAÇÃO → Acceptance criteria.
+
+    v3.9.0: model_info dict (from pick-model.py) injects writer/critic/score
+    no header quando provided.
     """
     adrs_block = ""
     if adrs:
         adrs_lines = "\n".join(f"- {adr}" for adr in adrs)
         adrs_block = f"\n**Applicable ADRs:**\n{adrs_lines}\n"
 
+    model_block = ""
+    if model_info:
+        model_block = (
+            f"**Model recommended (writer):** {model_info['model_recommended_writer']}\n"
+            f"**Model recommended (critic):** {model_info['model_recommended_critic']}\n"
+            f"**Complexity score:** {model_info['complexity_score']}\n"
+        )
+
     return (
         f"## Agent Brief — {slug}\n"
         "\n"
         f"**Type:** {parsed['type']}\n"
         f"**Files touched:** {parsed['files_touched']}\n"
+        f"{model_block}"
         "\n"
         f"**Summary:** {_first_line(parsed['o_que'])}\n"
         "\n"
@@ -191,6 +224,11 @@ def main(argv: list[str] | None = None) -> int:
         "--strict", action="store_true",
         help="exit 1 se warnings de anti-pattern detectados",
     )
+    parser.add_argument(
+        "--tier", choices=("experimental", "tool", "development", "production"),
+        default=None,
+        help="se fornecido, integra pick-model.py e injeta model_recommended_writer/critic no header",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -212,7 +250,32 @@ def main(argv: list[str] | None = None) -> int:
         # Lista todos ADR files; lead pode pré-filtrar manualmente
         adrs = sorted(p.name for p in args.adrs.glob("[0-9]*.md"))
 
-    brief = render_brief(args.task, parsed, adrs)
+    model_info: dict | None = None
+    if args.tier:
+        try:
+            pm = _load_pick_model_module()
+            meta = pm.parse_task_metadata(args.plan, args.task)
+            score = pm.compute_score(
+                estimated_lines=meta["estimated_lines"],
+                files_touched=meta["files_touched"],
+                security_sensitive=meta["security_sensitive"],
+                public_api_change=meta["public_api_change"],
+                algorithm_heavy=meta["algorithm_heavy"],
+                doc_only=meta["doc_only"],
+                config_only=meta["config_only"],
+                css_only=meta["css_only"],
+                tier=args.tier,
+            )
+            writer, critic = pm.pick_models(score, args.tier)
+            model_info = {
+                "complexity_score": score,
+                "model_recommended_writer": writer,
+                "model_recommended_critic": critic,
+            }
+        except (AgentBriefError, OSError) as exc:
+            print(f"warning: pick-model integration failed: {exc}", file=sys.stderr)
+
+    brief = render_brief(args.task, parsed, adrs, model_info=model_info)
 
     warnings = warn_if_brittle(brief)
     if warnings:
