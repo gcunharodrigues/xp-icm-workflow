@@ -288,6 +288,7 @@ Permissions allowlist sugerida em `system-requirements.md`.
 - `references/4-block-contract-template.md` — O QUE / COMO / NÃO QUERO / VALIDAÇÃO
 - `references/feedback-intake-fase08.md` — 3 saídas A/B/C
 - `references/profile-matrix.md` — calibração por profile/tier (estágios pulados, etc.) — cópia em `templates/_config/profile-matrix.md`
+- `references/forensic-plus-protocol.md` — Forensic+ wave reviewer audit (4 checks anti-fraude, tier×severity, JSON schema)
 
 **Referências de testes:**
 

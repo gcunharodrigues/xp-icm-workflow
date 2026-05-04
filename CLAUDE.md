@@ -176,6 +176,20 @@ Templates in `/templates/` use `{{WORKSPACE}}`, `{{PROFILE}}`, `{{TIER}}`, `{{PR
 
 Playwright plugin disabled in `pyproject.toml` (workaround — leave it).
 
+## v3.8.0 — Forensic+ wave reviewer (anti-fraude estrutural)
+
+Step 8 do pipeline 12-passos (stage 04) expandido em sub-steps 8a/8b/8c/8d. 8a = `scripts/forensic-plus.py` audita cada task AFK da wave (skip HITL): 4 checks git-only (test asserções ≥2, files fora `files_touched` declarado, scope creep > 3× `### Estimated lines`, TODO/FIXME/HACK adicionados). Severidade tier-aware (HARD/SOFT). HARD → `approved_pending_ci: false` + re-spawn cap `MAX_FORENSIC_RETRIES = 2` (3ª HARD → `BLOCKED_ERROR error_type: forensic_max_retries`); SOFT → `wave-summary.md § Forensic+ summary`; nenhum → approved. Crash do script (exit 1) → `BLOCKED_ERROR error_type: forensic_script_crash`.
+
+Doc canônico: `references/forensic-plus-protocol.md`. Mudanças ativas em:
+- `scripts/forensic-plus.py` (novo, 188 linhas)
+- `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` step 8 → 8a/8b/8c/8d
+- `references/wave-execution-protocol.md` step 8 expansion
+- `references/wave-planner-algorithm.md` §10 flag rename: `skip_wave_reviewer` → `skip_cross_task_audit` (alias backward-compat até v3.9.0)
+- `scripts/wave-planner-script.py` `render_wave_plan` emit annotation 1-task wave
+- `references/4-block-contract-template.md` `### Estimated lines` opcional (Check 3)
+- `references/state-machine-schema.md` documenta `error_type: forensic_max_retries|forensic_script_crash`
+- 4 drift detectors novos em `tests/unit/test_no_drift.py` (doc canônico exists, bootstrap runtime_refs, L2 cross-ref, wave-execution sub-steps)
+
 ## v3.6.0 — Preview loop (build-iterate visual)
 
 Profile `app_web_frontend` + `fullstack` ganham preview loop opt-in-by-default.
