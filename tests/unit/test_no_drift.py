@@ -495,3 +495,23 @@ def test_markdown_cross_refs_resolve_in_references():
                 )
     assert not violations, \
         "Broken cross-refs em references/:\n  " + "\n  ".join(violations)
+
+
+@pytest.mark.xfail(
+    reason="L2 stage 04 template edit lands in Chunk 3 Task 13; remove xfail there.",
+    strict=True,
+)
+def test_l2_stage_04_mentions_max_forensic_retries():
+    """L2 stage 04 template must reference the cap value (sourced from forensic-plus.py)."""
+    l2_path = (
+        REPO_ROOT
+        / "templates"
+        / "workspace"
+        / "stages"
+        / "04_implementation_waves"
+        / "CONTEXT.md.tpl"
+    )
+    text = l2_path.read_text(encoding="utf-8")
+    # The L2 template must mention the constant by name AND value to allow drift detection.
+    assert "MAX_FORENSIC_RETRIES" in text
+    assert "= 2" in text  # value embedded so reading the prompt is self-explanatory
