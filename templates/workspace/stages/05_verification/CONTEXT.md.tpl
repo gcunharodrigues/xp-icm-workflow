@@ -31,6 +31,7 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
 | 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
 | 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
+| 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/lead-resolution-protocol.md | L3 | sim — meta-check de bucket audit (v3.9.0) |
 
 ## Não Lê (negative constraint)
 
@@ -56,7 +57,13 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
    - Registrar no report: task slug, arquivo esperado, arquivo encontrado (✅/⚠️), tipo de teste declarado vs encontrado.
    - ≥2/3 tasks com arquivos corretos → PASS; 1/3 → CONDITIONAL; 0/3 → FAIL.
 5. **Sample-check ADRs:** seleciona 3 ADRs aleatórios de `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`. Para cada, faz `grep` no diretório `stages/04/output/` por menção (slug do ADR ou número). ≥1 menção = ok; 0 menções = warning no report.
-6. **Escrever `output/verification-report.md`:** seções `Entregáveis (declarado vs entregue)`, `CI Status`, `Sample ADRs`, `Sumário PASS/CONDITIONAL/FAIL`.
+5.5 **Audit lead resolutions (v3.9.0):** ler `stages/04/output/wave-*/wave-summary.md` e extrair seção `## Lead resolutions` (tabela com bucket aplicado per task voided/resolved). Para cada entry, aplicar meta-check determinístico:
+   - **B1 (REWRITE_SPEC):** comparar plan.md task antes vs depois do rewrite. Spec rewrite deve TIGHTEN (mais bullets VALIDAÇÃO específicos OR mais NÃO QUERO bullets). LOOSEN (remover criteria) sem evidence em diagnose.md → FAIL.
+   - **B3 (DIRECT_IMPL):** ler critic concerns acumulados em `task-<slug>-critic-round*.json`. Lead diff em branch `-lead-resolved` deve endereçar concerns reais (heurística: BLOCKING claims em concerns devem aparecer como files_modified OR test names em lead diff). Lead que apenas silenciou critic sem fix → FAIL.
+   - **B4 (VOID_TASK):** ler bloco `### VOIDED` em plan.md. Rationale deve citar ADR conflict concreto OR upstream blocker concreto. Vague reason ("complexity too high", "out of scope") sem evidence → FAIL.
+
+   Audit é regex+estrutura (zero LLM cost). FAIL → `BLOCKED_ERROR error_type: lead_resolution_audit_failed`. Doc canônico: `references/lead-resolution-protocol.md` § Audit trail (consumido stage 05).
+6. **Escrever `output/verification-report.md`:** seções `Entregáveis (declarado vs entregue)`, `CI Status`, `Sample ADRs`, `Lead resolutions audit` (v3.9.0), `Sumário PASS/CONDITIONAL/FAIL`.
 7. Se CI global falhou OU entregáveis ausentes → `status: BLOCKED_ERROR`, registrar em `history`. Humano resolve (volta fase 04 com `iteration++` ou corrige manualmente).
 8. **Handoff de fim de stage:** seguir protocolo gate-inline na seção `## End of stage handoff` deste L2 (Fase 1 WORK_DONE → gate humano → Fase 2 GATE_APPROVED).
 
@@ -78,7 +85,7 @@ Transição IN_PROGRESS → COMPLETED dispara quando:
 
 - `IN_PROGRESS` — auditando entregáveis e CI.
 - `COMPLETED_AWAITING_HUMAN` — `verification-report.md` pronto, humano aprova transição para 06.
-- `BLOCKED_ERROR` — CI global vermelho, entregáveis declarados ausentes no FS, ou inconsistência grave entre plan.md e wave outputs.
+- `BLOCKED_ERROR` — CI global vermelho, entregáveis declarados ausentes no FS, inconsistência grave entre plan.md e wave outputs, OR lead resolutions audit failed (`error_type: lead_resolution_audit_failed`, v3.9.0).
 
 ## Stop points aplicáveis
 
