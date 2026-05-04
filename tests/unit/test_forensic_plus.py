@@ -764,3 +764,77 @@ def test_crash_plan_missing_file(tmp_path):
     )
     assert rc == 1
     assert "not found" in stderr.lower() or "nonexistent" in stderr
+
+
+# ============================================================================
+# Snapshot fixtures (Task 9 + Task 10) — locks JSON contract
+# ============================================================================
+
+import yaml  # already in requirements.txt for state-machine YAML parsing
+
+FIXTURE_DIR = Path(__file__).resolve().parents[1] / "fixtures" / "forensic-plus-expected"
+
+
+def _build_fixture_repo(tmp_path: Path, recipe: dict) -> Path:
+    """Construct a deterministic git repo from the recipe."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-b", recipe.get("base_branch", "main"))
+    _git(repo, "config", "user.email", "fixture@example.com")
+    _git(repo, "config", "user.name", "Fixture")
+    for path, content in recipe.get("base_files", {}).items():
+        full = repo / path
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_text(content, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "base")
+
+    branch = recipe["branch"]
+    _git(repo, "checkout", "-b", branch)
+    for path, content in recipe.get("branch_files", {}).items():
+        full = repo / path
+        full.parent.mkdir(parents=True, exist_ok=True)
+        full.write_text(content, encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "branch work")
+    _git(repo, "checkout", recipe.get("base_branch", "main"))
+    return repo
+
+
+@pytest.mark.parametrize(
+    "fixture_name",
+    sorted(p.stem.replace(".spec", "") for p in FIXTURE_DIR.glob("*.spec.yaml")),
+)
+def test_snapshot_fixture(fixture_name, tmp_path):
+    """Each fixture: build repo, run script, compare JSON byte-for-byte."""
+    spec_path = FIXTURE_DIR / f"{fixture_name}.spec.yaml"
+    plan_path_src = FIXTURE_DIR / f"{fixture_name}.input.md"
+    expected_path = FIXTURE_DIR / f"{fixture_name}.json"
+
+    recipe = yaml.safe_load(spec_path.read_text(encoding="utf-8"))
+    repo = _build_fixture_repo(tmp_path, recipe)
+    plan = repo / "plan.md"
+    plan.write_text(plan_path_src.read_text(encoding="utf-8"), encoding="utf-8")
+
+    rc, stdout, stderr = _run(
+        [
+            "--workspace-num", recipe["workspace_num"],
+            "--wave", str(recipe["wave"]),
+            "--task-slug", recipe["task_slug"],
+            "--base-branch", recipe.get("base_branch", "main"),
+            "--plan", str(plan),
+            "--tier", recipe["tier"],
+            "--output", "json",
+        ],
+        cwd=repo,
+    )
+    expected_rc = recipe.get("expected_exit_code", 0)
+    assert rc == expected_rc, f"exit code mismatch; stderr={stderr}"
+
+    expected = json.loads(expected_path.read_text(encoding="utf-8"))
+    actual = json.loads(stdout)
+    assert actual == expected, (
+        f"snapshot mismatch for {fixture_name}\n"
+        f"expected: {json.dumps(expected, indent=2)}\n"
+        f"actual:   {json.dumps(actual, indent=2)}"
+    )

@@ -1,0 +1,19 @@
+workspace_num: "042"
+wave: 1
+task_slug: add-greet
+base_branch: main
+tier: development
+expected_exit_code: 0
+branch: wave-042-1/add-greet
+base_files:
+  src/greet.py: "def greet(): return 'hello'\n"
+branch_files:
+  src/greet.py: "def greet(name='world'): return f'hello {name}'\n"
+  tests/test_greet.py: |
+    from src.greet import greet
+
+    def test_default():
+        assert greet() == "hello world"
+
+    def test_named():
+        assert greet("foo") == "hello foo"
