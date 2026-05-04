@@ -64,10 +64,15 @@ def test_l2_force_decision_matrix(l2_text):
 
 
 def test_l2_wave_reviewer_isolation_spec(l2_text):
-    """Gap 3: passo 8 deve declarar reviewer SEM worktree."""
+    """Gap 3: passo 8 deve declarar reviewer SEM worktree.
+
+    v3.8.0: step 8 expandido em 8a/8b/8c/8d (forensic+). Contrato semântico
+    preservado via wording 'Agent sem worktree' no header do step 8.
+    """
     assert "SEM `isolation: \"worktree\"`" in l2_text or \
-           "git show wave-" in l2_text, \
-           "L2 deve declarar wave-reviewer sem worktree (git show)"
+           "git show wave-" in l2_text or \
+           "Agent sem worktree" in l2_text, \
+           "L2 deve declarar wave-reviewer sem worktree"
 
 
 def test_l2_qa_loops_tracking(l2_text):
