@@ -64,6 +64,12 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 - src/path/file.ts
 - tests/path/file.test.ts
 
+### Estimated lines
+~250    <!-- optional. If present, forensic-plus.py Check 3 (scope creep)
+            triggers when actual diff insertions > 3 × estimate. Plan author
+            opts in for tasks where bounded scope matters. Absent → check skipped.
+            See references/forensic-plus-protocol.md § Check 3. -->
+
 ### ADRs aplicáveis
 - docs/decisions/0001-stack.md
 - docs/decisions/0004-auth-strategy.md
@@ -86,6 +92,7 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 | 4-block | Designer (fase 02) | Subagente (fase 04) |
 | Depends on | Designer (fase 02) | Wave-planner (DAG aresta explícita) |
 | Files touched | Designer; refinado wave-planner | Lead (boundary da branch); Wave-planner (valida ≥1 arquivo de teste por task com código funcional) |
+| Estimated lines (opcional) | Designer (fase 02) | forensic-plus.py (Check 3 scope creep) |
 | ADRs aplicáveis | Designer | Subagente (read order) |
 | Lições críticas | Wave-planner (Q10 match) | Subagente (audit pré-RED) |
 | Conventions extras | Designer (raro) | Subagente |
