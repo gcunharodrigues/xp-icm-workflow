@@ -128,6 +128,7 @@ def test_plan_migration_from_3_3_0_to_canonical(mw):
         "3.6.0->3.7.0",
         "3.7.0->3.7.2",
         "3.7.2->3.8.0",
+        "3.8.0->3.9.0",
     ]
 
 
@@ -325,11 +326,48 @@ def test_trigger_mode_in_progress_warning_only(mw, tmp_path: Path):
 
 
 def test_step_functions_includes_v3_8_0(mw):
-    """Dispatcher must register the new step with the canonical 'from->to' string key."""
+    """Dispatcher must register the v3.8.0 step with the canonical 'from->to' string key."""
     assert "3.7.2->3.8.0" in mw.STEP_FUNCTIONS
     assert mw.STEP_FUNCTIONS["3.7.2->3.8.0"] is mw.migrate_3_7_2_to_3_8_0
 
 
-def test_supported_versions_ends_with_3_8_0(mw):
-    """Tuple must include 3.8.0 as the last entry."""
-    assert mw.SUPPORTED_VERSIONS[-1] == "3.8.0"
+def test_step_functions_includes_v3_9_0(mw):
+    """Dispatcher must register the v3.9.0 step with the canonical 'from->to' string key."""
+    assert "3.8.0->3.9.0" in mw.STEP_FUNCTIONS
+    assert mw.STEP_FUNCTIONS["3.8.0->3.9.0"] is mw.migrate_3_8_0_to_3_9_0
+
+
+def test_supported_versions_ends_with_3_9_0(mw):
+    """Tuple must include 3.9.0 as the last entry."""
+    assert mw.SUPPORTED_VERSIONS[-1] == "3.9.0"
+
+
+def test_supported_versions_includes_3_8_0(mw):
+    """v3.8.0 should still be present (intermediate step)."""
+    assert "3.8.0" in mw.SUPPORTED_VERSIONS
+
+
+def test_migrate_3_8_0_to_3_9_0_smoke(mw, tmp_path: Path):
+    """Smoke: bump-only migration produz L0 com nova versão."""
+    ws = tmp_path / "001-test"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.8.0"\n---\n# Workspace 001\n',
+        encoding="utf-8",
+    )
+    mw.migrate_3_8_0_to_3_9_0(ws, project_root=tmp_path)
+    text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
+    assert 'icm_skill_version: "3.9.0"' in text
+
+
+def test_migrate_3_8_0_to_3_9_0_idempotent(mw, tmp_path: Path):
+    """Aplicar migrate sobre workspace já em 3.9.0 não deve quebrar nem alterar version."""
+    ws = tmp_path / "002-idempotent"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.9.0"\n---\n# Workspace 002\n',
+        encoding="utf-8",
+    )
+    mw.migrate_3_8_0_to_3_9_0(ws, project_root=tmp_path)
+    text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
+    assert 'icm_skill_version: "3.9.0"' in text

@@ -856,3 +856,238 @@ def test_snapshot_fixture(fixture_name, tmp_path):
         f"expected: {json.dumps(expected, indent=2)}\n"
         f"actual:   {json.dumps(actual, indent=2)}"
     )
+
+
+# ============================================================================
+# v3.9.0 — Checks 5/6/7 (acceptance↔test mapping, NÃO QUERO violations, ADR import drift)
+# ============================================================================
+
+def _make_plan_v3_9_0(
+    repo,
+    task_slug,
+    files_touched,
+    *,
+    validacao=None,
+    nao_quero=None,
+    adrs_aplicaveis=None,
+    conventions_extras=None,
+    estimated_lines=None,
+):
+    """Write a plan.md with v3.9.0 blocks (NÃO QUERO, VALIDAÇÃO, ADRs aplicáveis)."""
+    plan = repo / "plan.md"
+    body = f"## Task {task_slug}:\n\n### O QUE\n- placeholder\n\n"
+    if nao_quero:
+        body += "### NÃO QUERO\n"
+        for b in nao_quero:
+            body += f"- {b}\n"
+        body += "\n"
+    if validacao:
+        body += "### VALIDAÇÃO\n"
+        for b in validacao:
+            body += f"- {b}\n"
+        body += "\n"
+    body += "### Files touched\n"
+    for f in files_touched:
+        body += f"- {f}\n"
+    if adrs_aplicaveis:
+        body += "\n### ADRs aplicáveis\n"
+        for a in adrs_aplicaveis:
+            body += f"- {a}\n"
+    if estimated_lines is not None:
+        body += f"\n### Estimated lines\n~{estimated_lines}\n"
+    if conventions_extras:
+        body += f"\n### Conventions extras\n- {conventions_extras}\n"
+    plan.write_text(body, encoding="utf-8")
+    return plan
+
+
+# Check 5: acceptance ↔ test mapping
+def test_check5_acceptance_unmapped_hard_in_dev(tmp_path):
+    """VALIDAÇÃO bullet cita test_foo_bar mas test file não contém o nome → HARD em dev."""
+    test_content = (
+        "def test_other_thing():\n"
+        "    assert True\n\n"
+        "def test_yet_another():\n"
+        "    assert 1 == 1\n"
+    )
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/auth/mw.py": "# stub\n"},
+        branch_files={
+            "src/auth/mw.py": "# stub impl\ndef require_jwt():\n    pass\n",
+            "tests/test_mw.py": test_content,
+        },
+        branch_name="wave-001-1/auth-mw",
+    )
+    _make_plan_v3_9_0(
+        repo, "auth-mw",
+        files_touched=["src/auth/mw.py", "tests/test_mw.py"],
+        validacao=[
+            "Test `test_missing_header_returns_401`: header ausente → 401",
+        ],
+    )
+    rc, stdout, stderr = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "auth-mw", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "development",
+    ], cwd=repo)
+    assert rc == 0, f"stderr: {stderr}"
+    result = json.loads(stdout)
+    violations = [v for v in result["violations"] if v["check"] == "acceptance_test_unmapped"]
+    assert len(violations) >= 1
+    assert violations[0]["severity"] == "HARD"
+
+
+def test_check5_acceptance_unmapped_soft_in_tool(tmp_path):
+    """Mesmo cenário em tier tool → SOFT."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.py": "# stub\n"},
+        branch_files={
+            "src/foo.py": "# stub\n",
+            "tests/test_foo.py": "def test_other():\n    assert True\n    assert 1\n",
+        },
+        branch_name="wave-001-1/foo",
+    )
+    _make_plan_v3_9_0(
+        repo, "foo",
+        files_touched=["src/foo.py", "tests/test_foo.py"],
+        validacao=["Test `test_specific_unmapped`: missing test."],
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "foo", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "tool",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    violations = [v for v in result["violations"] if v["check"] == "acceptance_test_unmapped"]
+    assert len(violations) >= 1
+    assert violations[0]["severity"] == "SOFT"
+
+
+# Check 6: NÃO QUERO violations
+def test_check6_nao_quero_mock_violation_hard_in_dev(tmp_path):
+    """NÃO QUERO declara 'Mock interno de jose'; diff usa jest.mock("jose") → HARD."""
+    test_content = (
+        'jest.mock("jose");\n'
+        'test("foo", () => { expect(1).toBe(1); });\n'
+        'test("bar", () => { expect(2).toBe(2); });\n'
+    )
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/auth.ts": "// stub\n"},
+        branch_files={
+            "src/auth.ts": "// impl\nexport const requireJwt = () => {};\n",
+            "tests/auth.test.ts": test_content,
+        },
+        branch_name="wave-001-1/auth",
+    )
+    _make_plan_v3_9_0(
+        repo, "auth",
+        files_touched=["src/auth.ts", "tests/auth.test.ts"],
+        nao_quero=["Mock interno de jose"],
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "auth", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "development",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    violations = [v for v in result["violations"] if v["check"] == "nao_quero_violation"]
+    assert len(violations) >= 1
+    assert violations[0]["severity"] == "HARD"
+
+
+def test_check6_nao_quero_no_violation_when_pattern_absent(tmp_path):
+    """NÃO QUERO descritivo (sem pattern detectável) → no check."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/foo.ts": "// stub\n"},
+        branch_files={
+            "src/foo.ts": "export const foo = () => 'ok';\n",
+            "tests/foo.test.ts": "test('foo', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+        },
+        branch_name="wave-001-1/foo",
+    )
+    _make_plan_v3_9_0(
+        repo, "foo",
+        files_touched=["src/foo.ts", "tests/foo.test.ts"],
+        nao_quero=["Cachear resultados em memória", "Implementar refresh-token"],
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "foo", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "development",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    nq_violations = [v for v in result["violations"] if v["check"] == "nao_quero_violation"]
+    assert nq_violations == []  # descriptive bullets, no detection
+
+
+# Check 7: ADR import drift
+def test_check7_adr_import_drift_hard_in_prod(tmp_path):
+    """ADR aplicável proíbe `jsonwebtoken`; diff importa → HARD em production."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={
+            "src/auth.ts": "// stub\n",
+            "docs/decisions/0001-stack.md": (
+                "# ADR 0001 — Stack\n\n"
+                "## Forbidden imports\n"
+                "- `jsonwebtoken` (use `jose`)\n"
+            ),
+        },
+        branch_files={
+            "src/auth.ts": "import jwt from 'jsonwebtoken';\nexport const x = () => {};\n",
+            "tests/auth.test.ts": "test('a', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+        },
+        branch_name="wave-001-1/auth",
+    )
+    _make_plan_v3_9_0(
+        repo, "auth",
+        files_touched=["src/auth.ts", "tests/auth.test.ts"],
+        adrs_aplicaveis=["docs/decisions/0001-stack.md"],
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "auth", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "production",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    violations = [v for v in result["violations"] if v["check"] == "adr_import_drift"]
+    assert len(violations) >= 1
+    assert violations[0]["severity"] == "HARD"
+
+
+def test_check7_adr_no_forbidden_section_skip_silently(tmp_path):
+    """ADR sem `## Forbidden imports` section → check skipped (backward compat)."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={
+            "src/auth.ts": "// stub\n",
+            "docs/decisions/0001-stack.md": "# ADR 0001\n\n## Decision\n- Use TS.\n",
+        },
+        branch_files={
+            "src/auth.ts": "import jwt from 'jsonwebtoken';\n",
+            "tests/auth.test.ts": "test('a', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+        },
+        branch_name="wave-001-1/auth",
+    )
+    _make_plan_v3_9_0(
+        repo, "auth",
+        files_touched=["src/auth.ts", "tests/auth.test.ts"],
+        adrs_aplicaveis=["docs/decisions/0001-stack.md"],
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "auth", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "production",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    adr_violations = [v for v in result["violations"] if v["check"] == "adr_import_drift"]
+    assert adr_violations == []

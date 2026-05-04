@@ -76,9 +76,18 @@ def test_l2_wave_reviewer_isolation_spec(l2_text):
 
 
 def test_l2_qa_loops_tracking(l2_text):
-    """Gap 4: subagente grava qa_loops_used no task report."""
-    assert "qa_loops_used" in l2_text, \
-        "L2 deve declarar qa_loops_used field"
+    """Gap 4 (v3.5.0): subagente trackeava qa_loops_used (Akita 15-itens cap 3).
+
+    v3.9.0 update: Akita 15-itens DROP. QA delegado a layers ortogonais
+    (L2 forensic+ extended + L3 critic). Per-task loop cap 3 attempts
+    permanece, mas tracked via attempt counter, não qa_loops_used.
+
+    Test agora valida que cap 3 attempts é declarado (substituindo
+    qa_loops_used legacy field).
+    """
+    assert "cap 3" in l2_text or "cap 3 attempts" in l2_text or \
+           "Cap 3" in l2_text, \
+        "L2 deve declarar cap 3 attempts (substitui qa_loops_used v3.5.0)"
 
 
 def test_l2_blocked_hitl_status(l2_text):

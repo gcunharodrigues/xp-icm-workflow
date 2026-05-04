@@ -110,7 +110,7 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
        ```
        Parse JSON. Grava em `output/wave-<N>/task-<slug>.md` frontmatter campos `forensic_violations`, `forensic_passed`, `forensic_max_severity`, `forensic_respawn_count`. Doc canônico: `references/forensic-plus-protocol.md`. Crash do script (exit 1) → reviewer emit `forensic_error` + treat como HARD; lead → `BLOCKED_ERROR error_type: forensic_script_crash`.
 
-       - HARD em ≥1 check → skip 8c (não roda L3 em código rejeitado por gate barato), brief surgical pra retry (cap 3 attempts da task).
+       - HARD em ≥1 check → skip 8c (não roda L3 em código rejeitado por gate barato), brief surgical pra retry. Per-task cap = 3 attempts; forensic-plus internal cap `MAX_FORENSIC_RETRIES = 2` (hardcoded em scripts/forensic-plus.py — drift-checked) é semanticamente equivalente (3 attempts total = 1 original + 2 retries). Esgotado → escalate lead-resolution.
 
    8c. **L3 Critic ortogonal (sempre, todos tiers — v3.9.0):** pra cada task AFK que passou 8b, reviewer (lead OR Agent) invoca critic via Agent tool com fresh context:
        ```python

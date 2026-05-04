@@ -533,12 +533,17 @@ def test_l2_stage_04_mentions_max_forensic_retries():
 
 
 def test_forensic_plus_doc_canonical_exists():
-    """Sanity: the canonical doc must exist and contain expected H1 + sections."""
+    """Sanity: the canonical doc must exist and contain expected H1 + sections.
+
+    v3.9.0: section header renamed from "Os 4 checks" to "Os 7 checks" with
+    Checks 5/6/7 added (acceptance↔test mapping, NÃO QUERO violations,
+    ADR import drift).
+    """
     path = REPO_ROOT / "references" / "forensic-plus-protocol.md"
     assert path.is_file(), "forensic-plus-protocol.md missing"
     text = path.read_text(encoding="utf-8")
     assert "# Forensic+ Protocol" in text
-    assert "## Os 4 checks" in text
+    assert "## Os 7 checks" in text
     assert "## JSON schema" in text
 
 
@@ -569,6 +574,9 @@ SKILL_MD_INDEXED_DOCS: tuple[str, ...] = (
     "4-block-contract-template.md",
     "feedback-intake-fase08.md",
     "forensic-plus-protocol.md",
+    "critic-protocol.md",            # v3.9.0
+    "lead-resolution-protocol.md",   # v3.9.0
+    "mocking-guidelines.md",         # v3.9.0
 )
 
 
@@ -588,3 +596,99 @@ def test_skill_md_indexes_canonical_docs():
         + "\nAdicione bullet em § 'Referências de algoritmo' ou remova de "
         "SKILL_MD_INDEXED_DOCS se a omissão é intencional."
     )
+
+
+# ============================================================================
+# v3.9.0 — Layered QA loop drift detectors
+# ============================================================================
+
+def test_critic_protocol_doc_canonical_exists():
+    """v3.9.0 critic-protocol.md must exist with H1 + key sections."""
+    path = REPO_ROOT / "references" / "critic-protocol.md"
+    assert path.is_file(), "critic-protocol.md missing"
+    text = path.read_text(encoding="utf-8")
+    assert "# Critic Protocol" in text
+    assert "## Triplet output schema" in text
+    assert "TIER_CEILING" in text
+
+
+def test_lead_resolution_protocol_doc_canonical_exists():
+    """v3.9.0 lead-resolution-protocol.md must exist with B1/B3/B4 sections."""
+    path = REPO_ROOT / "references" / "lead-resolution-protocol.md"
+    assert path.is_file(), "lead-resolution-protocol.md missing"
+    text = path.read_text(encoding="utf-8")
+    assert "# Lead Resolution Protocol" in text
+    assert "B1 — REWRITE_SPEC" in text
+    assert "B3 — DIRECT_IMPL" in text
+    assert "B4 — VOID_TASK" in text
+
+
+def test_mocking_guidelines_doc_canonical_exists():
+    """v3.9.0 mocking-guidelines.md must exist."""
+    path = REPO_ROOT / "references" / "mocking-guidelines.md"
+    assert path.is_file(), "mocking-guidelines.md missing"
+    text = path.read_text(encoding="utf-8")
+    assert "# Mocking Guidelines" in text
+    assert "boundaries" in text.lower()
+
+
+def test_l2_stage_04_references_v3_9_0_docs():
+    """L2 stage 04 must cross-ref critic-protocol + lead-resolution-protocol + mocking-guidelines."""
+    path = (
+        REPO_ROOT / "templates" / "workspace" / "stages"
+        / "04_implementation_waves" / "CONTEXT.md.tpl"
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "critic-protocol.md" in text, "L2 stage 04 must cite critic-protocol.md"
+    assert "lead-resolution-protocol.md" in text, (
+        "L2 stage 04 must cite lead-resolution-protocol.md"
+    )
+    assert "mocking-guidelines.md" in text, (
+        "L2 stage 04 must cite mocking-guidelines.md"
+    )
+
+
+def test_l2_stage_04_mentions_buckets():
+    """L2 stage 04 must mention all 3 buckets B1/B3/B4."""
+    path = (
+        REPO_ROOT / "templates" / "workspace" / "stages"
+        / "04_implementation_waves" / "CONTEXT.md.tpl"
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "B1" in text and "REWRITE_SPEC" in text
+    assert "B3" in text and "DIRECT_IMPL" in text
+    assert "B4" in text and "VOID_TASK" in text
+
+
+def test_l2_stage_05_audits_lead_resolutions():
+    """L2 stage 05 must contain audit lead resolutions sub-step (v3.9.0)."""
+    path = (
+        REPO_ROOT / "templates" / "workspace" / "stages"
+        / "05_verification" / "CONTEXT.md.tpl"
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "Lead resolutions" in text or "lead resolutions" in text.lower(), (
+        "L2 stage 05 must contain audit lead resolutions sub-step"
+    )
+    assert "lead-resolution-protocol.md" in text
+
+
+def test_status_enum_includes_lead_resolution():
+    """validate_state.py VALID_STATUSES + state-machine-schema.md must include LEAD_RESOLUTION_IN_PROGRESS."""
+    vs_path = REPO_ROOT / "scripts" / "validate_state.py"
+    vs_text = vs_path.read_text(encoding="utf-8")
+    assert '"LEAD_RESOLUTION_IN_PROGRESS"' in vs_text
+
+    schema_path = REPO_ROOT / "references" / "state-machine-schema.md"
+    schema_text = schema_path.read_text(encoding="utf-8")
+    assert "LEAD_RESOLUTION_IN_PROGRESS" in schema_text
+
+
+def test_state_machine_schema_lists_v3_9_0_error_types():
+    """state-machine-schema.md must list v3.9.0 error_type values."""
+    path = REPO_ROOT / "references" / "state-machine-schema.md"
+    text = path.read_text(encoding="utf-8")
+    assert "lead_resolution_audit_failed" in text
+    assert "lead_resolution_all_buckets_failed" in text
+    assert "critic_unavailable" in text
+    assert "critic_abstain_loop" in text
