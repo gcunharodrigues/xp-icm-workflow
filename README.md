@@ -1,11 +1,11 @@
 # xp-icm-workflow
 
-> **Skill de orquestração de projetos via filesystem para Claude Code.** Bootstrap one-shot cria estrutura ICM (Interpretable Context Methodology) num projeto e SAI; o filesystem governa o ciclo. Cada estágio = 1 sessão Claude. v3.7.2.
+> **Skill de orquestração de projetos via filesystem para Claude Code.** Bootstrap one-shot cria estrutura ICM (Interpretable Context Methodology) num projeto e SAI; o filesystem governa o ciclo. Cada estágio = 1 sessão Claude. v3.8.0.
 
-[![tests](https://img.shields.io/badge/tests-823%20passed-brightgreen)](tests/)
+[![tests](https://img.shields.io/badge/tests-855%20passed-brightgreen)](tests/)
 [![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)](pyproject.toml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](system-requirements.md)
-[![version](https://img.shields.io/badge/version-v3.7.2-blue)](references/changelog.md)
+[![version](https://img.shields.io/badge/version-v3.8.0-blue)](references/changelog.md)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -239,12 +239,13 @@ Detalhes de fluxo, padrões de código e regras de drift em [CONTRIBUTING.md](CO
 
 ## Versão atual
 
-**v3.7.2** — saída A/C último ativo: auto-`/init` + cleanup ICM opt-in (`.index.md` + settings.json hooks + workspace branch + `.icm-main/`) + recovery wizard `STALE_ICM_MAIN_AFTER_CLOSE`.
+**v3.8.0** — Forensic+ wave reviewer: auditoria estrutural anti-fraude no step 8 do wave-reviewer (stage 04). 4 checks tier-aware (test asserções, files fora declared, scope creep, TODO/FIXME), re-spawn cap `MAX_FORENSIC_RETRIES = 2`, novo `scripts/forensic-plus.py` + doc canônico `references/forensic-plus-protocol.md`.
 
 Versão canônica: [`scripts/bootstrap.py:SKILL_VERSION`](scripts/bootstrap.py). Histórico completo: [`references/changelog.md`](references/changelog.md).
 
 ### Highlights por versão
 
+- **v3.8.0** (2026-05-03) — Forensic+ wave reviewer. 4 checks anti-fraude per task no step 8 wave-reviewer (test asserções, files fora declared, scope creep, TODO/FIXME). Tier-aware HARD/SOFT severity. Re-spawn cap 2. Doc: `references/forensic-plus-protocol.md`.
 - **v3.7.2** (2026-05-01) — Saída A/C último ativo dispara `/init` automático + menu opt-in cleanup (`scripts/icm-cleanup.py`). `.index.md` + `settings.local.json` hooks limpos. SessionStart hook prefere L1 status sobre `.index.md`. Recovery wizard novo detector `STALE_ICM_MAIN_AFTER_CLOSE`.
 - **v3.7.0** (2026-05-01) — Runtime cleanup + spawn-pending handoff. Stop point #15 `runtime_cleanup_failed`. Migration v3.3→v3.7.
 - **v3.6.0** (2026-04-30) — Preview loop frontend (build-iterate visual). Chrome CDP integration, mock data tier-based.
