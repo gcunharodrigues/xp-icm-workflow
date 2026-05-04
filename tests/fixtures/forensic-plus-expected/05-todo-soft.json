@@ -1,0 +1,12 @@
+{
+  "task_slug": "add-cache",
+  "violations": [
+    {
+      "check": "todo_added",
+      "severity": "SOFT",
+      "evidence": "1 TODO/FIXME/HACK added: # TODO: add LRU eviction"
+    }
+  ],
+  "forensic_passed": true,
+  "max_severity": "SOFT"
+}

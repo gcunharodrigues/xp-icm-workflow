@@ -1,0 +1,12 @@
+workspace_num: "042"
+wave: 1
+task_slug: add-shout
+base_branch: main
+tier: experimental
+expected_exit_code: 0
+branch: wave-042-1/add-shout
+base_files:
+  src/shout.py: "def shout(): return 'A'\n"
+branch_files:
+  src/shout.py: "def shout(s): return s.upper()\n"
+  tests/test_shout.py: "def test_one():\n    assert True\n"

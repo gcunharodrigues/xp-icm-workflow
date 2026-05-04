@@ -1,0 +1,16 @@
+workspace_num: "042"
+wave: 1
+task_slug: add-foo
+base_branch: main
+tier: development
+expected_exit_code: 0
+branch: wave-042-1/add-foo
+base_files:
+  src/foo.py: "x = 1\n"
+branch_files:
+  src/foo.py: "x = 2\n"
+  tests/test_foo.py: |
+    def test_a():
+        assert 1 == 1
+        assert 2 == 2
+  src/extra.py: "y = 3\n"

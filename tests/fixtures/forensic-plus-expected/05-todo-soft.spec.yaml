@@ -1,0 +1,22 @@
+workspace_num: "042"
+wave: 1
+task_slug: add-cache
+base_branch: main
+tier: development
+expected_exit_code: 0
+branch: wave-042-1/add-cache
+base_files:
+  src/cache.py: "def get(k): return None\n"
+branch_files:
+  src/cache.py: |
+    def get(k):
+        # TODO: add LRU eviction
+        return None
+  tests/test_cache.py: |
+    from src.cache import get
+
+    def test_miss():
+        assert get("k") is None
+
+    def test_str():
+        assert get("a") is None

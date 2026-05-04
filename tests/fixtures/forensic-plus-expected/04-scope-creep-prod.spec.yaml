@@ -1,0 +1,21 @@
+workspace_num: "042"
+wave: 1
+task_slug: bulk-refactor
+base_branch: main
+tier: production
+expected_exit_code: 0
+branch: wave-042-1/bulk-refactor
+base_files:
+  src/big.py: "x = 0\n"
+branch_files:
+  tests/test_big.py: |
+    def test_a():
+        assert 1 == 1
+        assert 2 == 2
+expansion:
+  # Replaces src/big.py with 152 generated lines.
+  # Math: estimate=50, threshold=3×50=150. Need >150 insertions.
+  # 152 lines from expansion + 3 lines of tests = 155 total insertions.
+  src/big.py:
+    repeat_lines: 152
+    template: "var_{i} = {i}\n"

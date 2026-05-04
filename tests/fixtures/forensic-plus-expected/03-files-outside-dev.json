@@ -1,0 +1,12 @@
+{
+  "task_slug": "add-foo",
+  "violations": [
+    {
+      "check": "files_outside_declared",
+      "severity": "HARD",
+      "evidence": "1 undeclared file(s): src/extra.py"
+    }
+  ],
+  "forensic_passed": false,
+  "max_severity": "HARD"
+}

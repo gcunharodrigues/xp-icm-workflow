@@ -1,0 +1,13 @@
+workspace_num: "042"
+wave: 1
+task_slug: review-data
+base_branch: main
+tier: production
+expected_exit_code: 0
+branch: wave-042-1/review-data
+base_files:
+  src/data.py: "x = 1\n"
+branch_files:
+  # Multiple violations would normally fire — but task is HITL, so all skipped
+  src/data.py: "x = 2\n# TODO: review\n"
+  src/extra.py: "y = 1\n"

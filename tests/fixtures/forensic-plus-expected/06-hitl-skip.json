@@ -1,0 +1,7 @@
+{
+  "task_slug": "review-data",
+  "violations": [],
+  "forensic_passed": null,
+  "max_severity": null,
+  "skipped_reason": "task type=HITL"
+}

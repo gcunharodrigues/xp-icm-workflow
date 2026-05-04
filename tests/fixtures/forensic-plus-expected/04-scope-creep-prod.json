@@ -1,0 +1,12 @@
+{
+  "task_slug": "bulk-refactor",
+  "violations": [
+    {
+      "check": "scope_creep",
+      "severity": "HARD",
+      "evidence": "+155 lines vs 50 estimate (3× threshold = 150)"
+    }
+  ],
+  "forensic_passed": false,
+  "max_severity": "HARD"
+}

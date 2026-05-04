@@ -797,6 +797,24 @@ def _build_fixture_repo(tmp_path: Path, recipe: dict) -> Path:
         full.write_text(content, encoding="utf-8")
     _git(repo, "add", "-A")
     _git(repo, "commit", "-m", "branch work")
+
+    # Optional expansion stage: write generated lines into specific files,
+    # commit only when expansion is non-empty so other fixtures don't break
+    # with "nothing to commit".
+    expansion = recipe.get("expansion") or {}
+    if expansion:
+        for path, exp in expansion.items():
+            full = repo / path
+            full.parent.mkdir(parents=True, exist_ok=True)
+            n = exp["repeat_lines"]
+            tmpl = exp["template"]
+            full.write_text(
+                "".join(tmpl.format(i=i) for i in range(n)),
+                encoding="utf-8",
+            )
+        _git(repo, "add", "-A")
+        _git(repo, "commit", "-m", "expansion files")
+
     _git(repo, "checkout", recipe.get("base_branch", "main"))
     return repo
 

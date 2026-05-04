@@ -1,0 +1,12 @@
+{
+  "task_slug": "add-shout",
+  "violations": [
+    {
+      "check": "test_assertions_too_few",
+      "severity": "HARD",
+      "evidence": "tests/test_shout.py: 1 non-trivial assertion(s) found, need >=2"
+    }
+  ],
+  "forensic_passed": false,
+  "max_severity": "HARD"
+}
