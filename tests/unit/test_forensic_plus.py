@@ -695,3 +695,62 @@ def test_exit_code_zero_with_violations(tmp_path):
     assert rc == 0  # script ran successfully
     data = json.loads(stdout)
     assert data["forensic_passed"] is False
+
+
+# ============================================================================
+# Crash path (EC1) — git missing branch + plan malformed (Task 7)
+# ============================================================================
+
+
+def test_crash_git_missing_branch(tmp_path):
+    """Branch doesn't exist → exit 1 + stderr clear."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-b", "main")
+    _git(repo, "config", "user.email", "test@example.com")
+    _git(repo, "config", "user.name", "Test")
+    (repo / "src").mkdir()
+    (repo / "src" / "foo.py").write_text("x = 1\n", encoding="utf-8")
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-m", "init")
+    plan = _make_plan(repo, "add-foo", ["src/foo.py", "tests/test_foo.py"])
+
+    rc, stdout, stderr = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "development",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 1
+    assert "forensic-plus" in stderr
+    # Should reference the failed git operation
+    assert "wave-001-1/add-foo" in stderr or "fail" in stderr.lower()
+
+
+def test_crash_plan_malformed(tmp_path):
+    """Plan missing the task header → exit 1 with PlanParseError."""
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    plan = repo / "plan.md"
+    plan.write_text("# This plan has no task headers\n", encoding="utf-8")
+
+    rc, _, stderr = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(plan), "--tier", "development",
+         "--output", "json"],
+        cwd=repo,
+    )
+    assert rc == 1
+    assert "task slug not found" in stderr.lower() or "add-foo" in stderr
+
+
+def test_crash_plan_missing_file(tmp_path):
+    """Plan path doesn't exist → exit 1."""
+    rc, _, stderr = _run(
+        ["--workspace-num", "001", "--wave", "1", "--task-slug", "add-foo",
+         "--base-branch", "main", "--plan", str(tmp_path / "nonexistent.md"),
+         "--tier", "development", "--output", "json"],
+        cwd=tmp_path,
+    )
+    assert rc == 1
+    assert "not found" in stderr.lower() or "nonexistent" in stderr
