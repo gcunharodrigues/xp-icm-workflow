@@ -181,6 +181,48 @@ Templates in `/templates/` use `{{WORKSPACE}}`, `{{PROFILE}}`, `{{TIER}}`, `{{PR
 
 Playwright plugin disabled in `pyproject.toml` (workaround — leave it).
 
+## v3.9.0 — Layered dev↔QA loop + lead-resolution tier
+
+Stage 04 ganha 3 layers de QA, executados **sempre, todos tiers**:
+
+- **L1 writer** (subagente) — vertical TDD: tracer-first + loop `RED → GREEN → CI scope → REFACTOR` (anti-horizontal slicing). Drop Akita 15-itens inline (self-grading bias documentado: Huang ICLR 2024, arxiv 2510.11822, arxiv 2509.16533).
+- **L2 forensic+ extended** — 7 deterministic checks git-only (4 originais v3.8.0 + 3 novos): Check 5 acceptance↔test mapping, Check 6 NÃO QUERO violations, Check 7 ADR import drift. HARD → skip L3, surgical retry.
+- **L3 critic ortogonal** — Agent fresh context, `model = TIER_CEILING[tier]` sempre, anti-sycophancy hardcoded em `templates/critic-prompt.md`. Output triplet (claim, evidence file:line, counterexample, severity BLOCKING|MAJOR|MINOR; decision APPROVE|REJECT|ABSTAIN).
+
+**Per-task loop cap 3 attempts.** Esgotado OR convergence trip (Jaccard ≥ 0.7) OR catastrophic detected → **lead-resolution tier**:
+
+- **B1 REWRITE_SPEC** — lead reescreve spec mais rigorosa, 1 final spawn writer.
+- **B3 DIRECT_IMPL** — lead escreve direto em branch `wave-<NNN>-<N>/<slug>-lead-resolved`, passa L2+L3 igual.
+- **B4 VOID_TASK** — bloco `### VOIDED` em plan.md com rationale concreto, wave-planner --recalculate.
+
+Cap 1 attempt per bucket. Sequence B1→B3→B4. Stage 05 audit (sub-step novo 5.5) detecta loosen/silenced/vague — FAIL = `BLOCKED_ERROR error_type: lead_resolution_audit_failed`.
+
+**Pick-model heurística** (`scripts/pick-model.py`): `compute_score(estimated_lines, hot_paths, security_sensitive, public_api_change, algorithm_heavy, doc_only/config_only/css_only, tier)` + tier ceiling cap. Writer ≤ ceiling; critic = ceiling sempre.
+
+Docs canônicos: `references/critic-protocol.md`, `references/lead-resolution-protocol.md`, `references/mocking-guidelines.md` (boundaries-only mocking, mattpocock alignment).
+
+Mudanças ativas em:
+- `scripts/forensic-plus.py` (+Checks 5/6/7, JSON schema bump backward-compat)
+- `scripts/lead-diagnose.py` (novo) — Jaccard cluster + catastrophic detector + bucket recommend + surgical brief render
+- `scripts/pick-model.py` (novo) — score + tier ceiling + writer/critic split
+- `scripts/agent-brief-render.py` (--tier flag integra pick-model)
+- `templates/critic-prompt.md` (novo)
+- `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` (flow novo: TDD vertical → L2 → L3 → diagnose → retry/lead-bucket; step 9 lead-resolution)
+- `templates/workspace/stages/05_verification/CONTEXT.md.tpl` (sub-step 5.5 audit lead resolutions)
+- `references/4-block-contract-template.md` (rewrite §3 vertical TDD; §5 Akita DELETED)
+- `references/forensic-plus-protocol.md` (7 checks)
+- `references/state-machine-schema.md` (+status LEAD_RESOLUTION_IN_PROGRESS, +5 error_types)
+- `scripts/migrate-workspace.py` (3.8.0→3.9.0 step bump-only)
+- `scripts/recovery-wizard.py` (+LEAD_RESOLUTION_STALE)
+- `scripts/validate_state.py` (VALID_STATUSES += LEAD_RESOLUTION_IN_PROGRESS)
+- 9 drift detectors novos em `tests/unit/test_no_drift.py`
+- `tests/unit/test_lead_diagnose.py` (novo, 17 cases)
+- `tests/unit/test_pick_model.py` (novo, 22 cases incl. property-based via Hypothesis)
+- `tests/unit/test_forensic_plus.py` (+6 cases v3.9.0)
+- `tests/unit/test_migrate_workspace.py` (+5 cases v3.9.0)
+
+934 tests passing, 74% coverage.
+
 ## v3.8.0 — Forensic+ wave reviewer (anti-fraude estrutural)
 
 Step 8 do pipeline 12-passos (stage 04) expandido em sub-steps 8a/8b/8c/8d. 8a = `scripts/forensic-plus.py` audita cada task AFK da wave (skip HITL): 4 checks git-only (test asserções ≥2, files fora `files_touched` declarado, scope creep > 3× `### Estimated lines`, TODO/FIXME/HACK adicionados). Severidade tier-aware (HARD/SOFT). HARD → `approved_pending_ci: false` + re-spawn cap `MAX_FORENSIC_RETRIES = 2` (3ª HARD → `BLOCKED_ERROR error_type: forensic_max_retries`); SOFT → `wave-summary.md § Forensic+ summary`; nenhum → approved. Crash do script (exit 1) → `BLOCKED_ERROR error_type: forensic_script_crash`.
