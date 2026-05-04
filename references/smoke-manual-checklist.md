@@ -231,3 +231,51 @@ Saída A do último workspace:
 - [ ] Cleanup `--force` apenas com `auto_qa_passed: true` no task report.
 - [ ] `.icm-main` sync condicional (skip silencioso se ausente).
 - [ ] Validator aceita `BLOCKED_HITL` em L1 status.
+
+## v3.9.0 — layered dev↔QA loop checks
+
+### Bootstrap
+- [ ] Workspace tier=experimental: novo CONTEXT.md.tpl com L3 critic enabled (Haiku ceiling).
+- [ ] Workspace tier=production: novo CONTEXT.md.tpl com L3 critic Opus.
+- [ ] Bootstrap copia 3 docs novos pra `_references/runtime/` (critic-protocol, lead-resolution-protocol, mocking-guidelines).
+
+### Pick-model
+- [ ] `pick-model.py` task `complexity_score: 1` + tier=production → writer Haiku + critic Opus.
+- [ ] `pick-model.py` task `complexity_score: 6` + tier=experimental → writer Haiku + critic Haiku (ceiling caps).
+- [ ] `pick-model.py` task `complexity_score: 5` + tier=development → writer Opus + critic Opus.
+- [ ] `agent-brief-render.py --tier production` injeta `model_recommended_writer/critic` + `complexity_score` no header.
+
+### Lead-diagnose
+- [ ] `lead-diagnose.py` round 1 fail + Jaccard < 0.7 → recommend `surgical_retry` (no trigger met).
+- [ ] `lead-diagnose.py` round 2 fail + Jaccard ≥ 0.7 vs round 1 → recommend `escalate_to_lead, reason: convergence_trip`.
+- [ ] `lead-diagnose.py` catastrophic signal (forensic_files_outside > 5) → recommend `escalate_to_lead, reason: catastrophic, bucket_hint: B3`.
+- [ ] diagnose.md schema: trigger condition + Jaccard table + bucket recommend + surgical brief (when B1).
+
+### Forensic+ extended
+- [ ] `forensic-plus.py` Check 5 fixture (acceptance criterion sem test mapping) → HARD em production.
+- [ ] `forensic-plus.py` Check 6 fixture (diff toca pattern NÃO QUERO `Mock interno de jose`) → HARD em dev/prod.
+- [ ] `forensic-plus.py` Check 7 fixture (import lib proibida por ADR `## Forbidden imports`) → HARD em dev/prod.
+- [ ] ADR sem section `## Forbidden imports` → check 7 silently skipped (backward compat).
+
+### Lead-resolution tier
+- [ ] B1 REWRITE_SPEC: lead reescreve task spec, 1 final spawn writer, output passa L2+L3 igual.
+- [ ] B3 DIRECT_IMPL: lead escreve em branch `wave-<NNN>-<N>/<slug>-lead-resolved`, output passa L2+L3 igual (não auto-aprovado).
+- [ ] B4 VOID_TASK: bloco `### VOIDED` em plan.md com rationale concreto, wave-planner --recalculate.
+- [ ] L1 status `LEAD_RESOLUTION_IN_PROGRESS` durante bucket execution.
+- [ ] Recovery wizard detecta `LEAD_RESOLUTION_STALE` se status > 24h sem progresso.
+
+### Stage 05 audit
+- [ ] Sub-step 5.5 audit lead resolutions detecta B1 loosen (FAIL), B3 critic concerns silenced (FAIL), B4 vague rationale (FAIL).
+- [ ] B1/B3/B4 corretamente aplicados → audit PASS.
+- [ ] FAIL → `BLOCKED_ERROR error_type: lead_resolution_audit_failed`.
+
+### Migration
+- [ ] migrate-workspace v3.8.0→v3.9.0 idempotente em smoke fixture.
+- [ ] L0 frontmatter de workspace existente ganha `icm_skill_version: "3.9.0"` sem quebrar parse.
+- [ ] Status enum atualizado (`LEAD_RESOLUTION_IN_PROGRESS` valid em validate_state.py).
+
+### E2E
+- [ ] Workspace lifecycle 04 wave com 2 tasks (1 forensicamente válida + 1 forçada B3 catastrophic).
+- [ ] Lead resolve via B3 (escreve direto, passa L2+L3).
+- [ ] Stage 05 audit aprova lead resolution.
+- [ ] Handoff stage 04 → 05 verde.
