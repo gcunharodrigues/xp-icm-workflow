@@ -497,10 +497,6 @@ def test_markdown_cross_refs_resolve_in_references():
         "Broken cross-refs em references/:\n  " + "\n  ".join(violations)
 
 
-@pytest.mark.xfail(
-    reason="L2 stage 04 template edit lands in Chunk 3 Task 13; remove xfail there.",
-    strict=True,
-)
 def test_l2_stage_04_mentions_max_forensic_retries():
     """L2 stage 04 template must reference the cap value (sourced from forensic-plus.py)."""
     l2_path = (

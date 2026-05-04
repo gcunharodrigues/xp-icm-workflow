@@ -81,12 +81,35 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
 
    Lead recebe → seta L1 `status: BLOCKED_ERROR` → wave-reviewer (passo 8) audita git log da wave branch contando commits RED/GREEN/REFACTOR; se `qa_loops_used` declarado < commits reais, flagra fraude. Lead decide: reduzir wave (subagent-protocol) ou escalar humano.
 7. **Lead recebe resultado de cada subagente via Agent tool:** lead aguarda retorno COMPLETE de cada subagente da wave. Resultados chegam diretamente pelo Agent tool output — sem polling de diretório. Ordem de retorno é não-determinística (paralelismo). Lead bufferiza resultados em estrutura `{task_slug: agent_result}`. Antes do passo 9 (merge sequencial), lead ordena tasks por índice no `plan.md > tasks[]` da wave atual — merge order = plan order, NÃO retorno order. Auditável: `wave-summary.md` lista tasks na ordem do plan.
-8. **Wave-reviewer:** lead spawna `Agent(subagent_type: "general-purpose", description: "wave <N> review")` SEM `isolation: "worktree"` — reviewer roda em CWD do lead (workspace branch), lê código das wave branches via:
-   - `git show wave-{{WORKSPACE_NUM}}-<N>/<task-slug>:<file-path>` para conteúdo final.
-   - `git diff {{BASE_BRANCH}}...wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` para diff completo.
-   - `git log {{BASE_BRANCH}}..wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` para commits da branch.
+8. **Wave-reviewer (Agent sem worktree, expandido em sub-steps):**
 
-   Reviewer audita: (a) Auto-QA Akita 15-itens de cada `task-<slug>.md`; (b) `Files touched` reais (via `git diff --name-only`) batem com declarado em plan.md task; (c) acceptance criteria cumpridos. Retorna ao lead via Agent tool output: `approved: true|false`, `issues: [<list>]`. Issues → lead re-spawna subagente original (com `isolation: "worktree"`) para correção.
+   8a. **Forensic+ checks** — pra cada task AFK da wave (skip `type: HITL`), reviewer
+       Agent invoca `python {{SKILL_DIR}}/scripts/forensic-plus.py --workspace-num {{WORKSPACE_NUM}}
+       --wave <N> --task-slug <slug> --base-branch {{BASE_BRANCH}} --plan
+       {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md
+       --tier <T> --output json`. Parse JSON. Grava em `output/wave-<N>/task-<slug>.md`
+       frontmatter campos `forensic_violations`, `forensic_passed`, `forensic_max_severity`,
+       `forensic_respawn_count`. Doc canônico: `references/forensic-plus-protocol.md`.
+       Crash do script (exit 1) → reviewer emit `forensic_error` + treat como HARD; lead → `BLOCKED_ERROR
+       error_type: forensic_script_crash`.
+
+   8b. **Audit existente** — Auto-QA Akita declarado, files touched real (`git diff
+       --name-only`), acceptance criteria. Skip cross-task audit em wave 1-task
+       (flag `skip_cross_task_audit: true` no wave-plan.md).
+
+   8c. **Forensic git log** (`qa_loops_used` declarado vs commits RED/GREEN/REFACTOR
+       reais) — mantém status quo. Acceptance criteria audit por task continua.
+
+   8d. **Emit decision:**
+       - HARD em ≥1 task → `approved_pending_ci: false`, `issues: [...]` →
+         lead re-spawn subagente original. Cap `MAX_FORENSIC_RETRIES = 2`
+         (após 3ª tentativa HARD → `BLOCKED_ERROR error_type: forensic_max_retries`).
+         AGENT-BRIEF do re-spawn injeta brief prescritivo por violation type
+         (ver `references/forensic-plus-protocol.md` § Re-spawn brief).
+       - Apenas SOFT → `approved_pending_ci: true`, warnings logged em
+         `wave-summary.md` § Forensic+ summary. Merge prossegue.
+       - Nenhum → padrão approved.
+
 9. **Merge sequencial:** lead faz merge de cada branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` em `{{BASE_BRANCH}}` usando ordem buferizada do passo 7 (= ordem do plan). Comando: `git checkout {{BASE_BRANCH}} && git merge --no-ff wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` por task. `--no-ff` preserva grupo de commits da wave branch (auditável). Conflict de merge → ver `references/conflict-resolution-protocol.md`.
 10. **CI gate global:** roda CI completo do projeto após todos os merges. Verde → wave concluída, segue passo 11. Vermelho → ver `references/ci-rollback-protocol.md` (diagnose protocol → rollback se inconclusive → gate humano A/B/C).
 11. **Cleanup wave worktrees + branches (v3.4.3):** após merge bem-sucedido + CI verde, lead remove worktrees efêmeras criadas pelos subagentes E deleta branches já merged. Bug pre-v3.4.3: worktrees em `<project_root>/.icm-wave-*` (ou path retornado pelo Agent tool) ficavam orfãs após cada wave; branches `wave-<NNN>-<N>/<task-slug>` poluíam `git branch` listing.
