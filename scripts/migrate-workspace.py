@@ -337,14 +337,127 @@ def migrate_3_10_0_to_3_11_0(workspace_root: Path, project_root: Path) -> None:
 
 
 def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
-    """v3.12.0 -> v3.12.1: Bump-only (no workspace changes needed).
+    """v3.12.0 -> v3.12.1: Re-copy reference docs + surgical template fixes.
 
-    Fixes in v3.12.1 are backward-compatible: wave-planner now accepts both
-    "none" and "nenhum" as empty-dependency sentinels; handoff parser is
-    comma-safe; parenthetical notes in deps are stripped. No workspace
-    file format changed.
+    - Re-copies all 32 reference docs from skill references/ to workspace
+      _references/runtime/ (new docs: script-cli-reference, ci-rollback,
+      conflict-resolution, icm-cleanup, wave-execution, worktree-model,
+      preview-loop, runtime-cleanup).
+    - Updates stage 04 CONTEXT.md: old critic pseudo-code → render-critic-prompt.py.
+    - Updates stage 08 CONTEXT.md: stop point #13 → #15 (runtime_cleanup_failed).
+
+    Idempotent: running on an already-migrated workspace is a no-op for
+    text replacements. Reference docs are overwritten with latest versions.
     """
     _bump_version_only(workspace_root, "3.12.1")
+
+    # 1. Re-copy reference docs from skill references/ to workspace _references/runtime/
+    skill_root = Path(__file__).resolve().parent.parent
+    refs_src = skill_root / "references"
+    runtime_dst = workspace_root / "_references" / "runtime"
+    if refs_src.is_dir() and runtime_dst.exists():
+        # Same tuple as bootstrap.py runtime_refs — keep in sync
+        _RUNTIME_REFS: tuple[str, ...] = (
+            "subagent-protocol.md",
+            "wave-planner-algorithm.md",
+            "state-machine-schema.md",
+            "recovery-wizard.md",
+            "stop-points-canonical.md",
+            "4-block-contract-template.md",
+            "feedback-intake-stage08.md",
+            "session-handoff-protocol.md",
+            "project-root-claude-md.md",
+            "context-format.md",
+            "agent-brief-template.md",
+            "adr-format.md",
+            "diagnose-protocol.md",
+            "task-types-hitl-afk.md",
+            "triage-state-machine.md",
+            "out-of-scope-kb.md",
+            "design-it-twice.md",
+            "deep-modules.md",
+            "design-system.md",
+            "forensic-plus-protocol.md",
+            "critic-protocol.md",
+            "lead-resolution-protocol.md",
+            "mocking-guidelines.md",
+            "preview-loop-protocol.md",
+            "runtime-cleanup-protocol.md",
+            "e2e-coverage-protocol.md",
+            "ci-rollback-protocol.md",
+            "conflict-resolution-protocol.md",
+            "icm-cleanup-protocol.md",
+            "script-cli-reference.md",
+            "wave-execution-protocol.md",
+            "worktree-model.md",
+        )
+        for fname in _RUNTIME_REFS:
+            src = refs_src / fname
+            dst = runtime_dst / fname
+            if src.is_file():
+                try:
+                    dst.write_text(src.read_text(encoding="utf-8"))
+                except (UnicodeDecodeError, OSError):
+                    pass
+
+    # 2. Stage 04: update critic invocation from dead pseudo-code to real script
+    _STAGE04_REPLACEMENTS: list[tuple[str, str]] = [
+        # Old: dead pseudo-code Agent call with non-existent render_critic_prompt()
+        (
+            "       ```python\n"
+            "       Agent(\n"
+            '           description="L3 critic ortogonal task <slug>",\n'
+            '           subagent_type="general-purpose",\n'
+            "           model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]\n"
+            "           prompt=render_critic_prompt(<slug>, <wave>),  # templates/critic-prompt.md\n"
+            "       )\n"
+            "       ```",
+            "       1. **Render critic prompt** (automated — script captures diff + test output):\n"
+            "          ```bash\n"
+            "          python {{SKILL_DIR}}/scripts/render-critic-prompt.py \\\n"
+            "              --task-slug <slug> --wave <N> --tier <TIER> \\\n"
+            "              --workspace-num {{WORKSPACE_NUM}} --base-branch {{BASE_BRANCH}} \\\n"
+            "              --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \\\n"
+            "              --critic-model <critic_model_from_pick_model_py> \\\n"
+            "              --output output/wave-<N>/task-<slug>-critic-prompt-round<R>.md\n"
+            "          ```\n"
+            "       2. **Spawn critic** with the rendered prompt:\n"
+            "          ```python\n"
+            "          Agent(\n"
+            '              description="L3 critic task <slug> wave <N>",\n'
+            '              subagent_type="general-purpose",\n'
+            "              model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]\n"
+            '              prompt=Read("output/wave-<N>/task-<slug>-critic-prompt-round<R>.md"),\n'
+            "          )\n"
+            "          ```",
+        ),
+    ]
+    stage04 = workspace_root / "stages" / "04_implementation_waves" / "CONTEXT.md"
+    if stage04.is_file():
+        try:
+            text = stage04.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            text = ""
+        for old, new in _STAGE04_REPLACEMENTS:
+            text = text.replace(old, new)
+            stage04.write_text(text, encoding="utf-8")
+
+    # 3. Stage 08: stop point numbers #13 → #15 (runtime_cleanup_failed)
+    _STAGE08_REPLACEMENTS: list[tuple[str, str]] = [
+        (
+            "#13 `runtime_cleanup_failed`",
+            "#15 `runtime_cleanup_failed`",
+        ),
+    ]
+    stage08 = workspace_root / "stages" / "08_feedback_intake" / "CONTEXT.md"
+    if stage08.is_file():
+        try:
+            text = stage08.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            text = ""
+        for old, new in _STAGE08_REPLACEMENTS:
+            text = text.replace(old, new)
+            stage08.write_text(text, encoding="utf-8")
 
 
 def migrate_3_11_0_to_3_12_0(workspace_root: Path, project_root: Path) -> None:

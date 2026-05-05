@@ -592,7 +592,7 @@ def test_step_functions_includes_v3_12_1(mw):
 
 
 def test_migrate_3_12_0_to_3_12_1_smoke(mw, tmp_path: Path):
-    """Smoke: bump-only migration produces L0 with new version."""
+    """Smoke: migration bumps L0 version."""
     ws = tmp_path / "001-test-3121"
     ws.mkdir()
     (ws / "CLAUDE.md").write_text(
@@ -615,3 +615,67 @@ def test_migrate_3_12_0_to_3_12_1_idempotent(mw, tmp_path: Path):
     mw.migrate_3_12_0_to_3_12_1(ws, project_root=tmp_path)
     text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
     assert 'icm_skill_version: "3.12.1"' in text
+
+
+def test_migrate_3_12_0_to_3_12_1_copies_script_cli_reference(mw, tmp_path: Path):
+    """Migration must copy new script-cli-reference.md to _references/runtime/."""
+    ws = tmp_path / "003-refs-3121"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.12.0"\n---\n',
+        encoding="utf-8",
+    )
+    runtime_dir = ws / "_references" / "runtime"
+    runtime_dir.mkdir(parents=True)
+    mw.migrate_3_12_0_to_3_12_1(ws, project_root=tmp_path)
+    # script-cli-reference.md must now exist (copied from skill references/)
+    ref = runtime_dir / "script-cli-reference.md"
+    assert ref.is_file(), "script-cli-reference.md was not copied to _references/runtime/"
+
+
+def test_migrate_3_12_0_to_3_12_1_updates_stage04_critic_invocation(mw, tmp_path: Path):
+    """Migration must replace dead render_critic_prompt pseudo-code in stage 04."""
+    ws = tmp_path / "004-stage04-3121"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.12.0"\n---\n',
+        encoding="utf-8",
+    )
+    stage04_dir = ws / "stages" / "04_implementation_waves"
+    stage04_dir.mkdir(parents=True)
+    # Old pseudo-code that migration must replace
+    old_block = (
+        "       ```python\n"
+        "       Agent(\n"
+        '           description="L3 critic ortogonal task <slug>",\n'
+        '           subagent_type="general-purpose",\n'
+        "           model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]\n"
+        "           prompt=render_critic_prompt(<slug>, <wave>),  # templates/critic-prompt.md\n"
+        "       )\n"
+        "       ```"
+    )
+    (stage04_dir / "CONTEXT.md").write_text(old_block, encoding="utf-8")
+    mw.migrate_3_12_0_to_3_12_1(ws, project_root=tmp_path)
+    result = (stage04_dir / "CONTEXT.md").read_text(encoding="utf-8")
+    assert "render-critic-prompt.py" in result
+    assert "render_critic_prompt(<slug>, <wave>)" not in result
+
+
+def test_migrate_3_12_0_to_3_12_1_updates_stage08_stop_point_number(mw, tmp_path: Path):
+    """Migration must replace stop point #13 with #15 in stage 08."""
+    ws = tmp_path / "005-stage08-3121"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.12.0"\n---\n',
+        encoding="utf-8",
+    )
+    stage08_dir = ws / "stages" / "08_feedback_intake"
+    stage08_dir.mkdir(parents=True)
+    (stage08_dir / "CONTEXT.md").write_text(
+        "stop point #13 `runtime_cleanup_failed`",
+        encoding="utf-8",
+    )
+    mw.migrate_3_12_0_to_3_12_1(ws, project_root=tmp_path)
+    result = (stage08_dir / "CONTEXT.md").read_text(encoding="utf-8")
+    assert "#15 `runtime_cleanup_failed`" in result
+    assert "#13 `runtime_cleanup_failed`" not in result
