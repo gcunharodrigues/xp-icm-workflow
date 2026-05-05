@@ -39,7 +39,7 @@
 | `next_action` | string | free-form description | Current session |
 | `last_transition` | object | `{from, to, at, commit_sha}` | Every transition |
 
-## Frontmatter — optional fields (nullable / omissible)
+## Frontmatter — optional fields (nullable / omittable)
 
 | Field | Type | When present | Default |
 |---|---|---|---|

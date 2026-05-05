@@ -1,6 +1,6 @@
 # 4-Block Contract Template + Vertical TDD Cycle
 
-> **Versão:** v3.9.0
+> **Version:** v3.9.0
 > **Skill:** `xp-icm-workflow`
 > **Purpose:** Defines the mandatory 4-block contract per task in `plan.md` (output of stage 02 design, consumed by stages 03 wave_planner and 04 implementation_waves) **and** the canonical vertical TDD cycle (tracer-first + 1 test → 1 impl → repeat) that every subagent executes per task. Replaces v3.0.0-beta5 (Akita 15-item drop in v3.9.0).
 
