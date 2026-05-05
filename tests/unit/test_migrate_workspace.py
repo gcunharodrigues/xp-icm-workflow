@@ -130,6 +130,7 @@ def test_plan_migration_from_3_3_0_to_canonical(mw):
         "3.7.2->3.8.0",
         "3.8.0->3.9.0",
         "3.9.0->3.10.0",
+        "3.10.0->3.11.0",
     ]
 
 
@@ -345,8 +346,8 @@ def test_step_functions_includes_v3_10_0(mw):
 
 
 def test_supported_versions_ends_with_3_10_0(mw):
-    """Tuple must include 3.10.0 as the last entry."""
-    assert mw.SUPPORTED_VERSIONS[-1] == "3.10.0"
+    """Tuple must still include 3.10.0 (intermediate step, not last)."""
+    assert "3.10.0" in mw.SUPPORTED_VERSIONS
 
 
 def test_supported_versions_includes_3_9_0(mw):
@@ -409,3 +410,74 @@ def test_migrate_3_8_0_to_3_9_0_idempotent(mw, tmp_path: Path):
     mw.migrate_3_8_0_to_3_9_0(ws, project_root=tmp_path)
     text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
     assert 'icm_skill_version: "3.9.0"' in text
+
+
+def test_step_functions_includes_v3_11_0(mw):
+    """Dispatcher must register the v3.11.0 step with the canonical 'from->to' string key."""
+    assert "3.10.0->3.11.0" in mw.STEP_FUNCTIONS
+    assert mw.STEP_FUNCTIONS["3.10.0->3.11.0"] is mw.migrate_3_10_0_to_3_11_0
+
+
+def test_supported_versions_ends_with_3_11_0(mw):
+    """Tuple must include 3.11.0 as the last entry."""
+    assert mw.SUPPORTED_VERSIONS[-1] == "3.11.0"
+
+
+def test_migrate_3_10_0_to_3_11_0_smoke(mw, tmp_path: Path):
+    """Smoke: bump-only migration produces L0 with new version."""
+    ws = tmp_path / "001-test-311"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.10.0"\n---\n# Workspace 001\n',
+        encoding="utf-8",
+    )
+    mw.migrate_3_10_0_to_3_11_0(ws, project_root=tmp_path)
+    text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
+    assert 'icm_skill_version: "3.11.0"' in text
+
+
+def test_migrate_3_10_0_to_3_11_0_idempotent(mw, tmp_path: Path):
+    """Applying migrate to workspace already at 3.11.0 must not break or alter version."""
+    ws = tmp_path / "002-idempotent-311"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.11.0"\n---\n# Workspace 002\n',
+        encoding="utf-8",
+    )
+    mw.migrate_3_10_0_to_3_11_0(ws, project_root=tmp_path)
+    text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
+    assert 'icm_skill_version: "3.11.0"' in text
+
+
+def test_migrate_3_10_0_to_3_11_0_injects_language_field(mw, tmp_path: Path):
+    """L1 CONTEXT.md without 'language:' field gets 'language: en-US' injected."""
+    ws = tmp_path / "003-language-inject-311"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.10.0"\n---\n# Workspace 003\n',
+        encoding="utf-8",
+    )
+    (ws / "CONTEXT.md").write_text(
+        "---\nworkspace: 003-lang\nstatus: AWAITING\n---\n",
+        encoding="utf-8",
+    )
+    mw.migrate_3_10_0_to_3_11_0(ws, project_root=tmp_path)
+    ctx = (ws / "CONTEXT.md").read_text(encoding="utf-8")
+    assert "language: en-US" in ctx
+
+
+def test_migrate_3_10_0_to_3_11_0_no_duplicate_language_field(mw, tmp_path: Path):
+    """L1 CONTEXT.md already having 'language:' must not get a second injection."""
+    ws = tmp_path / "004-no-dup-311"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.10.0"\n---\n# Workspace 004\n',
+        encoding="utf-8",
+    )
+    (ws / "CONTEXT.md").write_text(
+        "---\nworkspace: 004-dup\nlanguage: en-US\nstatus: AWAITING\n---\n",
+        encoding="utf-8",
+    )
+    mw.migrate_3_10_0_to_3_11_0(ws, project_root=tmp_path)
+    ctx = (ws / "CONTEXT.md").read_text(encoding="utf-8")
+    assert ctx.count("language:") == 1

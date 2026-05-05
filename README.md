@@ -5,7 +5,7 @@
 [![tests](https://img.shields.io/badge/tests-855%20passed-brightgreen)](tests/)
 [![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)](pyproject.toml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](system-requirements.md)
-[![version](https://img.shields.io/badge/version-v3.10.0-blue)](references/changelog.md)
+[![version](https://img.shields.io/badge/version-v3.11.0-blue)](references/changelog.md)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -238,6 +238,14 @@ Flow details, code standards, and drift rules in [CONTRIBUTING.md](CONTRIBUTING.
 ---
 
 ## Current version
+
+**v3.11.0** — Full migration to en-US. All user-facing text, templates, reference docs, scripts, and tests translated from pt-BR to en-US. No schema or behavioral change; pure language normalization. See [`references/changelog.md`](references/changelog.md) for full entry.
+
+## v3.11.0 — Full migration to en-US
+
+All user-facing text (templates, reference docs, scripts, SKILL.md, README.md, CLAUDE.md skill section) translated from pt-BR to en-US. No schema or behavioral change. Cross-ref: [`references/changelog.md`](references/changelog.md).
+
+---
 
 **v3.10.0** — E2E coverage reinforcement (Level 2). Wave-planner detects user-facing tasks via `USER_FACING_PATHS_BY_PROFILE` defaults (backend/frontend/fullstack/cli/agent_ia/etc) and auto-emits annotation in wave-plan.md. Forensic+ Check 8 validates that tasks with `Requires E2E update: true` in plan.md have ≥1 file in `e2e/`/`cypress/`/`playwright/`/`tests/e2e/` (HARD dev/prod, SOFT exp/tool). L4 wave gate step 11b runs E2E suite **universally** for tier dev/prod (profile-independent). Stage 05 sub-step 4.7 audits suite exists + freshness < 7 days + skip rationale. New doc `references/e2e-coverage-protocol.md`. Recovery wizard +`E2E_SUITE_STALE`.
 

@@ -35,7 +35,7 @@ from typing import Sequence
 # Constants
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.10.0"
+CURRENT_SKILL_VERSION = "3.11.0"
 FLOOR_VERSION = "3.3.0"
 
 # Supported version sequence. Migration steps are consecutive pairs.
@@ -51,6 +51,7 @@ SUPPORTED_VERSIONS: tuple[str, ...] = (
     "3.8.0",
     "3.9.0",
     "3.10.0",
+    "3.11.0",
 )
 
 
@@ -310,6 +311,29 @@ def migrate_3_9_0_to_3_10_0(workspace_root: Path, project_root: Path) -> None:
     _bump_version_only(workspace_root, "3.10.0")
 
 
+def migrate_3_10_0_to_3_11_0(workspace_root: Path, project_root: Path) -> None:
+    """v3.10.0 -> v3.11.0: Full migration to en-US.
+
+    Bump-only. No destructive schema change in L0/L1:
+    - All user-facing text (templates, reference docs, scripts, SKILL.md)
+      translated from pt-BR to en-US. No behavioral or schema change.
+    - Optionally injects `language: en-US` into L1 frontmatter if the
+      field is absent (additive, non-breaking).
+    - Existing workspaces continue without interruption; the language
+      field is advisory only.
+    """
+    _bump_version_only(workspace_root, "3.11.0")
+
+    # Inject `language: en-US` into L1 frontmatter if absent (advisory).
+    l1 = workspace_root / "CONTEXT.md"
+    if l1.is_file():
+        text = l1.read_text(encoding="utf-8")
+        if "language:" not in text:
+            # Insert after the opening `---` line of the frontmatter.
+            text = text.replace("---\n", "---\nlanguage: en-US\n", 1)
+            l1.write_text(text, encoding="utf-8")
+
+
 STEP_FUNCTIONS = {
     "3.3.0->3.4.0": migrate_3_3_to_3_4,
     "3.4.0->3.5.0": migrate_3_4_to_3_5,
@@ -319,6 +343,7 @@ STEP_FUNCTIONS = {
     "3.7.2->3.8.0": migrate_3_7_2_to_3_8_0,
     "3.8.0->3.9.0": migrate_3_8_0_to_3_9_0,
     "3.9.0->3.10.0": migrate_3_9_0_to_3_10_0,
+    "3.10.0->3.11.0": migrate_3_10_0_to_3_11_0,
 }
 
 

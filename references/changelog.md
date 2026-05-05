@@ -4,6 +4,21 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.11.0 — Full migration to en-US (2026-05-04)
+
+### Changes
+
+- **MIGRATION:** All user-facing text translated from pt-BR to en-US. Scope: templates (`templates/workspace/stages/*/CONTEXT.md.tpl`, `templates/_config/`, `templates/.claude/`), reference docs (`references/*.md`), scripts (docstrings, comments, error messages), `SKILL.md`, `README.md`, `CLAUDE.md` skill section.
+- **BUMP:** SKILL_VERSION 3.10.0 → 3.11.0 (`scripts/bootstrap.py`); 5 canonical files synced (SKILL.md, README.md badge + section, `references/design-system.md`, `references/preview-loop-protocol.md`, `scripts/migrate-workspace.py`).
+- **NEW:** `scripts/migrate-workspace.py` +`migrate_3_10_0_to_3_11_0` (bump-only). Optionally injects `language: en-US` into L1 frontmatter if absent. SUPPORTED_VERSIONS += "3.11.0".
+- **NO SCHEMA CHANGE:** L0/L1/L2 YAML structure unchanged. Behavioral logic unchanged. Pure language normalization — existing workspaces continue without interruption.
+
+### Notes
+
+No schema or behavioral change. All existing workspaces (any tier, any stage) migrate cleanly via bump-only step. The `language: en-US` field injection in L1 is advisory (additive, non-breaking).
+
+---
+
 ## v3.10.0 — E2E coverage reinforcement (2026-05-04)
 
 ### Mudanças
