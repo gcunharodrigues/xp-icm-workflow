@@ -790,3 +790,80 @@ def test_no_pt_br_in_canonical():
         except (json.JSONDecodeError, KeyError, TypeError):
             formatted = result.stdout or result.stderr
         pytest.fail(f"Residual pt-BR detected in canonical files:\n{formatted}")
+
+
+# ============================================================================
+# v3.12.1 — runtime_refs completeness detector (prevents workspace 404s)
+# ============================================================================
+
+def _parse_runtime_refs() -> set[str]:
+    """Parse bootstrap.py runtime_refs tuple into set of filenames."""
+    bootstrap = REPO_ROOT / "scripts" / "bootstrap.py"
+    text = bootstrap.read_text(encoding="utf-8")
+    # Extract filenames from the runtime_refs tuple
+    refs: set[str] = set()
+    in_tuple = False
+    for line in text.splitlines():
+        if "runtime_refs = (" in line:
+            in_tuple = True
+            continue
+        if in_tuple:
+            stripped = line.strip()
+            # Break only on closing paren as the first non-whitespace char
+            # (avoid breaking on ')' inside comments like "mattpocock/skills)")
+            if stripped == ")" or stripped.startswith(") "):
+                break
+            match = re.search(r'"([^"]+\.md)"', line)
+            if match:
+                refs.add(match.group(1))
+    return refs
+
+
+def _find_workspace_template_refs() -> set[str]:
+    """Find all <file>.md referenced by workspace templates as runtime refs.
+
+    Matches patterns like:
+      - `_references/runtime/<file>.md`
+      - `references/<file>.md` (stage templates use skill-root paths)
+    """
+    refs: set[str] = set()
+    templates_dir = REPO_ROOT / "templates" / "workspace"
+    for tpl in templates_dir.rglob("*.tpl"):
+        text = tpl.read_text(encoding="utf-8")
+        for match in re.finditer(
+            r'(?:_references/runtime/|references/)([a-z0-9][a-z0-9-]*\.md)',
+            text,
+        ):
+            refs.add(match.group(1))
+    return refs
+
+
+def test_runtime_refs_covers_all_workspace_template_references():
+    """Every reference doc referenced by workspace templates must be in runtime_refs.
+
+    If a stage template or L0/L1/L2 template references a doc at
+    `_references/runtime/<file>.md` or `references/<file>.md`, bootstrap
+    must copy it into the workspace. Missing = 404 at runtime.
+    """
+    runtime_refs = _parse_runtime_refs()
+    template_refs = _find_workspace_template_refs()
+    missing = template_refs - runtime_refs
+    # Docs that are intentionally NOT in runtime_refs (internal/skill-level)
+    ALLOWED_MISSING = {
+        # Internal — skill developers only
+        "changelog.md",
+        "extending-skill.md",
+        "example-run.md",
+        "smoke-manual-checklist.md",
+        "icm-paper-summary.md",
+        "stage-templates.md",
+        # v2.4 snapshot — historical
+        "feedback-intake-fase08.md",
+    }
+    missing -= ALLOWED_MISSING
+    assert not missing, (
+        "Workspace templates reference docs NOT in bootstrap runtime_refs:\n  "
+        + "\n  ".join(sorted(missing))
+        + "\n\nAdd them to runtime_refs in scripts/bootstrap.py "
+        "or update the template to use the correct path."
+    )

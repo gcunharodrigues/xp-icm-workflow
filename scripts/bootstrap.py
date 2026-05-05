@@ -675,6 +675,13 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "preview-loop-protocol.md",      # v3.6.0 — build-iterate visual (frontend/fullstack)
         "runtime-cleanup-protocol.md",   # v3.7.0 — dev server + CDP cleanup
         "e2e-coverage-protocol.md",      # v3.10.0 — E2E reinforcement
+        # v3.12.1 — referenced by workspace templates, were missing
+        "ci-rollback-protocol.md",       # stage 04 steps 1/11a — CI rollback
+        "conflict-resolution-protocol.md",  # stage 04 step 10 — merge conflicts
+        "icm-cleanup-protocol.md",       # stage 08 output A — workspace cleanup
+        "script-cli-reference.md",       # stages 00-05,08 — script CLI format contracts
+        "wave-execution-protocol.md",    # stage 04 — 12-step pipeline (single source of truth)
+        "worktree-model.md",             # L0 CLAUDE.md + stage 02 — parallel worktree model
     )
     refs_src = skill_root / "references"
     for fname in runtime_refs:
