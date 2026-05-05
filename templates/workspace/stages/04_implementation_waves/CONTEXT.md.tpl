@@ -70,17 +70,39 @@ Parallel execution in waves. Lead session orchestrates subagents via Agent tool 
 - Outputs of other stages in the same workspace (00, 01, 05+) — only plan.md (02) and wave-plan.md (03)
 - {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md directly — enters via lead's channel 2 if applicable
 
+## Common protocol violations (READ FIRST — avoid these)
+
+These are the most frequent lead mistakes observed across workspace sessions. Each costs
+a retry cycle or a wasted wave.
+
+| # | Violation | Consequence | Correct behavior |
+|---|-----------|-------------|------------------|
+| 1 | **Skipping L3 critic** — forensic or other script fails, lead proceeds without critic | Unreviewed code merges. Violates "always, all tiers" rule. | Fix root cause (branch name, missing commit, script bug). Never skip L3. If script crashes → `BLOCKED_ERROR`, diagnose, retry. |
+| 2 | **No model selection** — all agents spawned with default model | Mechanical tasks waste tokens (haiku-capable task on opus). Architecture tasks under-modeled (opus-needed on sonnet). | Run `pick-model.py` per task in pre-flight. Set `model:` on every `Agent()` call. mechanical=haiku, integration=sonnet, architecture=opus. |
+| 3 | **Merge from wrong branch** — merge executed from workspace branch, not main | Wrong base for merge commit. Confused history. | Always: `git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>`. Verify with `git branch --show-current` before merge. |
+| 4 | **Branch naming mismatch** — branch doesn't match `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` | forensic-plus.py, lead-diagnose.py fail with "ambiguous argument" or "branch not found" | Use exact format: `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. Pre-flight verifies with `git branch --list`. |
+| 5 | **Racing to execution** — skipping pre-flight because "3 root tasks, parallel, simple" | Hit errors mid-wave (script crash, wrong branch, wrong model). Cost > pre-flight cost. | Pre-flight checklist is mandatory. 30s verification saves 5-10min retry cycles. |
+| 6 | **Parallel = simple assumption** — all root tasks spawned in parallel without verifying per-task preconditions | Blocked on first script error, agents idle, wasted spawns. | Verify forensic-plus callable + branch names correct BEFORE first Agent spawn. |
+
 ## Process
 
 Each wave executes the pipeline below. `<N>` = current wave number.
 
 1. **Lead pre-flight:** reads wave-plan.md; identifies current wave via L1 `waves.current`. Sub_stage transitions to `04_wave_<N>_in_progress`. Lead records in L1 history event `{event: "wave_started", wave: <N>, pre_wave_sha: <git rev-parse {{BASE_BRANCH}}>}` — used by ci-rollback-protocol.md as reset point.
+
+   **Pre-flight verification checklist (MANDATORY — do NOT skip):**
+   - [ ] `git checkout main && git branch --show-current` → confirms merge target is `main`
+   - [ ] `git branch --list "wave-{{WORKSPACE_NUM}}-*"` → verify branch naming pattern matches `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`
+   - [ ] `python {{SKILL_DIR}}/scripts/forensic-plus.py --help` → script is callable (catches import errors early)
+   - [ ] For each task: run `python {{SKILL_DIR}}/scripts/pick-model.py --plan <path> --task-slug <slug> --tier <tier> --output json` → records `writer_model` and `critic_model` per task
+   - [ ] Model assigned per task: mechanical (scaffold/file I/O/subprocess) → `haiku`, integration (API/threading/GTK) → `sonnet`, architecture/orchestration → `opus`
+
 2. **Lead spawns subagents via Agent tool:** for each task in the wave (up to cap):
    1. Lead creates branch BEFORE spawn: `git branch wave-{{WORKSPACE_NUM}}-<N>/<task-slug> {{BASE_BRANCH}}`. Lead stays on workspace branch (no checkout). Orphan branch (if Agent fails pre-checkout) detectable via `git branch --merged {{BASE_BRANCH}}` and cleaned up in step 11.
-   2. Lead invokes `Agent(isolation: "worktree", subagent_type: "general-purpose", description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + channel-2>)`. Harness does `git worktree add` pointing to the already-existing branch — does NOT create a new branch. Worktree path returned in Agent tool result; lead persists in local structure for later cleanup.
+   2. Lead invokes `Agent(isolation: "worktree", subagent_type: "general-purpose", model: <writer_model>, description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + channel-2>)`. `model` is set from pre-flight pick-model output (mechanical=haiku, integration=sonnet, architecture=opus). Harness does `git worktree add` pointing to the already-existing branch — does NOT create a new branch. Worktree path returned in Agent tool result; lead persists in local structure for later cleanup.
    3. Parallel tasks: multiple `Agent` calls in ONE message (multi tool-use). Sequential tasks (HITL or dependent): sequential calls.
 3. **Lead injects channel 2:** injects into the subagent prompt only the subset of ADRs + critical lessons + extra conventions declared in plan.md for that task. Subagent does NOT read the project's global `docs/`. **If task has flag `requires_design_system: true`** (profile `app_web_frontend` or `fullstack`): lead also injects relevant DESIGN.md subset (applicable tokens + task's components section) — subagent reads via `Read {{PROJECT_ROOT}}/.icm-main/DESIGN.md` if it needs additional detail. Doc: `_references/runtime/design-system.md`.
-4. **Subagent (CWD = project root, branch `wave-{{WORKSPACE}}-<N>/<task-slug>`):** executes vertical TDD cycle (`references/4-block-contract-template.md` § 3):
+4. **Subagent (CWD = project root, branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`):** executes vertical TDD cycle (`references/4-block-contract-template.md` § 3):
    1. **Tracer-first** — writes 1 E2E golden path test (minimum viable, expected to be red). Commit as first of the task.
    2. **Loop per feature unit** (each iteration = 1 commit):
       - RED → 1 test (1 acceptance bullet OR edge case)
