@@ -5,9 +5,10 @@ Scans the skill repo (references/, scripts/, templates/, SKILL.md, README.md,
 CLAUDE.md) and reports lines containing frequent pt-BR markers. Used as a
 drift gate during and after the v3.11.0 en-US migration.
 
-Heuristic regex matches common Portuguese tokens (não, são, ção, ões, ção$,
-plus a small list of high-frequency words). False positives in code blocks
-or proper nouns are added to the whitelist via `# i18n-allow: <reason>`
+Heuristic regex matches common Portuguese tokens (see ``PT_BR_PATTERNS``
+constant below for the full list — kept as compiled regex objects to avoid
+embedding pt-BR literals in this docstring). False positives in code blocks
+or proper nouns are added to the whitelist via ``# i18n-allow: <reason>``
 inline comments.
 
 CLI:
