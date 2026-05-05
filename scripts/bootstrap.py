@@ -826,6 +826,28 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, 
         except OSError as exc:
             sys.stderr.write(f"warning: failed to install {hook_filename}: {exc}\n")
 
+    # Copy .claude/scripts/ for preview loop (frontend/fullstack profiles)
+    # launch-chrome-cdp.{sh,bat} — used by preview-loop-protocol.md.
+    scripts_src = skill_root / "templates" / ".claude" / "scripts"
+    if scripts_src.is_dir():
+        scripts_dir = workspace_dir / ".claude" / "scripts"
+        scripts_dir.mkdir(parents=True, exist_ok=True)
+        for f in scripts_src.iterdir():
+            if f.is_file():
+                try:
+                    raw = f.read_bytes()
+                    dst = scripts_dir / f.name
+                    dst.write_bytes(raw.replace(b"\r\n", b"\n"))
+                    if f.suffix == ".sh":
+                        try:
+                            os.chmod(dst, 0o755)
+                        except OSError:
+                            pass
+                except OSError as exc:
+                    sys.stderr.write(
+                        f"warning: failed to copy {f.name}: {exc}\n"
+                    )
+
     # Register hook in workspaces/<workspace>/.claude/settings.local.json.
     # Uses $CLAUDE_PROJECT_DIR (cwd-independent) — Claude Code runs hooks with
     # cwd potentially != project_root (worktree .icm-main/, subdir, etc).

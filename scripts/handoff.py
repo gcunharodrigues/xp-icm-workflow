@@ -457,7 +457,19 @@ def _wrap_outer(region_inner: str) -> str:
 
 
 def _greenfield_template(project_name: str, region_outer: str) -> str:
-    """Full root CLAUDE.md for a project with no pre-existing CLAUDE.md."""
+    """Full root CLAUDE.md for a project with no pre-existing CLAUDE.md.
+
+    Uses templates/project_root/CLAUDE.md.tpl as the canonical template.
+    """
+    import os as _os
+    skill_root = Path(_os.environ.get("SKILL_DIR", Path(__file__).resolve().parent.parent))
+    tpl_path = skill_root / "templates" / "project_root" / "CLAUDE.md.tpl"
+    if tpl_path.is_file():
+        template = tpl_path.read_text(encoding="utf-8")
+        return template.replace("{{PROJECT_NAME}}", project_name).replace(
+            "{{ICM_REGION}}", region_outer
+        )
+    # Fallback (template missing — should not happen in production)
     return (
         f"# CLAUDE.md — {project_name}\n"
         "\n"

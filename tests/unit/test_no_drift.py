@@ -867,3 +867,61 @@ def test_runtime_refs_covers_all_workspace_template_references():
         + "\n\nAdd them to runtime_refs in scripts/bootstrap.py "
         "or update the template to use the correct path."
     )
+
+
+# ============================================================================
+# v3.12.1 — kickoff template ↔ handoff.py placeholder sync
+# ============================================================================
+
+def test_kickoff_template_placeholders_match_handoff():
+    """Every {{PLACEHOLDER}} in _kickoff.md.tpl must be in handoff._build_placeholders().
+
+    If a placeholder exists in the template but is not provided by handoff.py,
+    render_kickoff() will fail at runtime (unresolved placeholder → HandoffError).
+    """
+    import importlib.util as _iu
+    handoff_path = REPO_ROOT / "scripts" / "handoff.py"
+    spec = _iu.spec_from_file_location("handoff", handoff_path)
+    handoff = _iu.module_from_spec(spec)
+    spec.loader.exec_module(handoff)
+
+    tpl_path = (
+        REPO_ROOT / "templates" / "workspace" / "stages" / "_kickoff.md.tpl"
+    )
+    tpl_text = tpl_path.read_text(encoding="utf-8")
+    tpl_placeholders = set(re.findall(r"\{\{([A-Z_][A-Z0-9_]*)\}\}", tpl_text))
+
+    # Build minimal HandoffData to exercise _build_placeholders
+    from handoff import HandoffData, PrevOutput  # noqa: E402
+    data = HandoffData(
+        workspace="000-test",
+        project_root="/tmp/test",
+        prev_stage="03",
+        prev_stage_name="wave_planner",
+        stage_target="04",
+        stage_target_name="implementation_waves",
+        stage_target_dir="04_implementation_waves",
+        generated_at="2026-01-01T00:00:00Z",
+        generator_commit_sha="abc1234",
+        prev_outputs=(PrevOutput(path="p.md", summary="test"),),
+        prev_decisions_summary="- decision 1",
+        pending_for_this_stage=("task-a",),
+        prev_state_prose="prior state",
+        next_tasks_prose="next tasks",
+    )
+    provided = set(handoff._build_placeholders(data).keys())
+
+    missing = tpl_placeholders - provided
+    assert not missing, (
+        "Placeholders in _kickoff.md.tpl not provided by handoff._build_placeholders():\n  "
+        + "\n  ".join(sorted(missing))
+        + "\n\nAdd missing key to _build_placeholders() in scripts/handoff.py."
+    )
+
+    # Also check: no dead variables (provided but not used — maintenance hint)
+    unused = provided - tpl_placeholders
+    if unused:
+        import warnings
+        warnings.warn(
+            f"_build_placeholders() provides keys not in _kickoff.md.tpl: {unused}"
+        )

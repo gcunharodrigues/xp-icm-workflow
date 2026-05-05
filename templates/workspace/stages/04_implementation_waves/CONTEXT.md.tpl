@@ -136,15 +136,26 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 
        - HARD in ≥1 check → skip 8c (do not run L3 on code rejected by cheap gate), surgical brief for retry. Per-task cap = 3 attempts; forensic-plus internal cap `MAX_FORENSIC_RETRIES = 2` (hardcoded in scripts/forensic-plus.py — drift-checked) is semantically equivalent (3 attempts total = 1 original + 2 retries). Exhausted → escalate lead-resolution.
 
-   8c. **L3 Orthogonal Critic (always, all tiers — v3.9.0):** for each AFK task that passed 8b, reviewer (lead OR Agent) invokes critic via Agent tool with fresh context:
-       ```python
-       Agent(
-           description="L3 critic ortogonal task <slug>",
-           subagent_type="general-purpose",
-           model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]
-           prompt=render_critic_prompt(<slug>, <wave>),  # templates/critic-prompt.md
-       )
-       ```
+   8c. **L3 Orthogonal Critic (always, all tiers — v3.9.0):** for each AFK task that passed 8b, lead renders critic prompt then invokes critic via Agent tool with fresh context:
+
+       1. **Render critic prompt** (automated — script captures diff + test output):
+          ```bash
+          python {{SKILL_DIR}}/scripts/render-critic-prompt.py \
+              --task-slug <slug> --wave <N> --tier <TIER> \
+              --workspace-num {{WORKSPACE_NUM}} --base-branch {{BASE_BRANCH}} \
+              --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \
+              --critic-model <critic_model_from_pick_model_py> \
+              --output output/wave-<N>/task-<slug>-critic-prompt-round<R>.md
+          ```
+       2. **Spawn critic** with the rendered prompt:
+          ```python
+          Agent(
+              description="L3 critic task <slug> wave <N>",
+              subagent_type="general-purpose",
+              model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]
+              prompt=Read("output/wave-<N>/task-<slug>-critic-prompt-round<R>.md"),
+          )
+          ```
        Critic output JSON triplet (claim, evidence file:line, counterexample, severity BLOCKING|MAJOR|MINOR; decision APPROVE|REJECT|ABSTAIN). Canonical doc: `references/critic-protocol.md`. Critic JSON saved in `output/wave-<N>/task-<slug>-critic-round<R>.json` (R = attempt number 1-3).
 
        - REJECT (≥1 BLOCKING or ≥2 MAJOR) → 8d diagnose.

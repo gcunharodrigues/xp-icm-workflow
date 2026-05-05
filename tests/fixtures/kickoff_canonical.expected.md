@@ -19,12 +19,12 @@ pending_for_this_stage: ["Resolver ambiguidade: tasks user-model e user-routes t
 
 # Kickoff — Stage 03 wave_planner (workspace 042-feat-auth)
 
-## Estado entregue pela sessão anterior
+## State delivered by previous session
 
 Sessao anterior fechou design com 8 tasks plan + 2 ADRs.
 Outputs em stages/02_design/output/.
 
-## O que esta sessão deve fazer
+## What this session must do
 
 Particionar 8 tasks em waves respeitando DAG.
 Resolver ambiguidades pendentes antes de freezar plan.

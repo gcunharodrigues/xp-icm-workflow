@@ -14,11 +14,11 @@ pending_for_this_stage: {{PENDING_YAML}}
 
 # Kickoff — Stage {{STAGE_TARGET}} {{STAGE_TARGET_NAME}} (workspace {{WORKSPACE}})
 
-## Estado entregue pela sessão anterior
+## State delivered by previous session
 
 {{PREV_STATE_PROSE}}
 
-## O que esta sessão deve fazer
+## What this session must do
 
 {{NEXT_TASKS_PROSE}}
 

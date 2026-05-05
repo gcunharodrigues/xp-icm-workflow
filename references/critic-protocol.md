@@ -143,18 +143,36 @@ Critic model = `TIER_CEILING[tier]` regardless of writer complexity score. Ratio
 
 ## Invocation — render_critic_prompt
 
-Render via `templates/critic-prompt.md` with placeholders:
+Automated via `scripts/render-critic-prompt.py` (v3.12.1). Replaces the manual
+10-placeholder substitution that was error-prone and frequently skipped.
+
+```
+python scripts/render-critic-prompt.py \
+    --task-slug <slug> --wave <N> --tier <tier> \
+    --workspace-num <NNN> --base-branch main \
+    --plan stages/02_design/output/plan.md \
+    --critic-model <model_from_pick_model_py> \
+    [--test-command "pytest tests/ -x --tb=short"] \
+    [--cwd /path/to/project] \
+    [--output /tmp/critic-prompt.md]
+```
+
+Stdout: rendered prompt ready for `Agent(prompt=...)` injection.
+
+### Placeholder reference
 
 | Placeholder | Source |
 |-------------|--------|
-| `{{TASK_SLUG}}` | Agent call param |
-| `{{WAVE_NUM}}` | param |
-| `{{TASK_4BLOCK}}` | parsed from plan.md |
+| `{{TASK_SLUG}}` | `--task-slug` arg |
+| `{{WAVE_NUM}}` | `--wave` arg |
+| `{{TIER}}` | `--tier` arg |
+| `{{WORKSPACE_NUM}}` | `--workspace-num` arg |
+| `{{TASK_4BLOCK}}` | parsed from `--plan` (WHAT + HOW + OUT OF SCOPE + VALIDATION) |
 | `{{ACCEPTANCE_CRITERIA}}` | VALIDATION block of the task |
-| `{{ADRS_APPLICABLE}}` | metadata `Applicable ADRs` |
-| `{{DIFF_COMPLETE}}` | `git diff BASE...wave-<NNN>-<N>/<slug>` |
-| `{{TEST_OUTPUT_RAW}}` | stdout from the test runner (last task run) |
-| `{{TIER}}` | L1 frontmatter |
+| `{{ADRS_APPLICABLE}}` | Applicable ADRs bullets from plan.md |
+| `{{DIFF_COMPLETE}}` | `git diff <base>...wave-<NNN>-<N>/<slug>` (captured by script) |
+| `{{TEST_OUTPUT_RAW}}` | stdout+stderr from `--test-command` (captured by script) |
+| `{{CRITIC_MODEL}}` | `--critic-model` arg (from pick-model.py output) |
 
 ## Cross-references
 
