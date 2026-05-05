@@ -1,19 +1,19 @@
 # templates/_references/runtime/ — convention note
 
-Bootstrap (`scripts/bootstrap.py`) copia refs canônicos de
-`<skill_root>/references/<file>.md` para `<workspace>/_references/runtime/<file>.md`
-no scaffold. Lista de refs em `bootstrap._scaffold_workspace_dirs.runtime_refs`.
+Bootstrap (`scripts/bootstrap.py`) copies canonical refs from
+`<skill_root>/references/<file>.md` to `<workspace>/_references/runtime/<file>.md`
+during scaffold. Ref list in `bootstrap._scaffold_workspace_dirs.runtime_refs`.
 
-Este diretório existe **vazio** apenas como placeholder convencional. Não
-adicione cópias aqui — fonte canônica é `<skill_root>/references/`.
+This directory exists **empty** as a conventional placeholder only. Do not
+add copies here — the canonical source is `<skill_root>/references/`.
 
-Workspace pós-bootstrap é self-contained: sessões leem do
-`<workspace>/_references/runtime/` (cópias) e nunca cruzam para `<skill_root>/references/`
-(canonical). Bootstrap é o único bridge entre os dois.
+Post-bootstrap workspace is self-contained: sessions read from
+`<workspace>/_references/runtime/` (copies) and never cross into `<skill_root>/references/`
+(canonical). Bootstrap is the only bridge between the two.
 
-Por que esse design:
-1. Workspace portable — pode ser zipado e reaberto noutra máquina sem skill.
-2. Skill pode evoluir sem quebrar workspaces antigos (cópia é frozen).
-3. Sessões dentro do workspace têm read order determinístico.
+Why this design:
+1. Portable workspace — can be zipped and reopened on another machine without the skill.
+2. Skill can evolve without breaking old workspaces (copy is frozen).
+3. Sessions inside the workspace have a deterministic read order.
 
-Ver `<skill_root>/scripts/bootstrap.py` linha ~430 (lista `runtime_refs`).
+See `<skill_root>/scripts/bootstrap.py` line ~430 (list `runtime_refs`).

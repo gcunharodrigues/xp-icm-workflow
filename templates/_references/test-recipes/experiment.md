@@ -1,29 +1,29 @@
 # Test Recipe — experiment
 
-> Referência de estratégia de teste para spikes/POCs descartáveis.
-> Lido pela sessão de discovery (stage 01).
+> Test strategy reference for throwaway spikes/POCs.
+> Read by the discovery session (stage 01).
 
-## Sem requisitos de teste obrigatórios
+## No mandatory test requirements
 
-Profile `experiment` (tier qualquer) tem `test_types_required: []` — spike descartável não exige suite de testes formal.
+Profile `experiment` (any tier) has `test_types_required: []` — a throwaway spike does not require a formal test suite.
 
-## Quando escrever testes mesmo assim
+## When to write tests anyway
 
-- Descobriu algo que vai virar `development` depois → escreva um unit test de "prova de conceito".
-- A função principal do POC pode ser reutilizada → extraia e teste ela antes de promover.
-- Quer documentar "por que esta abordagem funciona" → um test como documentação executável.
+- Discovered something that will become `development` later → write a "proof of concept" unit test.
+- The POC's main function may be reused → extract and test it before promoting.
+- Want to document "why this approach works" → a test as executable documentation.
 
-## Se decidir escrever testes
+## If you decide to write tests
 
 ```python
-# Basta pytest básico — sem overhead de coverage, sem metas
+# Basic pytest is enough — no coverage overhead, no targets
 def test_poc_core_idea_works():
-    """POC: confirma que a biblioteca X faz o que esperamos."""
+    """POC: confirms that library X does what we expect."""
     result = new_library.do_thing("input")
-    assert result is not None  # prova que não explode
+    assert result is not None  # proves it does not blow up
     assert "expected_key" in result
 ```
 
-## Promoção para development
+## Promotion to development
 
-Se o POC virar projeto real, invocar `/xp-icm-workflow` com `tier=development` e usar a receita do profile correto (`app_web_backend`, `agent_ia`, etc.) como ponto de partida para a Test Strategy.
+If the POC becomes a real project, invoke `/xp-icm-workflow` with `tier=development` and use the recipe for the correct profile (`app_web_backend`, `agent_ia`, etc.) as the starting point for the Test Strategy.

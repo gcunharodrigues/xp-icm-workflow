@@ -1,39 +1,39 @@
 # Test Recipe — framework_library
 
-> Referência de estratégia de teste para bibliotecas/frameworks reutilizáveis (publicados em registry).
-> Lido pela sessão de discovery (stage 01) e usado para preencher §Test Strategy no plan.md (stage 02).
+> Test strategy reference for reusable libraries/frameworks (published to a registry).
+> Read by the discovery session (stage 01) and used to fill §Test Strategy in plan.md (stage 02).
 
-## Especificidade de libraries
+## Library specifics
 
-Libraries são consumidas por código desconhecido. Isso exige:
-- **Coverage mais alta** (+10% vs tier default) — falha silenciosa de um edge case quebra N projetos downstream.
-- **API pública 100% unit tested** — consumidores usam apenas a API pública; gaps = surpresas.
-- **Backward compat tests** — previnem breaking changes acidentais.
-- **Doctests** — exemplos na docstring são executáveis e testam simultaneamente docs + código.
+Libraries are consumed by unknown code. This requires:
+- **Higher coverage** (+10% vs tier default) — a silent edge-case failure breaks N downstream projects.
+- **100% unit tested public API** — consumers use only the public API; gaps = surprises.
+- **Backward compat tests** — prevent accidental breaking changes.
+- **Doctests** — docstring examples are executable and simultaneously test docs + code.
 
-## Tipos de teste obrigatórios
+## Required test types
 
-| Tipo | O que testa | Quando usar |
+| Type | What it tests | When to use |
 |---|---|---|
-| **Unit** | Toda função pública isolada | Sempre |
-| **Integration** | Combinações de features, casos compostos | Features que interagem entre si |
-| **Doctest** | Exemplos na docstring | Toda função pública com exemplo |
-| **Property-based** | Invariantes matemáticos/de contrato | Transformações, codecs, parseadores |
+| **Unit** | Every isolated public function | Always |
+| **Integration** | Feature combinations, composite cases | Features that interact with each other |
+| **Doctest** | Docstring examples | Every public function with an example |
+| **Property-based** | Mathematical/contract invariants | Transformations, codecs, parsers |
 
-## Frameworks recomendados
+## Recommended frameworks
 
-| Tipo | Python | TypeScript/JS |
+| Type | Python | TypeScript/JS |
 |---|---|---|
-| Unit + Integration | `pytest` | `vitest` ou `jest` |
-| Doctest | `doctest` (stdlib) ou `pytest --doctest-modules` | `tsdoc` examples |
+| Unit + Integration | `pytest` | `vitest` or `jest` |
+| Doctest | `doctest` (stdlib) or `pytest --doctest-modules` | `tsdoc` examples |
 | Property-based | `hypothesis` | `fast-check` |
 
-## Padrões essenciais
+## Essential patterns
 
-### API pública explicitamente testada
+### Explicitly tested public API
 
 ```python
-# Cada função/classe exportada em __init__.py deve ter test case
+# Each function/class exported in __init__.py must have a test case
 # src/mylib/__init__.py exports: parse, format, validate
 
 # tests/unit/test_parse.py
@@ -50,47 +50,47 @@ class TestParse:
             parse("no colon here")
 
     def test_parse_unicode_input(self):
-        result = parse("chave:valor_com_açúcar")
-        assert result["chave"] == "valor_com_açúcar"
+        result = parse("key:value_with_unicode")
+        assert result["key"] == "value_with_unicode"
 ```
 
-### Doctests executáveis
+### Executable doctests
 
 ```python
-def format_date(date: datetime, locale: str = "pt-BR") -> str:
-    """Formata datetime no locale especificado.
+def format_date(date: datetime, locale: str = "en-US") -> str:
+    """Format a datetime in the specified locale.
 
     Args:
-        date: datetime a formatar
-        locale: locale string (default: pt-BR)
+        date: datetime to format
+        locale: locale string (default: en-US)
 
     Returns:
-        String formatada
+        Formatted string
 
     Examples:
         >>> from datetime import datetime
-        >>> format_date(datetime(2026, 1, 15), locale="pt-BR")
-        '15/01/2026'
         >>> format_date(datetime(2026, 1, 15), locale="en-US")
         '01/15/2026'
+        >>> format_date(datetime(2026, 1, 15), locale="pt-BR")
+        '15/01/2026'
     """
     ...
 ```
 
 ```ini
-# pytest.ini — habilitar doctests
+# pytest.ini — enable doctests
 [pytest]
 addopts = --doctest-modules
 ```
 
-### Property-based com Hypothesis
+### Property-based with Hypothesis
 
 ```python
 from hypothesis import given, strategies as st
 
 @given(st.text(min_size=1))
 def test_parse_format_roundtrip(value: str):
-    """parse(format(x)) deve retornar x para qualquer input válido."""
+    """parse(format(x)) must return x for any valid input."""
     formatted = format(value)
     parsed = parse(formatted)
     assert parsed == value
@@ -100,41 +100,41 @@ def test_parse_format_roundtrip(value: str):
 
 ```python
 # tests/compat/test_v1_api.py
-# Garante que API da v1 ainda funciona na versão atual
+# Ensures the v1 API still works in the current version
 
 def test_v1_parse_signature_still_works():
-    """parse(str) -> dict ainda funciona (era a assinatura da v1)."""
+    """parse(str) -> dict still works (was the v1 signature)."""
     result = parse("key:value")
     assert isinstance(result, dict)
 
 def test_v1_error_class_still_importable():
-    """ParseError ainda importável do path v1."""
-    from mylib.errors import ParseError  # não quebre importers existentes
+    """ParseError still importable from the v1 path."""
+    from mylib.errors import ParseError  # do not break existing importers
     assert ParseError is not None
 ```
 
-## Estrutura de arquivos
+## File structure
 
 ```
 tests/
   unit/
-    test_parse.py         # cada função pública
+    test_parse.py         # each public function
     test_format.py
     test_validate.py
   integration/
-    test_parse_format.py  # combinações de features
+    test_parse_format.py  # feature combinations
   compat/
     test_v1_api.py        # backward compat
   property_based/
     test_roundtrips.py    # Hypothesis
 ```
 
-## Coverage para libraries
+## Coverage for libraries
 
 ```ini
 # pyproject.toml
 [tool.coverage.report]
-fail_under = 90   # +10% vs tier default; libraries precisam cobertura alta
+fail_under = 90   # +10% vs tier default; libraries need high coverage
 exclude_lines = [
     "if TYPE_CHECKING:",
     "@(abc\\.)?abstractmethod",
@@ -143,17 +143,17 @@ exclude_lines = [
 
 ## Anti-patterns
 
-- Testar apenas happy path — edge cases de library quebram downstream silenciosamente.
-- Sem testes de error types — consumers dependem dos tipos de exceção específicos.
-- Doctests desatualizados (não executados em CI) — docs mentem sobre o comportamento.
-- Sem property-based tests para funções de parsing/transformação — espaço de inputs é grande.
-- Breaking change sem major version bump — cobrir com compat tests.
+- Testing only the happy path — library edge cases silently break downstream.
+- No error type tests — consumers depend on specific exception types.
+- Outdated doctests (not run in CI) — docs lie about behavior.
+- No property-based tests for parsing/transformation functions — input space is large.
+- Breaking change without a major version bump — cover with compat tests.
 
-## Checklist rápido (auto-QA Akita suporte)
+## Quick checklist (auto-QA Akita support)
 
-- [ ] 100% das funções/classes da API pública têm unit test
-- [ ] Doctests existem e passam (`pytest --doctest-modules`)
-- [ ] Property-based tests para funções de parse/format/transform
-- [ ] Backward compat tests para API da versão anterior
-- [ ] Coverage ≥ tier threshold + 10% (ver `_config/profile-effective.yaml`)
-- [ ] Tipos de exceção testados (não apenas mensagem de erro)
+- [ ] 100% of public API functions/classes have a unit test
+- [ ] Doctests exist and pass (`pytest --doctest-modules`)
+- [ ] Property-based tests for parse/format/transform functions
+- [ ] Backward compat tests for the previous version's API
+- [ ] Coverage ≥ tier threshold + 10% (see `_config/profile-effective.yaml`)
+- [ ] Exception types tested (not just error messages)

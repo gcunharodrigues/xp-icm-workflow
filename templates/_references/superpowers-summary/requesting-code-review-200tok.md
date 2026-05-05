@@ -2,32 +2,32 @@
 name: requesting-code-review-200tok
 source_skill: superpowers:requesting-code-review
 source_version: "5.0.0"
-purpose: Lead pede review do output do subagente antes de aceitar merge — pega problemas cedo, antes que cascateiem.
+purpose: Lead requests review of subagent output before accepting merge — catches problems early, before they cascade.
 ---
 
-# Requesting Code Review — sumario 200tok
+# Requesting Code Review — 200tok summary
 
-## Quando aplicar
-- No estagio 06 (review) do ICM, lead avalia output do subagente apos o 05 verde.
-- Apos cada task em subagent-driven development; antes de merge para main.
-- Opcional: quando travado (perspectiva fresca), antes de refactor grande.
+## When to apply
+- In stage 06 (review) of ICM, lead evaluates subagent output after stage 05 is green.
+- After each task in subagent-driven development; before merge to main.
+- Optional: when stuck (fresh perspective), before a large refactor.
 
-## Como aplicar
-1. Capturar SHAs: `BASE_SHA=$(git rev-parse HEAD~1)` e `HEAD_SHA=$(git rev-parse HEAD)`.
-2. Carregar `references/4-block-contract-template.md` do subagente como spec do que deveria ter sido entregue.
-3. Rodar reviewer (subagente ou self-review estruturado) cobrindo 7 dimensoes: corretude, testes, seguranca, performance, legibilidade, aderencia ao contrato, riscos.
-4. Gravar `review-report.md` no workspace do estagio com:
-   - Strengths (o que esta bom)
-   - Issues classificados **P0** (bloqueia merge), **P1** (corrige antes de prosseguir), **P2** (importante mas nao bloqueia), **P3** (nota para depois)
-   - Veredito: APROVADO / FIX-LOOP / REJEITADO
-5. Se P0/P1 existem → disparar fix loop (subagente volta ao 04 com `review-report.md`).
+## How to apply
+1. Capture SHAs: `BASE_SHA=$(git rev-parse HEAD~1)` and `HEAD_SHA=$(git rev-parse HEAD)`.
+2. Load the subagent's `references/4-block-contract-template.md` as the spec of what should have been delivered.
+3. Run reviewer (subagent or structured self-review) covering 7 dimensions: correctness, tests, security, performance, readability, contract adherence, risks.
+4. Record `review-report.md` in the stage workspace with:
+   - Strengths (what is good)
+   - Issues classified **P0** (blocks merge), **P1** (fix before proceeding), **P2** (important but not blocking), **P3** (note for later)
+   - Verdict: APPROVED / FIX-LOOP / REJECTED
+5. If P0/P1 exist → trigger fix loop (subagent returns to stage 04 with `review-report.md`).
 
-## Sinais de sucesso
-- `review-report.md` referencia commits especificos (SHA + linhas).
-- Cada issue tem severidade, justificativa tecnica e fix sugerido.
-- Veredito explicito; nao deixar ambiguidade sobre "esta pronto?".
+## Success signals
+- `review-report.md` references specific commits (SHA + lines).
+- Each issue has severity, technical justification, and suggested fix.
+- Explicit verdict; no ambiguity about "is it ready?".
 
 ## Escape hatch
-Mudanca trivial (typo, doc-only) → review pode ser inline no commit message. Mas: se tocar codigo de producao, sempre passar pelo review formal — nao pular por "e simples".
+Trivial change (typo, doc-only) → review may be inline in the commit message. But: if it touches production code, always go through formal review — do not skip because "it's simple".
 
-Ver `references/subagent-protocol.md` para handoff lead↔subagente.
+See `references/subagent-protocol.md` for lead↔subagent handoff.

@@ -2,36 +2,36 @@
 name: dispatching-parallel-agents-200tok
 source_skill: superpowers:dispatching-parallel-agents
 source_version: "5.0.0"
-purpose: Despachar agentes concorrentes quando ha 2+ tarefas independentes sem estado compartilhado.
+purpose: Dispatch concurrent agents when there are 2+ independent tasks with no shared state.
 ---
 
-# Dispatching Parallel Agents — sumario 200tok
+# Dispatching Parallel Agents — 200tok summary
 
-## Quando aplicar
-- 2+ falhas/tarefas em dominios independentes (arquivos, subsistemas, bugs distintos).
-- Cada problema entendivel sem contexto dos outros.
-- Sem estado compartilhado — agentes nao editam mesmos arquivos nem competem por recursos.
+## When to apply
+- 2+ failures/tasks in independent domains (files, subsystems, distinct bugs).
+- Each problem understandable without context from the others.
+- No shared state — agents do not edit the same files or compete for resources.
 
-## Quando NAO usar
-- Falhas relacionadas (consertar uma pode consertar as outras) — investigar junto.
-- Debug exploratorio sem dominio claro.
-- Refactor que toca codigo compartilhado.
+## When NOT to use
+- Related failures (fixing one may fix others) — investigate together.
+- Exploratory debugging with no clear domain.
+- Refactor that touches shared code.
 
-## Como aplicar
-1. Identificar dominios independentes — agrupar por "o que esta quebrado".
-2. Para cada dominio, montar prompt com: **escopo especifico** (1 arquivo/subsistema), **objetivo claro** (criterio de sucesso), **constraints** (ex.: "nao alterar codigo de producao"), **output esperado** (resumo do root cause + mudancas).
-3. Despachar em paralelo na mesma mensagem (multiplos Task calls simultaneos).
-4. Integrar: ler cada resumo, verificar conflitos, rodar suite completa, spot-check.
+## How to apply
+1. Identify independent domains — group by "what is broken".
+2. For each domain, compose a prompt with: **specific scope** (1 file/subsystem), **clear objective** (success criterion), **constraints** (e.g. "do not alter production code"), **expected output** (root cause summary + changes).
+3. Dispatch in parallel in the same message (multiple simultaneous Task calls).
+4. Integrate: read each summary, check for conflicts, run full suite, spot-check.
 
-## Sinais de sucesso
-- Agentes retornam sumarios independentes sem editar mesmos arquivos.
-- Suite completa verde apos integracao; zero conflitos.
-- Tempo total ≈ tempo do agente mais lento (nao soma).
+## Success signals
+- Agents return independent summaries without editing the same files.
+- Full suite green after integration; zero conflicts.
+- Total time ≈ slowest agent's time (not sum).
 
-## Erros comuns
-- Prompt vago ("conserte tudo") → escopo perdido.
-- Sem constraints → agente refatora alem do necessario.
-- Sem output especificado → impossivel verificar.
+## Common mistakes
+- Vague prompt ("fix everything") → scope lost.
+- No constraints → agent refactors beyond what is needed.
+- No output specified → impossible to verify.
 
 ## Escape hatch
-Se dominios revelam-se acoplados ou exigem orquestracao → invocar `superpowers:dispatching-parallel-agents` completo.
+If domains turn out to be coupled or require orchestration → invoke full `superpowers:dispatching-parallel-agents`.

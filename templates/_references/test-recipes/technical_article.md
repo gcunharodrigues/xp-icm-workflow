@@ -1,24 +1,24 @@
 # Test Recipe — technical_article
 
-> Referência de estratégia de teste para artigos técnicos longos com código embutido.
-> Lido pela sessão de discovery (stage 01).
+> Test strategy reference for long technical articles with embedded code.
+> Read by the discovery session (stage 01).
 
-## Contexto: artigo vs produto
+## Context: article vs product
 
-Artigos técnicos têm código embutido como ilustração. O risco é que os exemplos de código no artigo estejam errados ou desatualizados. Testar snippets executáveis garante que o artigo "não mente".
+Technical articles have embedded code as illustration. The risk is that the code examples in the article are wrong or outdated. Testing executable snippets ensures the article "does not lie".
 
-## Tipos de teste
+## Test types
 
-| Tipo | O que testa | Obrigatório? |
+| Type | What it tests | Required? |
 |---|---|---|
-| **Unit** | Funções auxiliares usadas nos exemplos | Apenas se forem reutilizáveis |
-| **Doctest** | Snippets de código no corpo do artigo | Recomendado para snippets Python |
-| **Notebook execution** | Notebook completo roda sem erro | Se o artigo for um notebook |
+| **Unit** | Helper functions used in examples | Only if reusable |
+| **Doctest** | Code snippets in the article body | Recommended for Python snippets |
+| **Notebook execution** | Full notebook runs without error | If the article is a notebook |
 
-## Padrão: snippets testados via doctest
+## Pattern: snippets tested via doctest
 
 ```python
-# Se o artigo tem um snippet como este:
+# If the article has a snippet like this:
 # ---
 # ```python
 # >>> from mylib import compute
@@ -26,10 +26,10 @@ Artigos técnicos têm código embutido como ilustração. O risco é que os exe
 # 42
 # ```
 # ---
-# Garanta que o snippet é um doctest real na função:
+# Ensure the snippet is a real doctest in the function:
 
 def compute(x: int) -> int:
-    """Computa o resultado.
+    """Computes the result.
 
     >>> compute(10)
     42
@@ -41,11 +41,11 @@ def compute(x: int) -> int:
 
 ## Anti-pattern
 
-- Snippets de código no artigo que nunca são executados em CI → artigo publica código errado.
-- Código de exemplo com `...` ou placeholders que não rodam — ou são explicitamente marcados como pseudocódigo.
+- Code snippets in the article that are never run in CI → article publishes wrong code.
+- Example code with `...` or placeholders that do not run — or are explicitly marked as pseudocode.
 
-## Checklist rápido
+## Quick checklist
 
-- [ ] Snippets executáveis no artigo são doctests ou estão em arquivo testável
-- [ ] Notebook (se for o formato) passa em `nbmake` sem exceção
-- [ ] Exemplos com outputs esperados confirmados manualmente antes de publicar
+- [ ] Executable snippets in the article are doctests or in a testable file
+- [ ] Notebook (if that is the format) passes `nbmake` without exception
+- [ ] Examples with expected outputs confirmed manually before publishing

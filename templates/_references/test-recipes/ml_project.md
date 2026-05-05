@@ -1,28 +1,28 @@
 # Test Recipe — ml_project
 
-> Referência de estratégia de teste para pipelines ML (treino, eval, serving).
-> Lido pela sessão de discovery (stage 01) e usado para preencher §Test Strategy no plan.md (stage 02).
+> Test strategy reference for ML pipelines (training, eval, serving).
+> Read by the discovery session (stage 01) and used to fill §Test Strategy in plan.md (stage 02).
 
-## Tipos de teste obrigatórios
+## Required test types
 
-| Tipo | O que testa | Quando usar |
+| Type | What it tests | When to use |
 |---|---|---|
-| **Unit** | Funções de transformação, feature engineering, métricas | Toda lógica Python pura |
-| **Pipeline** | Etapas do pipeline: ingest → transform → train → eval | Integração entre etapas com dados de fixture |
-| **Model regression** | Performance do modelo não regrediu vs baseline (dev/prod) | Após re-treino ou mudança de features |
+| **Unit** | Transformation functions, feature engineering, metrics | All pure Python logic |
+| **Pipeline** | Pipeline stages: ingest → transform → train → eval | Stage integration with fixture data |
+| **Model regression** | Model performance has not regressed vs baseline (dev/prod) | After retraining or feature changes |
 
-## Frameworks recomendados
+## Recommended frameworks
 
-| Tipo | Framework |
+| Type | Framework |
 |---|---|
 | Unit + Pipeline | `pytest` + `pytest-mock` |
-| Data validation | `great_expectations` ou `pandera` |
-| Model performance | `pytest` com asserções de métricas, `mlflow` para logging |
-| Property-based | `hypothesis` para transformações de dados |
+| Data validation | `great_expectations` or `pandera` |
+| Model performance | `pytest` with metric assertions, `mlflow` for logging |
+| Property-based | `hypothesis` for data transformations |
 
-## Padrões essenciais
+## Essential patterns
 
-### Unit test de transformação
+### Transformation unit test
 
 ```python
 # src/features/normalize.py
@@ -44,15 +44,15 @@ def test_normalize_age_invalid_raises():
         normalize_age(-1)
 ```
 
-### Pipeline smoke test com fixture de dados
+### Pipeline smoke test with data fixture
 
 ```python
 # tests/integration/test_pipeline_smoke.py
 @pytest.fixture
 def sample_dataset(tmp_path):
-    """Dataset mínimo que cobre todos os casos do pipeline."""
+    """Minimal dataset covering all pipeline cases."""
     df = pd.DataFrame({
-        "age": [25, 40, 55, None],  # inclui missing value
+        "age": [25, 40, 55, None],  # includes missing value
         "income": [50000, 80000, 120000, 60000],
         "label": [0, 1, 1, 0],
     })
@@ -61,16 +61,16 @@ def sample_dataset(tmp_path):
     return path
 
 def test_pipeline_runs_without_error(sample_dataset, tmp_path):
-    """Pipeline completo não lança exceção com dados mínimos."""
+    """Full pipeline does not raise with minimal data."""
     result = run_pipeline(input_path=sample_dataset, output_dir=tmp_path)
     assert result["status"] == "success"
     assert (tmp_path / "predictions.parquet").exists()
 
 def test_pipeline_handles_missing_values(sample_dataset, tmp_path):
-    """Pipeline trata NaN sem crashar."""
+    """Pipeline handles NaN without crashing."""
     result = run_pipeline(input_path=sample_dataset, output_dir=tmp_path)
     predictions = pd.read_parquet(tmp_path / "predictions.parquet")
-    assert predictions.shape[0] == 4  # sem linhas perdidas
+    assert predictions.shape[0] == 4  # no rows lost
     assert predictions["prediction"].notna().all()
 ```
 
@@ -83,11 +83,11 @@ BASELINE_METRICS = {
     "f1_weighted": 0.83,
     "roc_auc": 0.90,
 }
-TOLERANCE = 0.02  # aceita até 2pp de queda
+TOLERANCE = 0.02  # accepts up to 2pp drop
 
 @pytest.fixture
 def eval_dataset():
-    """Dataset de avaliação fixo — NÃO pode mudar entre runs."""
+    """Fixed evaluation dataset — MUST NOT change between runs."""
     return load_dataset("tests/fixtures/eval_set_v1.parquet")
 
 def test_model_accuracy_not_regressed(trained_model, eval_dataset):
@@ -100,7 +100,7 @@ def test_model_accuracy_not_regressed(trained_model, eval_dataset):
     )
 ```
 
-## Estrutura de arquivos
+## File structure
 
 ```
 tests/
@@ -115,23 +115,23 @@ tests/
     test_regression.py
     test_model_serving.py
   fixtures/
-    sample_dataset.parquet     # pequeno (< 1000 rows), versionado em git
-    eval_set_v1.parquet        # dataset de avaliação fixo — NÃO modificar
+    sample_dataset.parquet     # small (< 1000 rows), versioned in git
+    eval_set_v1.parquet        # fixed evaluation dataset — DO NOT modify
 ```
 
 ## Anti-patterns
 
-- Usar o dataset de treino para regressão de modelo — contaminação; usar split separado fixo.
-- Fixtures de dados geradas aleatoriamente sem seed fixo — testes flaky.
-- Assertions de igualdade exata em floats de ML — usar `pytest.approx` ou threshold.
-- Pipeline test que baixa dados da internet — usar dados de fixture em `tests/fixtures/`.
-- Sem dataset fixo para regressão — cada re-run compara baseline diferente.
+- Using the training dataset for model regression — contamination; use a separate fixed split.
+- Randomly generated data fixtures without a fixed seed — flaky tests.
+- Exact equality assertions on ML floats — use `pytest.approx` or a threshold.
+- Pipeline tests that download data from the internet — use fixture data in `tests/fixtures/`.
+- No fixed dataset for regression — each re-run compares against a different baseline.
 
-## Checklist rápido (auto-QA Akita suporte)
+## Quick checklist (auto-QA Akita support)
 
-- [ ] Todas as funções de feature engineering têm unit tests
-- [ ] Pipeline smoke test cobre missing values, boundary cases
-- [ ] Dataset de fixture é pequeno (< 1000 rows) e commitado
-- [ ] Model regression test existe com baseline e tolerance declarados
-- [ ] Eval dataset é separado do treino e NÃO muda entre runs
-- [ ] Property-based tests para transformações críticas (via Hypothesis)
+- [ ] All feature engineering functions have unit tests
+- [ ] Pipeline smoke test covers missing values, boundary cases
+- [ ] Fixture dataset is small (< 1000 rows) and committed
+- [ ] Model regression test exists with baseline and tolerance declared
+- [ ] Eval dataset is separate from training and DOES NOT change between runs
+- [ ] Property-based tests for critical transformations (via Hypothesis)

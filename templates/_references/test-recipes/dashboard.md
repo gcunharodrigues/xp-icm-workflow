@@ -1,18 +1,18 @@
 # Test Recipe — dashboard
 
-> Referência de estratégia de teste para painéis analíticos (Streamlit, Dash, Looker, Superset, Metabase).
-> Lido pela sessão de discovery (stage 01) e usado para preencher §Test Strategy no plan.md (stage 02).
+> Test strategy reference for analytics dashboards (Streamlit, Dash, Looker, Superset, Metabase).
+> Read by the discovery session (stage 01) and used to fill §Test Strategy in plan.md (stage 02).
 
-## Tipos de teste obrigatórios
+## Required test types
 
-| Tipo | O que testa | Quando usar |
+| Type | What it tests | When to use |
 |---|---|---|
-| **Unit** | Funções de transformação de dados, cálculos de métricas, formatação | Toda lógica Python/SQL pura |
-| **Integration** | Query contra DB de teste, pipeline de dados até DataFrame final | Fluxo completo de dados |
+| **Unit** | Data transformation functions, metric calculations, formatting | All pure Python/SQL logic |
+| **Integration** | Query against test DB, data pipeline to final DataFrame | Full data flow |
 
-## Frameworks recomendados
+## Recommended frameworks
 
-| Tipo | Framework |
+| Type | Framework |
 |---|---|
 | Unit + Integration | `pytest` |
 | DB fixtures | `pytest-postgresql` / SQLite in-memory / `duckdb` |
@@ -20,21 +20,21 @@
 | Dash testing | `dash.testing` + `pytest-dash` |
 | Data validation | `pandera` |
 
-## Padrões essenciais
+## Essential patterns
 
-### Unit test de métrica calculada
+### Unit test for a calculated metric
 
 ```python
 # src/metrics/revenue.py
 def calculate_mrr(subscriptions: list[dict]) -> float:
-    """Calcula Monthly Recurring Revenue."""
+    """Calculates Monthly Recurring Revenue."""
     return sum(s["amount"] for s in subscriptions if s["status"] == "active")
 
 # tests/unit/test_metrics_revenue.py
 def test_mrr_sum_active_only():
     subs = [
         {"amount": 100, "status": "active"},
-        {"amount": 200, "status": "cancelled"},  # não contar
+        {"amount": 200, "status": "cancelled"},  # should not count
         {"amount": 150, "status": "active"},
     ]
     assert calculate_mrr(subs) == 250.0
@@ -43,7 +43,7 @@ def test_mrr_empty_returns_zero():
     assert calculate_mrr([]) == 0.0
 ```
 
-### Integration test de query + pipeline
+### Integration test for query + pipeline
 
 ```python
 # tests/integration/test_revenue_query.py
@@ -70,7 +70,7 @@ def test_revenue_query_returns_correct_mrr(test_db):
     assert result["active_count"] == 2
 ```
 
-### Streamlit AppTest (se usar Streamlit)
+### Streamlit AppTest (if using Streamlit)
 
 ```python
 from streamlit.testing.v1 import AppTest
@@ -83,33 +83,33 @@ def test_dashboard_renders_without_error():
 def test_filter_updates_chart(mock_db):
     at = AppTest.from_file("src/app.py")
     at.run()
-    # Simular seleção de filtro de data
+    # Simulate date filter selection
     at.selectbox[0].set_value("2026-01").run()
-    assert "janeiro" in at.markdown[0].value.lower()
+    assert "january" in at.markdown[0].value.lower()
 ```
 
-## Estrutura de arquivos
+## File structure
 
 ```
 tests/
   unit/
     test_metrics_revenue.py
     test_metrics_churn.py
-    test_formatters.py        # formatação de números/datas
+    test_formatters.py        # number/date formatting
   integration/
-    test_queries_revenue.py   # queries contra DB de teste
-    test_pipeline_etl.py      # ETL end-to-end com DuckDB/SQLite
+    test_queries_revenue.py   # queries against test DB
+    test_pipeline_etl.py      # ETL end-to-end with DuckDB/SQLite
 ```
 
 ## Anti-patterns
 
-- Testar queries contra banco de produção — usar fixture de DB isolado.
-- Sem test de valores edge: zero subscriptions, valores negativos, datas inválidas.
-- Depender de dados reais commitados — usar factories ou SQL INSERT nos fixtures.
+- Testing queries against the production database — use an isolated DB fixture.
+- No edge value tests: zero subscriptions, negative values, invalid dates.
+- Relying on committed real data — use factories or SQL INSERT in fixtures.
 
-## Checklist rápido
+## Quick checklist
 
-- [ ] Cada métrica de negócio tem unit test isolado
-- [ ] Queries testadas contra DB de fixture (DuckDB ou SQLite)
-- [ ] Edge cases: empty dataset, valores nulos, datas de borda
-- [ ] Coverage ≥ threshold do tier
+- [ ] Each business metric has an isolated unit test
+- [ ] Queries tested against a fixture DB (DuckDB or SQLite)
+- [ ] Edge cases: empty dataset, null values, boundary dates
+- [ ] Coverage ≥ tier threshold

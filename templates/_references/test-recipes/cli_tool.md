@@ -1,27 +1,27 @@
 # Test Recipe — cli_tool
 
-> Referência de estratégia de teste para ferramentas de linha de comando standalone.
-> Lido pela sessão de discovery (stage 01) e usado para preencher §Test Strategy no plan.md (stage 02).
+> Test strategy reference for standalone command-line tools.
+> Read by the discovery session (stage 01) and used to fill §Test Strategy in plan.md (stage 02).
 
-## Tipos de teste obrigatórios
+## Required test types
 
-| Tipo | O que testa | Quando usar |
+| Type | What it tests | When to use |
 |---|---|---|
-| **Unit** | Funções de parsing, transformação, lógica core | Toda lógica sem I/O |
-| **Integration** | CLI end-to-end via subprocess, stdin/stdout, arquivos | Comandos completos com entradas reais |
+| **Unit** | Parsing functions, transformation, core logic | All logic without I/O |
+| **Integration** | CLI end-to-end via subprocess, stdin/stdout, files | Complete commands with real inputs |
 
-## Frameworks recomendados
+## Recommended frameworks
 
-| Linguagem | Unit | Integration (subprocess) |
+| Language | Unit | Integration (subprocess) |
 |---|---|---|
 | Python | `pytest` | `subprocess.run` + `click.testing.CliRunner` |
-| Node.js | `vitest` / `jest` | `execa` ou `child_process.spawnSync` |
-| Go | `testing` | `os/exec` ou tabela de casos |
+| Node.js | `vitest` / `jest` | `execa` or `child_process.spawnSync` |
+| Go | `testing` | `os/exec` or table-driven cases |
 | Rust | `#[test]` | `assert_cmd` crate |
 
-## Padrões essenciais
+## Essential patterns
 
-### Click — usar CliRunner (sem subprocess overhead)
+### Click — use CliRunner (no subprocess overhead)
 
 ```python
 from click.testing import CliRunner
@@ -46,7 +46,7 @@ def test_convert_command_fails_on_missing_file(tmp_path):
     assert "not found" in result.output.lower()
 ```
 
-### Subprocess direto (agnóstico de framework)
+### Direct subprocess (framework-agnostic)
 
 ```python
 import subprocess, sys
@@ -71,18 +71,18 @@ def test_stdin_input():
     assert "HELLO WORLD" in result.stdout
 ```
 
-### Tempdir fixtures para arquivos de I/O
+### Tempdir fixtures for I/O files
 
 ```python
 @pytest.fixture
 def workspace(tmp_path):
-    """Diretório limpo por test — sem estado compartilhado."""
+    """Clean directory per test — no shared state."""
     (tmp_path / "input").mkdir()
     (tmp_path / "output").mkdir()
     return tmp_path
 
 def test_batch_process_all_files_in_dir(workspace):
-    # Criar inputs
+    # Create inputs
     for i in range(3):
         (workspace / "input" / f"file{i}.txt").write_text(f"content {i}")
 
@@ -93,32 +93,32 @@ def test_batch_process_all_files_in_dir(workspace):
     assert len(output_files) == 3
 ```
 
-## Estrutura de arquivos
+## File structure
 
 ```
 tests/
   unit/
-    test_parser.py          # parsing de argumentos, validação
-    test_transform.py       # lógica de transformação
-    test_formatter.py       # formatação de output
+    test_parser.py          # argument parsing, validation
+    test_transform.py       # transformation logic
+    test_formatter.py       # output formatting
   integration/
-    test_cli_convert.py     # comando convert end-to-end
-    test_cli_batch.py       # comando batch
-    test_cli_errors.py      # todos os exit codes de erro
+    test_cli_convert.py     # convert command end-to-end
+    test_cli_batch.py       # batch command
+    test_cli_errors.py      # all error exit codes
 ```
 
 ## Anti-patterns
 
-- Testar comportamento do shell (pipes, redirects) — fora de escopo; testar a CLI, não o shell.
-- Hardcoded paths absolutos em testes — usar `tmp_path` do pytest sempre.
-- Não testar exit codes — código de saída é parte do contrato de uma CLI.
-- Testes que dependem de estado do diretório atual (`os.getcwd()`) — isolar com `monkeypatch.chdir`.
+- Testing shell behavior (pipes, redirects) — out of scope; test the CLI, not the shell.
+- Hardcoded absolute paths in tests — always use pytest `tmp_path`.
+- Not testing exit codes — exit code is part of a CLI's contract.
+- Tests depending on current directory state (`os.getcwd()`) — isolate with `monkeypatch.chdir`.
 
-## Checklist rápido (auto-QA Akita suporte)
+## Quick checklist (auto-QA Akita support)
 
-- [ ] Cada subcomando tem ≥1 integration test com input real
-- [ ] Exit code 0 (sucesso) e ≠0 (erro) testados para cada comando
-- [ ] Todos os arquivos de I/O usam `tmp_path` (sem estado global)
-- [ ] Stdin/stdout testados se o comando os suportar
-- [ ] `--help` e `--version` testados
-- [ ] Timeout definido em subprocess calls (evita testes pendurados)
+- [ ] Each subcommand has ≥1 integration test with real input
+- [ ] Exit code 0 (success) and ≠0 (error) tested for each command
+- [ ] All I/O files use `tmp_path` (no global state)
+- [ ] Stdin/stdout tested if the command supports them
+- [ ] `--help` and `--version` tested
+- [ ] Timeout set in subprocess calls (prevents hanging tests)

@@ -2,38 +2,38 @@
 name: subagent-driven-development-200tok
 source_skill: superpowers:subagent-driven-development
 source_version: "5.0.0"
-purpose: Executar plano com subagent fresco por tarefa e revisão em duas etapas (spec depois qualidade).
+purpose: Execute plan with a fresh subagent per task and two-step review (spec then quality).
 ---
 
-# Subagent-Driven Development — sumário 200tok
+# Subagent-Driven Development — 200tok summary
 
-## Quando aplicar
-- Há plano de implementação escrito, tarefas independentes, execução na mesma sessão.
-- Casa com a fase 04 `implementation_waves` quando o Wave Planner liberou subagentes. Ver `references/subagent-protocol.md` para regras locais (Agent tool, isolamento, contratos 4-bloco).
+## When to apply
+- There is a written implementation plan, independent tasks, execution in the same session.
+- Fits stage 04 `implementation_waves` when the Wave Planner has released subagents. See `references/subagent-protocol.md` for local rules (Agent tool, isolation, 4-block contracts).
 
-## Princípio
-Subagent novo por tarefa + revisão em duas etapas (spec compliance → qualidade de código) = alta qualidade, iteração rápida.
+## Principle
+Fresh subagent per task + two-step review (spec compliance → code quality) = high quality, fast iteration.
 
-## Como aplicar
-1. Leia o plano uma vez, extraia o texto completo de cada tarefa + contexto, crie TodoWrite.
-2. Para cada tarefa:
-   a. Despache **implementer subagent** com texto completo + contexto. Responda perguntas antes dele começar.
-   b. Implementer faz TDD, testa, commita, self-review, retorna status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED).
-   c. Despache **spec reviewer** — confirma que o código bate com a spec, sem faltar nem sobrar. Loop até OK.
-   d. Despache **code quality reviewer** — só após spec OK. Loop até aprovado.
-   e. Marque tarefa como completa.
-3. Após todas as tarefas, despache **final reviewer** sobre a implementação inteira.
+## How to apply
+1. Read the plan once, extract the full text of each task + context, create TodoWrite.
+2. For each task:
+   a. Dispatch **implementer subagent** with full text + context. Answer questions before it starts.
+   b. Implementer does TDD, tests, commits, self-review, returns status (DONE / DONE_WITH_CONCERNS / NEEDS_CONTEXT / BLOCKED).
+   c. Dispatch **spec reviewer** — confirms code matches the spec, nothing missing or extra. Loop until OK.
+   d. Dispatch **code quality reviewer** — only after spec OK. Loop until approved.
+   e. Mark task as complete.
+3. After all tasks, dispatch **final reviewer** over the entire implementation.
 
-## Seleção de modelo
-Use o modelo mais barato que aguenta o papel: mecânico → cheap; integração → standard; arquitetura/review → mais capaz.
+## Model selection
+Use the cheapest model that handles the role: mechanical → cheap; integration → standard; architecture/review → more capable.
 
-## Sinais de sucesso
-- Cada tarefa passou por spec review e quality review separados.
-- Loops de revisão fecharam (sem "close enough").
-- Nenhum subagent paralelo de implementação na mesma tarefa.
+## Success signals
+- Each task went through separate spec review and quality review.
+- Review loops closed (no "close enough").
+- No parallel implementation subagents on the same task.
 
 ## Red flags
-Pular review, rodar code quality antes do spec OK, fazer subagent ler o plano (passe texto completo), aceitar issues abertas para próxima tarefa.
+Skipping review, running code quality before spec OK, having the subagent read the plan (pass full text), accepting open issues to the next task.
 
 ## Escape hatch
-Se complexidade exceder este sumário (coordenação multi-agent não trivial, conflitos de branch, plano ambíguo) → invocar `superpowers:subagent-driven-development` formal.
+If complexity exceeds this summary (non-trivial multi-agent coordination, branch conflicts, ambiguous plan) → invoke formal `superpowers:subagent-driven-development`.

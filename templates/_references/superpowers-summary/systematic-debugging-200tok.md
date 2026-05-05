@@ -2,48 +2,48 @@
 name: systematic-debugging-200tok
 source_skill: superpowers:systematic-debugging
 source_version: "5.0.0"
-purpose: Achar causa-raiz antes de qualquer fix; método científico em quatro fases.
+purpose: Find root cause before any fix; scientific method in four phases.
 ---
 
-# Systematic Debugging — sumário 200tok
+# Systematic Debugging — 200tok summary
 
-## Quando aplicar
-- Qualquer bug, teste falhando, comportamento inesperado, falha de build, problema de integração.
-- **Especialmente** sob pressão de tempo, quando "um fix rápido" parece óbvio, ou após múltiplas tentativas falhas.
+## When to apply
+- Any bug, failing test, unexpected behavior, build failure, integration problem.
+- **Especially** under time pressure, when "a quick fix" seems obvious, or after multiple failed attempts.
 
-## Lei de ferro
-Sem investigação de causa-raiz, sem fix. Sintoma corrigido sem causa entendida = falha.
+## Iron law
+No root-cause investigation, no fix. Symptom corrected without cause understood = failure.
 
-## Como aplicar (4 fases, em ordem)
+## How to apply (4 phases, in order)
 
-1. **Causa-raiz**
-   - Leia mensagens de erro e stack traces inteiros.
-   - Reproduza consistentemente; se não reproduz, junte mais dados, não chute.
-   - Cheque mudanças recentes (git diff, deps novas, config).
-   - Em sistemas multi-componente: instrumente cada fronteira (log entrada/saída/env) antes de propor fix. Identifique qual camada quebra.
-   - Trace o dado para trás até a origem do valor ruim. Conserte na fonte, não no sintoma.
+1. **Root cause**
+   - Read error messages and full stack traces.
+   - Reproduce consistently; if it doesn't reproduce, gather more data — do not guess.
+   - Check recent changes (git diff, new deps, config).
+   - In multi-component systems: instrument each boundary (log input/output/env) before proposing a fix. Identify which layer breaks.
+   - Trace data backwards to the origin of the bad value. Fix at the source, not the symptom.
 
-2. **Padrão**
-   - Ache exemplo funcionando similar no codebase.
-   - Compare por completo (sem skim) com referência. Liste cada diferença.
-   - Mapeie dependências/assumptions.
+2. **Pattern**
+   - Find a similar working example in the codebase.
+   - Compare fully (no skimming) with the reference. List every difference.
+   - Map dependencies/assumptions.
 
-3. **Hipótese**
-   - Formule uma hipótese específica por escrito ("X é causa porque Y").
-   - Teste com a menor mudança possível, uma variável por vez.
-   - Funcionou? Fase 4. Não? Nova hipótese — não empilhe fixes.
+3. **Hypothesis**
+   - Formulate a specific hypothesis in writing ("X is the cause because Y").
+   - Test with the smallest possible change, one variable at a time.
+   - Did it work? Phase 4. No? New hypothesis — do not stack fixes.
 
-4. **Implementação**
-   - Crie teste falhando que reproduz (use TDD).
-   - Um único fix endereçando a causa-raiz. Sem "while I'm here".
-   - Verifique: teste passa, nada mais quebrou.
-   - **3+ fixes falharam? Pare e questione a arquitetura** com o humano — não tente o 4º.
+4. **Implementation**
+   - Create a failing test that reproduces the issue (use TDD).
+   - A single fix addressing the root cause. No "while I'm here".
+   - Verify: test passes, nothing else broke.
+   - **3+ fixes failed? Stop and question the architecture** with the human — do not attempt a 4th.
 
-## Sinais de sucesso
-Causa explicável em uma frase, teste reproduzindo o bug, fix mínimo, demais testes verdes.
+## Success signals
+Cause explainable in one sentence, test reproducing the bug, minimal fix, remaining tests green.
 
 ## Red flags
-"Quick fix por agora", "provavelmente é X", múltiplas mudanças simultâneas, pular o teste, "mais uma tentativa" após 2 falhas.
+"Quick fix for now", "it's probably X", multiple simultaneous changes, skipping the test, "one more attempt" after 2 failures.
 
 ## Escape hatch
-Se o caso exigir backward tracing profundo, defense-in-depth multi-camada, ou condition-based waiting → invocar `superpowers:systematic-debugging` formal (traz `root-cause-tracing.md`, `defense-in-depth.md`, `condition-based-waiting.md`).
+If the case requires deep backward tracing, multi-layer defense-in-depth, or condition-based waiting → invoke formal `superpowers:systematic-debugging` (brings `root-cause-tracing.md`, `defense-in-depth.md`, `condition-based-waiting.md`).

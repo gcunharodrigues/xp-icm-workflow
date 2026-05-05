@@ -1,39 +1,39 @@
 # Test Recipe — data_analysis
 
-> Referência de estratégia de teste para análises pontuais e notebooks orientados a relatório.
-> Lido pela sessão de discovery (stage 01) e usado para preencher §Test Strategy no plan.md (stage 02).
+> Test strategy reference for one-off analyses and report-oriented notebooks.
+> Read by the discovery session (stage 01) and used to fill §Test Strategy in plan.md (stage 02).
 
-## Contexto: análise vs produto
+## Context: analysis vs product
 
-Data analysis é diferente de produção. O objetivo é **reprodutibilidade** e **correção dos cálculos**,
-não cobertura de branches de software. Notebooks em si não são testados diretamente — as funções extraídas deles sim.
+Data analysis is different from production. The goal is **reproducibility** and **correctness of calculations**,
+not branch coverage of software. Notebooks themselves are not tested directly — the functions extracted from them are.
 
-## Tipos de teste obrigatórios
+## Required test types
 
-| Tipo | O que testa | Quando usar |
+| Type | What it tests | When to use |
 |---|---|---|
-| **Unit** | Funções de transformação extraídas do notebook | Toda lógica reutilizável |
+| **Unit** | Transformation functions extracted from the notebook | All reusable logic |
 
-## Padrão: Extract-Transform-Test
+## Pattern: Extract-Transform-Test
 
 ```
 notebook_analysis.ipynb
-  → extrai funções para src/transforms.py
-  → testa src/transforms.py com pytest
-  → notebook importa de src/ e orquestra
+  → extract functions to src/transforms.py
+  → test src/transforms.py with pytest
+  → notebook imports from src/ and orchestrates
 ```
 
-## Frameworks recomendados
+## Recommended frameworks
 
-| Tipo | Framework |
+| Type | Framework |
 |---|---|
 | Unit | `pytest` |
-| Notebook execution (smoke) | `nbmake` ou `pytest-notebook` |
+| Notebook execution (smoke) | `nbmake` or `pytest-notebook` |
 | Data validation | `pandera` |
 
-## Padrões essenciais
+## Essential patterns
 
-### Unit test de transformação
+### Transformation unit test
 
 ```python
 # src/analysis/clean.py
@@ -44,7 +44,7 @@ def remove_outliers_iqr(series: pd.Series, multiplier: float = 1.5) -> pd.Series
 
 # tests/unit/test_clean.py
 def test_remove_outliers_removes_extreme_values():
-    data = pd.Series([1, 2, 3, 4, 5, 100])  # 100 é outlier
+    data = pd.Series([1, 2, 3, 4, 5, 100])  # 100 is an outlier
     result = remove_outliers_iqr(data)
     assert 100 not in result.values
     assert len(result) == 5
@@ -55,41 +55,41 @@ def test_remove_outliers_no_outliers_returns_unchanged():
     assert len(result) == len(data)
 ```
 
-### Smoke test de notebook (opcional)
+### Notebook smoke test (optional)
 
 ```bash
 # pytest --nbmake notebooks/analysis.ipynb
-# Garante que o notebook roda sem exceção com dados de fixture
+# Ensures the notebook runs without exception with fixture data
 ```
 
-## Estrutura de arquivos
+## File structure
 
 ```
 src/
   analysis/
-    clean.py           # funções de limpeza extraídas
-    aggregate.py       # funções de agregação
-    visualize.py       # helpers de visualização
+    clean.py           # extracted cleaning functions
+    aggregate.py       # aggregation functions
+    visualize.py       # visualization helpers
 tests/
   unit/
     test_clean.py
     test_aggregate.py
 notebooks/
-  main_analysis.ipynb  # importa de src/analysis/
+  main_analysis.ipynb  # imports from src/analysis/
 data/
   fixtures/
-    sample_input.parquet  # amostra pequena para testes
+    sample_input.parquet  # small sample for tests
 ```
 
 ## Anti-patterns
 
-- Testar notebooks diretamente sem extrair funções — notebooks são difíceis de testar.
-- Fixtures que baixam dados da internet em CI — usar dados versionados em `data/fixtures/`.
-- Coverage 100% forçada em código exploratório — foco nos cálculos críticos.
+- Testing notebooks directly without extracting functions — notebooks are hard to test.
+- Fixtures that download data from the internet in CI — use versioned data in `data/fixtures/`.
+- Forced 100% coverage on exploratory code — focus on critical calculations.
 
-## Checklist rápido
+## Quick checklist
 
-- [ ] Funções de transformação extraídas do notebook e testadas isoladamente
-- [ ] Notebook smoke test (se CI suportar `nbmake`)
-- [ ] Fixtures de dados pequenas e commitadas em `data/fixtures/`
-- [ ] Edge cases: NaN, empty DataFrame, tipos incorretos
+- [ ] Transformation functions extracted from the notebook and tested in isolation
+- [ ] Notebook smoke test (if CI supports `nbmake`)
+- [ ] Small data fixtures committed in `data/fixtures/`
+- [ ] Edge cases: NaN, empty DataFrame, incorrect types

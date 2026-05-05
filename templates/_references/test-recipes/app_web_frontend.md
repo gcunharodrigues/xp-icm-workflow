@@ -1,34 +1,34 @@
 # Test Recipe — app_web_frontend
 
-> Referência de estratégia de teste para SPAs/SSR (React, Vue, Svelte, Next.js, SvelteKit).
-> Lido pela sessão de discovery (stage 01) e usado para preencher §Test Strategy no plan.md (stage 02).
+> Test strategy reference for SPAs/SSR (React, Vue, Svelte, Next.js, SvelteKit).
+> Read by the discovery session (stage 01) and used to fill §Test Strategy in plan.md (stage 02).
 
-## Tipos de teste obrigatórios
+## Required test types
 
-| Tipo | O que testa | Quando usar |
+| Type | What it tests | When to use |
 |---|---|---|
-| **Unit** | Funções puras, hooks, utils, store transformations | Toda lógica sem DOM |
-| **Component** | Render + interação de componentes com `@testing-library` | Todo componente com estado/evento |
-| **E2E** | Fluxo completo no browser real (dev/production) | Fluxos críticos de usuário |
-| **Visual regression** | Screenshots comparadas automaticamente (production) | Layout crítico, design system |
-| **A11y** | Violations WCAG via axe (dev/production) | Todo componente público |
+| **Unit** | Pure functions, hooks, utils, store transformations | All logic without DOM |
+| **Component** | Render + component interaction with `@testing-library` | Every component with state/event |
+| **E2E** | Full flow in a real browser (dev/production) | Critical user flows |
+| **Visual regression** | Automatically compared screenshots (production) | Critical layout, design system |
+| **A11y** | WCAG violations via axe (dev/production) | Every public component |
 
-## Frameworks recomendados
+## Recommended frameworks
 
-| Tipo | Framework | Observação |
+| Type | Framework | Note |
 |---|---|---|
-| Unit + Component | `vitest` + `@testing-library/react` (ou vue/svelte) | Preferir RTL sobre Enzyme |
-| E2E | `playwright` | Alternativa: `cypress` |
-| A11y | `@axe-core/playwright` ou `jest-axe` | Executar em E2E ou component test |
-| Visual regression | `playwright` screenshots | Alternativa: Percy/Chromatic |
-| API mock | `msw` (Mock Service Worker) | Intercept fetch sem mock manual |
+| Unit + Component | `vitest` + `@testing-library/react` (or vue/svelte) | Prefer RTL over Enzyme |
+| E2E | `playwright` | Alternative: `cypress` |
+| A11y | `@axe-core/playwright` or `jest-axe` | Run in E2E or component test |
+| Visual regression | `playwright` screenshots | Alternative: Percy/Chromatic |
+| API mock | `msw` (Mock Service Worker) | Intercept fetch without manual mock |
 
-## Padrões essenciais
+## Essential patterns
 
-### Component test — render + interação
+### Component test — render + interaction
 
 ```tsx
-// Padrão: preferir queries semânticas (getByRole, getByLabelText)
+// Pattern: prefer semantic queries (getByRole, getByLabelText)
 import { render, screen, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -38,8 +38,8 @@ test("login form submits credentials", async () => {
   render(<LoginForm onSubmit={onSubmit} />);
 
   await user.type(screen.getByLabelText(/email/i), "test@example.com");
-  await user.type(screen.getByLabelText(/senha/i), "secret123");
-  await user.click(screen.getByRole("button", { name: /entrar/i }));
+  await user.type(screen.getByLabelText(/password/i), "secret123");
+  await user.click(screen.getByRole("button", { name: /sign in/i }));
 
   expect(onSubmit).toHaveBeenCalledWith({
     email: "test@example.com",
@@ -48,7 +48,7 @@ test("login form submits credentials", async () => {
 });
 ```
 
-### Mock de API com MSW
+### API mock with MSW
 
 ```ts
 // src/mocks/handlers.ts
@@ -60,10 +60,10 @@ export const handlers = [
   ),
 ];
 
-// Configurado em setupTests.ts — não usar fetch mock manual
+// Configured in setupTests.ts — do not use manual fetch mock
 ```
 
-### A11y check embutido no component test
+### A11y check embedded in component test
 
 ```ts
 import { axe, toHaveNoViolations } from "jest-axe";
@@ -76,21 +76,21 @@ test("form has no a11y violations", async () => {
 });
 ```
 
-### E2E com Playwright
+### E2E with Playwright
 
 ```ts
 // tests/e2e/login.spec.ts
 test("user can login and see dashboard", async ({ page }) => {
   await page.goto("/login");
   await page.getByLabel("Email").fill("user@example.com");
-  await page.getByLabel("Senha").fill("password123");
-  await page.getByRole("button", { name: "Entrar" }).click();
+  await page.getByLabel("Password").fill("password123");
+  await page.getByRole("button", { name: "Sign in" }).click();
   await expect(page).toHaveURL("/dashboard");
-  await expect(page.getByRole("heading", { name: /bem-vindo/i })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /welcome/i })).toBeVisible();
 });
 ```
 
-## Estrutura de arquivos
+## File structure
 
 ```
 src/
@@ -125,7 +125,7 @@ export default {
       reporter: ["text", "lcov"],
       include: ["src/**/*.{ts,tsx}"],
       exclude: ["src/**/*.stories.*", "src/mocks/**", "tests/e2e/**"],
-      thresholds: { lines: 80, branches: 80 },  // ajustar por tier
+      thresholds: { lines: 80, branches: 80 },  // adjust per tier
     },
   },
 };
@@ -133,17 +133,17 @@ export default {
 
 ## Anti-patterns
 
-- Testar implementação (detalhes de estado interno) em vez de comportamento visível.
-- Usar `getByTestId` quando `getByRole` / `getByLabelText` existem — quebre acessibilidade se usar testids como crutch.
-- Snapshots de HTML grandes — use snapshots apenas para componentes de design system estáticos.
-- Mock manual de `fetch`/`axios` — use MSW que intercepta no service-worker level.
-- `waitFor` com `sleep` — use `findBy*` que espera automaticamente.
+- Testing implementation (internal state details) instead of visible behavior.
+- Using `getByTestId` when `getByRole` / `getByLabelText` exist — breaks accessibility if used as a crutch.
+- Large HTML snapshots — use snapshots only for static design system components.
+- Manual `fetch`/`axios` mock — use MSW which intercepts at the service-worker level.
+- `waitFor` with `sleep` — use `findBy*` which waits automatically.
 
-## Checklist rápido (auto-QA Akita suporte)
+## Quick checklist (auto-QA Akita support)
 
-- [ ] Cada componente com estado/evento tem ≥1 component test com RTL
-- [ ] A11y check roda em cada componente público
-- [ ] Fluxos críticos (login, checkout, form submit) têm E2E (se tier ≥ development)
-- [ ] Sem `getByTestId` onde `getByRole`/`getByLabelText` funciona
-- [ ] MSW configura mocks de API (não fetch/axios manual)
-- [ ] Coverage ≥ threshold do tier (ver `_config/profile-effective.yaml`)
+- [ ] Each component with state/event has ≥1 component test with RTL
+- [ ] A11y check runs on each public component
+- [ ] Critical flows (login, checkout, form submit) have E2E (if tier ≥ development)
+- [ ] No `getByTestId` where `getByRole`/`getByLabelText` works
+- [ ] MSW configures API mocks (not manual fetch/axios)
+- [ ] Coverage ≥ tier threshold (see `_config/profile-effective.yaml`)

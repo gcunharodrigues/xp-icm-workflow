@@ -1,28 +1,28 @@
 # Test Recipe — agent_ia
 
-> Referência de estratégia de teste para agentes LLM, orquestradores com tools, e skills/MCP.
-> Lido pela sessão de discovery (stage 01) e usado para preencher §Test Strategy no plan.md (stage 02).
+> Test strategy reference for LLM agents, tool-based orchestrators, and skills/MCP.
+> Read by the discovery session (stage 01) and used to fill §Test Strategy in plan.md (stage 02).
 
-## Desafio central: não-determinismo
+## Core challenge: non-determinism
 
-LLM outputs são não-determinísticos por natureza. TDD clássico RED→GREEN pressupõe outputs deterministicos.
-Estratégia: **isolar o determinístico (tools) do não-determinístico (LLM output)**.
+LLM outputs are non-deterministic by nature. Classic TDD RED→GREEN assumes deterministic outputs.
+Strategy: **isolate the deterministic (tools) from the non-deterministic (LLM output)**.
 
-| Camada | Testabilidade | Estratégia |
+| Layer | Testability | Strategy |
 |---|---|---|
-| Tool functions | Determinística | Unit test clássico |
-| Tool dispatch (agente chama tool certa?) | Semi-determinística | Integration test com LLM real ou mock |
-| Output do LLM | Não-determinístico | Eval framework (similarity, rubric, judge) |
-| Comportamento de prompt | Parcialmente determinístico | Golden output comparison com threshold |
+| Tool functions | Deterministic | Classic unit test |
+| Tool dispatch (does the agent call the right tool?) | Semi-deterministic | Integration test with real LLM or mock |
+| LLM output | Non-deterministic | Eval framework (similarity, rubric, judge) |
+| Prompt behavior | Partially deterministic | Golden output comparison with threshold |
 
-## Tipos de teste
+## Test types
 
-### 1. Unit tests de tools
+### 1. Tool unit tests
 
 ```python
 # tools/search.py
 def search_documents(query: str, limit: int = 5) -> list[dict]:
-    """Tool determinística — testável classicamente."""
+    """Deterministic tool — classically testable."""
     ...
 
 # tests/unit/test_tools_search.py
@@ -43,13 +43,13 @@ def test_search_result_has_required_fields(mock_db):
 ### 2. Integration tests — tool dispatch
 
 ```python
-# Testar se o agente invoca a tool correta dado um prompt fixo.
-# Usar LLM real com seed fixo OU mockar o LLM e testar a lógica de routing.
+# Test whether the agent invokes the correct tool given a fixed prompt.
+# Use a real LLM with a fixed seed OR mock the LLM and test the routing logic.
 
 def test_agent_calls_search_tool_for_query(agent, mock_llm):
-    """Mock LLM retorna tool_call fixo; valida que agent executa corretamente."""
+    """Mock LLM returns fixed tool_call; validates that agent executes correctly."""
     mock_llm.returns_tool_call("search_documents", {"query": "testing"})
-    result = agent.run("Busque documentos sobre testing")
+    result = agent.run("Search for documents about testing")
     assert mock_llm.tool_calls[0]["name"] == "search_documents"
     assert result["documents_found"] >= 0
 ```
@@ -57,8 +57,8 @@ def test_agent_calls_search_tool_for_query(agent, mock_llm):
 ### 3. Eval — golden output comparison
 
 ```python
-# Usar framework de eval (DeepEval, PromptFoo, ou custom)
-# Golden output = resposta esperada gravada manualmente
+# Use an eval framework (DeepEval, PromptFoo, or custom)
+# Golden output = expected response recorded manually
 
 import json
 from difflib import SequenceMatcher
@@ -77,29 +77,29 @@ def test_summarization_matches_golden(agent):
     assert score >= 0.85, f"Similarity {score:.2f} below threshold 0.85"
 ```
 
-## Frameworks de eval recomendados
+## Recommended eval frameworks
 
-| Framework | Uso | URL |
+| Framework | Use | URL |
 |---|---|---|
-| `deepeval` | Métricas LLM (faithfulness, answer relevancy, hallucination) | deepeval.com |
-| `promptfoo` | Comparação de prompts, CI-friendly, YAML config | promptfoo.dev |
-| `ragas` | Específico para RAG (context precision, recall) | ragas.io |
-| Custom similarity | Simples, sem dependência, threshold ajustável | Ver exemplo acima |
+| `deepeval` | LLM metrics (faithfulness, answer relevancy, hallucination) | deepeval.com |
+| `promptfoo` | Prompt comparison, CI-friendly, YAML config | promptfoo.dev |
+| `ragas` | RAG-specific (context precision, recall) | ragas.io |
+| Custom similarity | Simple, no dependency, adjustable threshold | See example above |
 
-## Estrutura de arquivos
+## File structure
 
 ```
 tests/
   unit/
-    test_tool_search.py       # tools determinísticas
+    test_tool_search.py       # deterministic tools
     test_tool_format.py
-    test_context_manager.py   # lógica de contexto
+    test_context_manager.py   # context logic
   integration/
-    test_agent_routing.py     # dispatch de tools com mock LLM
+    test_agent_routing.py     # tool dispatch with mock LLM
     test_agent_error_handling.py
   evals/
     golden/
-      summarize_doc.txt       # outputs esperados gravados manualmente
+      summarize_doc.txt       # expected outputs recorded manually
       classify_intent.json
     test_summarization.py     # eval similarity
     test_intent_classification.py
@@ -108,32 +108,32 @@ tests/
     sample_conversation.json
 ```
 
-## Determinismo nos evals
+## Determinism in evals
 
 ```python
-# Usar seed fixo quando o LLM suportar (Anthropic não suporta seed, mas temperatura 0 reduz variância)
+# Use a fixed seed when the LLM supports it (Anthropic does not support seed, but temperature 0 reduces variance)
 client = anthropic.Anthropic()
 response = client.messages.create(
     model="claude-sonnet-4-6",
     max_tokens=1024,
-    temperature=0,  # reduz (não elimina) variância
+    temperature=0,  # reduces (does not eliminate) variance
     messages=[{"role": "user", "content": prompt}],
 )
 ```
 
 ## Anti-patterns
 
-- Assertions de string exata em outputs LLM — use similarity threshold.
-- Testar o LLM em si (não é responsabilidade do projeto) — testar a *integração* com ele.
-- Golden outputs sem data de criação — LLM behavior muda entre versões de modelo.
-- Sem fixture de prompt: testar com prompt variável → flaky test.
-- Mock total do LLM em integration tests: perde cobertura real de tool parsing.
+- Exact string assertions on LLM outputs — use similarity threshold.
+- Testing the LLM itself (not the project's responsibility) — test the *integration* with it.
+- Golden outputs without a creation date — LLM behavior changes between model versions.
+- No prompt fixture: testing with variable prompt → flaky test.
+- Full LLM mock in integration tests: loses real tool parsing coverage.
 
-## Checklist rápido (auto-QA Akita suporte)
+## Quick checklist (auto-QA Akita support)
 
-- [ ] Toda tool function tem ≥1 unit test clássico
-- [ ] Tool dispatch testado com mock LLM (agente chama tool certa?)
-- [ ] Eval de golden output existe para o output principal do agente
-- [ ] Similarity threshold ≥ 0.85 (ou justificado no plan.md se menor)
-- [ ] Temperatura 0 nos evals para reduzir variância
-- [ ] Golden outputs commitados em `tests/evals/golden/` com data de criação
+- [ ] Every tool function has ≥1 classic unit test
+- [ ] Tool dispatch tested with mock LLM (does agent call the right tool?)
+- [ ] Golden output eval exists for the agent's main output
+- [ ] Similarity threshold ≥ 0.85 (or justified in plan.md if lower)
+- [ ] Temperature 0 in evals to reduce variance
+- [ ] Golden outputs committed in `tests/evals/golden/` with creation date
