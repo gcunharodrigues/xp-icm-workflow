@@ -60,6 +60,7 @@ Execução paralela em waves. Lead session orquestra subagentes via Agent tool r
 | 18 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/lead-resolution-protocol.md | L3 | sim — buckets B1/B3/B4 (v3.9.0) |
 | 19 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/forensic-plus-protocol.md | L3 | sim — 7 checks extended (v3.9.0) |
 | 20 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/mocking-guidelines.md | L3 | sim — boundaries only (v3.9.0) |
+| 21 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/e2e-coverage-protocol.md | L3 | sim — Check 8 + L4 wave gate e2e (v3.10.0) |
 
 ## Não Lê (negative constraint)
 
@@ -154,7 +155,13 @@ Cada wave executa o pipeline abaixo. `<N>` = número da wave atual.
    Cap: 1 attempt per bucket per task. Sequence B1→B3→B4. Pular bucket OK; revisitar bucket usado proibido. Todos exhausted → `BLOCKED_ERROR error_type: lead_resolution_all_buckets_failed`.
 
 10. **Merge sequencial:** lead faz merge de cada branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` (OR `-lead-resolved` quando B3) em `{{BASE_BRANCH}}` usando ordem buferizada do passo 7 (= ordem do plan). Comando: `git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>` por task. `--no-ff` preserva grupo de commits (auditável). Conflict de merge → `references/conflict-resolution-protocol.md`.
-11. **L4 wave gate (CI global):** roda CI completo do projeto após todos os merges. Verde → wave concluída, segue passo 12. Vermelho → `references/ci-rollback-protocol.md`. Production tier + ≥2 tasks com shared file/API change → cross-task coherence check (subagent fresh context, optional v3.9.0).
+11. **L4 wave gate (CI global + E2E + coherence):** sub-gates após todos os merges:
+
+    11a. **CI global green** (sempre, todos tiers) — roda CI completo do projeto. Vermelho → `references/ci-rollback-protocol.md`.
+    11b. **E2E suite green** (v3.10.0, tier dev/prod com `user_facing_paths` não-vazio em profile) — roda E2E suite via `_config/profile-effective.yaml:e2e.e2e_command` (default lookup `npm run test:e2e`/`pnpm test:e2e`/`pytest tests/e2e/`). Vermelho → `BLOCKED_ERROR error_type: e2e_suite_failed` → diagnose protocol → gate humano A/B/C. Skip quando profile com `user_facing_paths: []` (data_analysis, technical_article, experiment) OR tier exp/tool sem `e2e_command` declarado.
+    11c. **Cross-task coherence** (production AND ≥2 tasks shared file/API change) — subagent fresh context, optional v3.9.0.
+
+    Doc canônico do reforço E2E: `references/e2e-coverage-protocol.md`.
 12. **Cleanup wave worktrees + branches (v3.4.3):** após merge bem-sucedido + CI verde, lead remove worktrees efêmeras criadas pelos subagentes E deleta branches já merged. Bug pre-v3.4.3: worktrees em `<project_root>/.icm-wave-*` (ou path retornado pelo Agent tool) ficavam orfãs após cada wave; branches `wave-<NNN>-<N>/<task-slug>` poluíam `git branch` listing.
 
    ```bash

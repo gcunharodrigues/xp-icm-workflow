@@ -32,6 +32,7 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
 | 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
 | 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
 | 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/lead-resolution-protocol.md | L3 | sim — meta-check de bucket audit (v3.9.0) |
+| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/e2e-coverage-protocol.md | L3 | sim — audit E2E suite freshness (v3.10.0) |
 
 ## Não Lê (negative constraint)
 
@@ -56,6 +57,15 @@ Auditoria técnica do que foi entregue na fase 04. Sem código novo. Verifica qu
    - Verificar que o tipo de teste (unit/integration/e2e/component/eval) bate com `test_specs.test_types_required` do profile efetivo.
    - Registrar no report: task slug, arquivo esperado, arquivo encontrado (✅/⚠️), tipo de teste declarado vs encontrado.
    - ≥2/3 tasks com arquivos corretos → PASS; 1/3 → CONDITIONAL; 0/3 → FAIL.
+4.7 **Audit E2E suite (v3.10.0):** quando profile tier dev/prod com `user_facing_paths` não-vazio:
+   - Localiza e2e suite via `_config/profile-effective.yaml:e2e.e2e_suite_root` (default tenta `e2e/`, `cypress/`, `tests/e2e/` em ordem).
+   - Verifica suite existe e tem ≥1 spec file. Ausente → `BLOCKED_ERROR error_type: e2e_suite_missing`.
+   - Verifica última modificação dos specs em git: `git log -1 --format=%ct -- <e2e_suite_root>`. Stale = > 7 dias E wave-summary mostra ≥1 task `Requires E2E update: true` entregue na wave atual. Stale → `BLOCKED_ERROR error_type: e2e_suite_stale`.
+   - Audita CI report (passo 4) extraiu resultado e2e — verde OR amarelo (CONDITIONAL) aceito; vermelho = FAIL.
+   - Audita tasks com `**E2E:** skip` no plan.md devem ter rationale após `-`. Vague (ausente OR < 5 chars) → `BLOCKED_ERROR error_type: e2e_skip_unjustified`.
+
+   Skip integral quando profile com `user_facing_paths: []` (data_analysis, technical_article, experiment). Doc canônico: `references/e2e-coverage-protocol.md`.
+
 5. **Sample-check ADRs:** seleciona 3 ADRs aleatórios de `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`. Para cada, faz `grep` no diretório `stages/04/output/` por menção (slug do ADR ou número). ≥1 menção = ok; 0 menções = warning no report.
 5.5 **Audit lead resolutions (v3.9.0):** ler `stages/04/output/wave-*/wave-summary.md` e extrair seção `## Lead resolutions` (tabela com bucket aplicado per task voided/resolved). Para cada entry, aplicar meta-check determinístico:
    - **B1 (REWRITE_SPEC):** comparar plan.md task antes vs depois do rewrite. Spec rewrite deve TIGHTEN (mais bullets VALIDAÇÃO específicos OR mais NÃO QUERO bullets). LOOSEN (remover criteria) sem evidence em diagnose.md → FAIL.
@@ -85,7 +95,7 @@ Transição IN_PROGRESS → COMPLETED dispara quando:
 
 - `IN_PROGRESS` — auditando entregáveis e CI.
 - `COMPLETED_AWAITING_HUMAN` — `verification-report.md` pronto, humano aprova transição para 06.
-- `BLOCKED_ERROR` — CI global vermelho, entregáveis declarados ausentes no FS, inconsistência grave entre plan.md e wave outputs, OR lead resolutions audit failed (`error_type: lead_resolution_audit_failed`, v3.9.0).
+- `BLOCKED_ERROR` — CI global vermelho, entregáveis declarados ausentes no FS, inconsistência grave entre plan.md e wave outputs, lead resolutions audit failed (`error_type: lead_resolution_audit_failed`, v3.9.0), OR e2e audit failed (`error_type: e2e_suite_missing|e2e_suite_stale|e2e_skip_unjustified`, v3.10.0).
 
 ## Stop points aplicáveis
 
