@@ -962,3 +962,67 @@ def test_forensic_plus_all_8_checks_wired_in_main():
         + "\n  ".join(sorted(unwired))
         + "\n\nWire them into main() or remove the dead code."
     )
+
+
+# ============================================================================
+# v3.12.1 — migration _RUNTIME_REFS ↔ bootstrap runtime_refs sync
+# ============================================================================
+
+def test_migration_runtime_refs_matches_bootstrap():
+    """The _RUNTIME_REFS tuple in migrate_3_12_0_to_3_12_1 must match bootstrap runtime_refs.
+
+    If a doc is added to bootstrap runtime_refs but the migration doesn't
+    mirror it, existing workspaces will miss the new doc after migration.
+    """
+    import importlib.util as _iu
+    import inspect
+
+    # Parse bootstrap runtime_refs
+    bootstrap_path = REPO_ROOT / "scripts" / "bootstrap.py"
+    b_text = bootstrap_path.read_text(encoding="utf-8")
+    b_refs: set[str] = set()
+    in_tuple = False
+    for line in b_text.splitlines():
+        if "runtime_refs = (" in line:
+            in_tuple = True
+            continue
+        if in_tuple:
+            stripped = line.strip()
+            if stripped == ")" or stripped.startswith(") "):
+                break
+            match = re.search(r'"([^"]+\.md)"', line)
+            if match:
+                b_refs.add(match.group(1))
+
+    # Parse migration _RUNTIME_REFS from migrate_3_12_0_to_3_12_1 source
+    migrate_path = REPO_ROOT / "scripts" / "migrate-workspace.py"
+    spec = _iu.spec_from_file_location("migrate_workspace", migrate_path)
+    mw = _iu.module_from_spec(spec)
+    spec.loader.exec_module(mw)
+    m_source = inspect.getsource(mw.migrate_3_12_0_to_3_12_1)
+    m_refs: set[str] = set()
+    in_tuple2 = False
+    for line in m_source.splitlines():
+        if "_RUNTIME_REFS" in line and "tuple" in line:
+            in_tuple2 = True
+            continue
+        if in_tuple2:
+            stripped = line.strip()
+            if stripped == ")" or stripped.startswith(") "):
+                break
+            match = re.search(r'"([^"]+\.md)"', line)
+            if match:
+                m_refs.add(match.group(1))
+
+    missing = b_refs - m_refs
+    extra = m_refs - b_refs
+    assert not missing, (
+        "Docs in bootstrap runtime_refs but NOT in migration _RUNTIME_REFS:\n  "
+        + "\n  ".join(sorted(missing))
+        + "\n\nAdd missing docs to _RUNTIME_REFS in migrate_3_12_0_to_3_12_1()."
+    )
+    assert not extra, (
+        "Docs in migration _RUNTIME_REFS but NOT in bootstrap runtime_refs:\n  "
+        + "\n  ".join(sorted(extra))
+        + "\n\nRemove extra docs or add them to bootstrap runtime_refs."
+    )
