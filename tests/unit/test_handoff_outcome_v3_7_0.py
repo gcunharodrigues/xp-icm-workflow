@@ -65,9 +65,9 @@ def test_remove_block_outcome_A_renders_close_message(tmp_path: Path):
         outcome="A",
     )
     text = (project_root / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "Saída A" in text
+    assert "Exit A" in text
     assert "close" in text.lower()
-    assert "Saída C" not in text
+    assert "Exit C" not in text
     assert "spawn" not in text.lower() or "spawn_to" not in text
 
 
@@ -85,10 +85,10 @@ def test_remove_block_outcome_C_renders_spawn_message(tmp_path: Path):
         spawn_to="043-feat-billing",
     )
     text = (project_root / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "Saída C" in text
+    assert "Exit C" in text
     assert "043-feat-billing" in text
-    assert "Bootstrap em sessão nova" in text or "bootstrap" in text.lower()
-    assert "Saída A" not in text
+    assert "Bootstrap in a new session" in text or "bootstrap" in text.lower()
+    assert "Exit A" not in text
 
 
 def test_remove_block_outcome_A_default(tmp_path: Path):
@@ -104,7 +104,7 @@ def test_remove_block_outcome_A_default(tmp_path: Path):
         # outcome omitido — deve assumir A
     )
     text = (project_root / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "Saída A" in text
+    assert "Exit A" in text
 
 
 def test_remove_block_outcome_C_requires_spawn_to(tmp_path: Path):
@@ -152,7 +152,7 @@ def test_remove_block_with_other_workspaces_no_idle_message(tmp_path: Path):
     assert "042-a" not in text
     assert "043-b" in text
     # Idle não disparado pois ainda tem 043
-    assert "Nenhum workspace ativo" not in text
+    assert "No active workspace" not in text
 
 
 # ============================================================
@@ -170,5 +170,5 @@ def test_deactivate_outcome_C_renders_spawn(tmp_path: Path):
         spawn_to="043-billing",
     )
     text = (project_root / "CLAUDE.md").read_text(encoding="utf-8")
-    assert "Saída C" in text
+    assert "Exit C" in text
     assert "043-billing" in text

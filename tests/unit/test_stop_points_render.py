@@ -165,11 +165,11 @@ class TestDeriveStopPointPlaceholders:
 class TestRenderCustomStopPointsBlock:
     def test_empty_list_returns_nenhum(self) -> None:
         out = render_custom_stop_points_block([], tier="development")
-        assert "nenhum" in out
+        assert "no custom stop points" in out
 
     def test_none_returns_nenhum(self) -> None:
         out = render_custom_stop_points_block(None, tier="development")
-        assert "nenhum" in out
+        assert "no custom stop points" in out
 
     def test_single_custom_stop_renders(self) -> None:
         custom = [
@@ -227,7 +227,7 @@ class TestRenderCustomStopPointsBlock:
             render_custom_stop_points_block(custom, tier="development")
 
     def test_raises_on_non_dict_item(self) -> None:
-        with pytest.raises(BootstrapError, match="nao-dict"):
+        with pytest.raises(BootstrapError, match="not a dict"):
             render_custom_stop_points_block(["nope"], tier="development")  # type: ignore[list-item]
 
 
@@ -249,7 +249,7 @@ class TestRenderStopPointsTemplate:
         assert "tier_resolved: \"experimental\"" in out
         assert "001-test-ws" in out  # WORKSPACE
         # custom stops vazio
-        assert "nenhum custom stop point" in out
+        assert "no custom stop points" in out
 
     def test_render_stop_points_production_tier(self) -> None:
         custom = render_custom_stop_points_block(None, tier="production")
@@ -281,7 +281,7 @@ class TestRenderStopPointsTemplate:
     def test_render_stop_points_no_custom_writes_nenhum(self) -> None:
         custom = render_custom_stop_points_block(None, tier="tool")
         out = render_template(TEMPLATE_PATH, _full_render_vars("tool", custom))
-        assert "nenhum custom stop point" in out
+        assert "no custom stop points" in out
 
     @pytest.mark.parametrize("tier", TIERS)
     def test_no_unresolved_placeholders_for_any_tier(self, tier: str) -> None:

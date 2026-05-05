@@ -77,7 +77,7 @@ class TestPersistClaudeMdToBase:
 
         # Commit em main via worktree
         log = _git(["log", "--oneline", "main"], pr).stdout
-        assert "saida A handoff" in log
+        assert "exit A handoff" in log
 
     def test_idempotent_same_content_no_extra_commit(
         self, project_with_worktree: Path

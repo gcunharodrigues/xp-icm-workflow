@@ -225,7 +225,7 @@ def test_remove_last_workspace_activates_idle(tmp_path: Path):
 
     content = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
     assert "001-only" not in content
-    assert "Nenhum workspace ativo" in content
+    assert "No active workspace" in content
     assert "/init" in content
     assert "2026-04-29T12:00:00Z" in content
 
@@ -264,7 +264,7 @@ def test_deactivate_replaces_region_with_idle(tmp_path: Path):
 
     content = claude_md.read_text(encoding="utf-8")
     assert "active workspace block" not in content
-    assert "Nenhum workspace ativo" in content
+    assert "No active workspace" in content
     assert "## Custom" in content  # preserved
     assert "Preserved." in content
     assert "2026-04-29T15:00:00Z" in content

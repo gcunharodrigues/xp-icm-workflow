@@ -124,7 +124,7 @@ class TestSetupMainWorktree:
         # Pre-cria diretorio que nao eh worktree
         (project_root_with_main / ".icm-main").mkdir()
         (project_root_with_main / ".icm-main" / "junk.txt").write_text("x", encoding="utf-8")
-        with pytest.raises(bootstrap.BootstrapError, match="nao eh worktree"):
+        with pytest.raises(bootstrap.BootstrapError, match="not a valid git worktree"):
             bootstrap._setup_main_worktree(project_root_with_main, "main")
 
 
