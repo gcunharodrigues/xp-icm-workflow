@@ -1,26 +1,26 @@
 # Forensic+ Protocol — Canonical (v3.10.0)
 
-> **Versão:** v3.10.0
+> **Version:** v3.10.0
 > **Skill:** `xp-icm-workflow`
-> **Estágio consumidor:** `04_implementation_waves` (step 8b — L2 deterministic gate)
-> **Propósito:** documento canônico do Forensic+ — auditoria estrutural anti-fraude por task na wave-reviewer. Descreve os 8 checks (4 originais v3.8.0 + 3 v3.9.0 + 1 v3.10.0), matriz tier×severidade, ações HARD/SOFT, cap de re-spawn, edge cases, e schema JSON do `scripts/forensic-plus.py`.
+> **Consumer stage:** `04_implementation_waves` (step 8b — L2 deterministic gate)
+> **Purpose:** canonical document for Forensic+ — structural anti-fraud audit per task in the wave-reviewer. Describes the 8 checks (4 original v3.8.0 + 3 v3.9.0 + 1 v3.10.0), tier × severity matrix, HARD/SOFT actions, re-spawn cap, edge cases, and JSON schema for `scripts/forensic-plus.py`.
 
-## Resumo (1 parágrafo)
+## Summary (1 paragraph)
 
-Forensic+ é um audit determinístico, git-only, executado pelo wave-reviewer por cada task AFK da wave. Roda 8 checks: (1) test file com ≥2 asserções, (2) files fora de `files_touched` declarado, (3) scope creep > 3× plan estimate, (4) TODO/FIXME/HACK adicionados, (5) acceptance ↔ test mapping, (6) NÃO QUERO violations, (7) ADR import drift, (8) user-journey coverage (e2e). Cada violation tem severidade tier-aware (HARD/SOFT). HARD bloqueia merge e força re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT acumula em `wave-summary.md`. Tasks `type: HITL` são skipped. Output via `scripts/forensic-plus.py` em JSON estruturado, parsed pelo reviewer Agent. v3.9.0: gate é antessala do L3 critic (`references/critic-protocol.md`); HARD violation skip L3. v3.10.0: Check 8 fecha gap E2E coverage (ver `references/e2e-coverage-protocol.md`).
+Forensic+ is a deterministic, git-only audit run by the wave-reviewer for each AFK task in the wave. It runs 8 checks: (1) test file with ≥2 assertions, (2) files outside declared `files_touched`, (3) scope creep > 3× plan estimate, (4) TODO/FIXME/HACK added, (5) acceptance ↔ test mapping, (6) NÃO QUERO violations, (7) ADR import drift, (8) user-journey coverage (e2e). Each violation has tier-aware severity (HARD/SOFT). HARD blocks merge and forces re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT accumulates in `wave-summary.md`. Tasks `type: HITL` are skipped. Output via `scripts/forensic-plus.py` as structured JSON, parsed by the reviewer Agent. v3.9.0: gate is antechamber to L3 critic (`references/critic-protocol.md`); HARD violation skips L3. v3.10.0: Check 8 closes the E2E coverage gap (see `references/e2e-coverage-protocol.md`).
 
-## Os 8 checks
+## The 8 checks
 
-### Check 1 — Test file com ≥2 asserções
+### Check 1 — Test file with ≥2 assertions
 
-Garante que test files declarados em `files_touched` contêm ≥2 tokens reconhecidos como asserções (count-based, não filtragem semântica). Skip quando task tem `Conventions extras: doc-only` ou `config-only`.
+Ensures that test files declared in `files_touched` contain ≥2 tokens recognized as assertions (count-based, not semantic filtering). Skip when task has `Conventions extras: doc-only` or `config-only`.
 
-Comando: `git show wave-<NNN>-<N>/<slug>:<test-file>` por test file.
+Command: `git show wave-<NNN>-<N>/<slug>:<test-file>` per test file.
 
-Linguagem-aware regex (extensão → padrão):
+Language-aware regex (extension → pattern):
 
-| Ext | Padrão | Threshold |
-|-----|--------|-----------|
+| Ext | Pattern | Threshold |
+|-----|---------|-----------|
 | `.py` | `\bassert\b\|pytest\.raises\|self\.assert\w+` | ≥ 2 |
 | `.ts/.tsx/.js/.jsx` | `\b(expect\|assert\|should\|it\(\|test\()\b` | ≥ 2 |
 | `.go` | `\bt\.\(Errorf\|Fatal\|Run\)\b` | ≥ 2 |
@@ -29,13 +29,13 @@ Linguagem-aware regex (extensão → padrão):
 | `.java/.kt` | `\b(assert\|@Test\|assertEquals)` | ≥ 2 |
 | `.cs` | `\b(Assert\.\|\[Test\]\|\[Fact\]\|\[Theory\])` | ≥ 2 |
 
-Severity: **HARD** em todo tier.
+Severity: **HARD** on every tier.
 
-### Check 2 — Files fora de `files_touched` declarado
+### Check 2 — Files outside declared `files_touched`
 
-Compara nome de arquivos do diff (`git diff --name-only BASE...wave`) contra declarado em plan.md task. Diferença set (atual − declarado) é violation, exceto se filename está na allowlist global de lockfiles/caches.
+Compares filenames in the diff (`git diff --name-only BASE...wave`) against those declared in the plan.md task. The set difference (actual − declared) is a violation, except when the filename is in the global lockfile/cache allowlist.
 
-Allowlist tier-agnóstica: `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`, `Cargo.lock`, `Gemfile.lock`, `poetry.lock`, `go.sum`, `.prettierrc.cache`, `.eslintcache`.
+Tier-agnostic allowlist: `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, `bun.lockb`, `Cargo.lock`, `Gemfile.lock`, `poetry.lock`, `go.sum`, `.prettierrc.cache`, `.eslintcache`.
 
 Severity:
 
@@ -46,7 +46,7 @@ Severity:
 
 ### Check 3 — Scope creep > 3× plan estimate
 
-Lê `### Estimated lines` opcional do plan.md task (ver `references/4-block-contract-template.md`). Compara com `git diff --shortstat` insertions count. Trigger se `insertions > 3 × estimate`. Se campo ausente, skip silently (backward compat).
+Reads `### Estimated lines` optional field from the plan.md task (see `references/4-block-contract-template.md`). Compares against `git diff --shortstat` insertions count. Triggered when `insertions > 3 × estimate`. If field is absent, skip silently (backward compat).
 
 Severity:
 
@@ -55,9 +55,9 @@ Severity:
 | experimental/tool/development | SOFT |
 | production | HARD |
 
-### Check 4 — TODO/FIXME/HACK adicionados
+### Check 4 — TODO/FIXME/HACK added
 
-Conta linhas começando `+` (não `+++`) que match `(TODO|FIXME|HACK|XXX)` em arquivos de código (`.py .ts .tsx .js .jsx .go .rb .rs .java .kt .cs`). Ignora linhas removidas (`-`) e contexto.
+Counts lines starting with `+` (not `+++`) that match `(TODO|FIXME|HACK|XXX)` in code files (`.py .ts .tsx .js .jsx .go .rb .rs .java .kt .cs`). Ignores removed lines (`-`) and context.
 
 Severity:
 
@@ -68,17 +68,17 @@ Severity:
 
 ### Check 5 — Acceptance ↔ test mapping (v3.9.0)
 
-Cada bullet do bloco VALIDAÇÃO da task no plan.md deve mapear pra ≥1 test name presente no(s) test file(s) declarados em `files_touched`. Heurística: regex extrai test names do bloco VALIDAÇÃO (padrão `test_<name>`, `it("<desc>")`, `should <action>`, etc.) + grep test files por matches. Bullet sem test correspondente = violation.
+Each bullet in the VALIDAÇÃO block of the task in plan.md must map to ≥1 test name present in the test file(s) declared in `files_touched`. Heuristic: regex extracts test names from the VALIDAÇÃO block (pattern `test_<name>`, `it("<desc>")`, `should <action>`, etc.) + grep test files for matches. Bullet without a matching test = violation.
 
-Implementação:
-1. Parse bloco VALIDAÇÃO da task em plan.md.
-2. Extract test name candidates por regex (linguagem-aware):
-   - Padrão direto: `\btest_[a-z_0-9]+\b` ou `\b[a-z][a-zA-Z0-9_]*Test\b`.
-   - Padrão indireto: bullet começando com `Test [a-z_0-9]+:` ou `it\("...\)` ou `should ...`.
-3. Para cada test name candidate, busca em test files (`grep -E "<pattern>"`).
-4. Bullet sem match = violation.
+Implementation:
+1. Parse the VALIDAÇÃO block of the task in plan.md.
+2. Extract test name candidates via regex (language-aware):
+   - Direct pattern: `\btest_[a-z_0-9]+\b` or `\b[a-z][a-zA-Z0-9_]*Test\b`.
+   - Indirect pattern: bullet starting with `Test [a-z_0-9]+:` or `it\("...\)` or `should ...`.
+3. For each test name candidate, search in test files (`grep -E "<pattern>"`).
+4. Bullet without a match = violation.
 
-Skip quando task tem `Conventions extras: doc-only` ou `config-only`. Skip quando bullet começa com `Cobertura ≥` (coverage threshold, não test name).
+Skip when task has `Conventions extras: doc-only` or `config-only`. Skip when bullet starts with `Coverage ≥` (coverage threshold, not a test name).
 
 Severity:
 
@@ -89,17 +89,17 @@ Severity:
 
 ### Check 6 — NÃO QUERO violations (v3.9.0)
 
-Bullets do bloco NÃO QUERO podem declarar padrões proibidos detectáveis em diff. Patterns suportados:
+Bullets in the NÃO QUERO block may declare detectable prohibited patterns in the diff. Supported patterns:
 
 | Pattern syntax | Meaning | Detection |
 |----------------|---------|-----------|
-| `Mock interno de <module>` | proíbe `jest.mock("<module>")` ou `mocker.patch("<module>")` em diff | grep diff por pattern |
-| `Import <lib>` | proíbe `import ... from "<lib>"` ou `from <lib> import ...` | grep diff |
-| `<keyword>` (uppercase, ≥6 chars) | proíbe presença literal em added lines | grep diff `^+.*<keyword>` |
+| `Mock interno de <module>` | prohibits `jest.mock("<module>")` or `mocker.patch("<module>")` in diff | grep diff for pattern |
+| `Import <lib>` | prohibits `import ... from "<lib>"` or `from <lib> import ...` | grep diff |
+| `<keyword>` (uppercase, ≥6 chars) | prohibits literal presence in added lines | grep diff `^+.*<keyword>` |
 
-Bullets que não match patterns são descritivos (skip). Forensic+ não tenta interpretar prosa livre — pattern é literal.
+Bullets that do not match patterns are descriptive (skip). Forensic+ does not attempt to interpret free prose — the pattern is literal.
 
-Edge case: bullet `Cachear resultados em memória` (descritivo) → skipped. Bullet `Mock interno de jose` → checked.
+Edge case: bullet `Cachear resultados em memória` (descriptive) → skipped. Bullet `Mock interno de jose` → checked.
 
 Severity:
 
@@ -110,15 +110,15 @@ Severity:
 
 ### Check 7 — ADR import drift (v3.9.0)
 
-Cada ADR aplicável (campo `ADRs aplicáveis`) declarado pra task pode listar libs/patterns proibidos via marcador estruturado no ADR markdown:
+Each applicable ADR (field `ADRs aplicáveis`) declared for the task may list prohibited libs/patterns via a structured marker in the ADR markdown:
 
 ```markdown
 ## Forbidden imports
-- `jsonwebtoken` (use `jose`; ver §Stack section)
-- `axios` (use `fetch` nativo)
+- `jsonwebtoken` (use `jose`; see §Stack section)
+- `axios` (use native `fetch`)
 ```
 
-Forensic+ parsea seção `## Forbidden imports` do ADR file, extrai lib names entre backticks, e verifica diff por imports correspondentes. Pattern detection (linguagem-aware):
+Forensic+ parses the `## Forbidden imports` section of the ADR file, extracts lib names between backticks, and checks the diff for matching imports. Pattern detection (language-aware):
 
 | Ext | Pattern |
 |-----|---------|
@@ -127,7 +127,7 @@ Forensic+ parsea seção `## Forbidden imports` do ADR file, extrai lib names en
 | `.go` | `^\+.*\bimport\s+["']<LIB>["']` |
 | `.rs` | `^\+.*\buse\s+<LIB>` |
 
-ADR sem seção `## Forbidden imports` = check skipped silently (backward compat).
+ADR without a `## Forbidden imports` section = check skipped silently (backward compat).
 
 Severity:
 
@@ -138,9 +138,9 @@ Severity:
 
 ### Check 8 — User-journey coverage / E2E (v3.10.0)
 
-Task com `Requires E2E update: true` no metadata (auto-emitted por wave-planner quando `Files touched` matches `user_facing_paths` do profile-effective) deve ter ≥1 file modificado em diretório E2E reconhecido.
+Task with `Requires E2E update: true` in its metadata (auto-emitted by wave-planner when `Files touched` matches `user_facing_paths` from profile-effective) must have ≥1 file modified in a recognized E2E directory.
 
-Diretórios reconhecidos (allowlist):
+Recognized directories (allowlist):
 
 ```
 e2e/
@@ -153,15 +153,15 @@ __e2e__/
 ```
 
 Detection:
-1. Parse plan.md task → checa metadata `Requires E2E update`.
-2. Se `true` AND task NÃO tem `**E2E:** skip` no 4-block → check ativa.
-3. `git diff --name-only BASE...wave` → contém ≥1 path matching e2e dirs?
-4. Se nenhum → violation.
+1. Parse plan.md task → check metadata `Requires E2E update`.
+2. If `true` AND task does NOT have `**E2E:** skip` in the 4-block → check is active.
+3. `git diff --name-only BASE...wave` → does it contain ≥1 path matching e2e dirs?
+4. If none → violation.
 
 Skip:
-- `Requires E2E update: false` ou ausente.
-- `**E2E:** skip` declarado no 4-block (rationale audit em Stage 05).
-- `Conventions extras: doc-only` ou `config-only`.
+- `Requires E2E update: false` or absent.
+- `**E2E:** skip` declared in the 4-block (rationale audited at Stage 05).
+- `Conventions extras: doc-only` or `config-only`.
 - Task `type: HITL`.
 
 Severity:
@@ -173,14 +173,14 @@ Severity:
 | development | HARD |
 | production | HARD |
 
-Doc canônico do reforço E2E: `references/e2e-coverage-protocol.md`.
+Canonical E2E reinforcement doc: `references/e2e-coverage-protocol.md`.
 
-## Tier × violation matrix consolidada
+## Consolidated tier × violation matrix
 
 | Check | exp | tool | dev | prod |
 |-------|-----|------|-----|------|
-| 1. Test asserções | HARD | HARD | HARD | HARD |
-| 2. Files fora declared | SOFT | SOFT | HARD | HARD |
+| 1. Test assertions | HARD | HARD | HARD | HARD |
+| 2. Files outside declared | SOFT | SOFT | HARD | HARD |
 | 3. Scope creep 3× | SOFT | SOFT | SOFT | HARD |
 | 4. TODO/FIXME/HACK | SOFT | SOFT | SOFT | HARD |
 | 5. Acceptance↔test | SOFT | SOFT | HARD | HARD |
@@ -188,54 +188,54 @@ Doc canônico do reforço E2E: `references/e2e-coverage-protocol.md`.
 | 7. ADR import drift | SOFT | HARD | HARD | HARD |
 | 8. User-journey (e2e) | SOFT | SOFT | HARD | HARD |
 
-## Action HARD vs SOFT
+## HARD vs SOFT action
 
-- **HARD em ≥1 check** → reviewer emit `approved_pending_ci: false`, lead re-spawn subagente original.
-- **Apenas SOFT** → reviewer emit `approved_pending_ci: true`, violations gravam em `wave-summary.md`, merge prossegue.
-- **Nenhum** → padrão approved.
+- **HARD on ≥1 check** → reviewer emits `approved_pending_ci: false`, lead re-spawns original subagent.
+- **SOFT only** → reviewer emits `approved_pending_ci: true`, violations written to `wave-summary.md`, merge proceeds.
+- **None** → standard approved.
 
-## Re-spawn cap + brief prescritivo
+## Re-spawn cap + prescriptive brief
 
-Cap: `MAX_FORENSIC_RETRIES = 2` (hardcoded em `scripts/forensic-plus.py`, drift-checked). Tier-agnostic.
+Cap: `MAX_FORENSIC_RETRIES = 2` (hardcoded in `scripts/forensic-plus.py`, drift-checked). Tier-agnostic.
 
-| Tentativa | Resultado | Action |
-|-----------|-----------|--------|
-| 1ª original | HARD | re-spawn round 1 |
-| 2ª (round 1) | HARD | re-spawn round 2 |
-| 3ª (round 2) | HARD | `BLOCKED_ERROR error_type: forensic_max_retries`, escala humano |
-| Qualquer | SOFT only | merge prossegue |
-| Qualquer | NONE | merge prossegue |
+| Attempt | Result | Action |
+|---------|--------|--------|
+| 1st original | HARD | re-spawn round 1 |
+| 2nd (round 1) | HARD | re-spawn round 2 |
+| 3rd (round 2) | HARD | `BLOCKED_ERROR error_type: forensic_max_retries`, escalate to human |
+| Any | SOFT only | merge proceeds |
+| Any | NONE | merge proceeds |
 
-Brief de re-spawn injeta no AGENT-BRIEF do subagente:
+Re-spawn brief injected into subagent AGENT-BRIEF:
 
-| Violation | Texto injetado |
-|-----------|----------------|
-| `test_assertions_too_few` | "Test file `<path>` tem `<N>` asserções. Adicione ≥2 asserções não-triviais cobrindo edge cases + happy path." |
-| `files_outside_declared` | "Você tocou `<path>` não declarado em files_touched. Reverta ou escreva `output/wave-<N>/task-<slug>-blocked.md` pra escalar (sem novo stop point — usa BLOCKED handoff existente)." |
-| `scope_creep` | "Diff `<X>` linhas vs estimate `<Y>`. Reduza ou divida. Se scope real é maior, escalar via stop point `over_eng`." |
-| `todo_added` | "TODOs adicionados: `<list>`. Remova ou converta em issues." |
-| `acceptance_test_unmapped` | "Bullet VALIDAÇÃO `<bullet>` não tem test correspondente. Adicione test name explícito OR escreva test cobrindo o critério." |
-| `nao_quero_violation` | "Diff toca padrão proibido `<pattern>` declarado em NÃO QUERO. Reverta OR escalar via stop point se requisito mudou." |
-| `adr_import_drift` | "Import `<lib>` é proibido por ADR `<adr-file>` (§Forbidden imports). Substitua pela alternativa documentada no ADR." |
-| `e2e_coverage_missing` | "Task declarou `Requires E2E update: true` mas diff não toca `e2e/`/`cypress/`/`playwright/`/`tests/e2e/`. Adicione ≥1 test cobrindo fluxo end-to-end. Caso refactor sem mudança behavior, declare `**E2E:** skip - <rationale>` no 4-block." |
+| Violation | Injected text |
+|-----------|---------------|
+| `test_assertions_too_few` | "Test file `<path>` has `<N>` assertions. Add ≥2 non-trivial assertions covering edge cases + happy path." |
+| `files_outside_declared` | "You touched `<path>` not declared in files_touched. Revert or write `output/wave-<N>/task-<slug>-blocked.md` to escalate (no new stop point — use existing BLOCKED handoff)." |
+| `scope_creep` | "Diff `<X>` lines vs estimate `<Y>`. Reduce or split. If real scope is larger, escalate via stop point `over_eng`." |
+| `todo_added` | "TODOs added: `<list>`. Remove or convert to issues." |
+| `acceptance_test_unmapped` | "VALIDAÇÃO bullet `<bullet>` has no matching test. Add explicit test name OR write a test covering the criterion." |
+| `nao_quero_violation` | "Diff touches prohibited pattern `<pattern>` declared in NÃO QUERO. Revert OR escalate via stop point if requirement changed." |
+| `adr_import_drift` | "Import `<lib>` is prohibited by ADR `<adr-file>` (§Forbidden imports). Replace with the alternative documented in the ADR." |
+| `e2e_coverage_missing` | "Task declared `Requires E2E update: true` but diff does not touch `e2e/`/`cypress/`/`playwright/`/`tests/e2e/`. Add ≥1 test covering the end-to-end flow. If the refactor has no behavior change, declare `**E2E:** skip - <rationale>` in the 4-block." |
 
 ## Edge cases
 
 | EC | Scenario | Behavior |
 |----|----------|----------|
-| EC1 | `forensic-plus.py` crash (git missing branch / plan malformed) | Script exit 1 + stderr. Reviewer emit `forensic_passed: null, forensic_error: <stderr>`. Lead → `BLOCKED_ERROR error_type: forensic_script_crash`. Escala humano. |
+| EC1 | `forensic-plus.py` crash (git missing branch / plan malformed) | Script exit 1 + stderr. Reviewer emits `forensic_passed: null, forensic_error: <stderr>`. Lead → `BLOCKED_ERROR error_type: forensic_script_crash`. Escalate to human. |
 | EC2 | JSON parse fail | Treat as EC1. |
-| EC3 | Re-spawn introduz nova HARD diferente | Conta como retry. Cap 2 ainda aplica. Anti-gaming. |
-| EC4 | Wave HITL + AFK | Roda só em AFK. HITL → `forensic_passed: null`. |
-| EC5 | Wave 1-task | Forensic+ roda. Akita-tipo cross-task skipped (`skip_cross_task_audit: true`). |
+| EC3 | Re-spawn introduces a new different HARD | Counts as a retry. Cap 2 still applies. Anti-gaming. |
+| EC4 | Wave with HITL + AFK tasks | Runs only on AFK. HITL → `forensic_passed: null`. |
+| EC5 | Wave with 1 task | Forensic+ runs. Akita-style cross-task skipped (`skip_cross_task_audit: true`). |
 | EC6 | TODO obfuscation (`T0D0`, `F1XME`) | Out of scope. |
-| EC7 | Lockfile vulnerabilities | Allowlist ignora. Stage 05 / security_gate cobre. |
+| EC7 | Lockfile vulnerabilities | Allowlist ignores. Stage 05 / security_gate covers. |
 
 ## CI global step 10 interaction
 
-Inalterado. `approved_pending_ci: true` é semântica (decisão final pendente CI). Step 10 vermelho → `references/ci-rollback-protocol.md` existente. Forensic+ não dispara rollback automático.
+Unchanged. `approved_pending_ci: true` is semantic (final decision pending CI). Step 10 red → existing `references/ci-rollback-protocol.md`. Forensic+ does not trigger automatic rollback.
 
-## JSON schema do `scripts/forensic-plus.py`
+## JSON schema for `scripts/forensic-plus.py`
 
 **Input (CLI):**
 
@@ -274,9 +274,9 @@ python scripts/forensic-plus.py \
 
 ## Cross-references
 
-- Pipeline 12-passos consumidor: `references/wave-execution-protocol.md` step 8a-8d.
-- Schema task plan.md: `references/4-block-contract-template.md` (`### Estimated lines`).
+- 12-step pipeline consumer: `references/wave-execution-protocol.md` step 8a-8d.
+- Task plan.md schema: `references/4-block-contract-template.md` (`### Estimated lines`).
 - L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`.
 - State machine: `references/state-machine-schema.md` (`error_type: forensic_max_retries|forensic_script_crash`).
-- Stop points (tabela: este audit não é stop point, é audit pós-COMPLETE): `references/stop-points-canonical.md`.
+- Stop points (table: this audit is not a stop point, it is a post-COMPLETE audit): `references/stop-points-canonical.md`.
 - Conflict / CI rollback: `references/conflict-resolution-protocol.md`, `references/ci-rollback-protocol.md`.

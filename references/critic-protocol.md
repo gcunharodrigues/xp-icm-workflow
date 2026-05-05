@@ -1,75 +1,75 @@
 # Critic Protocol — Canonical (v3.9.0)
 
-> **Versão:** v3.9.0
+> **Version:** v3.9.0
 > **Skill:** `xp-icm-workflow`
-> **Estágio consumidor:** `04_implementation_waves` (step 8c — L3 critic, sempre, todos tiers)
-> **Propósito:** documento canônico do L3 LLM critic ortogonal — fresh-context, anti-sycophancy, triplet-output. Roda em todo task AFK depois de forensic+ extended pass (L2). Output binário APPROVE/REJECT consumido pelo lead-diagnose.
+> **Consumer stage:** `04_implementation_waves` (step 8c — L3 critic, always, all tiers)
+> **Purpose:** canonical document for the L3 orthogonal LLM critic — fresh-context, anti-sycophancy, triplet-output. Runs on every AFK task after forensic+ extended pass (L2). Binary output APPROVE/REJECT consumed by lead-diagnose.
 
-## Resumo (1 parágrafo)
+## Summary (1 paragraph)
 
-L3 critic é uma 2ª opinião de modelo distinto (intra-Claude — Sonnet ↔ Opus mix), spawnado pelo lead via Agent tool com fresh context (zero memória da sessão writer). Roda **sempre**, em todos tiers, depois que forensic+ extended (L2) aprovou. Recebe brief enxuto: task spec (4-block) + diff completo + acceptance criteria. Output é uma decisão binária (APPROVE | REJECT) acompanhada de triplets `(claim, file:line, counterexample)` quando REJECT. Critic model = `TIER_CEILING[tier]` sempre. Token budget esperado ~3-8k input + 0.5-2k output por task; custo amortizado contra forensic+ deterministic gate (zero token).
+L3 critic is a second opinion from a distinct model (intra-Claude — Sonnet ↔ Opus mix), spawned by the lead via Agent tool with fresh context (zero session memory from the writer). Runs **always**, on all tiers, after forensic+ extended (L2) has approved. Receives a lean brief: task spec (4-block) + full diff + acceptance criteria. Output is a binary decision (APPROVE | REJECT) accompanied by triplets `(claim, file:line, counterexample)` when REJECT. Critic model = `TIER_CEILING[tier]` always. Expected token budget ~3-8k input + 0.5-2k output per task; cost amortized against the forensic+ deterministic gate (zero tokens).
 
-## Por que crítico ortogonal
+## Why an orthogonal critic
 
-Self-grading do mesmo modelo writer sofre bias documentado:
-- Huang et al. ICLR 2024 — sycophancy bias ~88% Claude Code autonomous (auto-aprovação)
-- arxiv 2510.11822 — agreeableness assimétrica (modelos cedem mais quando challenged)
+Self-grading by the same writer model suffers documented bias:
+- Huang et al. ICLR 2024 — sycophancy bias ~88% Claude Code autonomous (auto-approval)
+- arxiv 2510.11822 — asymmetric agreeableness (models yield more when challenged)
 - arxiv 2509.16533 — sycophancy under rebuttal (88% flip rate Claude)
 
-Forensic+ (L2) é deterministic regex git-only — imune a sycophancy mas só pega fraude estrutural (assertions count, files declared, scope creep, TODO). Não pega:
-- Lógica errada com tests passando coincidentemente
-- ADR violation por importar lib disfarçada
-- Edge case ausente que coincide com test sem cobertura
-- Refactor que muda contrato sem atualizar caller
+Forensic+ (L2) is deterministic regex git-only — immune to sycophancy but only catches structural fraud (assertion count, declared files, scope creep, TODO). It does not catch:
+- Wrong logic with tests passing coincidentally
+- ADR violation via a disguised import
+- Absent edge case coinciding with a test lacking coverage
+- Refactor that changes contract without updating callers
 
-L3 critic intra-Claude (writer = Sonnet, critic = Opus tier ceiling) cobre o gap semântico residual. Aceita ~5-10% family blindspot (mesma família) — stage 06 review humano + stage 08 feedback compensam downstream.
+L3 intra-Claude critic (writer = Sonnet, critic = Opus tier ceiling) covers the residual semantic gap. Accepts ~5-10% family blindspot (same family) — stage 06 human review + stage 08 feedback compensate downstream.
 
-## Spawn — quem invoca
+## Spawn — who invokes
 
-Lead da wave invoca via Agent tool:
+Wave lead invokes via Agent tool:
 
 ```python
 Agent(
-    description="L3 critic ortogonal task <slug>",
+    description="L3 orthogonal critic task <slug>",
     subagent_type="general-purpose",
     model="<critic_model_from_pick_model_py>",
-    isolation="worktree",  # opcional; pode reusar worktree do writer só pra read
+    isolation="worktree",  # optional; may reuse writer worktree for read-only
     prompt=render_critic_prompt(task_slug, wave_num),
 )
 ```
 
-Sem script Python wrapper — Agent tool é o scaffold. Prompt template canônico em `templates/critic-prompt.md` (renderizado com slug + wave + diff + spec).
+No Python script wrapper — Agent tool is the scaffold. Canonical prompt template at `templates/critic-prompt.md` (rendered with slug + wave + diff + spec).
 
-## Anti-sycophancy prompt — princípios
+## Anti-sycophancy prompt — principles
 
-Prompt do critic é **hardcoded** (não deriva de plan.md, não tem espaço pra writer "convencer"). Critic não vê histórico de retries, não vê argumentos do writer, não vê diagnose anterior. Apenas:
+Critic prompt is **hardcoded** (does not derive from plan.md, no room for the writer to "convince" it). Critic does not see retry history, writer arguments, or previous diagnose output. It sees only:
 
-1. Task spec original (4-block + acceptance criteria + ADRs aplicáveis + lições)
-2. Diff completo da task (`git diff BASE...wave-<NNN>-<N>/<slug> -- <files_touched>`)
-3. Test results (output bruto do test runner, não summary)
+1. Original task spec (4-block + acceptance criteria + applicable ADRs + lessons)
+2. Full task diff (`git diff BASE...wave-<NNN>-<N>/<slug> -- <files_touched>`)
+3. Test results (raw test runner output, not a summary)
 
-Hardcoded clauses no prompt template:
+Hardcoded clauses in the prompt template:
 
 ```
-Você é um auditor independente. Você não conhece o autor do código.
-Seu papel é REJEITAR mudanças que não cumprem critérios de aceite ou
-violam constraints documentados. APROVAR é o caminho excepcional;
-REJEITAR é o default quando há dúvida.
+You are an independent auditor. You do not know who wrote the code.
+Your role is to REJECT changes that do not meet acceptance criteria or
+violate documented constraints. APPROVE is the exceptional path;
+REJECT is the default when in doubt.
 
-NÃO peça esclarecimentos. NÃO ofereça alternativas construtivas.
-NÃO assuma boa-fé do código. Cada claim seu deve apontar
-file:line + counterexample concreto.
+Do NOT ask for clarification. Do NOT offer constructive alternatives.
+Do NOT assume good faith in the code. Every claim must point to a
+file:line + concrete counterexample.
 
-Se você não consegue identificar 3+ problemas, ainda assim revise
-linha-por-linha cada arquivo modificado — provavelmente perdeu algo.
+If you cannot identify 3+ problems, still review every modified file
+line by line — you probably missed something.
 
-Output APENAS o triplet schema. Sem prefácio. Sem desculpas.
-Sem "great work, but...". Direct critique only.
+Output ONLY the triplet schema. No preamble. No apologies.
+No "great work, but...". Direct critique only.
 ```
 
 ## Triplet output schema
 
-Critic output é JSON estrito (parseable) — lead-diagnose.py consome e clusteriza para Jaccard.
+Critic output is strict JSON (parseable) — lead-diagnose.py consumes it and clusters it for Jaccard.
 
 ```json
 {
@@ -78,9 +78,9 @@ Critic output é JSON estrito (parseable) — lead-diagnose.py consome e cluster
   "decision": "APPROVE" | "REJECT" | "ABSTAIN",
   "concerns": [
     {
-      "claim": "<asserção curta 1-linha>",
+      "claim": "<short 1-line assertion>",
       "evidence": "<file>:<line-start>[-<line-end>]",
-      "counterexample": "<input/scenario que quebra a claim>",
+      "counterexample": "<input/scenario that breaks the claim>",
       "severity": "BLOCKING" | "MAJOR" | "MINOR"
     }
   ],
@@ -89,25 +89,25 @@ Critic output é JSON estrito (parseable) — lead-diagnose.py consome e cluster
 }
 ```
 
-| Decision | Quando | Lead action |
-|----------|--------|-------------|
-| `APPROVE` | nenhum BLOCKING/MAJOR; só MINOR ou nenhum concern | task PASS, prossegue merge |
-| `REJECT` | ≥1 BLOCKING ou ≥2 MAJOR | lead-diagnose.py → surgical retry OR escalate |
-| `ABSTAIN` | critic não conseguiu avaliar (diff truncado, contexto insuficiente, infra fail) | lead trata como REJECT — força retry; se 2 ABSTAIN consecutivos → `BLOCKED_ERROR error_type: critic_abstain_loop` |
+| Decision | When | Lead action |
+|----------|------|-------------|
+| `APPROVE` | no BLOCKING/MAJOR; only MINOR or no concerns | task PASS, proceed to merge |
+| `REJECT` | ≥1 BLOCKING or ≥2 MAJOR | lead-diagnose.py → surgical retry OR escalate |
+| `ABSTAIN` | critic could not evaluate (truncated diff, insufficient context, infra fail) | lead treats as REJECT — forces retry; 2 consecutive ABSTAINs → `BLOCKED_ERROR error_type: critic_abstain_loop` |
 
 ## Severity levels
 
-| Severity | Critério | Exemplo |
-|----------|----------|---------|
-| BLOCKING | viola acceptance criterion explícito OR breaks contract OR security hole | "validate_token aceita assinatura inválida quando exp ausente" |
-| MAJOR | edge case relevante não coberto OR ADR drift OR perf regressão >2× | "loop O(N²) em hot path declarado" |
-| MINOR | style nit, comentário ausente, naming sub-ótimo | "func name `processData` ambíguo" |
+| Severity | Criterion | Example |
+|----------|-----------|---------|
+| BLOCKING | violates explicit acceptance criterion OR breaks contract OR security hole | "validate_token accepts invalid signature when exp is absent" |
+| MAJOR | relevant edge case not covered OR ADR drift OR perf regression >2× | "O(N²) loop in declared hot path" |
+| MINOR | style nit, missing comment, suboptimal naming | "func name `processData` is ambiguous" |
 
-Lead-diagnose só conta BLOCKING + MAJOR para Jaccard convergence trip. MINOR descartado (noise).
+Lead-diagnose only counts BLOCKING + MAJOR for Jaccard convergence trip. MINOR is discarded (noise).
 
-## Tier ceiling — sempre
+## Tier ceiling — always
 
-Critic model = `TIER_CEILING[tier]` independente de complexity score do writer. Rationale: critic precisa de capability ≥ writer pra ser útil; downgrade do critic invalida o gate.
+Critic model = `TIER_CEILING[tier]` regardless of writer complexity score. Rationale: critic needs capability ≥ writer to be useful; downgrading the critic invalidates the gate.
 
 | Tier | Critic model |
 |------|--------------|
@@ -116,51 +116,51 @@ Critic model = `TIER_CEILING[tier]` independente de complexity score do writer. 
 | development | claude-opus-4-7 |
 | production | claude-opus-4-7 |
 
-`pick-model.py:pick_models(score, tier)` retorna `(writer, critic)` tupla; critic sempre = ceiling. Cap ceiling do writer.
+`pick-model.py:pick_models(score, tier)` returns `(writer, critic)` tuple; critic always = ceiling. Caps writer ceiling.
 
-## Quando NÃO roda L3
+## When L3 does NOT run
 
-| Caso | Behavior |
+| Case | Behavior |
 |------|----------|
-| Task `type: HITL` | skip (human resolve manualmente) |
-| L2 forensic+ HARD violation | skip — diagnose direto (não desperdiça tokens em código rejeitado por gate barato) |
-| Task `Conventions extras: doc-only` | skip (nada a auditar semanticamente em markdown) |
-| Wave 1-task com `skip_cross_task_audit: true` | L3 ainda roda na task — flag afeta L4 cross-task only |
-| Stage 04 sub_stage `04_wave_<N>_lead_resolution_in_progress` | skip durante lead bucket B3 retry; L3 roda 1× sobre output do lead |
+| Task `type: HITL` | skip (human resolves manually) |
+| L2 forensic+ HARD violation | skip — diagnose directly (no wasted tokens on code rejected by cheap gate) |
+| Task `Conventions extras: doc-only` | skip (nothing to audit semantically in markdown) |
+| Wave with 1 task with `skip_cross_task_audit: true` | L3 still runs on the task — flag affects L4 cross-task only |
+| Stage 04 sub_stage `04_wave_<N>_lead_resolution_in_progress` | skip during lead bucket B3 retry; L3 runs 1× on lead output |
 
 ## Edge cases
 
 | EC | Scenario | Behavior |
 |----|----------|----------|
-| EC1 | Critic crash (Agent tool fail / quota exhausted) | lead retry 1× com mesmo prompt; 2ª falha → `BLOCKED_ERROR error_type: critic_unavailable` |
-| EC2 | Critic JSON malformed | lead parser retorna parsing error; critic re-spawn 1×; 2ª falha → trata como ABSTAIN |
-| EC3 | Critic diverge sobre interpretação de spec ambígua | é função do critic — REJECT é default. Surgical retry brief deve clarificar spec |
-| EC4 | Diff > 200 LOC | critic ainda corre; prompt template paginate (50-LOC chunks) com summary header |
-| EC5 | Critic concorda com writer (raro signal "all clear") | APPROVE legítimo; lead prossegue. Não é red flag se forensic+ passou |
-| EC6 | Lead bucket B3 (DIRECT_IMPL) — critic do lead | mesmo critic protocol; lead writer code, critic ortogonal valida igual a subagente |
-| EC7 | Tests passing mas critic identifica bug | REJECT prevalece — tests podem ser insuficientes. Triplet evidence + counterexample obriga adicionar test ao retry |
+| EC1 | Critic crash (Agent tool fail / quota exhausted) | lead retries 1× with same prompt; 2nd failure → `BLOCKED_ERROR error_type: critic_unavailable` |
+| EC2 | Critic JSON malformed | lead parser returns parsing error; critic re-spawned 1×; 2nd failure → treated as ABSTAIN |
+| EC3 | Critic disagrees on interpretation of an ambiguous spec | this is the critic's function — REJECT is default. Surgical retry brief must clarify spec |
+| EC4 | Diff > 200 LOC | critic still runs; prompt template paginates (50-LOC chunks) with summary header |
+| EC5 | Critic agrees with writer (rare "all clear" signal) | APPROVE is legitimate; lead proceeds. Not a red flag if forensic+ passed |
+| EC6 | Lead bucket B3 (DIRECT_IMPL) — critic of the lead | same critic protocol; lead writes code, orthogonal critic validates identically to subagent |
+| EC7 | Tests passing but critic identifies a bug | REJECT prevails — tests may be insufficient. Triplet evidence + counterexample mandates adding a test on retry |
 
 ## Invocation — render_critic_prompt
 
-Render via `templates/critic-prompt.md` com placeholders:
+Render via `templates/critic-prompt.md` with placeholders:
 
 | Placeholder | Source |
 |-------------|--------|
-| `{{TASK_SLUG}}` | param do Agent call |
+| `{{TASK_SLUG}}` | Agent call param |
 | `{{WAVE_NUM}}` | param |
-| `{{TASK_4BLOCK}}` | parsed de plan.md |
-| `{{ACCEPTANCE_CRITERIA}}` | bloco VALIDAÇÃO da task |
+| `{{TASK_4BLOCK}}` | parsed from plan.md |
+| `{{ACCEPTANCE_CRITERIA}}` | VALIDAÇÃO block of the task |
 | `{{ADRS_APPLICABLE}}` | metadata `ADRs aplicáveis` |
 | `{{DIFF_COMPLETE}}` | `git diff BASE...wave-<NNN>-<N>/<slug>` |
-| `{{TEST_OUTPUT_RAW}}` | stdout do test runner (last run da task) |
+| `{{TEST_OUTPUT_RAW}}` | stdout from the test runner (last task run) |
 | `{{TIER}}` | L1 frontmatter |
 
 ## Cross-references
 
 - Lead-resolution canonical: `references/lead-resolution-protocol.md`
 - Forensic+ canonical: `references/forensic-plus-protocol.md`
-- Pipeline 12-passos: `references/wave-execution-protocol.md` step 8c
-- Pick-model heurística: `scripts/pick-model.py`
+- 12-step pipeline: `references/wave-execution-protocol.md` step 8c
+- Pick-model heuristic: `scripts/pick-model.py`
 - L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`
 - State machine: `references/state-machine-schema.md` (`error_type: critic_unavailable|critic_abstain_loop`)
-- Prompt template renderable: `templates/critic-prompt.md`
+- Renderable prompt template: `templates/critic-prompt.md`

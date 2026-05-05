@@ -543,7 +543,7 @@ def test_forensic_plus_doc_canonical_exists():
     assert path.is_file(), "forensic-plus-protocol.md missing"
     text = path.read_text(encoding="utf-8")
     assert "# Forensic+ Protocol" in text
-    assert "## Os 8 checks" in text
+    assert "## The 8 checks" in text
     assert "## JSON schema" in text
 
 
