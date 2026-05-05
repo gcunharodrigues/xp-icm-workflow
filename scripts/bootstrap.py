@@ -1,15 +1,15 @@
-"""Backend Python do bootstrap one-shot da skill xp-icm-workflow.
+"""Python backend for the one-shot bootstrap of the xp-icm-workflow skill.
 
-Cria workspace ICM dentro de um project_root: branch dedicada, scaffold de
-estagios, L0/L1 com placeholders preenchidos, profile efetivo + hash, indice
-do projeto, .gitignore atualizado, pre-commit hook instalado, commits atomicos.
+Creates an ICM workspace inside a project_root: dedicated branch, stage
+scaffold, L0/L1 with filled placeholders, effective profile + hash, project
+index, updated .gitignore, installed pre-commit hook, atomic commits.
 
-Funcoes puras (templating, validacao, manipulacao de indice/.gitignore) sao
-testadas em tests/unit/test_bootstrap.py. O fluxo end-to-end e testado em
+Pure functions (templating, validation, index/.gitignore manipulation) are
+tested in tests/unit/test_bootstrap.py. The end-to-end flow is tested in
 tests/integration/test_bootstrap.bats (CI-only Ubuntu).
 
-CLI: o caminho principal e via scripts/bootstrap.sh wrapper. Este modulo
-expoe `main()` para invocacao direta como debugging.
+CLI: the main path is via the scripts/bootstrap.sh wrapper. This module
+exposes `main()` for direct invocation as a debug entry point.
 """
 from __future__ import annotations
 
@@ -26,14 +26,14 @@ from pathlib import Path
 from typing import Any
 
 # ============================================================================
-# Constantes
+# Constants
 # ============================================================================
 
 SKILL_VERSION = "3.10.0"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
-# Bootstrap auto-prefixa NNN- ao slug. Slug que JÁ comece com NNN- gera ID
-# duplicado tipo "001-001-foo". Reject explicito com hint pro usuário.
+# Bootstrap auto-prefixes NNN- to the slug. A slug that already starts with NNN-
+# produces a duplicate ID like "001-001-foo". Explicit reject with hint for the user.
 NNN_PREFIX_RE = re.compile(r"^\d{3}-")
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
 INDEX_ROW_RE = re.compile(
@@ -66,10 +66,10 @@ STAGE_NAMES: dict[int, str] = {
 
 GITIGNORE_LINES: tuple[str, ...] = (
     ".icm-profile.local.yaml",
-    ".icm-main/",  # v3.4.0 — worktree linkada da base branch (modelo cross-branch)
+    ".icm-main/",  # v3.4.0 — linked worktree from base branch (cross-branch model)
     ".icm-chrome-profile/",  # v3.6.0 — preview loop CDP profile dir
-    ".icm/spawn-pending.json",  # v3.7.0 — handoff fase 08 saída C → bootstrap
-    "workspaces/*/_state/",  # v3.7.0 — runtime registry local-only
+    ".icm/spawn-pending.json",  # v3.7.0 — handoff stage 08 exit C → bootstrap
+    "workspaces/*/_state/",  # v3.7.0 — local-only runtime registry
     "**/coverage/",  # v3.7.0 — untracked artifact (jest, playwright, etc)
     "**/coverage.json",  # v3.7.0 — coverage summary
     "**/tsconfig.tsbuildinfo",  # v3.7.0 — TS incremental build state
@@ -84,8 +84,8 @@ GITIGNORE_LINES: tuple[str, ...] = (
 # Package manager detection (v3.6.0 preview loop)
 # ============================================================================
 
-# Prioridade: bun > pnpm > yarn > npm. Lockfile mais especifico ganha.
-# Lookup tuple ordem-sensivel.
+# Priority: bun > pnpm > yarn > npm. Most specific lockfile wins.
+# Lookup tuple is order-sensitive.
 PACKAGE_MANAGERS: tuple[tuple[str, str, str], ...] = (
     ("bun.lockb", "bun", "bun dev"),
     ("bun.lock", "bun", "bun dev"),
@@ -96,11 +96,11 @@ PACKAGE_MANAGERS: tuple[tuple[str, str, str], ...] = (
 
 
 def detect_package_manager(project_root: Path) -> tuple[str, str] | None:
-    """Detecta package manager por lockfile presente em project_root.
+    """Detects package manager by lockfile present in project_root.
 
     Returns:
-        (pm_name, dev_cmd) ou None se nenhum lockfile encontrado.
-        Ex.: ("pnpm", "pnpm dev")
+        (pm_name, dev_cmd) or None if no lockfile found.
+        E.g.: ("pnpm", "pnpm dev")
     """
     for lockfile, pm, dev_cmd in PACKAGE_MANAGERS:
         if (project_root / lockfile).is_file():
@@ -117,8 +117,8 @@ def yaml_safe_list(items: list[str]) -> str:
 INDEX_HEADER = (
     "# Workspaces index\n"
     "\n"
-    "Indice append-only de workspaces criados pelo bootstrap da skill\n"
-    "xp-icm-workflow. NUNCA edite linhas existentes manualmente.\n"
+    "Append-only index of workspaces created by the xp-icm-workflow skill\n"
+    "bootstrap. NEVER edit existing lines manually.\n"
     "\n"
     "| ID | Slug | Profile/Tier | Created at | Status |\n"
     "|---|---|---|---|---|\n"
@@ -126,11 +126,11 @@ INDEX_HEADER = (
 
 
 class BootstrapError(Exception):
-    """Erro de bootstrap (validacao, IO, git, runtime)."""
+    """Bootstrap error (validation, IO, git, runtime)."""
 
 
 # ============================================================================
-# Spawn-pending handoff (v3.7.0 — fase 08 saída C → bootstrap)
+# Spawn-pending handoff (v3.7.0 — stage 08 exit C → bootstrap)
 # ============================================================================
 
 SPAWN_PENDING_PATH = ".icm/spawn-pending.json"
@@ -149,10 +149,10 @@ SPAWN_PENDING_REQUIRED_FIELDS: tuple[str, ...] = (
 
 
 def detect_spawn_pending(project_root: Path) -> dict | None:
-    """Lê `<project_root>/.icm/spawn-pending.json` e valida schema.
+    """Reads `<project_root>/.icm/spawn-pending.json` and validates schema.
 
-    Retorna dict parseado se válido, None se arquivo ausente.
-    Raise BootstrapError se JSON inválido ou schema incompleto.
+    Returns parsed dict if valid, None if file is absent.
+    Raises BootstrapError if JSON is invalid or schema is incomplete.
     """
     pending_path = project_root / SPAWN_PENDING_PATH
     if not pending_path.is_file():
@@ -162,16 +162,16 @@ def detect_spawn_pending(project_root: Path) -> dict | None:
         data = json.loads(text)
     except json.JSONDecodeError as exc:
         raise BootstrapError(
-            f"spawn-pending.json inválido: {pending_path} ({exc})"
+            f"spawn-pending.json invalid: {pending_path} ({exc})"
         ) from exc
     if not isinstance(data, dict):
         raise BootstrapError(
-            f"spawn-pending.json esperado dict, got {type(data).__name__}"
+            f"spawn-pending.json expected dict, got {type(data).__name__}"
         )
     missing = [f for f in SPAWN_PENDING_REQUIRED_FIELDS if f not in data]
     if missing:
         raise BootstrapError(
-            f"spawn-pending.json falta campos obrigatórios: {missing}"
+            f"spawn-pending.json missing required fields: {missing}"
         )
     return data
 
@@ -180,14 +180,14 @@ def resolve_spawn_source(
     project_root: Path,
     spawn_from_arg: str | None,
 ) -> dict:
-    """Resolve fonte de informação de spawn (arquivo vs CLI arg).
+    """Resolves the spawn information source (file vs CLI arg).
 
-    Retorna dict com chave `source` ∈ {"file", "arg", "conflict", "none"}:
-    - "file": só arquivo presente, ou arquivo+arg matcham → arquivo wins.
-    - "arg": só arg presente. `spawn_from` populado.
-    - "conflict": arquivo+arg de workspaces diferentes. Caller decide via
-      menu humano. Inclui `file_value` + `arg_value` pra UI.
-    - "none": nenhum. Bootstrap segue fluxo normal.
+    Returns dict with key `source` ∈ {"file", "arg", "conflict", "none"}:
+    - "file": only file present, or file+arg match → file wins.
+    - "arg": only arg present. `spawn_from` populated.
+    - "conflict": file+arg from different workspaces. Caller decides via
+      human menu. Includes `file_value` + `arg_value` for UI.
+    - "none": neither. Bootstrap follows normal flow.
     """
     pending = detect_spawn_pending(project_root)
     if pending is None and spawn_from_arg is None:
@@ -209,10 +209,10 @@ def resolve_spawn_source(
 
 
 def consume_spawn_pending(project_root: Path) -> None:
-    """Remove `<project_root>/.icm/spawn-pending.json` pós-bootstrap.
+    """Removes `<project_root>/.icm/spawn-pending.json` after bootstrap.
 
-    Idempotente — no-op se ausente. Chamado APÓS workspace novo committed
-    pra evitar re-trigger em próxima invocação.
+    Idempotent — no-op if absent. Called AFTER new workspace is committed
+    to avoid re-triggering on the next invocation.
     """
     pending = project_root / SPAWN_PENDING_PATH
     if pending.is_file():
@@ -220,16 +220,16 @@ def consume_spawn_pending(project_root: Path) -> None:
 
 
 # ============================================================================
-# Funcoes puras (testadas em test_bootstrap.py)
+# Pure functions (tested in test_bootstrap.py)
 # ============================================================================
 
 def render_template(tpl_path: Path, vars: dict[str, str]) -> str:
-    """Substitui {{KEY}} -> vars[KEY] em conteudo do template.
+    """Substitutes {{KEY}} -> vars[KEY] in template content.
 
-    Raise BootstrapError se template ausente OU se sobrar `{{X}}` nao resolvido.
+    Raises BootstrapError if template is absent OR if any `{{X}}` remains unresolved.
     """
     if not tpl_path.exists():
-        raise BootstrapError(f"template ausente: {tpl_path}")
+        raise BootstrapError(f"template absent: {tpl_path}")
 
     content = tpl_path.read_text(encoding="utf-8")
 
@@ -237,24 +237,24 @@ def render_template(tpl_path: Path, vars: dict[str, str]) -> str:
         key = match.group(1)
         if key not in vars:
             raise BootstrapError(
-                f"placeholder nao resolvido: {{{{{key}}}}} em {tpl_path.name}"
+                f"unresolved placeholder: {{{{{key}}}}} in {tpl_path.name}"
             )
         return vars[key]
 
     rendered = PLACEHOLDER_RE.sub(_sub, content)
 
-    # Sanity check (caso o regex de subst tenha furos): nenhuma `{{X}}` sobra
+    # Sanity check (in case the substitution regex has gaps): no `{{X}}` should remain
     leftover = PLACEHOLDER_RE.search(rendered)
     if leftover:
         raise BootstrapError(
-            f"placeholder nao resolvido: {leftover.group(0)} em {tpl_path.name}"
+            f"unresolved placeholder: {leftover.group(0)} in {tpl_path.name}"
         )
 
     return rendered
 
 
 def resolve_workspace_id(index_path: Path) -> int:
-    """Le `.index.md`, retorna proximo NNN (= max(IDs) + 1, ou 1 se vazio)."""
+    """Reads `.index.md`, returns next NNN (= max(IDs) + 1, or 1 if empty)."""
     if not index_path.exists():
         return 1
     text = index_path.read_text(encoding="utf-8")
@@ -278,9 +278,9 @@ def update_index(
     tier: str,
     created_at: str,
 ) -> None:
-    """Append linha ao .index.md. Cria header se ausente.
+    """Appends a row to .index.md. Creates header if absent.
 
-    `workspace` = "NNN-slug" (ID + slug separados por primeiro hifen).
+    `workspace` = "NNN-slug" (ID + slug separated by first hyphen).
     """
     nnn, _, slug = workspace.partition("-")
     row = f"| {nnn} | {slug} | {profile}/{tier} | {created_at} | active |\n"
@@ -296,7 +296,7 @@ def update_index(
 
 
 def update_gitignore(gitignore_path: Path, lines_to_add: list[str]) -> None:
-    """Idempotente: adiciona apenas linhas ausentes; preserva existentes."""
+    """Idempotent: adds only missing lines; preserves existing ones."""
     if gitignore_path.exists():
         existing = gitignore_path.read_text(encoding="utf-8")
     else:
@@ -316,84 +316,84 @@ def update_gitignore(gitignore_path: Path, lines_to_add: list[str]) -> None:
 
 
 def validate_slug(slug: str) -> None:
-    """Aceita kebab-case `^[a-z0-9-]+$`. Raise BootstrapError caso contrario.
+    """Accepts kebab-case `^[a-z0-9-]+$`. Raises BootstrapError otherwise.
 
-    Reject extra: slug que começa com `NNN-` (3 dígitos + hífen) — bootstrap
-    já prefixa NNN, então slug `001-foo` viraria workspace `001-001-foo`.
+    Extra reject: slug starting with `NNN-` (3 digits + hyphen) — bootstrap
+    already prefixes NNN, so slug `001-foo` would produce workspace `001-001-foo`.
     """
     if not slug:
-        raise BootstrapError("slug nao pode ser vazio")
+        raise BootstrapError("slug cannot be empty")
     if NNN_PREFIX_RE.match(slug):
         raise BootstrapError(
-            f"slug invalido: {slug!r} comeca com prefix NNN- "
-            "(bootstrap auto-prefixa o ID). Use slug puro sem o NNN-, "
-            f"ex: {slug.split('-', 1)[1] if '-' in slug else slug!r}"
+            f"invalid slug: {slug!r} already has prefix NNN- "
+            "(bootstrap auto-prefixes the ID). Use a bare slug without the NNN-, "
+            f"e.g.: {slug.split('-', 1)[1] if '-' in slug else slug!r}"
         )
     if not SLUG_RE.match(slug):
         raise BootstrapError(
-            f"slug invalido: {slug!r} (esperado kebab-case [a-z0-9-]+, "
-            "sem maiuscula/espaco/acento)"
+            f"invalid slug: {slug!r} (expected kebab-case [a-z0-9-]+, "
+            "no uppercase/space/accent)"
         )
 
 
 def parse_profile_merge_output(json_str: str) -> tuple[dict[str, Any], str]:
-    """Parse JSON de profile-merge.py. Retorna (effective_dict, hash_str)."""
+    """Parses JSON from profile-merge.py. Returns (effective_dict, hash_str)."""
     try:
         parsed = json.loads(json_str)
     except json.JSONDecodeError as exc:
-        raise BootstrapError(f"profile-merge output JSON invalido: {exc}") from exc
+        raise BootstrapError(f"profile-merge output JSON invalid: {exc}") from exc
 
     if not isinstance(parsed, dict):
-        raise BootstrapError("profile-merge output deve ser dict no topo")
+        raise BootstrapError("profile-merge output must be a dict at top level")
 
     if "effective" not in parsed:
-        raise BootstrapError("profile-merge output sem chave 'effective'")
+        raise BootstrapError("profile-merge output missing key 'effective'")
     if "hash" not in parsed:
-        raise BootstrapError("profile-merge output sem chave 'hash'")
+        raise BootstrapError("profile-merge output missing key 'hash'")
 
     effective = parsed["effective"]
     if not isinstance(effective, dict):
-        raise BootstrapError("'effective' deve ser dict")
+        raise BootstrapError("'effective' must be a dict")
 
     h = parsed["hash"]
     if not isinstance(h, str):
-        raise BootstrapError("'hash' deve ser string")
+        raise BootstrapError("'hash' must be a string")
 
     return effective, h
 
 
 # ============================================================================
-# Stop points: derivacao de placeholders + render do bloco custom
+# Stop points: placeholder derivation + custom block rendering
 # ============================================================================
 
 def derive_stop_point_placeholders(effective: dict[str, Any]) -> dict[str, str]:
-    """Extrai dict[str, str] com TIER_PAID_MODE/TIER_PAID_THRESHOLD_BRL/
-    TIER_OVER_ENG_MODE/TIER_PII_MODE a partir de `stop_points_calibration` no
-    profile efetivo.
+    """Extracts dict[str, str] with TIER_PAID_MODE/TIER_PAID_THRESHOLD_BRL/
+    TIER_OVER_ENG_MODE/TIER_PII_MODE from `stop_points_calibration` in the
+    effective profile.
 
-    Schema esperado (vem de profile-merge.py):
+    Expected schema (from profile-merge.py):
         stop_points_calibration:
           item_5: {mode: warning|hard, limite_mensal_BRL: int}
           item_7: {mode: warning|hard}
           item_8: {mode: warning|hard|hard+DPO}
 
-    Raise BootstrapError se chaves obrigatorias ausentes.
+    Raises BootstrapError if required keys are absent.
     """
     cal = effective.get("stop_points_calibration")
     if not isinstance(cal, dict):
         raise BootstrapError(
-            "profile efetivo sem 'stop_points_calibration' (esperado dict)"
+            "effective profile missing 'stop_points_calibration' (expected dict)"
         )
 
     def _required(key: str, sub: str) -> Any:
         item = cal.get(key)
         if not isinstance(item, dict):
             raise BootstrapError(
-                f"stop_points_calibration.{key} ausente ou nao-dict"
+                f"stop_points_calibration.{key} absent or not a dict"
             )
         if sub not in item:
             raise BootstrapError(
-                f"stop_points_calibration.{key}.{sub} ausente"
+                f"stop_points_calibration.{key}.{sub} absent"
             )
         return item[sub]
 
@@ -409,30 +409,30 @@ def render_custom_stop_points_block(
     custom_stops: list[dict[str, Any]] | None,
     tier: str,
 ) -> str:
-    """Renderiza bloco markdown com custom stop points para o template.
+    """Renders a markdown block with custom stop points for the template.
 
-    `custom_stops` segue schema de `_config/profile-matrix.md` -> custom_stop_points:
-        - id: str (nao-vazio)
-          description: str (nao-vazio)
+    `custom_stops` follows the schema from `_config/profile-matrix.md` -> custom_stop_points:
+        - id: str (non-empty)
+          description: str (non-empty)
           threshold: dict[tier_name -> mode_str]
 
-    Se lista vazia/None: retorna "(nenhum custom stop point declarado pelo workspace)".
-    Caso contrario: para cada custom stop, secao `### custom: <id>` + descricao
-    + threshold para o tier corrente (ou "n/a" se tier nao tem entry no threshold).
+    If list is empty/None: returns "(no custom stop points declared by this workspace)".
+    Otherwise: for each custom stop, a `### custom: <id>` section + description
+    + threshold for the current tier (or "n/a" if tier has no entry in threshold).
     """
     if not custom_stops:
-        return "(nenhum custom stop point declarado pelo workspace)"
+        return "(no custom stop points declared by this workspace)"
 
     lines: list[str] = []
     for sp in custom_stops:
         if not isinstance(sp, dict):
-            raise BootstrapError(f"custom_stop_point invalido (nao-dict): {sp!r}")
+            raise BootstrapError(f"custom_stop_point invalid (not a dict): {sp!r}")
         sp_id = sp.get("id")
         sp_desc = sp.get("description")
         sp_thresh = sp.get("threshold") or {}
         if not sp_id or not sp_desc:
             raise BootstrapError(
-                f"custom_stop_point requer 'id' e 'description' nao-vazios: {sp!r}"
+                f"custom_stop_point requires non-empty 'id' and 'description': {sp!r}"
             )
         threshold_for_tier = sp_thresh.get(tier, "n/a") if isinstance(sp_thresh, dict) else "n/a"
         lines.append(f"### custom: {sp_id}")
@@ -446,7 +446,7 @@ def render_custom_stop_points_block(
 
 
 # ============================================================================
-# Helpers de orquestracao (cobertos por bats integration)
+# Orchestration helpers (covered by bats integration)
 # ============================================================================
 
 def _now_iso() -> str:
@@ -454,7 +454,7 @@ def _now_iso() -> str:
 
 
 def _run_git(args: list[str], cwd: Path, *, check: bool = True) -> subprocess.CompletedProcess[str]:
-    """Wrapper de git com captura de output e check configuravel."""
+    """Git wrapper with output capture and configurable check."""
     cmd = ["git", "-C", str(cwd), *args]
     return subprocess.run(cmd, check=check, capture_output=True, text=True)
 
@@ -465,7 +465,7 @@ def _run_profile_merge(
     tier: str,
     override: Path | None,
 ) -> tuple[dict[str, Any], str]:
-    """Invoca scripts/profile-merge.py via subprocess; parse output."""
+    """Invokes scripts/profile-merge.py via subprocess; parses output."""
     cmd = [
         sys.executable,
         str(skill_root / "scripts" / "profile-merge.py"),
@@ -477,15 +477,15 @@ def _run_profile_merge(
     result = subprocess.run(cmd, check=False, capture_output=True, text=True)
     if result.returncode != 0:
         raise BootstrapError(
-            f"profile-merge falhou (rc={result.returncode}): {result.stderr.strip()}"
+            f"profile-merge failed (rc={result.returncode}): {result.stderr.strip()}"
         )
     return parse_profile_merge_output(result.stdout)
 
 
 def _greenfield_init(project_root: Path) -> None:
-    """git init -b main + .gitignore + commit inicial em projeto novo.
+    """git init -b main + .gitignore + initial commit in a new project.
 
-    Hook ainda nao instalado neste ponto, entao --no-verify nao e necessario.
+    Hook not yet installed at this point, so --no-verify is not needed.
     """
     _run_git(["init", "-b", "main"], cwd=project_root)
     gi = project_root / ".gitignore"
@@ -499,7 +499,7 @@ def _capture_base_branch(project_root: Path) -> str:
     branch = res.stdout.strip()
     if not branch or branch == "HEAD":
         raise BootstrapError(
-            f"nao foi possivel detectar base_branch em {project_root} "
+            f"could not detect base_branch in {project_root} "
             "(detached HEAD?)"
         )
     return branch
@@ -510,34 +510,33 @@ def _create_workspace_branch(project_root: Path, branch: str, base: str) -> None
 
 
 def _ensure_base_branch_docs(project_root: Path) -> None:
-    """Cria docs/decisions/, docs/lessons.md, docs/tech_debt.md na base branch.
+    """Creates docs/decisions/, docs/lessons.md, docs/tech_debt.md in the base branch.
 
-    Pre-condicao: caller esta com base branch checada (antes da criacao do
-    workspace branch). Idempotente: skip se ja existe.
+    Precondition: caller has the base branch checked out (before workspace branch
+    is created). Idempotent: skipped if already exists.
 
-    v3.4.0: docs/ vivem APENAS na base branch. Workspace branch nao tem
-    visibilidade direta — usa `.icm-main/` worktree. Ver
-    references/worktree-model.md.
+    v3.4.0: docs/ live ONLY in the base branch. Workspace branch has no direct
+    visibility — uses `.icm-main/` worktree. See references/worktree-model.md.
     """
     decisions_dir = project_root / "docs" / "decisions"
     decisions_dir.mkdir(parents=True, exist_ok=True)
-    (decisions_dir / ".keep").touch()  # garante diretorio nao-vazio pro git
+    (decisions_dir / ".keep").touch()  # ensures the directory is non-empty for git
 
     lessons = project_root / "docs" / "lessons.md"
     if not lessons.exists():
         lessons.write_text(
-            "# Lessons Learned\n\nRegisto append-only de lições por workspace e iteração.\n\n",
+            "# Lessons Learned\n\nAppend-only log of lessons per workspace and iteration.\n\n",
             encoding="utf-8",
         )
 
     tech_debt = project_root / "docs" / "tech_debt.md"
     if not tech_debt.exists():
         tech_debt.write_text(
-            "# Tech Debt\n\nRegisto append-only de débitos técnicos. Cada item: workspace+task de origem, severidade P2/P3, descrição.\n\n",
+            "# Tech Debt\n\nAppend-only log of technical debt. Each item: source workspace+task, severity P2/P3, description.\n\n",
             encoding="utf-8",
         )
 
-    # Commit docs scaffolding na base se houver mudancas
+    # Commit docs scaffolding in base if there are changes
     res = _run_git(["status", "--porcelain", "docs/"], cwd=project_root, check=False)
     if res.stdout.strip():
         _run_git(["add", "docs/decisions/.keep", "docs/lessons.md", "docs/tech_debt.md"], cwd=project_root, check=False)
@@ -549,22 +548,22 @@ def _ensure_base_branch_docs(project_root: Path) -> None:
 
 
 def _setup_main_worktree(project_root: Path, base_branch: str) -> None:
-    """Cria worktree linkada `.icm-main/` checada em base_branch (v3.4.0).
+    """Creates linked worktree `.icm-main/` checked out at base_branch (v3.4.0).
 
-    Idempotente: skip se ja existe e esta valida.
+    Idempotent: skipped if already exists and is valid.
 
-    Funcao essencial do modelo cross-branch v3.4.0: workspace branch nao
-    tem `docs/`, `src/`, etc. no working tree, entao agentes leem/escrevem
-    esses paths via worktree linkada permanente.
+    Essential function of the cross-branch model v3.4.0: workspace branch does
+    not have `docs/`, `src/`, etc. in the working tree, so agents read/write
+    those paths via a permanent linked worktree.
 
-    Ver references/worktree-model.md (canonico).
+    See references/worktree-model.md (canonical).
     """
     worktree_path = project_root / ".icm-main"
     if worktree_path.exists():
-        # Validar que eh worktree git linkada genuina (nao subdir do project_root).
-        # `git rev-parse --show-toplevel` retorna o toplevel do worktree atual.
-        # Se worktree_path eh worktree linkada: toplevel = worktree_path.
-        # Se eh apenas subdir do project_root: toplevel = project_root (nao bate).
+        # Validate that it is a genuine linked git worktree (not a subdir of project_root).
+        # `git rev-parse --show-toplevel` returns the toplevel of the current worktree.
+        # If worktree_path is a linked worktree: toplevel = worktree_path.
+        # If it is just a subdir of project_root: toplevel = project_root (no match).
         try:
             res = _run_git(
                 ["rev-parse", "--show-toplevel"],
@@ -574,13 +573,13 @@ def _setup_main_worktree(project_root: Path, base_branch: str) -> None:
             if res.returncode == 0:
                 toplevel = Path(res.stdout.strip()).resolve()
                 if toplevel == worktree_path.resolve():
-                    return  # idempotente — worktree linkada genuina
+                    return  # idempotent — genuine linked worktree
         except Exception:
             pass
-        # Existe mas nao eh worktree linkada — humano resolve manualmente
+        # Exists but is not a linked worktree — human must resolve manually
         raise BootstrapError(
-            f".icm-main/ existe em {project_root} mas nao eh worktree git valida. "
-            "Remova ou rode `git worktree repair` antes de bootstrap."
+            f".icm-main/ exists in {project_root} but is not a valid git worktree. "
+            "Remove it or run `git worktree repair` before bootstrapping."
         )
 
     _run_git(
@@ -590,11 +589,11 @@ def _setup_main_worktree(project_root: Path, base_branch: str) -> None:
 
 
 def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root: Path) -> None:
-    """Cria stages/00..08 (com output/), _config/, _references/.
+    """Creates stages/00..08 (with output/), _config/, _references/.
 
-    v3.4.0: docs/decisions/, docs/lessons.md, docs/tech_debt.md NAO sao
-    criados aqui. Ficam na base branch (criados por
-    `_ensure_base_branch_docs` antes do workspace branch). Acesso via
+    v3.4.0: docs/decisions/, docs/lessons.md, docs/tech_debt.md are NOT
+    created here. They live in the base branch (created by
+    `_ensure_base_branch_docs` before the workspace branch). Access via
     worktree `.icm-main/`.
     """
     workspace_dir.mkdir(parents=True, exist_ok=False)
@@ -637,17 +636,17 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
 
     runtime_dst = refs_dir / "runtime"
     runtime_dst.mkdir(parents=True)
-    # Bootstrap copia refs canônicos de <skill_root>/references/<file>.md PARA
-    # <workspace>/_references/runtime/<file>.md no scaffold (R2.5 do plan v3).
+    # Bootstrap copies canonical refs from <skill_root>/references/<file>.md INTO
+    # <workspace>/_references/runtime/<file>.md during scaffold (R2.5 of plan v3).
     #
-    # Por que: workspace ICM é self-contained pós-bootstrap. Sessões só leem
-    # do <workspace>/_references/runtime/ — nunca cruzam para <skill_root>/.
-    # Bootstrap é o único bridge, frozen no momento da criação. Skill pode
-    # evoluir sem quebrar workspaces antigos.
+    # Why: the ICM workspace is self-contained after bootstrap. Sessions only read
+    # from <workspace>/_references/runtime/ — they never cross into <skill_root>/.
+    # Bootstrap is the only bridge, frozen at creation time. The skill can
+    # evolve without breaking old workspaces.
     #
-    # Por que não há `templates/_references/runtime/` no skill source: evitar
-    # duplicação. Fonte canônica em `references/` é única. Lista abaixo
-    # define o subset copiado. Doc: templates/_references/runtime/README.md.
+    # Why there is no `templates/_references/runtime/` in the skill source: to avoid
+    # duplication. The canonical source in `references/` is unique. The list below
+    # defines the copied subset. Doc: templates/_references/runtime/README.md.
     runtime_refs = (
         "subagent-protocol.md",
         "wave-planner-algorithm.md",
@@ -688,7 +687,7 @@ def _save_profile_effective(
     effective: dict[str, Any],
     profile_hash: str,
 ) -> None:
-    """Persiste profile-effective.yaml + hash para validate-state usar depois."""
+    """Persists profile-effective.yaml + hash for validate-state to use later."""
     import yaml  # noqa: PLC0415  — yaml is a runtime dep of the skill
     payload = dict(effective)
     payload["__hash__"] = profile_hash
@@ -703,35 +702,35 @@ _MANAGED_HOOKS: tuple[str, ...] = ("pre-commit", "commit-msg")
 
 
 def _install_hooks(project_root: Path, skill_root: Path) -> None:
-    """Idempotente: instala todos hooks ICM em .git/hooks/.
+    """Idempotent: installs all ICM hooks in .git/hooks/.
 
-    Hooks gerenciados (stages canonicos):
-      - pre-commit: file/atomicidade checks
-      - commit-msg: validacao de prefix da msg (recebe COMMIT_EDITMSG em $1)
+    Managed hooks (canonical stages):
+      - pre-commit: file/atomicity checks
+      - commit-msg: message prefix validation (receives COMMIT_EDITMSG in $1)
 
-    Pre-commit nao pode validar msg porque roda ANTES de
-    COMMIT_EDITMSG ser persistido — leria msg do commit anterior.
-    Bug original v1, fixado via split.
+    pre-commit cannot validate the message because it runs BEFORE
+    COMMIT_EDITMSG is persisted — it would read the previous commit's message.
+    Original bug in v1, fixed via split.
 
-    Se ja existe e diff != 0, faz backup .bak.<timestamp> e overwrite.
-    Em caso de erro de IO (Windows file-in-use, etc), warning e segue.
+    If already exists and diff != 0, makes a .bak.<timestamp> backup then overwrites.
+    On IO error (Windows file-in-use, etc), logs a warning and continues.
     """
     dst_dir = project_root / ".git" / "hooks"
     try:
         dst_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        sys.stderr.write(f"warning: nao foi possivel criar {dst_dir}: {exc}\n")
+        sys.stderr.write(f"warning: could not create {dst_dir}: {exc}\n")
         return
 
     for hook in _MANAGED_HOOKS:
         src = skill_root / "templates" / ".git-hooks" / hook
         if not src.exists():
-            sys.stderr.write(f"warning: hook fonte ausente: {src}\n")
+            sys.stderr.write(f"warning: hook source absent: {src}\n")
             continue
         dst = dst_dir / hook
         try:
-            # Normaliza CRLF→LF — git hooks rodam via shebang exec; CRLF
-            # faz kernel procurar interpretador "bash\r" e falhar.
+            # Normalize CRLF→LF — git hooks run via shebang exec; CRLF
+            # causes the kernel to look for interpreter "bash\r" and fail.
             new = src.read_bytes().replace(b"\r\n", b"\n")
             if dst.exists():
                 current = dst.read_bytes()
@@ -744,54 +743,54 @@ def _install_hooks(project_root: Path, skill_root: Path) -> None:
             try:
                 os.chmod(dst, 0o755)
             except OSError as _chmod_exc:
-                # Windows não suporta permissão executável — Git Bash resolve
-                # via ACL, mas os.chmod é silently ignored. Log warning apenas
-                # se NÃO for Windows (erro inesperado em POSIX).
+                # Windows does not support executable permissions — Git Bash resolves
+                # via ACL, and os.chmod is silently ignored. Log warning only
+                # if NOT on Windows (unexpected error on POSIX).
                 if os.name != "nt":
                     sys.stderr.write(
-                        f"warning: falha ao tornar hook executável: {dst}: {_chmod_exc}\n"
+                        f"warning: failed to make hook executable: {dst}: {_chmod_exc}\n"
                     )
         except OSError as exc:
-            sys.stderr.write(f"warning: falha ao instalar hook {hook}: {exc}\n")
+            sys.stderr.write(f"warning: failed to install hook {hook}: {exc}\n")
 
 
 _WORKSPACE_HOOK_FILES: tuple[str, ...] = (
-    "context-check.sh",            # PostToolUse — registrado em workspace settings.local.json
-    "icm-session-check.sh",        # SessionStart — registro vive em project_root settings.local.json (v3.4.0)
-    "block-init-during-icm.sh",    # PreToolUse — bloqueia /init enquanto workspace ICM ativo (v3.4.1)
+    "context-check.sh",            # PostToolUse — registered in workspace settings.local.json
+    "icm-session-check.sh",        # SessionStart — registration lives in project_root settings.local.json (v3.4.0)
+    "block-init-during-icm.sh",    # PreToolUse — blocks /init while ICM workspace is active (v3.4.1)
 )
 
-# Hooks instalados apenas para tier=production (v3.4.1)
+# Hooks installed only for tier=production (v3.4.1)
 _PRODUCTION_HOOK_FILES: tuple[str, ...] = (
-    "block-dangerous-git.sh",      # PreToolUse — bloqueia push --force, reset --hard, etc.
+    "block-dangerous-git.sh",      # PreToolUse — blocks push --force, reset --hard, etc.
 )
 
 
 def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, tier: str = "") -> None:
-    """Idempotente: instala hooks ICM do workspace + registro PostToolUse.
+    """Idempotent: installs workspace ICM hooks + PostToolUse registration.
 
-    Copia hooks do template da skill para workspaces/<workspace>/.claude/hooks/:
-      - context-check.sh — anti-compact PostToolUse (registrado em workspace settings).
+    Copies hooks from the skill template to workspaces/<workspace>/.claude/hooks/:
+      - context-check.sh — anti-compact PostToolUse (registered in workspace settings).
       - icm-session-check.sh — branch/worktree validation SessionStart (v3.4.0;
-        registro vive em project_root settings.local.json renderizado via
+        registration lives in project_root settings.local.json rendered via
         _render_project_settings_example).
 
-    Apenas context-check.sh é registrado em
-    workspaces/<workspace>/.claude/settings.local.json como PostToolUse hook
-    (path relativo ao workspace: bash .claude/hooks/context-check.sh).
+    Only context-check.sh is registered in
+    workspaces/<workspace>/.claude/settings.local.json as a PostToolUse hook
+    (path relative to workspace: bash .claude/hooks/context-check.sh).
 
-    Se settings.local.json do workspace nao existe, cria com estrutura minima.
-    Se ja existe, adiciona o hook sem duplicar.
+    If workspace settings.local.json does not exist, creates it with minimal structure.
+    If it already exists, adds the hook without duplicating.
     """
     workspace_dir = project_root / "workspaces" / workspace
     hooks_dir = workspace_dir / ".claude" / "hooks"
     try:
         hooks_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        sys.stderr.write(f"warning: nao foi possivel criar {hooks_dir}: {exc}\n")
+        sys.stderr.write(f"warning: could not create {hooks_dir}: {exc}\n")
         return
 
-    # Copia todos os hooks do workspace + production hooks se aplicavel
+    # Copy all workspace hooks + production hooks if applicable
     hooks_to_install = list(_WORKSPACE_HOOK_FILES)
     if tier == "production":
         hooks_to_install.extend(_PRODUCTION_HOOK_FILES)
@@ -800,12 +799,12 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, 
         src_hook = skill_root / "templates" / ".claude" / "hooks" / hook_filename
         dst_hook = hooks_dir / hook_filename
         if not src_hook.exists():
-            sys.stderr.write(f"warning: {hook_filename} template ausente: {src_hook}\n")
+            sys.stderr.write(f"warning: {hook_filename} template absent: {src_hook}\n")
             continue
         try:
-            # Bytes copy + CRLF→LF normalize. shutil.copy2 preservaria CRLF do
-            # template em Windows; CRLF no shebang faz kernel exec falhar com
-            # "No such file or directory" (kernel procura interpretador "bash\r").
+            # Bytes copy + CRLF→LF normalize. shutil.copy2 would preserve CRLF from
+            # the template on Windows; CRLF in the shebang causes kernel exec to fail with
+            # "No such file or directory" (kernel looks for interpreter "bash\r").
             raw = src_hook.read_bytes()
             dst_hook.write_bytes(raw.replace(b"\r\n", b"\n"))
             try:
@@ -813,17 +812,17 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, 
             except OSError as _chmod_exc2:
                 if os.name != "nt":
                     sys.stderr.write(
-                        f"warning: falha ao tornar hook executável: {dst_hook}: {_chmod_exc2}\n"
+                        f"warning: failed to make hook executable: {dst_hook}: {_chmod_exc2}\n"
                     )
         except OSError as exc:
-            sys.stderr.write(f"warning: falha ao instalar {hook_filename}: {exc}\n")
+            sys.stderr.write(f"warning: failed to install {hook_filename}: {exc}\n")
 
-    # Registrar hook em workspaces/<workspace>/.claude/settings.local.json.
-    # Usa $CLAUDE_PROJECT_DIR (cwd-independent) — Claude Code roda hooks com
-    # cwd potencialmente != project_root (worktree .icm-main/, subdir, etc).
-    # Path relativo "workspaces/..." quebra com bash "No such file or
-    # directory". $CLAUDE_PROJECT_DIR sempre aponta pro project_root onde
-    # a sessão foi iniciada.
+    # Register hook in workspaces/<workspace>/.claude/settings.local.json.
+    # Uses $CLAUDE_PROJECT_DIR (cwd-independent) — Claude Code runs hooks with
+    # cwd potentially != project_root (worktree .icm-main/, subdir, etc).
+    # Relative path "workspaces/..." fails with bash "No such file or
+    # directory". $CLAUDE_PROJECT_DIR always points to the project_root where
+    # the session was started.
     hook_command = (
         f'bash "$CLAUDE_PROJECT_DIR/workspaces/{workspace}/'
         f'.claude/hooks/context-check.sh"'
@@ -843,7 +842,7 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, 
         except (json.JSONDecodeError, OSError):
             settings = {}
 
-    # Adicionar PostToolUse hook sem duplicar
+    # Add PostToolUse hook without duplicating
     post_tool_hooks = settings.get("hooks", {}).get("PostToolUse", [])
     already_exists = any(
         isinstance(entry, dict)
@@ -864,39 +863,39 @@ def _install_context_hook(project_root: Path, skill_root: Path, workspace: str, 
                 encoding="utf-8",
             )
         except OSError as exc:
-            sys.stderr.write(f"warning: falha ao escrever settings.local.json: {exc}\n")
+            sys.stderr.write(f"warning: failed to write settings.local.json: {exc}\n")
 
-    # Cleanup: remove hook legado de project_root/.claude/ se existir.
-    # Bootstrap antigo (pre-v3.1) instalava em project_root/.claude/hooks/.
-    # Novo design instala em workspaces/<workspace>/.claude/hooks/ + settings do workspace.
+    # Cleanup: remove legacy hook from project_root/.claude/ if it exists.
+    # Old bootstrap (pre-v3.1) installed it in project_root/.claude/hooks/.
+    # New design installs in workspaces/<workspace>/.claude/hooks/ + workspace settings.
     _cleanup_legacy_context_hook(project_root)
 
 
 def _cleanup_legacy_context_hook(project_root: Path) -> None:
-    """Remove context-check.sh legado de project_root/.claude/hooks/ e
-    sua entrada em project_root/.claude/settings.local.json.
+    """Removes legacy context-check.sh from project_root/.claude/hooks/ and
+    its entry in project_root/.claude/settings.local.json.
 
-    Bootstrap pre-v3.1 instalava o hook na raiz do projeto. O novo design
-    instala tudo dentro do workspace. Esta funcao migra/remove o legado.
+    Bootstrap pre-v3.1 installed the hook at the project root. The new design
+    installs everything inside the workspace. This function migrates/removes the legacy.
     """
-    # Remove script legado
+    # Remove legacy script
     legacy_hook = project_root / ".claude" / "hooks" / "context-check.sh"
     if legacy_hook.exists():
         try:
             legacy_hook.unlink()
         except OSError as exc:
-            sys.stderr.write(f"warning: nao foi possivel remover {legacy_hook}: {exc}\n")
+            sys.stderr.write(f"warning: could not remove {legacy_hook}: {exc}\n")
 
-    # Remove diretorio hooks vazio
+    # Remove empty hooks directory
     legacy_hooks_dir = project_root / ".claude" / "hooks"
     if legacy_hooks_dir.exists() and legacy_hooks_dir.is_dir():
         try:
-            # rmdir so funciona se vazio
+            # rmdir only works if empty
             legacy_hooks_dir.rmdir()
         except OSError:
-            pass  # dir nao vazio, nao remove
+            pass  # dir not empty, don't remove
 
-    # Remove entrada do hook legado em project_root/.claude/settings.local.json
+    # Remove legacy hook entry from project_root/.claude/settings.local.json
     legacy_settings = project_root / ".claude" / "settings.local.json"
     if not legacy_settings.exists():
         return
@@ -912,7 +911,7 @@ def _cleanup_legacy_context_hook(project_root: Path) -> None:
     post_tool_hooks: list[dict[str, Any]] = settings.get("hooks", {}).get("PostToolUse", [])
     original_len = len(post_tool_hooks)
 
-    # Remove entradas com context-check.sh (legado = path relativo .claude/hooks/ ou
+    # Remove entries with context-check.sh (legacy = relative path .claude/hooks/ or
     # workspaces/NNN-slug/.claude/hooks/)
     post_tool_hooks[:] = [
         entry for entry in post_tool_hooks
@@ -942,7 +941,7 @@ def _cleanup_legacy_context_hook(project_root: Path) -> None:
                 encoding="utf-8",
             )
         except OSError as exc:
-            sys.stderr.write(f"warning: falha ao limpar settings.local.json legado: {exc}\n")
+            sys.stderr.write(f"warning: failed to clean legacy settings.local.json: {exc}\n")
 
 
 # Backward-compat alias (testes ou call sites antigos)
@@ -955,18 +954,18 @@ def _commit_scaffold(
     profile: str,
     tier: str,
 ) -> str:
-    """git add + commit do scaffold inicial. Retorna sha do commit.
+    """git add + commit of the initial scaffold. Returns the commit sha.
 
-    Usa --no-verify porque hooks de workspace anterior podem estar
-    instalados e rejeitar paths como .gitignore e workspaces/.index.md
-    que sao legitimos no bootstrap mas fora do workspace NNN-slug/.
-    Bootstrap e trusted; hooks protegem atividade futura do usuario.
+    Uses --no-verify because previous workspace hooks may be installed
+    and reject paths like .gitignore and workspaces/.index.md that are
+    valid in bootstrap but outside the workspace NNN-slug/.
+    Bootstrap is trusted; hooks protect future user activity.
     """
     _run_git(["add", f"workspaces/{workspace}/", "workspaces/.index.md"], cwd=project_root)
-    # .gitignore pode ou nao ter mudado; add idempotente
+    # .gitignore may or may not have changed; add is idempotent
     _run_git(["add", ".gitignore"], cwd=project_root, check=False)
-    # CLAUDE.md root: criado/atualizado por _render_project_claude_md;
-    # add idempotente (check=False) — pode estar limpo se brownfield e nada mudou.
+    # CLAUDE.md root: created/updated by _render_project_claude_md;
+    # add is idempotent (check=False) — may be clean if brownfield and nothing changed.
     _run_git(["add", "CLAUDE.md"], cwd=project_root, check=False)
     msg = f"workspace {workspace.split('-', 1)[0]}: bootstrap scaffold (profile={profile} tier={tier})"
     _run_git(["commit", "--no-verify", "-m", msg], cwd=project_root)
@@ -990,14 +989,14 @@ def _render_project_claude_md(
     next_action: str,
     skill_dir: str,
 ) -> Path:
-    """Cria/atualiza <project_root>/CLAUDE.md com bloco ICM do workspace.
+    """Creates/updates <project_root>/CLAUDE.md with the workspace ICM block.
 
-    Idempotente. Brownfield-safe (preserva conteúdo fora dos marcadores ICM).
-    Multi-workspace: adiciona bloco preservando blocos de outros workspaces.
-    Doc canônico: references/project-root-claude-md.md.
+    Idempotent. Brownfield-safe (preserves content outside ICM markers).
+    Multi-workspace: adds block while preserving blocks of other workspaces.
+    Canonical doc: references/project-root-claude-md.md.
     """
-    # Lazy import: handoff.py está no mesmo diretório scripts/ mas não há __init__.py
-    # então import direto via sys.path adjustment.
+    # Lazy import: handoff.py is in the same scripts/ directory but there's no __init__.py,
+    # so direct import via sys.path adjustment.
     _scripts_dir = str(Path(__file__).parent)
     if _scripts_dir not in sys.path:
         sys.path.insert(0, _scripts_dir)
@@ -1024,22 +1023,22 @@ def _render_project_settings_example(
     skill_root: Path,
     workspace: str,
 ) -> None:
-    """Idempotente: renderiza settings.local.json.example em project_root (v3.4.0).
+    """Idempotent: renders settings.local.json.example in project_root (v3.4.0).
 
-    Copia templates/project_root/.claude/settings.local.json.example para
-    <project_root>/.claude/settings.local.json.example substituindo
-    `<NNN-slug>` pelo workspace ativo.
+    Copies templates/project_root/.claude/settings.local.json.example to
+    <project_root>/.claude/settings.local.json.example replacing
+    `<NNN-slug>` with the active workspace.
 
-    `.example` é mantido como documentação/referência. v3.4.2 adiciona
-    `_merge_project_settings_local` que faz auto-merge no settings.local.json
-    real (sem `.example` no caminho), eliminando o passo manual de copiar.
+    `.example` is kept as documentation/reference. v3.4.2 adds
+    `_merge_project_settings_local` which auto-merges into the real settings.local.json
+    (without `.example` in the path), eliminating the manual copy step.
 
     Doc: references/worktree-model.md + references/git-hooks.md.
     """
     src = skill_root / "templates" / "project_root" / ".claude" / "settings.local.json.example"
     if not src.exists():
         sys.stderr.write(
-            f"warning: settings.local.json.example template ausente: {src}\n"
+            f"warning: settings.local.json.example template absent: {src}\n"
         )
         return
 
@@ -1048,7 +1047,7 @@ def _render_project_settings_example(
     try:
         dst_dir.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
-        sys.stderr.write(f"warning: nao foi possivel criar {dst_dir}: {exc}\n")
+        sys.stderr.write(f"warning: could not create {dst_dir}: {exc}\n")
         return
 
     try:
@@ -1056,7 +1055,7 @@ def _render_project_settings_example(
         dst.write_text(content, encoding="utf-8")
     except OSError as exc:
         sys.stderr.write(
-            f"warning: falha ao renderizar settings.local.json.example: {exc}\n"
+            f"warning: failed to render settings.local.json.example: {exc}\n"
         )
 
 
@@ -1065,37 +1064,37 @@ def _merge_project_settings_local(
     workspace: str,
     tier: str = "",
 ) -> None:
-    """Idempotente: auto-merge ICM hooks em <project_root>/.claude/settings.local.json (v3.4.2).
+    """Idempotent: auto-merge ICM hooks into <project_root>/.claude/settings.local.json (v3.4.2).
 
-    Antes da v3.4.2, bootstrap apenas renderizava `.example` e humano copiava
-    manualmente. Inconsistência: workspace scope settings.local.json (em
-    workspaces/<NNN>/.claude/) já era auto-criado idempotentemente, mas
-    project_root scope não. Fix: replica padrão.
+    Before v3.4.2, bootstrap only rendered `.example` and humans copied
+    manually. Inconsistency: workspace-scope settings.local.json (in
+    workspaces/<NNN>/.claude/) was already auto-created idempotently, but
+    project_root scope was not. Fix: replicate that pattern.
 
-    Hooks adicionados (commands cwd-independent via $CLAUDE_PROJECT_DIR —
-    ver §"Path absoluto vs relativo" abaixo):
+    Hooks added (commands cwd-independent via $CLAUDE_PROJECT_DIR —
+    see §"Absolute vs relative path" below):
       - SessionStart (matcher .*): icm-session-check.sh
       - PreToolUse (matcher SlashCommand|Bash): block-init-during-icm.sh
-      - PreToolUse (matcher Bash, APENAS tier=production): block-dangerous-git.sh
+      - PreToolUse (matcher Bash, ONLY tier=production): block-dangerous-git.sh
       - PostToolUse (matcher .*): context-check.sh
 
-    **Path absoluto vs relativo:** commands usam $CLAUDE_PROJECT_DIR (env var
-    Claude Code expõe ao processo do hook, sempre apontando project_root).
-    Path relativo "workspaces/..." quebra quando sessão Claude Code roda com
-    cwd != project_root (p.ex. dentro de worktree .icm-main/) — bash falha
-    com "No such file or directory".
+    **Absolute vs relative path:** commands use $CLAUDE_PROJECT_DIR (env var
+    that Claude Code exposes to the hook process, always pointing to project_root).
+    Relative path "workspaces/..." breaks when the Claude Code session runs with
+    cwd != project_root (e.g. inside worktree .icm-main/) — bash fails
+    with "No such file or directory".
 
-    Preserva customizações existentes do user: só ADICIONA entradas ICM
-    identificáveis por commands contendo `<workspace>/.claude/hooks/`. Não
-    toca em hooks de outros workspaces ou hooks não-ICM.
+    Preserves existing user customizations: only ADDS ICM entries
+    identifiable by commands containing `<workspace>/.claude/hooks/`. Does not
+    touch hooks from other workspaces or non-ICM hooks.
 
-    Doc: references/git-hooks.md (seção project_root scope).
+    Doc: references/git-hooks.md (section project_root scope).
     """
     settings_path = project_root / ".claude" / "settings.local.json"
 
-    # Hooks ICM a registrar. Lista de (event, matcher, command) — múltiplas
-    # entries por event suportadas (p.ex. 2 PreToolUse com matchers distintos).
-    # Command usa $CLAUDE_PROJECT_DIR (Claude Code env var) pra ser cwd-independent.
+    # ICM hooks to register. List of (event, matcher, command) — multiple
+    # entries per event supported (e.g. 2 PreToolUse with distinct matchers).
+    # Command uses $CLAUDE_PROJECT_DIR (Claude Code env var) to be cwd-independent.
     def _cmd(hook_filename: str) -> str:
         return (
             f'bash "$CLAUDE_PROJECT_DIR/workspaces/{workspace}/'
@@ -1108,9 +1107,9 @@ def _merge_project_settings_local(
         ("PostToolUse", ".*", _cmd("context-check.sh")),
     ]
 
-    # Conditional: tier=production adiciona block-dangerous-git (matcher Bash).
-    # Hook .sh só é COPIADO em tier=production (vide _PRODUCTION_HOOK_FILES);
-    # registro segue o mesmo gate.
+    # Conditional: tier=production adds block-dangerous-git (matcher Bash).
+    # Hook .sh is only COPIED on tier=production (see _PRODUCTION_HOOK_FILES);
+    # registration follows the same gate.
     if tier == "production":
         icm_hooks.append(
             ("PreToolUse", "Bash", _cmd("block-dangerous-git.sh"))
@@ -1158,7 +1157,7 @@ def _merge_project_settings_local(
             changed = True
 
     if not changed:
-        return  # idempotente — nada pra escrever
+        return  # idempotent — nothing to write
 
     try:
         settings_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1168,7 +1167,7 @@ def _merge_project_settings_local(
         )
     except OSError as exc:
         sys.stderr.write(
-            f"warning: falha ao escrever {settings_path}: {exc}\n"
+            f"warning: failed to write {settings_path}: {exc}\n"
         )
 
 
@@ -1189,7 +1188,7 @@ def _commit_context_sha(project_root: Path, workspace: str) -> None:
 
 
 # ============================================================================
-# Orquestracao de alto nivel (bats cobre)
+# High-level orchestration (covered by bats)
 # ============================================================================
 
 def bootstrap(
@@ -1202,13 +1201,13 @@ def bootstrap(
     logs_root: str | None = None,
     override_path: Path | None = None,
 ) -> dict[str, Any]:
-    """Executa bootstrap completo. Retorna dict com summary {workspace, branch, hash, sha}."""
+    """Runs full bootstrap. Returns summary dict {workspace, branch, hash, sha}."""
     validate_slug(workspace_slug)
 
     if not project_root.exists() or not project_root.is_dir():
-        raise BootstrapError(f"project_root nao e diretorio: {project_root}")
+        raise BootstrapError(f"project_root is not a directory: {project_root}")
 
-    # Greenfield: git init se necessario
+    # Greenfield: git init if necessary
     if not (project_root / ".git").exists():
         _greenfield_init(project_root)
 
@@ -1252,17 +1251,17 @@ def bootstrap(
             check=False,
         )
 
-    # Worktree linkada `.icm-main/` em base_branch — DEPOIS do checkout pra
-    # workspace branch (caso contrario `git worktree add` falha porque
-    # base_branch ja esta checked out no project_root).
+    # Linked worktree `.icm-main/` on base_branch — AFTER checkout to
+    # workspace branch (otherwise `git worktree add` fails because
+    # base_branch is already checked out in project_root).
     _setup_main_worktree(project_root, base_branch)
 
     # Scaffold
     _scaffold_workspace_dirs(workspace_dir, skill_root, project_root)
 
-    # Copia test-recipe especifica do profile efetivo para _references/test-recipes/.
-    # So o arquivo do profile ativo e copiado; profiles sem receita (experiment,
-    # technical_article) tem arquivo minimo no template.
+    # Copy test-recipe specific to the effective profile into _references/test-recipes/.
+    # Only the active profile file is copied; profiles without a recipe (experiment,
+    # technical_article) have a minimal file in the template.
     test_recipes_src = skill_root / "templates" / "_references" / "test-recipes"
     if test_recipes_src.is_dir():
         recipe_file = test_recipes_src / f"{profile}.md"
@@ -1280,8 +1279,8 @@ def bootstrap(
             skip_file.write_text(
                 f"---\nlayer: L2-skip\nstage: \"{skip_id}\"\nreason: \"skipped by profile/tier\"\n---\n\n"
                 f"# Stage {skip_id} ({STAGE_NAMES[int(skip_id)]}) — SKIPPED\n\n"
-                f"Este estágio foi pulado pelo profile/tier deste workspace.\n"
-                f"O fluxo transita automaticamente deste stage para o próximo não-pulado.\n",
+                f"This stage was skipped by the profile/tier of this workspace.\n"
+                f"The flow transitions automatically from this stage to the next non-skipped one.\n",
                 encoding="utf-8",
             )
 
@@ -1325,7 +1324,7 @@ def bootstrap(
             xp_conv_rendered, encoding="utf-8"
         )
 
-    # CONTEXT.md (L3 — ubiquitous language; vazio no bootstrap, populado em stage 01)
+    # CONTEXT.md (L3 — ubiquitous language; empty at bootstrap, populated in stage 01)
     ub_tpl = tpl_dir / "_config" / "CONTEXT.md.tpl"
     if ub_tpl.exists():
         ub_rendered = render_template(ub_tpl, placeholders)
@@ -1333,19 +1332,19 @@ def bootstrap(
             ub_rendered, encoding="utf-8"
         )
 
-    # CONTEXT.md tem placeholder BOOTSTRAP_COMMIT_SHA que so existe pos-commit.
-    # Usamos UUID sentinel colision-safe em vez de "PENDING" (que podia colidir
-    # com outros campos). Patch depois do primeiro commit.
+    # CONTEXT.md has placeholder BOOTSTRAP_COMMIT_SHA that only exists post-commit.
+    # Use a collision-safe UUID sentinel instead of "PENDING" (which could collide
+    # with other fields). Patched after the first commit.
     _sha_sentinel = f"__BOOTSTRAP_SHA_{uuid.uuid4().hex[:12]}__"
     placeholders_l1 = dict(placeholders)
     placeholders_l1["BOOTSTRAP_COMMIT_SHA"] = _sha_sentinel
     context_md = render_template(tpl_dir / "CONTEXT.md.tpl", placeholders_l1)
-    # Volta o sentinel para `{{BOOTSTRAP_COMMIT_SHA}}` literal; patch depois
+    # Restore the sentinel to literal `{{BOOTSTRAP_COMMIT_SHA}}`; patched after
     context_md = context_md.replace(_sha_sentinel, "{{BOOTSTRAP_COMMIT_SHA}}")
     (workspace_dir / "CONTEXT.md").write_text(context_md, encoding="utf-8")
 
-    # Stop points: render template _config/stop-points.md com placeholders
-    # de tier (TIER_PAID_MODE etc) + bloco de custom stop points.
+    # Stop points: render template _config/stop-points.md with tier placeholders
+    # (TIER_PAID_MODE etc) + custom stop points block.
     sp_placeholders = derive_stop_point_placeholders(effective)
     custom_block = render_custom_stop_points_block(
         effective.get("custom_stop_points"),
@@ -1358,13 +1357,13 @@ def bootstrap(
     sp_rendered = render_template(sp_tpl, sp_template_vars)
     (workspace_dir / "_config" / "stop-points.md").write_text(sp_rendered, encoding="utf-8")
 
-    # Profile efetivo persistido para validate-state
+    # Effective profile persisted for validate-state
     _save_profile_effective(workspace_dir, effective, profile_hash)
 
-    # CLAUDE.md no project_root: cria/atualiza com bloco do novo workspace.
-    # Brownfield-safe: marcadores ICM delimitam região; conteúdo fora preservado.
-    # Multi-workspace: blocos de workspaces existentes preservados.
-    # Doc canônico: references/project-root-claude-md.md.
+    # CLAUDE.md in project_root: create/update with new workspace block.
+    # Brownfield-safe: ICM markers delimit the region; content outside is preserved.
+    # Multi-workspace: existing workspace blocks are preserved.
+    # Canonical doc: references/project-root-claude-md.md.
     _render_project_claude_md(
         project_root=project_root,
         workspace=workspace,
@@ -1377,11 +1376,11 @@ def bootstrap(
         status="IN_PROGRESS",
         last_action=f"bootstrap (profile={profile} tier={tier})",
         last_action_at=created_at,
-        next_action="iniciar stage 00 recon",
+        next_action="start stage 00 recon",
         skill_dir=str(skill_root).replace("\\", "/"),
     )
 
-    # Indice + .gitignore do projeto
+    # Index + project .gitignore
     update_index(
         index_path,
         workspace=workspace,
@@ -1391,10 +1390,10 @@ def bootstrap(
     )
     update_gitignore(project_root / ".gitignore", list(GITIGNORE_LINES))
 
-    # Commit 1: scaffold com --no-verify. Hooks de workspace anterior podem
-    # estar instalados e rejeitar paths legitimos do bootstrap (.gitignore,
-    # workspaces/.index.md). Bootstrap e trusted; hooks protegem atividade
-    # futura do usuario.
+    # Commit 1: scaffold with --no-verify. Previous workspace hooks may be
+    # installed and reject paths that are valid in bootstrap (.gitignore,
+    # workspaces/.index.md). Bootstrap is trusted; hooks protect future
+    # user activity.
     commit_sha = _commit_scaffold(project_root, workspace, profile, tier)
 
     # Patch CONTEXT.md com sha do commit + commit 2
@@ -1402,25 +1401,25 @@ def bootstrap(
     _commit_context_sha(project_root, workspace)
     final_sha = _run_git(["rev-parse", "HEAD"], cwd=project_root).stdout.strip()
 
-    # Hooks instalados por ULTIMO: protegem commits futuros do usuario sem
-    # interferir nos commits atomicos do bootstrap. Pre-commit + commit-msg
-    # juntos cobrem file checks e msg validation respectivamente.
+    # Hooks installed LAST: protect future user commits without interfering
+    # with atomic bootstrap commits. pre-commit + commit-msg together cover
+    # file checks and message validation respectively.
     _install_hooks(project_root, skill_root)
 
-    # Context checkpoint hook (anti-compact): detecta contexto >= 70% e
-    # dispara handoff antecipado obrigatorio. Instalado apos git hooks.
-    # v3.4.0: tambem copia icm-session-check.sh (SessionStart) — registro
-    # vive em project_root settings.local.json renderizado abaixo.
-    # v3.4.1: tier=production tambem ganha block-dangerous-git.sh.
+    # Context checkpoint hook (anti-compact): detects context >= 70% and
+    # triggers mandatory early handoff. Installed after git hooks.
+    # v3.4.0: also copies icm-session-check.sh (SessionStart) — registration
+    # lives in project_root settings.local.json rendered below.
+    # v3.4.1: tier=production also gets block-dangerous-git.sh.
     _install_context_hook(project_root, skill_root, workspace, tier=tier)
 
-    # v3.4.0: renderiza project_root/.claude/settings.local.json.example
-    # com <NNN-slug> resolvido. Mantido como documentação/referência.
+    # v3.4.0: render project_root/.claude/settings.local.json.example
+    # with <NNN-slug> resolved. Kept as documentation/reference.
     _render_project_settings_example(project_root, skill_root, workspace)
 
-    # v3.4.2: auto-merge ICM hooks em <project_root>/.claude/settings.local.json
-    # idempotentemente (preserva customizações do user). Substitui passo
-    # manual de copiar .example.
+    # v3.4.2: auto-merge ICM hooks into <project_root>/.claude/settings.local.json
+    # idempotently (preserves user customizations). Replaces the manual step
+    # of copying .example.
     _merge_project_settings_local(project_root, workspace, tier=tier)
 
     return {
@@ -1436,12 +1435,12 @@ def bootstrap(
 
 
 # ============================================================================
-# CLI (debug; .sh wrapper e o caminho principal)
+# CLI (debug; .sh wrapper is the main path)
 # ============================================================================
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Bootstrap one-shot de workspace ICM (debug CLI; use .sh wrapper em prod).",
+        description="One-shot ICM workspace bootstrap (debug CLI; use .sh wrapper in prod).",
     )
     parser.add_argument("--profile", required=True)
     parser.add_argument("--tier", required=True)
@@ -1452,9 +1451,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--skill-root", default=None, help="default: parent of this script")
     parser.add_argument(
         "--spawn-from", default=None, dest="spawn_from",
-        help="slug do workspace parent (v3.7.0). Sessão fase 08 saída C "
-             "escreve .icm/spawn-pending.json automaticamente; este arg é "
-             "fallback explícito ou re-spawn manual.",
+        help="parent workspace slug (v3.7.0). Stage 08 Exit C session writes "
+             ".icm/spawn-pending.json automatically; this arg is explicit "
+             "fallback or manual re-spawn.",
     )
     return parser
 
@@ -1474,10 +1473,10 @@ def main(argv: list[str] | None = None) -> int:
             override_path=Path(args.override).resolve() if args.override else None,
         )
     except subprocess.CalledProcessError as exc:
-        print(f"erro: comando git falhou (rc={exc.returncode}): {exc.stderr.strip() if exc.stderr else exc}", file=sys.stderr)
+        print(f"error: git command failed (rc={exc.returncode}): {exc.stderr.strip() if exc.stderr else exc}", file=sys.stderr)
         return 1
     except BootstrapError as exc:
-        print(f"erro: {exc}", file=sys.stderr)
+        print(f"error: {exc}", file=sys.stderr)
         return 1
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 0

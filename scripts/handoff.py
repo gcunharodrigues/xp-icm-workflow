@@ -1,8 +1,8 @@
-"""Backend Python do protocolo de session handoff (1 stage = 1 sessao).
+"""Python backend for the session handoff protocol (1 stage = 1 session).
 
-Renderiza `_kickoff.md` no diretorio do proximo stage usando template em
-`templates/workspace/stages/_kickoff.md.tpl`. Helpers determinsticos sao
-testados em `tests/unit/test_handoff.py`. Doc canonico em
+Renders `_kickoff.md` in the next stage directory using the template at
+`templates/workspace/stages/_kickoff.md.tpl`. Deterministic helpers are
+tested in `tests/unit/test_handoff.py`. Canonical doc at
 `references/session-handoff-protocol.md`.
 
 CLI mode (debug): `python scripts/handoff.py render --workspace-root <path>
@@ -26,12 +26,12 @@ import yaml
 
 
 # ============================================================================
-# Constantes
+# Constants
 # ============================================================================
 
 PLACEHOLDER_RE = re.compile(r"\{\{([A-Z_][A-Z0-9_]*)\}\}")
 
-# Mapping fixo stage_id -> nome do diretorio (id + name canonico)
+# Fixed mapping: stage_id -> directory name (canonical id + name)
 STAGE_DIR_BY_ID: dict[str, str] = {
     "00": "00_recon",
     "01": "01_discovery",
@@ -44,23 +44,23 @@ STAGE_DIR_BY_ID: dict[str, str] = {
     "08": "08_feedback_intake",
 }
 
-# Indent canonico do bloco YAML literal `prev_decisions_summary: |`
+# Canonical indent for the YAML literal block `prev_decisions_summary: |`
 DECISIONS_INDENT = "  "
 
 
 # ============================================================================
-# Tipos
+# Types
 # ============================================================================
 
 class HandoffError(Exception):
-    """Erro de protocolo de handoff (template, render, parse, IO)."""
+    """Handoff protocol error (template, render, parse, IO)."""
 
 
 @dataclass(frozen=True)
 class PrevOutput:
-    """Output declarado pela sessao anterior, listado em prev_outputs."""
-    path: str       # path relativo ao workspace, ex "stages/02_design/output/plan.md"
-    summary: str    # 1-2 linhas
+    """Output declared by the previous session, listed in prev_outputs."""
+    path: str       # path relative to workspace, e.g. "stages/02_design/output/plan.md"
+    summary: str    # 1-2 lines
 
 
 @dataclass(frozen=True)
@@ -83,36 +83,36 @@ class HandoffData:
 
 
 # ============================================================================
-# Helpers determinsticos
+# Deterministic helpers
 # ============================================================================
 
 def stage_target_dir(stage_id: str, stage_name: str) -> str:
-    """Resolve nome canonico do diretorio (`<id>_<name>`).
+    """Resolve canonical directory name (`<id>_<name>`).
 
-    Valida que `stage_id` esta no mapping e que `stage_name` bate o canonico.
+    Validates that `stage_id` exists in the mapping and that `stage_name` matches canonical.
     """
     if stage_id not in STAGE_DIR_BY_ID:
         raise HandoffError(
-            f"stage_id desconhecido: {stage_id!r} (validos: "
+            f"unknown stage_id: {stage_id!r} (valid: "
             f"{sorted(STAGE_DIR_BY_ID)})"
         )
     canonical = STAGE_DIR_BY_ID[stage_id]
     expected_name = canonical[3:]  # strip "NN_"
     if stage_name != expected_name:
         raise HandoffError(
-            f"stage_name {stage_name!r} nao bate canonico {expected_name!r} "
-            f"para stage_id {stage_id}"
+            f"stage_name {stage_name!r} does not match canonical {expected_name!r} "
+            f"for stage_id {stage_id}"
         )
     return canonical
 
 
 def utc_now_iso() -> str:
-    """Timestamp UTC ISO 8601 com sufixo Z."""
+    """UTC ISO 8601 timestamp with Z suffix."""
     return _dt.datetime.now(_dt.UTC).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
 def _yaml_inline_list(items: Sequence[str]) -> str:
-    """Lista YAML inline. Vazio -> `[]`. Strings entre aspas duplas."""
+    """Inline YAML list. Empty -> `[]`. Strings in double quotes."""
     if not items:
         return "[]"
     quoted = ", ".join(f'"{_yaml_escape(s)}"' for s in items)
@@ -120,19 +120,19 @@ def _yaml_inline_list(items: Sequence[str]) -> str:
 
 
 def _yaml_escape(s: str) -> str:
-    """Escape minimo para string YAML entre aspas duplas."""
+    """Minimal escape for a double-quoted YAML string."""
     return s.replace("\\", "\\\\").replace('"', '\\"')
 
 
 def _prev_outputs_yaml(outputs: Sequence[PrevOutput]) -> str:
-    """Serializa prev_outputs como bloco YAML.
+    """Serialize prev_outputs as a YAML block.
 
-    Vazio -> `[]` inline. Caso contrario, lista de objetos em linhas
-    seguintes, com indent zero porque a chave ja foi escrita no template.
+    Empty -> inline `[]`. Otherwise, list of objects on subsequent lines
+    with zero indent because the key was already written in the template.
     """
     if not outputs:
         return "[]"
-    lines: list[str] = [""]  # quebra logo apos `prev_outputs:`
+    lines: list[str] = [""]  # break immediately after `prev_outputs:`
     for item in outputs:
         lines.append(f'  - path: "{_yaml_escape(item.path)}"')
         lines.append(f'    summary: "{_yaml_escape(item.summary)}"')
@@ -140,7 +140,7 @@ def _prev_outputs_yaml(outputs: Sequence[PrevOutput]) -> str:
 
 
 def _indent_multiline(text: str, indent: str) -> str:
-    """Aplica indent em cada linha (para YAML literal block)."""
+    """Apply indent to each line (for YAML literal block)."""
     if not text:
         return ""
     lines = text.split("\n")
@@ -148,7 +148,7 @@ def _indent_multiline(text: str, indent: str) -> str:
 
 
 def _build_placeholders(data: HandoffData) -> dict[str, str]:
-    """Mapeia HandoffData -> dict de placeholders para o template."""
+    """Map HandoffData -> placeholder dict for the template."""
     return {
         "WORKSPACE": data.workspace,
         "PROJECT_ROOT": data.project_root,
@@ -170,17 +170,17 @@ def _build_placeholders(data: HandoffData) -> dict[str, str]:
 
 
 # ============================================================================
-# API publica
+# Public API
 # ============================================================================
 
 def render_kickoff(template_path: Path, data: HandoffData) -> str:
-    """Substitui placeholders `{{KEY}}` pelos valores derivados de `data`.
+    """Substitute `{{KEY}}` placeholders with values derived from `data`.
 
-    Raise `HandoffError` se template ausente ou se sobra placeholder
-    nao resolvido.
+    Raises `HandoffError` if template is absent or any placeholder is
+    left unresolved.
     """
     if not template_path.exists():
-        raise HandoffError(f"template ausente: {template_path}")
+        raise HandoffError(f"template absent: {template_path}")
 
     placeholders = _build_placeholders(data)
     content = template_path.read_text(encoding="utf-8")
@@ -189,7 +189,7 @@ def render_kickoff(template_path: Path, data: HandoffData) -> str:
         key = match.group(1)
         if key not in placeholders:
             raise HandoffError(
-                f"placeholder nao resolvido: {{{{{key}}}}} em {template_path.name}"
+                f"unresolved placeholder: {{{{{key}}}}} in {template_path.name}"
             )
         return placeholders[key]
 
@@ -197,7 +197,7 @@ def render_kickoff(template_path: Path, data: HandoffData) -> str:
     leftover = PLACEHOLDER_RE.search(rendered)
     if leftover:
         raise HandoffError(
-            f"placeholder nao resolvido: {leftover.group(0)} em {template_path.name}"
+            f"unresolved placeholder: {leftover.group(0)} in {template_path.name}"
         )
     return rendered
 
@@ -208,10 +208,10 @@ def write_kickoff(
     *,
     template_path: Path | None = None,
 ) -> Path:
-    """Escreve `<workspace_root>/stages/<stage_target_dir>/_kickoff.md`.
+    """Write `<workspace_root>/stages/<stage_target_dir>/_kickoff.md`.
 
-    Cria dir se ausente. Idempotente (sobrescreve com mesmo conteudo).
-    Retorna path absoluto escrito.
+    Creates the directory if absent. Idempotent (overwrites with same content).
+    Returns the absolute path written.
     """
     tpl = template_path or _default_template_path()
     rendered = render_kickoff(tpl, data)
@@ -223,36 +223,36 @@ def write_kickoff(
 
 
 def extract_kickoff_metadata(kickoff_path: Path) -> dict:
-    """Parse YAML frontmatter de `_kickoff.md`. Retorna dict.
+    """Parse YAML frontmatter from `_kickoff.md`. Returns dict.
 
-    Raise `HandoffError` se arquivo ausente, frontmatter ausente ou YAML invalido.
+    Raises `HandoffError` if file absent, frontmatter absent, or YAML invalid.
     """
     if not kickoff_path.exists():
-        raise HandoffError(f"kickoff ausente: {kickoff_path}")
+        raise HandoffError(f"kickoff absent: {kickoff_path}")
     text = kickoff_path.read_text(encoding="utf-8")
     if not text.startswith("---\n"):
-        raise HandoffError(f"frontmatter ausente em {kickoff_path}")
+        raise HandoffError(f"frontmatter absent in {kickoff_path}")
     end = text.find("\n---\n", 4)
     if end < 0:
-        raise HandoffError(f"frontmatter mal formado (sem fim) em {kickoff_path}")
+        raise HandoffError(f"frontmatter malformed (no end marker) in {kickoff_path}")
     fm_text = text[4:end]
     try:
         meta = yaml.safe_load(fm_text)
     except yaml.YAMLError as exc:
-        raise HandoffError(f"YAML invalido em {kickoff_path}: {exc}") from exc
+        raise HandoffError(f"invalid YAML in {kickoff_path}: {exc}") from exc
     if not isinstance(meta, dict):
-        raise HandoffError(f"frontmatter nao e dict em {kickoff_path}")
+        raise HandoffError(f"frontmatter is not a dict in {kickoff_path}")
     return meta
 
 
 def validate_kickoff_present(workspace_root: Path, stage_atual: str) -> bool:
-    """Pre-flight de sessao nova: verifica se `_kickoff.md` existe.
+    """New-session pre-flight: checks whether `_kickoff.md` exists.
 
-    Retorna True se OK, False se ausente. Stage_id desconhecido -> raise.
+    Returns True if present, False if absent. Unknown stage_id -> raises.
     """
     if stage_atual not in STAGE_DIR_BY_ID:
         raise HandoffError(
-            f"stage_atual desconhecido: {stage_atual!r}"
+            f"unknown stage_atual: {stage_atual!r}"
         )
     kickoff = (
         workspace_root
@@ -264,7 +264,7 @@ def validate_kickoff_present(workspace_root: Path, stage_atual: str) -> bool:
 
 
 # ============================================================================
-# Internals
+# Internal helpers
 # ============================================================================
 
 def _default_template_path() -> Path:
@@ -278,7 +278,7 @@ def _default_template_path() -> Path:
 
 
 # ============================================================================
-# CLAUDE.md no project_root: bloco dinâmico do workspace ativo
+# CLAUDE.md at project_root: dynamic block for the active workspace
 # ============================================================================
 
 ICM_START_MARKER = "<!-- ICM-START -->"
@@ -287,10 +287,10 @@ ICM_END_MARKER = "<!-- ICM-END -->"
 
 @dataclass(frozen=True)
 class WorkspaceBlock:
-    """Estado renderizado de um workspace na região ICM do CLAUDE.md root.
+    """Rendered state of a workspace in the ICM region of the root CLAUDE.md.
 
-    Serializado como JSON em comentário `<!-- ICM-DATA:... -->` para round-trip
-    determinístico (parse + re-render preservam todos os campos).
+    Serialized as JSON in a `<!-- ICM-DATA:... -->` comment for deterministic
+    round-trip (parse + re-render preserve all fields).
     """
     workspace: str
     profile: str
@@ -314,9 +314,9 @@ def _block_marker_end(workspace: str) -> str:
 
 
 def _atomic_write(path: Path, content: str) -> None:
-    """Write tmp + fsync + rename — crash mid-write não corrompe arquivo (G15).
+    """Write tmp + fsync + rename — crash mid-write does not corrupt the file (G15).
 
-    Sufixo `.tmp` no mesmo diretório garante atomic rename mesmo entre filesystems.
+    `.tmp` suffix in the same directory guarantees atomic rename even across filesystems.
     """
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(content, encoding="utf-8")
@@ -327,14 +327,14 @@ def _atomic_write(path: Path, content: str) -> None:
         finally:
             os.close(fd)
     except OSError:
-        # fsync pode falhar em filesystems não-POSIX (Windows network drives,
-        # tmpfs alguns kernels). Nesses casos rename ainda é atomic.
+        # fsync may fail on non-POSIX filesystems (Windows network drives,
+        # some kernels' tmpfs). Rename is still atomic in those cases.
         pass
     tmp.replace(path)
 
 
 def _render_workspace_block_md(b: WorkspaceBlock) -> str:
-    """Markdown do bloco do workspace (sem marcadores HTML)."""
+    """Markdown for the workspace block (without HTML markers)."""
     return (
         f"### Workspace `{b.workspace}` · profile=`{b.profile}` · tier=`{b.tier}`\n"
         "\n"
@@ -353,9 +353,9 @@ def _render_workspace_block_md(b: WorkspaceBlock) -> str:
 
 
 def _wrap_block_with_markers(b: WorkspaceBlock) -> str:
-    """Bloco markdown encapsulado por marcadores HTML + JSON serializado.
+    """Markdown block wrapped with HTML markers + serialized JSON.
 
-    Estrutura:
+    Structure:
         <!-- ICM-WORKSPACE:NNN-slug -->
         <!-- ICM-DATA:{...json...} -->
         ### Workspace `NNN-slug` · ...
@@ -375,9 +375,9 @@ def _render_icm_header() -> str:
     return (
         "## Active ICM Workspaces\n"
         "\n"
-        "> Esta seção é mantida automaticamente pela skill `xp-icm-workflow`.\n"
-        "> Não editar manualmente — atualizada a cada handoff de stage.\n"
-        "> **Não rode `/init` enquanto houver workspace ativo.**\n"
+        "> This section is maintained automatically by the `xp-icm-workflow` skill.\n"
+        "> Do not edit manually — updated at every stage handoff.\n"
+        "> **Do not run `/init` while a workspace is active.**\n"
         "\n"
     )
 
@@ -399,50 +399,50 @@ def _render_icm_idle(
     outcome: str = "A",
     spawn_to: str | None = None,
 ) -> str:
-    """Mensagem 'nenhum workspace ativo' (Saída A close ou Saída C spawn).
+    """'No active workspace' message (Exit A close or Exit C spawn).
 
-    v3.7.0: branches por outcome.
-    - A (default): workspace fechado limpo. Próximo passo `/init`.
-    - C: workspace transicionou pra spawn_to. Próximo passo bootstrap em
-      sessão nova (humano cola `/xp-icm-workflow spawn_from=<old>`).
+    v3.7.0: branches by outcome.
+    - A (default): workspace closed cleanly. Next step `/init`.
+    - C: workspace transitioned to spawn_to. Next step bootstrap in
+      a new session (human pastes `/xp-icm-workflow spawn_from=<old>`).
     """
     if outcome not in ("A", "C"):
         raise ValueError(
-            f"outcome inválido: {outcome!r} (esperado 'A' ou 'C')"
+            f"invalid outcome: {outcome!r} (expected 'A' or 'C')"
         )
     if outcome == "C" and not spawn_to:
-        raise ValueError("outcome='C' requer spawn_to não-vazio")
-    closed = closed_at if closed_at else "desconhecido"
+        raise ValueError("outcome='C' requires non-empty spawn_to")
+    closed = closed_at if closed_at else "unknown"
     if outcome == "A":
         return (
-            "## ICM — Nenhum workspace ativo\n"
+            "## ICM — No active workspace\n"
             "\n"
-            f"> Último workspace foi finalizado em `{closed}` (Saída A — close).\n"
-            "> Histórico em `workspaces/`.\n"
+            f"> Last workspace was closed at `{closed}` (Exit A — close).\n"
+            "> History in `workspaces/`.\n"
             ">\n"
-            "> **Próximo passo:** rode `/init` para regenerar a região abaixo com\n"
-            "> informações do código construído. Esta região ICM permanecerá vazia\n"
-            "> até bootstrap de novo workspace.\n"
+            "> **Next step:** run `/init` to regenerate the region below with\n"
+            "> information about the built codebase. This ICM region will remain\n"
+            "> empty until a new workspace is bootstrapped.\n"
         )
     # outcome == "C"
     return (
-        "## ICM — Nenhum workspace ativo\n"
+        "## ICM — No active workspace\n"
         "\n"
-        f"> Último workspace transicionou em `{closed}` "
-        f"(Saída C — spawn `{spawn_to}`).\n"
-        "> Bootstrap em sessão nova: `/xp-icm-workflow` detecta "
-        "`.icm/spawn-pending.json` automaticamente,\n"
-        f"> ou cole arg explícito `--spawn-from=<NNN>` para `{spawn_to}`.\n"
-        "> Histórico em `workspaces/`.\n"
+        f"> Last workspace transitioned at `{closed}` "
+        f"(Exit C — spawn `{spawn_to}`).\n"
+        "> Bootstrap in a new session: `/xp-icm-workflow` detects "
+        "`.icm/spawn-pending.json` automatically,\n"
+        f"> or pass the explicit arg `--spawn-from=<NNN>` for `{spawn_to}`.\n"
+        "> History in `workspaces/`.\n"
     )
 
 
 def _render_full_icm_region(blocks: Sequence[WorkspaceBlock], skill_dir: str) -> str:
-    """Conteúdo completo da região ICM (sem marcadores externos START/END).
+    """Full ICM region content (without outer START/END markers).
 
-    Vazio -> mensagem idle (default Saída A). Para idle outcome-aware (Saída C),
-    use `_write_icm_region` com kwargs `outcome` + `spawn_to`.
-    1+ workspaces -> header + blocos + footer.
+    Empty -> idle message (default Exit A). For outcome-aware idle (Exit C),
+    use `_write_icm_region` with `outcome` + `spawn_to` kwargs.
+    1+ workspaces -> header + blocks + footer.
     """
     if not blocks:
         return _render_icm_idle("")
@@ -452,42 +452,42 @@ def _render_full_icm_region(blocks: Sequence[WorkspaceBlock], skill_dir: str) ->
 
 
 def _wrap_outer(region_inner: str) -> str:
-    """Envolve região em <!-- ICM-START --> ... <!-- ICM-END -->."""
+    """Wrap region in <!-- ICM-START --> ... <!-- ICM-END -->."""
     return f"{ICM_START_MARKER}\n{region_inner}{ICM_END_MARKER}\n"
 
 
 def _greenfield_template(project_name: str, region_outer: str) -> str:
-    """CLAUDE.md root completo para projeto sem CLAUDE.md preexistente."""
+    """Full root CLAUDE.md for a project with no pre-existing CLAUDE.md."""
     return (
         f"# CLAUDE.md — {project_name}\n"
         "\n"
         "This file provides guidance to Claude Code (claude.ai/code) when working in this repository.\n"
         "\n"
         f"{region_outer}\n"
-        "<!-- A região abaixo é livre. Pode ser preenchida pelo `/init` do Claude Code -->\n"
-        "<!-- ou manualmente pelo usuário com codebase context (commands, architecture,   -->\n"
-        "<!-- conventions, etc). A skill `xp-icm-workflow` NUNCA toca esta região.        -->\n"
+        "<!-- The region below is free. It can be filled in by Claude Code's `/init` -->\n"
+        "<!-- or manually by the user with codebase context (commands, architecture,   -->\n"
+        "<!-- conventions, etc). The `xp-icm-workflow` skill NEVER touches this region. -->\n"
     )
 
 
 def _insert_region_after_first_h1(content: str, region_outer: str) -> str:
-    """Brownfield sem marcadores: insere região após primeiro título H1.
+    """Brownfield without markers: insert region after the first H1 heading.
 
-    Se não houver H1, prepende ao topo. Demais conteúdo preservado.
+    If no H1 is found, prepend to the top. All other content is preserved.
     """
     lines = content.split("\n")
     insert_idx: int | None = None
     for i, line in enumerate(lines):
         stripped = line.lstrip()
         if stripped.startswith("# ") and not stripped.startswith("## "):
-            # H1 encontrado
+            # H1 found
             insert_idx = i + 1
-            # Skip linhas em branco e descrição imediatamente após o título
+            # Skip blank lines and description immediately after the heading
             while insert_idx < len(lines) and lines[insert_idx].strip() == "":
                 insert_idx += 1
             break
     if insert_idx is None:
-        # Sem H1: prepende
+        # No H1: prepend
         return region_outer + "\n" + content
     before = "\n".join(lines[:insert_idx])
     after = "\n".join(lines[insert_idx:])
@@ -497,10 +497,10 @@ def _insert_region_after_first_h1(content: str, region_outer: str) -> str:
 
 
 def _parse_workspace_blocks(claude_md_path: Path) -> dict[str, WorkspaceBlock]:
-    """Extrai dict[workspace_id -> WorkspaceBlock] do CLAUDE.md root.
+    """Extract dict[workspace_id -> WorkspaceBlock] from the root CLAUDE.md.
 
-    Parse via JSON em comentários `<!-- ICM-DATA:... -->`. Round-trip seguro.
-    Arquivo ausente ou sem marcadores -> dict vazio.
+    Parsed via JSON in `<!-- ICM-DATA:... -->` comments. Safe round-trip.
+    File absent or no markers -> empty dict.
     """
     if not claude_md_path.exists():
         return {}
@@ -515,7 +515,7 @@ def _parse_workspace_blocks(claude_md_path: Path) -> dict[str, WorkspaceBlock]:
             data = json.loads(match.group(2))
             out[ws_id] = WorkspaceBlock(**data)
         except (json.JSONDecodeError, TypeError):
-            # Bloco corrompido -> ignora; recovery wizard detecta depois
+            # Corrupted block -> skip; recovery wizard detects later
             continue
     return out
 
@@ -530,13 +530,13 @@ def _write_icm_region(
     idle_spawn_to: str | None = None,
     idle_closed_at: str = "",
 ) -> None:
-    """Helper: escreve região ICM completa preservando conteúdo fora dos marcadores.
+    """Write full ICM region, preserving content outside the markers.
 
-    - Greenfield (arquivo ausente) -> cria via _greenfield_template.
-    - Brownfield com marcadores -> substitui apenas conteúdo entre marcadores.
-    - Brownfield sem marcadores -> insere após primeiro H1.
+    - Greenfield (file absent) -> create via _greenfield_template.
+    - Brownfield with markers -> replace only content between markers.
+    - Brownfield without markers -> insert after first H1.
 
-    Se `blocks` vazio: usa `_render_icm_idle` com outcome+spawn_to do caller.
+    If `blocks` is empty: uses `_render_icm_idle` with caller's outcome+spawn_to.
     """
     if blocks:
         region_inner = _render_full_icm_region(blocks, skill_dir)
@@ -559,8 +559,8 @@ def _write_icm_region(
         new_content = _insert_region_after_first_h1(current, region_outer)
     else:
         end_after = end + len(ICM_END_MARKER)
-        # Pular newline imediatamente após ICM_END_MARKER (se houver) para
-        # não acumular blank lines a cada update.
+        # Skip newline immediately after ICM_END_MARKER (if present) to
+        # avoid accumulating blank lines on each update.
         if end_after < len(current) and current[end_after] == "\n":
             end_after += 1
         new_content = current[:start] + region_outer + current[end_after:]
@@ -572,10 +572,10 @@ def update_project_claude_md(
     workspace_block: WorkspaceBlock,
     skill_dir: str,
 ) -> Path:
-    """Insere ou atualiza o bloco do workspace no CLAUDE.md do project_root.
+    """Insert or update the workspace block in the project_root CLAUDE.md.
 
-    Idempotente. Brownfield-safe. Preserva blocos de outros workspaces.
-    Retorna path absoluto do arquivo escrito.
+    Idempotent. Brownfield-safe. Preserves blocks from other workspaces.
+    Returns the absolute path of the file written.
     """
     claude_md = project_root / "CLAUDE.md"
     blocks = _parse_workspace_blocks(claude_md)
@@ -589,20 +589,20 @@ def _update_index_status(
     workspace: str,
     new_status: str,
 ) -> bool:
-    """Reescreve linha do workspace em `workspaces/.index.md` mudando status.
+    """Rewrite the workspace row in `workspaces/.index.md` changing status.
 
-    `.index.md` formato canônico:
+    `.index.md` canonical format:
       | NNN | slug | profile/tier | created_at | status |
 
-    `workspace` = "NNN-slug". Localiza linha cujo NNN+slug bate, substitui
-    último campo (status). Se index ausente ou linha não encontrada, no-op.
+    `workspace` = "NNN-slug". Locates the row whose NNN+slug matches and
+    replaces the last field (status). If index absent or row not found: no-op.
 
-    Retorna True se atualizou, False se no-op (idempotente).
+    Returns True if updated, False if no-op (idempotent).
 
-    v3.7.1: corrige bug `.index.md` stale após saída A/C — antes do fix,
-    `update_index` (bootstrap.py) só appendava `active`; saída A/C
-    nunca reescrevia status pra `COMPLETED`. Hook SessionStart lia index
-    stale e detectava workspace fechado como ativo.
+    v3.7.1: fixes stale `.index.md` bug after Exit A/C — before the fix,
+    `update_index` (bootstrap.py) only appended `active`; Exit A/C
+    never rewrote status to `COMPLETED`. SessionStart hook read the stale
+    index and detected a closed workspace as active.
     """
     index_path = project_root / "workspaces" / ".index.md"
     if not index_path.exists():
@@ -639,20 +639,20 @@ def _unregister_workspace_hooks(
     project_root: Path,
     workspace: str,
 ) -> bool:
-    """Remove entries do workspace fechado de `.claude/settings.local.json`.
+    """Remove the closed workspace's entries from `.claude/settings.local.json`.
 
-    Bootstrap (`_merge_project_settings_local`) registra hooks por workspace
-    com command path `$CLAUDE_PROJECT_DIR/workspaces/<workspace>/.claude/hooks/...`.
-    Saída A/C precisa remover esses entries pra evitar acúmulo (settings com
-    hooks duplicados após múltiplos workspaces fechados).
+    Bootstrap (`_merge_project_settings_local`) registers hooks per workspace
+    with command path `$CLAUDE_PROJECT_DIR/workspaces/<workspace>/.claude/hooks/...`.
+    Exit A/C must remove these entries to prevent accumulation (settings with
+    duplicate hooks after multiple closed workspaces).
 
-    Detecta entries via substring `workspaces/<workspace>/.claude/hooks/` no
-    command. Se evento fica vazio (zero entries) após remoção, remove o
-    evento. Se settings inteiro fica sem `hooks`, deixa estrutura vazia.
+    Detects entries via substring `workspaces/<workspace>/.claude/hooks/` in
+    the command. If an event becomes empty (zero entries) after removal, removes
+    the event. If the entire settings loses `hooks`, leaves the empty structure.
 
-    Idempotente: ausência de entries = no-op. Settings inválido = no-op.
+    Idempotent: missing entries = no-op. Invalid settings = no-op.
 
-    Retorna True se modificou, False se no-op.
+    Returns True if modified, False if no-op.
     """
     settings_path = project_root / ".claude" / "settings.local.json"
     if not settings_path.exists():
@@ -711,7 +711,7 @@ def _unregister_workspace_hooks(
             )
         except OSError as exc:
             sys.stderr.write(
-                f"warning: falha ao escrever {settings_path}: {exc}\n"
+                f"warning: failed to write {settings_path}: {exc}\n"
             )
             return False
     return changed
@@ -726,29 +726,29 @@ def remove_workspace_block(
     outcome: str = "A",
     spawn_to: str | None = None,
 ) -> Path:
-    """Remove o bloco do workspace do CLAUDE.md root.
+    """Remove the workspace block from the root CLAUDE.md.
 
-    Se workspace não existia: no-op (return path sem escrever).
-    Se era o último: substitui região por mensagem idle (deactivate).
+    If workspace did not exist: no-op (return path without writing).
+    If it was the last: replace region with idle message (deactivate).
 
     v3.7.0:
-    - `outcome` ∈ {"A", "C"}. A = close, C = spawn novo workspace.
-    - `spawn_to` requerido se outcome="C" (mensagem idle cita slug).
+    - `outcome` ∈ {"A", "C"}. A = close, C = spawn new workspace.
+    - `spawn_to` required if outcome="C" (idle message cites the slug).
 
     v3.7.1:
-    - Atualiza `workspaces/.index.md` marcando workspace como COMPLETED.
-    - Remove entries do workspace de `.claude/settings.local.json` (hooks).
+    - Updates `workspaces/.index.md` marking workspace as COMPLETED.
+    - Removes workspace entries from `.claude/settings.local.json` (hooks).
 
-    Saída B usa `update_project_claude_md` (fase 08 transita pra outro stage,
-    não fecha workspace).
+    Exit B uses `update_project_claude_md` (phase 08 transitions to another stage,
+    does not close the workspace).
     """
     if outcome not in ("A", "C"):
         raise ValueError(
-            f"outcome inválido: {outcome!r} (esperado 'A' ou 'C'). "
-            "Saída B não remove bloco — usa update_project_claude_md."
+            f"invalid outcome: {outcome!r} (expected 'A' or 'C'). "
+            "Exit B does not remove the block — use update_project_claude_md."
         )
     if outcome == "C" and not spawn_to:
-        raise ValueError("outcome='C' requer spawn_to não-vazio")
+        raise ValueError("outcome='C' requires non-empty spawn_to")
     claude_md = project_root / "CLAUDE.md"
     blocks = _parse_workspace_blocks(claude_md)
     if workspace not in blocks:
@@ -764,7 +764,7 @@ def remove_workspace_block(
             spawn_to=spawn_to,
         )
 
-    # v3.7.1: cleanup pós-saída A/C
+    # v3.7.1: cleanup after Exit A/C
     _update_index_status(project_root, workspace, "COMPLETED")
     _unregister_workspace_hooks(project_root, workspace)
 
@@ -778,26 +778,26 @@ def deactivate_project_claude_md(
     outcome: str = "A",
     spawn_to: str | None = None,
 ) -> Path:
-    """Substitui região ICM por mensagem 'nenhum workspace ativo'.
+    """Replace the ICM region with a 'no active workspace' message.
 
-    Usado após Saída A (close) ou Saída C (spawn) quando não restam workspaces
-    ativos. Conteúdo fora dos marcadores preservado intacto.
+    Used after Exit A (close) or Exit C (spawn) when no workspaces remain
+    active. Content outside the markers is preserved intact.
 
-    v3.4.1: também migra CLAUDE.md root para a base branch via worktree
-    `.icm-main/`. Sem isso, o CLAUDE.md idle some quando workspace branch
-    é deletada (todo dashboard ICM perdido). Doc:
+    v3.4.1: also migrates root CLAUDE.md to the base branch via worktree
+    `.icm-main/`. Without this, the idle CLAUDE.md disappears when the
+    workspace branch is deleted (entire ICM dashboard lost). Doc:
     references/project-root-claude-md.md.
 
     v3.7.0:
-    - `outcome` ∈ {"A", "C"}. Render mensagem específica do tipo.
-    - `spawn_to` requerido se outcome="C".
+    - `outcome` ∈ {"A", "C"}. Renders type-specific message.
+    - `spawn_to` required if outcome="C".
     """
     if outcome not in ("A", "C"):
         raise ValueError(
-            f"outcome inválido: {outcome!r} (esperado 'A' ou 'C')"
+            f"invalid outcome: {outcome!r} (expected 'A' or 'C')"
         )
     if outcome == "C" and not spawn_to:
-        raise ValueError("outcome='C' requer spawn_to não-vazio")
+        raise ValueError("outcome='C' requires non-empty spawn_to")
     claude_md = project_root / "CLAUDE.md"
     region_inner = _render_icm_idle(
         closed_at, outcome=outcome, spawn_to=spawn_to,
@@ -821,8 +821,8 @@ def deactivate_project_claude_md(
             new_content = current[:start] + region_outer + current[end_after:]
         _atomic_write(claude_md, new_content)
 
-    # v3.4.1: persistir mesma versao idle em .icm-main/CLAUDE.md (base branch)
-    # para sobreviver delecao da workspace branch.
+    # v3.4.1: persist the same idle version in .icm-main/CLAUDE.md (base branch)
+    # to survive deletion of the workspace branch.
     _persist_claude_md_to_base_via_worktree(project_root, claude_md)
 
     return claude_md
@@ -832,20 +832,20 @@ def _persist_claude_md_to_base_via_worktree(
     project_root: Path,
     claude_md_src: Path,
 ) -> None:
-    """Copia CLAUDE.md do project_root para `.icm-main/CLAUDE.md` + commit em base.
+    """Copy CLAUDE.md from project_root to `.icm-main/CLAUDE.md` + commit on base.
 
-    Idempotente: se conteúdo identico, git status detecta e nao commita.
-    Silently no-op se `.icm-main/` ausente (projeto pre-v3.4.0 ou worktree
-    removido manualmente).
+    Idempotent: if content is identical, git status detects no changes and skips the commit.
+    Silently no-op if `.icm-main/` is absent (pre-v3.4.0 project or worktree
+    removed manually).
 
     Doc: references/worktree-model.md (v3.4.0) +
-    references/project-root-claude-md.md (owner transition saída A).
+    references/project-root-claude-md.md (owner transition Exit A).
     """
     import subprocess  # noqa: PLC0415
 
     worktree = project_root / ".icm-main"
     if not worktree.is_dir():
-        return  # worktree ausente — projeto provavelmente pre-v3.4.0
+        return  # worktree absent — project is probably pre-v3.4.0
 
     if not claude_md_src.is_file():
         return
@@ -853,11 +853,11 @@ def _persist_claude_md_to_base_via_worktree(
     dst = worktree / "CLAUDE.md"
     src_text = claude_md_src.read_text(encoding="utf-8")
     if dst.exists() and dst.read_text(encoding="utf-8") == src_text:
-        return  # idempotente
+        return  # idempotent
 
     dst.write_text(src_text, encoding="utf-8")
 
-    # Commit em base branch via worktree linkada
+    # Commit on base branch via linked worktree
     try:
         subprocess.run(
             ["git", "-C", str(worktree), "add", "CLAUDE.md"],
@@ -865,19 +865,19 @@ def _persist_claude_md_to_base_via_worktree(
         )
         subprocess.run(
             ["git", "-C", str(worktree), "commit", "--no-verify", "-m",
-             "docs(claude.md): persist idle/active state to base (saida A handoff)"],
+             "docs(claude.md): persist idle/active state to base (exit A handoff)"],
             check=False, capture_output=True, text=True,
         )
     except Exception:
-        # Falha de git nao deve quebrar handoff — humano pode commitar manualmente
+        # git failure must not break handoff — human can commit manually
         pass
 
 
 def list_active_workspace_ids(project_root: Path) -> list[str]:
-    """Lista IDs de workspaces presentes na região ICM do CLAUDE.md root.
+    """List workspace IDs present in the ICM region of the root CLAUDE.md.
 
-    Usado por bootstrap para detectar workspaces preexistentes em multi-workspace
-    e por recovery wizard para checar consistência com .index.md.
+    Used by bootstrap to detect pre-existing workspaces in multi-workspace mode
+    and by recovery wizard to check consistency with .index.md.
     """
     return sorted(_parse_workspace_blocks(project_root / "CLAUDE.md").keys())
 
@@ -893,7 +893,7 @@ def _parse_prev_outputs_arg(raw: str | None) -> tuple[PrevOutput, ...]:
     items: list[PrevOutput] = []
     for chunk in raw.split(","):
         if ":" not in chunk:
-            raise HandoffError(f"prev-outputs chunk sem ':' -> {chunk!r}")
+            raise HandoffError(f"prev-outputs chunk missing ':' -> {chunk!r}")
         path, summary = chunk.split(":", 1)
         items.append(PrevOutput(path=path.strip(), summary=summary.strip()))
     return tuple(items)
@@ -910,7 +910,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="handoff.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    render = sub.add_parser("render", help="Renderiza e escreve _kickoff.md")
+    render = sub.add_parser("render", help="Render and write _kickoff.md")
     render.add_argument("--workspace-root", type=Path, required=True)
     render.add_argument("--prev-stage", required=True)
     render.add_argument("--prev-stage-name", required=True)
@@ -928,14 +928,14 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     update = sub.add_parser(
         "update-project-md",
-        help="Insere/atualiza bloco do workspace no CLAUDE.md root",
+        help="Insert/update workspace block in root CLAUDE.md",
     )
     update.add_argument("--project-root", type=Path, required=True)
     update.add_argument("--workspace", required=True, help="NNN-slug")
     update.add_argument("--profile", required=True)
     update.add_argument("--tier", required=True)
     update.add_argument("--stage-atual", required=True)
-    update.add_argument("--stage-dir", required=True, help="ex 03_wave_planner")
+    update.add_argument("--stage-dir", required=True, help="e.g. 03_wave_planner")
     update.add_argument("--sub-stage", required=True)
     update.add_argument("--iteration", type=int, default=0)
     update.add_argument("--status", required=True)
@@ -946,7 +946,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     remove = sub.add_parser(
         "remove-block",
-        help="Remove bloco do workspace do CLAUDE.md root (Saída A ou C)",
+        help="Remove workspace block from root CLAUDE.md (Exit A or C)",
     )
     remove.add_argument("--project-root", type=Path, required=True)
     remove.add_argument("--workspace", required=True)
@@ -954,24 +954,24 @@ def main(argv: Sequence[str] | None = None) -> int:
     remove.add_argument("--closed-at", default="", help="ISO 8601 UTC")
     remove.add_argument(
         "--outcome", choices=("A", "C"), default="A",
-        help="A=close (default), C=spawn novo workspace",
+        help="A=close (default), C=spawn new workspace",
     )
     remove.add_argument(
         "--spawn-to", default=None,
-        help="slug do workspace novo (requerido se outcome=C)",
+        help="slug of the new workspace (required if outcome=C)",
     )
     remove.add_argument(
         "--exit-2-if-last-active", action="store_true",
         help=(
-            "Retorna exit code 2 se workspace removido era o último ativo "
-            "(deactivate disparou). Útil pra stage 08 detectar quando "
-            "auto-invocar /init na sessão. Default: sempre exit 0."
+            "Return exit code 2 if the removed workspace was the last active one "
+            "(deactivate fired). Useful for stage 08 to detect when to "
+            "auto-invoke /init in the session. Default: always exit 0."
         ),
     )
 
     deactivate = sub.add_parser(
         "deactivate-project-md",
-        help="Substitui região ICM por mensagem 'nenhum workspace ativo'",
+        help="Replace ICM region with 'no active workspace' message",
     )
     deactivate.add_argument("--project-root", type=Path, required=True)
     deactivate.add_argument("--closed-at", default="")

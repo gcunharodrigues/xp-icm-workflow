@@ -1,7 +1,7 @@
-"""Merge de profile base + override local em profile efetivo + hash deterministico.
+"""Merge of base profile + local override into effective profile + deterministic hash.
 
-Cobre 11 profiles canonicos x 4 tiers, com regras de override seguro
-(`confirm_unsafe`) e validacao estrita de schema.
+Covers 11 canonical profiles x 4 tiers, with safe override rules
+(`confirm_unsafe`) and strict schema validation.
 """
 from __future__ import annotations
 
@@ -17,7 +17,7 @@ from typing import Any
 import yaml
 
 # ============================================================================
-# Constantes / matriz canonica
+# Constants / canonical matrix
 # ============================================================================
 
 CANONICAL_PROFILES: tuple[str, ...] = (
@@ -61,15 +61,15 @@ ISO_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2})?$")
 
 
 class ProfileMergeError(Exception):
-    """Erro de validacao ou merge de profile."""
+    """Profile validation or merge error."""
 
 
 # ============================================================================
-# Defaults por tier (sem profile override aplicado)
+# Tier defaults (before profile overrides applied)
 # ============================================================================
 
 def _tier_defaults(tier: str) -> dict[str, Any]:
-    """Retorna o dict base para um tier; profile-overrides aplicam por cima."""
+    """Returns the base dict for a tier; profile-overrides are applied on top."""
     if tier == "experimental":
         return {
             "stages_skipped": [],
@@ -132,19 +132,19 @@ def _tier_defaults(tier: str) -> dict[str, Any]:
                 "item_8": {"mode": "hard+DPO"},
             },
         }
-    raise ProfileMergeError(f"tier desconhecido: {tier!r}")
+    raise ProfileMergeError(f"unknown tier: {tier!r}")
 
 
 # ============================================================================
-# test_specs por profile+tier (derivado; nao configuravel via override)
+# test_specs per profile+tier (derived; not configurable via override)
 # ============================================================================
 
 def _test_specs(profile: str, tier: str) -> dict[str, Any]:
-    """Retorna test_specs calculados para o par profile+tier.
+    """Returns computed test_specs for the profile+tier pair.
 
-    Nao e configuravel via overrides — e derivado deterministicamente.
-    Stage 02 design usa estes valores para definir a Test Strategy do plan.md.
-    Stage 05 verification usa coverage_threshold e test_types_required para auditar.
+    Not configurable via overrides — derived deterministically.
+    Stage 02 design uses these values to define the Test Strategy in plan.md.
+    Stage 05 verification uses coverage_threshold and test_types_required to audit.
     """
     threshold_by_tier = {
         "experimental": 0,
@@ -197,7 +197,7 @@ def _test_specs(profile: str, tier: str) -> dict[str, Any]:
         }
 
     if profile == "fullstack":
-        # Superset de backend + frontend. Ex: Next.js com API routes,
+        # Superset of backend + frontend. E.g.: Next.js with API routes,
         # Remix + Prisma, T3 stack, Django + React colocated.
         e2e_required = tier in ("development", "production")
         visual_regression = tier == "production"
@@ -218,9 +218,9 @@ def _test_specs(profile: str, tier: str) -> dict[str, Any]:
             "a11y_testing": a11y_testing,
             "design_system_required": True,
             "note": (
-                "fullstack — backend + frontend coexistem no mesmo repo "
-                "(Next.js com API routes, Remix+Prisma, T3 stack, etc). "
-                "Pra monorepo apps/web + apps/api separados, prefira "
+                "fullstack — backend + frontend coexist in the same repo "
+                "(Next.js with API routes, Remix+Prisma, T3 stack, etc). "
+                "For monorepo apps/web + apps/api separated, prefer "
                 "2 workspaces (1 app_web_backend + 1 app_web_frontend)."
             ),
         }
@@ -290,7 +290,7 @@ def _test_specs(profile: str, tier: str) -> dict[str, Any]:
             "note": "coverage +10% vs tier default; public API 100% unit required",
         }
 
-    # Fallback generico (nao deve ocorrer com profiles canonicos)
+    # Generic fallback (should not occur with canonical profiles)
     return {
         "test_types_required": ["unit"],
         "coverage_threshold": base_threshold,
@@ -299,18 +299,18 @@ def _test_specs(profile: str, tier: str) -> dict[str, Any]:
 
 
 # ============================================================================
-# Profile-specific overrides aplicados sobre os defaults de tier
+# Profile-specific overrides applied on top of tier defaults
 # ============================================================================
 
 def _apply_profile_rules(profile: str, tier: str, base: dict[str, Any]) -> dict[str, Any]:
-    """Aplica regras especificas do profile sobre o dict base de tier."""
+    """Applies profile-specific rules on top of the tier base dict."""
     out = copy.deepcopy(base)
 
     if profile == "experiment":
         out["stages_skipped"] = ["03", "05", "06", "08"]
 
     if profile == "technical_article":
-        # Artigo tecnico nao precisa do estagio 03 (testes/qualidade automatizada)
+        # Technical article does not need stage 03 (automated tests/quality)
         skipped = set(out["stages_skipped"])
         skipped.add("03")
         out["stages_skipped"] = sorted(skipped)
@@ -322,8 +322,8 @@ def _apply_profile_rules(profile: str, tier: str, base: dict[str, Any]) -> dict[
     if profile == "ml_project":
         out["cap_subagents_per_wave"] = 3
 
-    # Apps web ligam security_gate em qualquer tier acima de experimental
-    # (fullstack tambem — backend + frontend ambos expostos a rede)
+    # Web apps enable security_gate on any tier above experimental
+    # (fullstack too — backend + frontend both exposed to network)
     if (
         profile in ("app_web_backend", "app_web_frontend", "fullstack")
         and tier != "experimental"
@@ -340,21 +340,21 @@ def _apply_profile_rules(profile: str, tier: str, base: dict[str, Any]) -> dict[
 def _validate_profile(profile: str) -> None:
     if profile not in CANONICAL_PROFILES:
         raise ProfileMergeError(
-            f"profile invalido: {profile!r} (esperado: {', '.join(CANONICAL_PROFILES)})"
+            f"invalid profile: {profile!r} (expected: {', '.join(CANONICAL_PROFILES)})"
         )
 
 
 def _validate_tier(tier: str) -> None:
     if tier not in CANONICAL_TIERS:
         raise ProfileMergeError(
-            f"tier invalido: {tier!r} (esperado: {', '.join(CANONICAL_TIERS)})"
+            f"invalid tier: {tier!r} (expected: {', '.join(CANONICAL_TIERS)})"
         )
 
 
 def _validate_iso_8601(value: str) -> None:
     if not isinstance(value, str) or not ISO_DATE_RE.match(value):
         raise ProfileMergeError(
-            f"revisit_after deve ser ISO 8601 (YYYY-MM-DD ou YYYY-MM-DDTHH:MM:SS), recebido: {value!r}"
+            f"revisit_after must be ISO 8601 (YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS), got: {value!r}"
         )
 
 
@@ -362,32 +362,32 @@ def _validate_overrides_keys(overrides: dict[str, Any]) -> None:
     unknown = set(overrides) - MATRIX_KEYS
     if unknown:
         raise ProfileMergeError(
-            f"overrides contem chaves desconhecidas: {sorted(unknown)} "
-            f"(permitidas: {sorted(MATRIX_KEYS)})"
+            f"overrides contains unknown keys: {sorted(unknown)} "
+            f"(allowed: {sorted(MATRIX_KEYS)})"
         )
 
 
 def _validate_custom_stop_points(items: Any) -> None:
     if not isinstance(items, list):
-        raise ProfileMergeError("custom_stop_points deve ser lista")
+        raise ProfileMergeError("custom_stop_points must be a list")
     for idx, item in enumerate(items):
         if not isinstance(item, dict):
-            raise ProfileMergeError(f"custom_stop_points[{idx}] deve ser dict")
+            raise ProfileMergeError(f"custom_stop_points[{idx}] must be a dict")
         if not isinstance(item.get("id"), str) or not item["id"]:
-            raise ProfileMergeError(f"custom_stop_points[{idx}].id ausente ou nao-string")
+            raise ProfileMergeError(f"custom_stop_points[{idx}].id missing or not a string")
         if not isinstance(item.get("description"), str) or not item["description"]:
             raise ProfileMergeError(
-                f"custom_stop_points[{idx}].description ausente ou nao-string"
+                f"custom_stop_points[{idx}].description missing or not a string"
             )
         threshold = item.get("threshold")
         if not isinstance(threshold, dict) or not threshold:
             raise ProfileMergeError(
-                f"custom_stop_points[{idx}].threshold deve ser dict nao-vazio"
+                f"custom_stop_points[{idx}].threshold must be a non-empty dict"
             )
         for tier_key in threshold:
             if tier_key not in CANONICAL_TIERS:
                 raise ProfileMergeError(
-                    f"custom_stop_points[{idx}].threshold tier invalido: {tier_key!r}"
+                    f"custom_stop_points[{idx}].threshold invalid tier: {tier_key!r}"
                 )
 
 
@@ -396,17 +396,17 @@ def _validate_custom_stop_points(items: Any) -> None:
 # ============================================================================
 
 def _load_override(path: Path) -> dict[str, Any]:
-    """Carrega arquivo .icm-profile.local.yaml em dict; valida existencia."""
+    """Loads .icm-profile.local.yaml file into a dict; validates existence."""
     if not path.exists():
-        raise ProfileMergeError(f"override path nao existe: {path}")
+        raise ProfileMergeError(f"override path does not exist: {path}")
     try:
         data = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
-        raise ProfileMergeError(f"override YAML invalido: {exc}") from exc
+        raise ProfileMergeError(f"invalid override YAML: {exc}") from exc
     if data is None:
         return {}
     if not isinstance(data, dict):
-        raise ProfileMergeError("override raiz deve ser mapping/dict")
+        raise ProfileMergeError("override root must be a mapping/dict")
     return data
 
 
@@ -415,7 +415,7 @@ def _check_unsafe_overrides(
     overrides: dict[str, Any],
     confirm_unsafe: bool,
 ) -> None:
-    """Levanta se override desliga gate critico sem confirm_unsafe=true."""
+    """Raises if override disables a critical gate without confirm_unsafe=true."""
     for key in UNSAFE_KEYS:
         if key not in overrides:
             continue
@@ -423,19 +423,19 @@ def _check_unsafe_overrides(
         will_be = bool(overrides[key])
         if was_on and not will_be and not confirm_unsafe:
             raise ProfileMergeError(
-                f"override perigoso requer confirm_unsafe: true (chave: {key})"
+                f"dangerous override requires confirm_unsafe: true (key: {key})"
             )
 
 
 # ============================================================================
-# API publica
+# Public API
 # ============================================================================
 
 def _preview_loop_config(profile: str, tier: str) -> dict[str, Any] | None:
-    """Retorna preview_loop config para profiles frontend/fullstack.
+    """Returns preview_loop config for frontend/fullstack profiles.
 
-    None para profiles sem `design_system_required`. v3.6.0+.
-    Doc canonico: references/preview-loop-protocol.md.
+    None for profiles without `design_system_required`. v3.6.0+.
+    Canonical doc: references/preview-loop-protocol.md.
     """
     if profile not in ("app_web_frontend", "fullstack"):
         return None
@@ -460,7 +460,7 @@ def merge_profile(
     tier: str,
     override_path: Path | str | None = None,
 ) -> tuple[dict[str, Any], str]:
-    """Produz profile efetivo + hash; aplica override se fornecido."""
+    """Produces effective profile + hash; applies override if provided."""
     _validate_profile(profile)
     _validate_tier(tier)
 
@@ -486,13 +486,13 @@ def _apply_override(
     effective: dict[str, Any],
     override: dict[str, Any],
 ) -> dict[str, Any]:
-    """Valida + aplica override sobre o dict efetivo."""
+    """Validates + applies override on top of the effective dict."""
     extends = override.get("extends")
     if extends is not None:
         _validate_profile(extends)
         if extends != profile:
             raise ProfileMergeError(
-                f"override.extends={extends!r} difere do profile passado={profile!r}"
+                f"override.extends={extends!r} differs from profile passed={profile!r}"
             )
 
     override_tier = override.get("tier")
@@ -500,7 +500,7 @@ def _apply_override(
         _validate_tier(override_tier)
         if override_tier != tier:
             raise ProfileMergeError(
-                f"override.tier={override_tier!r} difere do tier passado={tier!r}"
+                f"override.tier={override_tier!r} differs from tier passed={tier!r}"
             )
 
     if "revisit_after" in override:
@@ -510,7 +510,7 @@ def _apply_override(
     overrides = override.get("overrides") or {}
     if overrides:
         if not isinstance(overrides, dict):
-            raise ProfileMergeError("overrides deve ser dict")
+            raise ProfileMergeError("overrides must be a dict")
         _validate_overrides_keys(overrides)
         confirm_unsafe = bool(override.get("confirm_unsafe", False))
         _check_unsafe_overrides(effective, overrides, confirm_unsafe)
@@ -541,11 +541,11 @@ def compute_hash(effective: dict[str, Any]) -> str:
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Merge de profile + tier (+ override opcional) em dict efetivo + hash."
+        description="Merge of profile + tier (+ optional override) into effective dict + hash."
     )
-    parser.add_argument("--profile", required=True, help="Profile base (ex.: app_web_backend)")
+    parser.add_argument("--profile", required=True, help="Base profile (e.g.: app_web_backend)")
     parser.add_argument("--tier", required=True, help="Tier (experimental/tool/development/production)")
-    parser.add_argument("--override", default=None, help="Path para .icm-profile.local.yaml")
+    parser.add_argument("--override", default=None, help="Path to .icm-profile.local.yaml")
     return parser
 
 
@@ -559,7 +559,7 @@ def main(argv: list[str] | None = None) -> int:
             override_path=Path(args.override) if args.override else None,
         )
     except ProfileMergeError as exc:
-        print(f"erro: {exc}", file=sys.stderr)
+        print(f"error: {exc}", file=sys.stderr)
         return 1
     print(json.dumps({"effective": effective, "hash": h}, ensure_ascii=False, indent=2))
     return 0
