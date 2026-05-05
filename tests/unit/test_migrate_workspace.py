@@ -679,3 +679,45 @@ def test_migrate_3_12_0_to_3_12_1_updates_stage08_stop_point_number(mw, tmp_path
     result = (stage08_dir / "CONTEXT.md").read_text(encoding="utf-8")
     assert "#15 `runtime_cleanup_failed`" in result
     assert "#13 `runtime_cleanup_failed`" not in result
+
+
+def test_migrate_3_12_0_to_3_12_1_fixes_stop_points_md(mw, tmp_path: Path):
+    """Migration must fix phantom wave_branch_missing and count in stop-points.md."""
+    ws = tmp_path / "006-stoppoints-3121"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.12.0"\n---\n',
+        encoding="utf-8",
+    )
+    config_dir = ws / "_config"
+    config_dir.mkdir()
+    (config_dir / "stop-points.md").write_text(
+        "Canonical list of 13 stop points\n"
+        "## 1. Canonical list (13 items)\n"
+        "| 11 | `wave_branch_missing` | Wave branch missing |\n"
+        "### 11. `wave_branch_missing` — Missing wave branch\n",
+        encoding="utf-8",
+    )
+    mw.migrate_3_12_0_to_3_12_1(ws, project_root=tmp_path)
+    result = (config_dir / "stop-points.md").read_text(encoding="utf-8")
+    assert "15 stop points" in result
+    assert "15 items" in result
+    assert "`workspace_corrupt`" in result
+    assert "`wave_branch_missing`" not in result
+    assert "workspace_corrupt` — ICM workspace corrupted" in result
+
+
+def test_migrate_3_12_0_to_3_12_1_prints_checklist(mw, tmp_path: Path, capsys):
+    """Migration must print LLM verification checklist to stdout."""
+    ws = tmp_path / "007-checklist-3121"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.12.0"\n---\n',
+        encoding="utf-8",
+    )
+    mw.migrate_3_12_0_to_3_12_1(ws, project_root=tmp_path)
+    captured = capsys.readouterr().out
+    assert "MANUAL VERIFICATION" in captured
+    assert "render-critic-prompt.py" in captured
+    assert "script-cli-reference.md" in captured
+    assert "validate_state.py" in captured

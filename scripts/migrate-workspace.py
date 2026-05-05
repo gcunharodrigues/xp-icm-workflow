@@ -337,26 +337,31 @@ def migrate_3_10_0_to_3_11_0(workspace_root: Path, project_root: Path) -> None:
 
 
 def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
-    """v3.12.0 -> v3.12.1: Re-copy reference docs + surgical template fixes.
+    """v3.12.0 -> v3.12.1: Re-copy refs + surgical fixes + LLM guidance.
 
+    Automated:
     - Re-copies all 32 reference docs from skill references/ to workspace
-      _references/runtime/ (new docs: script-cli-reference, ci-rollback,
-      conflict-resolution, icm-cleanup, wave-execution, worktree-model,
-      preview-loop, runtime-cleanup).
-    - Updates stage 04 CONTEXT.md: old critic pseudo-code → render-critic-prompt.py.
-    - Updates stage 08 CONTEXT.md: stop point #13 → #15 (runtime_cleanup_failed).
+      _references/runtime/.
+    - Stage 04 CONTEXT.md: dead pseudo-code → render-critic-prompt.py CLI.
+    - Stage 08 CONTEXT.md: stop point #13 → #15.
+    - _config/stop-points.md: phantom wave_branch_missing → workspace_corrupt,
+      count 13→15.
+    - Prints post-migration verification checklist to stdout.
 
-    Idempotent: running on an already-migrated workspace is a no-op for
-    text replacements. Reference docs are overwritten with latest versions.
+    Idempotent: safe to run on already-migrated workspace.
     """
-    _bump_version_only(workspace_root, "3.12.1")
+    import shutil
 
-    # 1. Re-copy reference docs from skill references/ to workspace _references/runtime/
+    _bump_version_only(workspace_root, "3.12.1")
     skill_root = Path(__file__).resolve().parent.parent
+    skill_dir = str(skill_root).replace("\\", "/")
+    changed: list[str] = []
+
+    # ---- 1. Re-copy reference docs ----
     refs_src = skill_root / "references"
     runtime_dst = workspace_root / "_references" / "runtime"
+    copied = 0
     if refs_src.is_dir() and runtime_dst.exists():
-        # Same tuple as bootstrap.py runtime_refs — keep in sync
         _RUNTIME_REFS: tuple[str, ...] = (
             "subagent-protocol.md",
             "wave-planner-algorithm.md",
@@ -397,67 +402,131 @@ def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
             if src.is_file():
                 try:
                     dst.write_text(src.read_text(encoding="utf-8"))
+                    copied += 1
                 except (UnicodeDecodeError, OSError):
                     pass
+    if copied:
+        changed.append(f"  - {copied} reference docs re-copied to _references/runtime/")
 
-    # 2. Stage 04: update critic invocation from dead pseudo-code to real script
-    _STAGE04_REPLACEMENTS: list[tuple[str, str]] = [
-        # Old: dead pseudo-code Agent call with non-existent render_critic_prompt()
-        (
-            "       ```python\n"
-            "       Agent(\n"
-            '           description="L3 critic ortogonal task <slug>",\n'
-            '           subagent_type="general-purpose",\n'
-            "           model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]\n"
-            "           prompt=render_critic_prompt(<slug>, <wave>),  # templates/critic-prompt.md\n"
-            "       )\n"
-            "       ```",
-            "       1. **Render critic prompt** (automated — script captures diff + test output):\n"
-            "          ```bash\n"
-            "          python {{SKILL_DIR}}/scripts/render-critic-prompt.py \\\n"
-            "              --task-slug <slug> --wave <N> --tier <TIER> \\\n"
-            "              --workspace-num {{WORKSPACE_NUM}} --base-branch {{BASE_BRANCH}} \\\n"
-            "              --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \\\n"
-            "              --critic-model <critic_model_from_pick_model_py> \\\n"
-            "              --output output/wave-<N>/task-<slug>-critic-prompt-round<R>.md\n"
-            "          ```\n"
-            "       2. **Spawn critic** with the rendered prompt:\n"
-            "          ```python\n"
-            "          Agent(\n"
-            '              description="L3 critic task <slug> wave <N>",\n'
-            '              subagent_type="general-purpose",\n'
-            "              model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]\n"
-            '              prompt=Read("output/wave-<N>/task-<slug>-critic-prompt-round<R>.md"),\n'
-            "          )\n"
-            "          ```",
-        ),
-    ]
+    # ---- 2. Stage 04: critic invocation ----
     stage04 = workspace_root / "stages" / "04_implementation_waves" / "CONTEXT.md"
+    _STAGE04_OLD = (
+        "       ```python\n"
+        "       Agent(\n"
+        '           description="L3 critic ortogonal task <slug>",\n'
+        '           subagent_type="general-purpose",\n'
+        "           model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]\n"
+        "           prompt=render_critic_prompt(<slug>, <wave>),  # templates/critic-prompt.md\n"
+        "       )\n"
+        "       ```"
+    )
+    _STAGE04_NEW = (
+        "       1. **Render critic prompt** (automated — script captures diff + test output):\n"
+        "          ```bash\n"
+        f"          python {skill_dir}/scripts/render-critic-prompt.py \\\n"
+        "              --task-slug <slug> --wave <N> --tier <TIER> \\\n"
+        "              --workspace-num {{WORKSPACE_NUM}} --base-branch {{BASE_BRANCH}} \\\n"
+        "              --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \\\n"
+        "              --critic-model <critic_model_from_pick_model_py> \\\n"
+        "              --output output/wave-<N>/task-<slug>-critic-prompt-round<R>.md\n"
+        "          ```\n"
+        "       2. **Spawn critic** with the rendered prompt:\n"
+        "          ```python\n"
+        "          Agent(\n"
+        '              description="L3 critic task <slug> wave <N>",\n'
+        '              subagent_type="general-purpose",\n'
+        "              model=<critic_model_from_pick_model_py>,  # = TIER_CEILING[tier]\n"
+        '              prompt=Read("output/wave-<N>/task-<slug>-critic-prompt-round<R>.md"),\n'
+        "          )\n"
+        "          ```"
+    )
     if stage04.is_file():
         try:
             text = stage04.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             text = ""
-        for old, new in _STAGE04_REPLACEMENTS:
-            text = text.replace(old, new)
+        if _STAGE04_OLD in text:
+            text = text.replace(_STAGE04_OLD, _STAGE04_NEW)
             stage04.write_text(text, encoding="utf-8")
+            changed.append("  - stage 04: critic invocation → render-critic-prompt.py")
 
-    # 3. Stage 08: stop point numbers #13 → #15 (runtime_cleanup_failed)
-    _STAGE08_REPLACEMENTS: list[tuple[str, str]] = [
-        (
-            "#13 `runtime_cleanup_failed`",
-            "#15 `runtime_cleanup_failed`",
-        ),
-    ]
+    # ---- 3. Stage 08: stop point #13 → #15 ----
     stage08 = workspace_root / "stages" / "08_feedback_intake" / "CONTEXT.md"
+    _STAGE08_REPLACEMENTS: list[tuple[str, str]] = [
+        ("#13 `runtime_cleanup_failed`", "#15 `runtime_cleanup_failed`"),
+        ("stop point #13 `runtime_cleanup_failed`", "stop point #15 `runtime_cleanup_failed`"),
+    ]
     if stage08.is_file():
         try:
             text = stage08.read_text(encoding="utf-8")
         except (UnicodeDecodeError, OSError):
             text = ""
         for old, new in _STAGE08_REPLACEMENTS:
-            text = text.replace(old, new)
-            stage08.write_text(text, encoding="utf-8")
+            if old in text:
+                text = text.replace(old, new)
+                stage08.write_text(text, encoding="utf-8")
+                changed.append("  - stage 08: stop point #13 → #15")
+
+    # ---- 4. _config/stop-points.md: phantom wave_branch_missing → workspace_corrupt ----
+    sp_md = workspace_root / "_config" / "stop-points.md"
+    _SP_REPLACEMENTS: list[tuple[str, str]] = [
+        # Count in header
+        ("13 stop points + thresholds", "15 stop points + thresholds"),
+        ("Canonical list of 13 stop points", "Canonical list of 15 stop points"),
+        ("## 1. Canonical list (13 items)", "## 1. Canonical list (15 items)"),
+        # Phantom → correct stop point (LONGER match first to avoid order bug)
+        ("wave_branch_missing` — Missing wave branch",
+         "workspace_corrupt` — ICM workspace corrupted"),
+        ("`wave_branch_missing`", "`workspace_corrupt`"),
+    ]
+    if sp_md.is_file():
+        try:
+            text = sp_md.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            text = ""
+        for old, new in _SP_REPLACEMENTS:
+            if old in text:
+                text = text.replace(old, new)
+                sp_md.write_text(text, encoding="utf-8")
+                changed.append(f"  - _config/stop-points.md: {old[:50]}... → {new[:50]}...")
+
+    # ---- 5. Print LLM verification checklist ----
+    print("")
+    print("=" * 60)
+    print(f" Migration v3.12.0 → v3.12.1 complete: {workspace_root.name}")
+    print("=" * 60)
+    print("")
+    print("Automated changes:")
+    for c in changed:
+        print(c)
+    print("")
+    print("MANUAL VERIFICATION (LLM — verify each item):")
+    print("")
+    print("  1. _config/stop-points.md — verify 15 stop points match canonical:")
+    print(f"     {skill_dir}/references/stop-points-canonical.md")
+    print("     Missing items to add manually if surgical fix missed them:")
+    print("       #13 ambiguous_feedback, #14 design_system_cascade")
+    print("     Detail sections for these must exist at ### 13. and ### 14.")
+    print("")
+    print("  2. stages/04_implementation_waves/CONTEXT.md step 8c:")
+    print("     Verify critic invocation references render-critic-prompt.py")
+    print(f"     Script exists at: {skill_dir}/scripts/render-critic-prompt.py")
+    print("")
+    print("  3. stages/08_feedback_intake/CONTEXT.md:")
+    print("     Verify all stop point references use current numbering.")
+    print("     runtime_cleanup_failed = #15 (was #13).")
+    print(f"     workspace_corrupt = #11 (was wave_branch_missing, now fixed).")
+    print("")
+    print("  4. _references/runtime/ — verify new docs present:")
+    print("     script-cli-reference.md (NEW — LLM needs this for CLI formats)")
+    print("     wave-execution-protocol.md (was missing)")
+    print("     worktree-model.md (was missing)")
+    print("")
+    print("  5. Run state validation:")
+    print(f"     python {skill_dir}/scripts/validate_state.py --context-md {workspace_root}/CONTEXT.md")
+    print("")
+    print(f"  6. Commit: workspace {workspace_root.name.split('-', 1)[0]}: migrate v3.12.0→v3.12.1")
+    print("=" * 60)
 
 
 def migrate_3_11_0_to_3_12_0(workspace_root: Path, project_root: Path) -> None:

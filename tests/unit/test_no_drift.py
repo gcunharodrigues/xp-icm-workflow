@@ -1010,8 +1010,7 @@ def test_migration_runtime_refs_matches_bootstrap():
             stripped = line.strip()
             if stripped == ")" or stripped.startswith(") "):
                 break
-            match = re.search(r'"([^"]+\.md)"', line)
-            if match:
+            for match in re.finditer(r'"([^"]+\.md)"', line):
                 m_refs.add(match.group(1))
 
     missing = b_refs - m_refs
