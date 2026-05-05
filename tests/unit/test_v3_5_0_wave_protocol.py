@@ -123,7 +123,7 @@ def test_conflict_protocol_exists():
     """Gap 6: conflict-resolution-protocol.md existe + 3 paths."""
     assert CONFLICT_DOC.exists(), "conflict-resolution-protocol.md ausente"
     text = CONFLICT_DOC.read_text(encoding="utf-8")
-    for path in ("resolvido", "abort task", "abort wave"):
+    for path in ("resolved", "abort task", "abort wave"):
         assert path in text, f"conflict protocol falta path '{path}'"
     assert "git merge --abort" in text
     assert "pre_wave_sha" in text or "reset --hard" in text

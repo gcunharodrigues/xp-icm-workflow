@@ -34,10 +34,10 @@ class TestAdrFormat:
     def test_mentions_3_criteria_gate(self, doc: str) -> None:
         # Doc deve descrever os 3 critérios de gate
         text_lower = doc.lower()
-        assert "3 crit" in text_lower  # "3 criterios" / "3 critérios"
+        assert "3-criteria" in text_lower or "3 crit" in text_lower  # "3-criteria gate" / "3 criterios"
         # Reversibilidade: doc usa "hard to reverse" / "reverter"
         assert "revert" in text_lower or "reverse" in text_lower
-        assert "alternativa" in text_lower or "trade-off" in text_lower
+        assert "trade-off" in text_lower or "alternativa" in text_lower
 
     def test_has_required_sections(self, doc: str) -> None:
         # Pelo menos uma seção principal

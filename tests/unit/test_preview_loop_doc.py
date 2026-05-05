@@ -29,12 +29,12 @@ def test_doc_mentions_all_10_decision_topics():
         "Dev server lifecycle",
         "Mock data strategy",
         "CDP browser integration",
-        "Verificação uniforme",
+        "Uniform verification",
         "Preview pages convention",
-        "Feedback comunicação",
-        "Iteração visual",
+        "Feedback communication",
+        "Visual iteration",
         "Design system cascade",
-        "Multi-tela",
+        "Multi-screen",
     ]
     missing = [t for t in required_topics if t not in text]
     assert not missing, f"tópicos faltando no doc: {missing}"
