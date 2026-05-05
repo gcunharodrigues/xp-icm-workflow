@@ -1,163 +1,162 @@
 # Runtime Cleanup Protocol — v3.7.0
 
-> Protocolo canônico de cleanup de side-effects runtime ANTES de transição
-> de saída fase 08 (A close, B restart, C spawn). Strict universal — todos
-> tiers passam pelo checklist sem opt-out. Detector + decisão humana, NUNCA
-> ação destrutiva automática.
+> Canonical protocol for runtime side-effect cleanup BEFORE the stage 08 exit
+> transition (A close, B restart, C spawn). Strict universal — all tiers go
+> through the checklist without opt-out. Detector + human decision, NEVER
+> automatic destructive action.
 
 ---
 
-## Por que existe
+## Why it exists
 
-Pre-v3.7.0, side-effects órfãos eram problema recorrente: dev servers
-continuavam rodando após workspace fechado, branches `wave-NNN-*`
-permaneciam órfãs, containers Docker ficavam pendurados, `.icm-main/` ficava
-dirty entre transições. Recovery wizard v3.6.0 introduziu `DEV_SERVER_ORPHAN`
-+ `CDP_DISCONNECTED` mas eram detect-after-fact (próxima sessão pegava
-estado inconsistente, não pré-transição).
+Pre-v3.7.0, orphaned side-effects were a recurring problem: dev servers kept
+running after a workspace was closed, `wave-NNN-*` branches remained orphaned,
+Docker containers were left hanging, `.icm-main/` became dirty between
+transitions. Recovery wizard v3.6.0 introduced `DEV_SERVER_ORPHAN` +
+`CDP_DISCONNECTED` but these were detect-after-fact (the next session would
+find the inconsistent state, not pre-transition).
 
-v3.7.0 fecha lacuna: fase 08 saída A/B/C **bloqueia** transição até
-checklist runtime confirmado clean (ou humano explicitar skip via stop point
-#13 com consequências documentadas).
-
----
-
-## Princípios
-
-1. **Skill detecta, humano decide.** ICM nunca mata processo, deleta branch
-   ou força cleanup automaticamente. Toda ação destrutiva requer decisão
-   humana explícita per categoria.
-
-2. **Strict universal.** Aplicável em todos tiers (`experimental` →
-   `production`). Sem opt-out por tier — diferente de TDD (calibrado por
-   tier).
-
-3. **Per-categoria, não global.** Humano confirma cada categoria
-   separadamente (não 1 confirm "tudo limpo?"). Reduz risco de skip
-   acidental quando 1 categoria foi missada.
-
-4. **Idempotente.** Re-rodar checklist = mesmo resultado. Items resolvidos
-   não voltam à lista.
-
-5. **Status reportado em intake-report.md.** Section §"Runtime cleanup
-   pré-saída (v3.7+)" registra snapshot final + decisões humanas (skip
-   explícito vs resolvido).
+v3.7.0 closes the gap: stage 08 exit A/B/C **blocks** transition until
+the runtime checklist is confirmed clean (or human explicitly skips via stop
+point #13 with documented consequences).
 
 ---
 
-## 6 categorias canônicas
+## Principles
 
-| # | Categoria | Detector | Cleanup default | Override humano |
+1. **Skill detects, human decides.** ICM never kills a process, deletes a
+   branch, or forces cleanup automatically. Every destructive action requires
+   an explicit human decision per category.
+
+2. **Strict universal.** Applicable in all tiers (`experimental` →
+   `production`). No opt-out by tier — unlike TDD (calibrated by tier).
+
+3. **Per-category, not global.** Human confirms each category separately
+   (not 1 confirm "all clean?"). Reduces the risk of accidentally skipping
+   a category that was missed.
+
+4. **Idempotent.** Re-running the checklist = same result. Resolved items
+   do not return to the list.
+
+5. **Status reported in intake-report.md.** Section §"Runtime cleanup
+   pre-exit (v3.7+)" records the final snapshot + human decisions (explicit
+   skip vs resolved).
+
+---
+
+## 6 canonical categories
+
+| # | Category | Detector | Default cleanup | Human override |
 |---|---|---|---|---|
-| 1 | `dev_servers` | runtime-registry kind=dev_server alive | `kill <pid>` + unregister | skip = warning, deferido |
-| 2 | `background_tasks` | kind=background_task alive | mesmo | mesmo |
-| 3 | `docker` | `docker ps --filter label=icm-workspace=NNN` | `docker stop <id>` (humano roda) | skip = warning |
-| 4 | `wave_branches` | `git branch --list wave-NNN-*` | `git branch -D <branch>` (humano roda) | skip = leftover histórico |
-| 5 | `working_tree` | `git status --short` no project_root | humano commita ou stash | skip = não permitido |
-| 6 | `untracked` | `.icm-main/` dirty + ls-files --others | humano commita ou ignora | skip = warning |
+| 1 | `dev_servers` | runtime-registry kind=dev_server alive | `kill <pid>` + unregister | skip = warning, deferred |
+| 2 | `background_tasks` | kind=background_task alive | same | same |
+| 3 | `docker` | `docker ps --filter label=icm-workspace=NNN` | `docker stop <id>` (human runs) | skip = warning |
+| 4 | `wave_branches` | `git branch --list wave-NNN-*` | `git branch -D <branch>` (human runs) | skip = historical leftover |
+| 5 | `working_tree` | `git status --short` at project_root | human commits or stashes | skip = not allowed |
+| 6 | `untracked` | `.icm-main/` dirty + ls-files --others | human commits or ignores | skip = warning |
 
-**Categoria 5 (working_tree) é especial:** dirt em working tree workspace
-branch causa confusão pre-merge fase 07 (já resolvida) ou indica edits
-não-rastreados. Skip não-permitido — humano DEVE commitar/stash antes de
-fechar fase 08.
+**Category 5 (working_tree) is special:** dirt in the workspace branch working
+tree causes confusion pre-merge stage 07 (already resolved) or indicates
+untracked edits. Skip is not allowed — human MUST commit/stash before
+closing stage 08.
 
 ---
 
-## Fluxo canônico
+## Canonical flow
 
-### Entry hook fase 08
+### Stage 08 entry hook
 
 ```
 [stage 08, sub_stage=08_in_progress, status=COMPLETED_AWAITING_HUMAN]
 
-  Sessão sintetiza checklist:
+  Session synthesizes checklist:
   python <skill>/scripts/runtime-status.py \
       --workspace-root <ws> --project-root <pr> --format text
 
-  Output exemplo:
+  Example output:
   ✓ dev_servers: no dev servers
   ✗ background_tasks: 1 background task(s) alive
   ✓ docker: no containers
-  ✗ wave_branches: 2 wave branch(es) órfãs
+  ✗ wave_branches: 2 wave branch(es) orphaned
   ✓ working_tree: clean
   ✗ untracked: .icm-main dirty: 3 entry(ies)
 
-  Per categoria não-clean:
-    Imprime detalhes (PIDs, branches, paths).
-    Aguarda humano: "[s] resolvi [n] cancela fase 08 [edit] descreva".
+  Per non-clean category:
+    Prints details (PIDs, branches, paths).
+    Awaits human: "[s] resolved [n] cancel stage 08 [edit] describe".
 
-  Re-run até todas clean OU humano cancela (#13 stop point).
+  Re-run until all clean OR human cancels (stop point #13).
 ```
 
 ### Per-OS quirks
 
 **Windows:**
-- Kill processo: `taskkill /PID <pid> /F`
-- Status processo: ctypes `OpenProcess` + `GetExitCodeProcess`
-- Docker Desktop: requer service rodando; daemon down = "assumed clean".
+- Kill process: `taskkill /PID <pid> /F`
+- Process status: ctypes `OpenProcess` + `GetExitCodeProcess`
+- Docker Desktop: requires running service; daemon down = "assumed clean".
 
 **POSIX (Linux/macOS):**
-- Kill processo: `kill <pid>` (SIGTERM) ou `kill -9 <pid>` (SIGKILL)
-- Status processo: `os.kill(pid, 0)` (não envia sinal)
-- Docker: `docker ps` requer daemon running; `docker stop --time 10`
+- Kill process: `kill <pid>` (SIGTERM) or `kill -9 <pid>` (SIGKILL)
+- Process status: `os.kill(pid, 0)` (sends no signal)
+- Docker: `docker ps` requires daemon running; `docker stop --time 10`
   graceful shutdown.
 
-`runtime-registry.py:_is_pid_alive` cobre ambos OSes via lazy detection.
+`runtime-registry.py:_is_pid_alive` covers both OSes via lazy detection.
 
 ---
 
-## Recovery se cleanup falha mid-saída
+## Recovery if cleanup fails mid-exit
 
-Cenários e plano:
+Scenarios and plan:
 
-| Falha | Plan |
+| Failure | Plan |
 |---|---|
-| `kill <pid>` retorna erro de permissão | sugere `kill -9` ou humano roda como root |
-| Branch protected (push restriction) | sugere `git config branch.<name>.allowDeletion true` |
-| Docker daemon down | warning "assumed clean", anota em intake-report |
-| Comando timeout (>30s) | retry 1x, depois marca como skip + warning |
-| Humano fecha terminal mid-checklist | sub_stage permanece `08_in_progress`; próxima sessão re-roda checklist (idempotente) |
+| `kill <pid>` returns permission error | suggest `kill -9` or human runs as root |
+| Branch protected (push restriction) | suggest `git config branch.<name>.allowDeletion true` |
+| Docker daemon down | warning "assumed clean", annotate in intake-report |
+| Command timeout (>30s) | retry 1x, then mark as skip + warning |
+| Human closes terminal mid-checklist | sub_stage stays `08_in_progress`; next session re-runs checklist (idempotent) |
 
-Falhas técnicas vs cancelamento humano:
-- **Falha técnica** (comando errou) → Plan A retry, depois stop point #13
-- **Cancelamento humano** (responde [n]) → stop point #13 imediato
+Technical failures vs human cancellation:
+- **Technical failure** (command errored) → Plan A retry, then stop point #13
+- **Human cancellation** (answers [n]) → stop point #13 immediately
   + status `BLOCKED_STOP_POINT`
 
-Stop point #13 menu A/B/C:
-- `[a]` resolvi manualmente, retoma checklist
-- `[b]` skip categoria + segue saída (workspace fica inconsistente; recovery
-       wizard detecta depois)
-- `[c]` cancela fase 08 (status volta `COMPLETED_AWAITING_HUMAN`)
+Stop point #13 A/B/C menu:
+- `[a]` resolved manually, resume checklist
+- `[b]` skip category + proceed with exit (workspace becomes inconsistent;
+       recovery wizard detects later)
+- `[c]` cancel stage 08 (status reverts to `COMPLETED_AWAITING_HUMAN`)
 
 ---
 
-## Integração com runtime-registry
+## Integration with runtime-registry
 
-Categorias 1-2 (dev_servers, background_tasks) consultam
-`workspaces/<NNN>/_state/runtime-registry.json`. Entries com PID morto
-NÃO marcam categoria como dirty (registry stale, sem side-effect ativo) —
-mas geram entry pra cleanup de registry via
+Categories 1-2 (dev_servers, background_tasks) consult
+`workspaces/<NNN>/_state/runtime-registry.json`. Entries with a dead PID
+do NOT mark the category as dirty (stale registry, no active side-effect) —
+but generate an entry for registry cleanup via
 `runtime-registry.py purge-dead`.
 
-Migração v3.6.0 → v3.7.0: workspaces antigos com `.icm-main/.dev-server.pid`
-devem rodar `migrate-workspace.py --workspace-root <ws>` antes do primeiro
-checklist (move PID file → registry, idempotente).
+Migration v3.6.0 → v3.7.0: old workspaces with `.icm-main/.dev-server.pid`
+should run `migrate-workspace.py --workspace-root <ws>` before the first
+checklist (moves PID file → registry, idempotent).
 
 ---
 
-## Override em tier=experimental?
+## Override in tier=experimental?
 
-**Não.** Decisão de design (v3.7.0): strict universal aplicado a todos
-tiers, incluindo `experimental`. Justificativa:
+**No.** Design decision (v3.7.0): strict universal applied to all tiers,
+including `experimental`. Rationale:
 
-- Experimental = POC/spike, mas processos órfãos custam memória + portas
-  conflict no próximo bootstrap.
-- Atrito do checklist é baixo: 6 categorias, geralmente <30s humano.
-- Override por tier abriria precedente complexo (quais tiers? quais
-  categorias?). Strict universal mantém regra simples.
+- Experimental = POC/spike, but orphaned processes cost memory + port
+  conflicts on the next bootstrap.
+- Checklist friction is low: 6 categories, typically <30s human time.
+- Tier-based override would open a complex precedent (which tiers? which
+  categories?). Strict universal keeps the rule simple.
 
-Quem realmente quer skip: usar `[b]` no menu stop point #13 (deferred
-cleanup, aceita workspace inconsistente).
+Anyone who truly wants to skip: use `[b]` in stop point #13 menu (deferred
+cleanup, accepts an inconsistent workspace).
 
 ---
 
@@ -167,6 +166,6 @@ cleanup, aceita workspace inconsistente).
 - Stop point #13: `templates/_config/stop-points.md` §"13. runtime_cleanup_failed"
 - Recovery wizard: `references/recovery-wizard.md` (RUNTIME_REGISTRY_STALE detector)
 - Runtime registry: `scripts/runtime-registry.py` (CRUD + legacy detect)
-- Runtime status: `scripts/runtime-status.py` (checklist agregador)
+- Runtime status: `scripts/runtime-status.py` (checklist aggregator)
 - Migration: `scripts/migrate-workspace.py` (legacy PID → registry)
 - L0 R10: `templates/workspace/CLAUDE.md.tpl` §"Runtime side-effects"

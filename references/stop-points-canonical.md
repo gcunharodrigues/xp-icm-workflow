@@ -1,203 +1,203 @@
-# Stop Points canônicos
+# Canonical Stop Points
 
-> **Versão:** v3.0.0-beta5
-> **Path resolution:** caminhos `scripts/` neste documento referem-se a `<SKILL_DIR>/scripts/`, onde `SKILL_DIR` está definido em L0 (`CLAUDE.md`).
-> **Propósito:** lista canônica dos 12 stop points da skill `xp-icm-workflow` + thresholds calibrados por tier para itens 5/7/8 + template padronizado de menu A/B/C + protocolo de update do L1.
+> **Version:** v3.0.0-beta5
+> **Path resolution:** `scripts/` paths in this document refer to `<SKILL_DIR>/scripts/`, where `SKILL_DIR` is defined in L0 (`CLAUDE.md`).
+> **Purpose:** canonical list of the 12 stop points for the `xp-icm-workflow` skill + thresholds calibrated by tier for items 5/7/8 + standardized A/B/C menu template + L1 update protocol.
 
-Resolução **Q5** do plan: lista fixa de 12 stops; itens 5, 7, 8 calibrados por tier conforme `templates/_config/profile-matrix.md` (chaves `stop_points_calibration.item_5/7/8`); demais 9 sempre `hard` em qualquer tier.
+Resolution **Q5** from the plan: fixed list of 12 stops; items 5, 7, 8 calibrated by tier per `templates/_config/profile-matrix.md` (keys `stop_points_calibration.item_5/7/8`); remaining 9 always `hard` in any tier.
 
 ---
 
-## 1. Lista canônica (15 itens)
+## 1. Canonical list (15 items)
 
-| # | id | Descrição |
+| # | id | Description |
 |---|---|---|
-| 1 | `stack` | Stack tecnológica (linguagem, framework, runtime) |
-| 2 | `db` | Banco de dados (engine, schema design) |
-| 3 | `external_api` | API externa (paga? rate-limit? privacy?) |
-| 4 | `new_dep` | Nova dependência (license? maintenance? size?) |
-| 5 | `paid_service` | Serviço pago (custo recorrente?) — **calibrado por tier** |
-| 6 | `irreversible` | Decisão irreversível (drop table, schema migration destructive) |
-| 7 | `over_eng` | Over-engineering detectado (3+ camadas de abstração novas) — **calibrado por tier** |
-| 8 | `pii` | PII/dados sensíveis (LGPD, ofuscação) — **calibrado por tier** |
-| 9 | `prod_migration` | Migration de schema com dados em prod |
-| 10 | `adr_drift` | Stack que difere do declarado em ADR existente |
-| 11 | `workspace_corrupt` | Workspace ICM corrupted (L1/L2 inconsistentes — para e pede recovery) |
-| 12 | `profile_mismatch` | Profile/tier inconsistente com escopo da task |
-| 13 | `feedback_ambiguous` | (v3.6.0 preview loop) Feedback visual humano com baixa confidence — agente NÃO mexe especulando |
-| 14 | `design_system_cascade` | (v3.6.0 preview loop) Mudança de token afeta > `design_cascade_threshold` componentes |
-| 15 | `runtime_cleanup_failed` | (v3.7.0) Runtime cleanup pré-saída fase 08 falhou ou humano cancelou — **strict universal** todos tiers |
+| 1 | `stack` | Technology stack (language, framework, runtime) |
+| 2 | `db` | Database (engine, schema design) |
+| 3 | `external_api` | External API (paid? rate-limit? privacy?) |
+| 4 | `new_dep` | New dependency (license? maintenance? size?) |
+| 5 | `paid_service` | Paid service (recurring cost?) — **calibrated by tier** |
+| 6 | `irreversible` | Irreversible decision (drop table, destructive schema migration) |
+| 7 | `over_eng` | Over-engineering detected (3+ new abstraction layers) — **calibrated by tier** |
+| 8 | `pii` | PII/sensitive data (GDPR/LGPD, obfuscation) — **calibrated by tier** |
+| 9 | `prod_migration` | Schema migration with data in production |
+| 10 | `adr_drift` | Stack that differs from what was declared in an existing ADR |
+| 11 | `workspace_corrupt` | ICM workspace corrupted (L1/L2 inconsistent — stops and requests recovery) |
+| 12 | `profile_mismatch` | Profile/tier inconsistent with task scope |
+| 13 | `feedback_ambiguous` | (v3.6.0 preview loop) Low-confidence human visual feedback — agent does NOT speculate and proceed |
+| 14 | `design_system_cascade` | (v3.6.0 preview loop) Token change affects > `design_cascade_threshold` components |
+| 15 | `runtime_cleanup_failed` | (v3.7.0) Pre-exit stage 08 runtime cleanup failed or human cancelled — **strict universal** all tiers |
 
-### 1.1 Detalhe por item
+### 1.1 Detail per item
 
 #### 1 — `stack`
-Mudança ou primeira escolha de linguagem, framework ou runtime principal.
+Change or first choice of language, framework, or primary runtime.
 
-- **Sinais:**
-  - Discovery propõe linguagem ainda não declarada em ADR.
-  - Plan inclui novo runtime (Node, Python, Go) não-presente no projeto.
-  - Migration de framework (Express → Fastify, Django → FastAPI).
-  - Greenfield sem stack pré-fixada.
-- **Trade-offs típicos:** maturidade do ecossistema vs preferência do time; perf vs DX; coesão arquitetural vs feature-fit.
+- **Signals:**
+  - Discovery proposes a language not yet declared in an ADR.
+  - Plan includes a new runtime (Node, Python, Go) not present in the project.
+  - Framework migration (Express → Fastify, Django → FastAPI).
+  - Greenfield project with no pre-fixed stack.
+- **Typical trade-offs:** ecosystem maturity vs team preference; performance vs DX; architectural cohesion vs feature fit.
 
 #### 2 — `db`
-Escolha de engine de banco ou redesign substantivo de schema.
+Database engine choice or substantive schema redesign.
 
-- **Sinais:**
-  - Primeira persistência do projeto.
-  - Mudança de engine (Postgres → Mongo, SQLite → Postgres).
-  - Schema redesign que renomeia/elimina tabelas usadas.
-  - Nova classe de storage (cache, queue, OLAP).
-- **Trade-offs típicos:** ACID vs flexibilidade; custo de op vs perf; portabilidade vs feature-fit do engine.
+- **Signals:**
+  - First persistence layer for the project.
+  - Engine change (Postgres → Mongo, SQLite → Postgres).
+  - Schema redesign that renames/drops tables in use.
+  - New storage class (cache, queue, OLAP).
+- **Typical trade-offs:** ACID vs flexibility; operational cost vs performance; portability vs engine feature fit.
 
 #### 3 — `external_api`
-Integração com API de terceiro.
+Integration with a third-party API.
 
-- **Sinais:**
-  - Plan inclui chamada HTTP a serviço não-controlado.
-  - API exige API key, OAuth, contrato de SLA.
-  - Rate-limit não-trivial (<100 req/min).
-  - Dados saindo da fronteira do projeto (privacy review).
-- **Trade-offs típicos:** velocidade de entrega vs lock-in; SLA externo vs autonomia; compliance vs custo de implementar in-house.
+- **Signals:**
+  - Plan includes an HTTP call to an uncontrolled service.
+  - API requires API key, OAuth, SLA contract.
+  - Non-trivial rate-limit (<100 req/min).
+  - Data leaving the project boundary (privacy review).
+- **Typical trade-offs:** delivery speed vs lock-in; external SLA vs autonomy; compliance vs cost of in-house implementation.
 
 #### 4 — `new_dep`
-Adição de nova dependência runtime ou dev.
+Addition of a new runtime or dev dependency.
 
-- **Sinais:**
-  - `requirements.txt` / `package.json` ganha entry novo.
-  - Pacote sem releases nos últimos 12 meses.
-  - Licença não-permissiva (GPL, AGPL, custom).
-  - Tamanho > 5 MB ou árvore transitiva > 50 pacotes.
-- **Trade-offs típicos:** velocidade vs supply-chain risk; reuso vs lock-in; manutenção downstream.
+- **Signals:**
+  - `requirements.txt` / `package.json` gains a new entry.
+  - Package with no releases in the last 12 months.
+  - Non-permissive license (GPL, AGPL, custom).
+  - Size > 5 MB or transitive tree > 50 packages.
+- **Typical trade-offs:** speed vs supply-chain risk; reuse vs lock-in; downstream maintenance.
 
-#### 5 — `paid_service` (calibrado)
-Serviço SaaS com custo recorrente.
+#### 5 — `paid_service` (calibrated)
+SaaS service with recurring cost.
 
-- **Sinais:**
-  - Plano pago obrigatório acima do free-tier.
-  - Custo mensal estimado > threshold do tier (ver §2).
-  - Vendor lock-in significativo (dados não-exportáveis).
-  - Auto-scale com piso de custo.
-- **Trade-offs típicos:** dev velocity vs OPEX recorrente; soberania vs conveniência; previsibilidade de custo vs flexibilidade.
+- **Signals:**
+  - Mandatory paid plan above the free tier.
+  - Estimated monthly cost > tier threshold (see §2).
+  - Significant vendor lock-in (non-exportable data).
+  - Auto-scale with a cost floor.
+- **Typical trade-offs:** dev velocity vs recurring OPEX; sovereignty vs convenience; cost predictability vs flexibility.
 
 #### 6 — `irreversible`
-Operação que destrói dados ou histórico de forma não-recuperável.
+Operation that destroys data or history in a non-recoverable way.
 
-- **Sinais:**
-  - `DROP TABLE`, `TRUNCATE`, schema migration destructive (drop column com dados).
-  - `git push --force` sobre branch compartilhada.
-  - Rotação de credencial sem grace-window.
-  - Hard-delete de registros sem soft-delete prévio.
-- **Trade-offs típicos:** simplicidade vs reversibilidade; espaço/perf vs auditabilidade; agora vs janela de undo.
+- **Signals:**
+  - `DROP TABLE`, `TRUNCATE`, destructive schema migration (drop column with data).
+  - `git push --force` on a shared branch.
+  - Credential rotation without a grace window.
+  - Hard-delete of records without prior soft-delete.
+- **Typical trade-offs:** simplicity vs reversibility; space/performance vs auditability; now vs undo window.
 
-#### 7 — `over_eng` (calibrado)
-Sinal de over-engineering em design.
+#### 7 — `over_eng` (calibrated)
+Over-engineering signal in design.
 
-- **Sinais:**
-  - 3+ camadas novas de abstração para resolver 1 problema concreto.
-  - Padrões enterprise (factories, mediators, brokers) sem necessidade demonstrada.
-  - Generalização preventiva sem segundo caso de uso real.
-  - Configurabilidade que não tem segundo consumidor.
-- **Trade-offs típicos:** flexibilidade futura vs custo de leitura; YAGNI vs reuso antecipado.
+- **Signals:**
+  - 3+ new abstraction layers to solve 1 concrete problem.
+  - Enterprise patterns (factories, mediators, brokers) without demonstrated need.
+  - Preventive generalization without a second real use case.
+  - Configurability with no second consumer.
+- **Typical trade-offs:** future flexibility vs reading cost; YAGNI vs early reuse.
 
-#### 8 — `pii` (calibrado)
-Manipulação de dados pessoais ou sensíveis.
+#### 8 — `pii` (calibrated)
+Handling of personal or sensitive data.
 
-- **Sinais:**
-  - Schema inclui CPF, RG, e-mail, telefone, dados de saúde.
-  - Logs potencialmente vazam PII em texto claro.
-  - Compartilhamento entre serviços sem ofuscação/criptografia.
-  - Retenção indefinida sem política declarada.
-- **Trade-offs típicos:** UX vs compliance LGPD; debug vs minimização; perf vs criptografia.
+- **Signals:**
+  - Schema includes CPF, national ID, email, phone, health data.
+  - Logs potentially leaking PII in plain text.
+  - Cross-service sharing without obfuscation/encryption.
+  - Indefinite retention without a declared policy.
+- **Typical trade-offs:** UX vs LGPD compliance; debug vs minimization; performance vs encryption.
 
 #### 9 — `prod_migration`
-Migration de schema executando contra dados de produção.
+Schema migration running against production data.
 
-- **Sinais:**
-  - Migration toca tabela com volume > 100k linhas.
-  - DDL bloqueante em RDBMS (ALTER TABLE com rewrite).
-  - Mudança de tipo/constraint que invalida linhas existentes.
-  - Sem janela de manutenção pré-acordada.
-- **Trade-offs típicos:** zero-downtime vs simplicidade; backfill incremental vs single shot; rollback plan vs forward-only.
+- **Signals:**
+  - Migration touches a table with volume > 100k rows.
+  - Blocking DDL in RDBMS (ALTER TABLE with full rewrite).
+  - Type/constraint change that invalidates existing rows.
+  - No pre-agreed maintenance window.
+- **Typical trade-offs:** zero-downtime vs simplicity; incremental backfill vs single shot; rollback plan vs forward-only.
 
 #### 10 — `adr_drift`
-Plan diverge de ADR existente.
+Plan diverges from an existing ADR.
 
-- **Sinais:**
-  - ADR aprovado declara stack X, plan propõe Y.
-  - Decisão arquitetural toca componente com ADR vigente.
-  - "Rationale" antigo do ADR ainda válido — mas plan ignora.
-  - ADR não foi superseded formalmente.
-- **Trade-offs típicos:** manter ADR (custo de cumprir) vs superseder (custo de re-justificar) vs convivência híbrida (custo de divergência).
+- **Signals:**
+  - Approved ADR declares stack X, plan proposes Y.
+  - Architectural decision touches a component with an active ADR.
+  - Old ADR "Rationale" still valid — but plan ignores it.
+  - ADR not formally superseded.
+- **Typical trade-offs:** keep ADR (compliance cost) vs supersede (re-justification cost) vs hybrid coexistence (divergence cost).
 
 #### 11 — `workspace_corrupt`
-Inconsistência entre L1 (CONTEXT.md frontmatter) e estado real do filesystem.
+Inconsistency between L1 (`CONTEXT.md` frontmatter) and the real filesystem state.
 
-- **Sinais:**
-  - Pre-flight check detecta hash mismatch, outputs ausentes, commit_sha sumido (ver §Heurísticas em `references/state-machine-schema.md`).
-  - L1 diz `IN_PROGRESS` mas sem commits em workspace há > 24h.
-  - `waves.current=N` sem branches `wave-N/<task>` correspondentes.
-- **Trade-offs típicos:** retomar via Recovery Wizard vs abandonar workspace vs spawn novo workspace.
-- **Nota:** este stop point é especial — sempre dispara `hard` e propõe Recovery Wizard direto, não menu A/B/C livre.
+- **Signals:**
+  - Pre-flight check detects hash mismatch, missing outputs, missing commit_sha (see §Heuristics in `references/state-machine-schema.md`).
+  - L1 says `IN_PROGRESS` but no commits in workspace for > 24h.
+  - `waves.current=N` without corresponding `wave-N/<task>` branches.
+- **Typical trade-offs:** resume via Recovery Wizard vs abandon workspace vs spawn new workspace.
+- **Note:** this stop point is special — always fires `hard` and proposes Recovery Wizard directly, not a free A/B/C menu.
 
 #### 12 — `profile_mismatch`
-Profile/tier escolhido no bootstrap não corresponde ao escopo real da task em curso.
+Profile/tier chosen at bootstrap does not match the real scope of the task in progress.
 
-- **Sinais:**
-  - Tier `experimental` mas plan inclui dados de produção.
-  - Profile `technical_article` mas task envolve código rodando em CI.
-  - `ml_project / tool` mas plan exige peer-review formal.
-  - Escopo cresceu além do declarado em L0.
-- **Trade-offs típicos:** mudar profile/tier (regenera matriz, custo de re-validação) vs spawn novo workspace com profile correto vs reduzir escopo da task atual.
+- **Signals:**
+  - Tier `experimental` but plan includes production data.
+  - Profile `technical_article` but task involves code running in CI.
+  - `ml_project / tool` but plan requires formal peer-review.
+  - Scope grew beyond what was declared in L0.
+- **Typical trade-offs:** change profile/tier (regenerates matrix, re-validation cost) vs spawn new workspace with correct profile vs reduce current task scope.
 
 #### 13 — `feedback_ambiguous` (v3.6.0 preview loop)
-Feedback visual humano com baixa confidence: descrição vaga, screenshot sem anotação clara, contradição entre texto e visual.
+Human visual feedback with low confidence: vague description, unannotated screenshot, contradiction between text and visual.
 
-- **Sinais:**
-  - Humano fala "não gostei" sem apontar elemento específico.
-  - Screenshot anotado com setas em múltiplos elementos sem descrição textual cruzada.
-  - Texto pede mudança X mas screenshot anotado mostra elemento diferente.
-- **Trade-offs típicos:** agente especula (risco mexer no errado) vs pausa e pergunta (atrito mas correto).
-- **Calibração:** sempre `hard` (qualquer tier). Disparável só durante stage 04 com `preview_loop_enabled: true`.
+- **Signals:**
+  - Human says "I don't like it" without pointing to a specific element.
+  - Screenshot annotated with arrows on multiple elements without cross-referenced textual description.
+  - Text requests change X but annotated screenshot shows a different element.
+- **Typical trade-offs:** agent speculates (risk of changing the wrong thing) vs pauses and asks (friction but correct).
+- **Calibration:** always `hard` (any tier). Triggerable only during stage 04 with `preview_loop_enabled: true`.
 - Doc: `references/preview-loop-protocol.md`.
 
 #### 14 — `design_system_cascade` (v3.6.0 preview loop)
-Mudança em token (cor, spacing, typography) afeta mais componentes que `preview_loop.design_cascade_threshold` (default 5).
+A token (color, spacing, typography) change affects more components than `preview_loop.design_cascade_threshold` (default 5).
 
-- **Sinais:**
-  - Humano pede "muda primary pra verde", agente Grep mostra 17 componentes afetados.
-  - Mudança em `spacing.md` propaga pra todo o app.
-  - Override de typography afeta múltiplas seções.
-- **Trade-offs típicos:** cascata global (DESIGN.md fica fonte de verdade, mudança visual ampla) vs override local (só esse componente, DESIGN.md fica aspiracional) vs cancela.
-- **Calibração:** sempre `hard` (qualquer tier). Disparável só durante stage 04 com `preview_loop_enabled: true`.
+- **Signals:**
+  - Human requests "change primary to green", agent Grep shows 17 affected components.
+  - Change in `spacing.md` propagates to the entire app.
+  - Typography override affects multiple sections.
+- **Typical trade-offs:** global cascade (DESIGN.md becomes source of truth, broad visual change) vs local override (only this component, DESIGN.md stays aspirational) vs cancel.
+- **Calibration:** always `hard` (any tier). Triggerable only during stage 04 with `preview_loop_enabled: true`.
 - Doc: `references/preview-loop-protocol.md`.
 
 #### 15 — `runtime_cleanup_failed` (v3.7.0)
-Runtime cleanup pré-saída fase 08 (saída A close, B restart, C spawn) detectou categoria não-clean e humano cancelou ou comando cleanup retornou erro.
+Pre-exit stage 08 runtime cleanup (exit A close, B restart, C spawn) detected a non-clean category and human cancelled, or the cleanup command returned an error.
 
-Aplicável APENAS em fase 08 (`applicable_stop_points: ["runtime_cleanup_failed"]`). Outros stages NÃO disparam — runtime cleanup é gate de transição final, não decisão arquitetural.
+Applicable ONLY in stage 08 (`applicable_stop_points: ["runtime_cleanup_failed"]`). Other stages do NOT trigger it — runtime cleanup is a final transition gate, not an architectural decision.
 
-- **Sinais:**
-  - `runtime-status.py --exit-code` retorna 1 e humano responde `[n]` em alguma categoria.
-  - Comando cleanup falha (kill permission denied, branch protected, docker daemon down).
-  - Humano abandona checklist mid-confirmação.
-- **Trade-offs típicos:** resolver agora (interromper fluxo) vs deferir cleanup (workspace fica inconsistente, recovery wizard detecta depois) vs cancelar fase 08 (status volta `COMPLETED_AWAITING_HUMAN`).
-- **Calibração:** sempre `hard` — strict universal todos tiers (não calibrado por tier).
-- **Menu A/B/C específico** (não usa template padrão §3):
+- **Signals:**
+  - `runtime-status.py --exit-code` returns 1 and human answers `[n]` in some category.
+  - Cleanup command fails (kill permission denied, branch protected, docker daemon down).
+  - Human abandons checklist mid-confirmation.
+- **Typical trade-offs:** resolve now (interrupt flow) vs defer cleanup (workspace becomes inconsistent, recovery wizard detects later) vs cancel stage 08 (status reverts to `COMPLETED_AWAITING_HUMAN`).
+- **Calibration:** always `hard` — strict universal all tiers (not calibrated by tier).
+- **Specific A/B/C menu** (does not use standard template §3):
   ```
-  Runtime cleanup falhou em categoria(s): <lista>
+  Runtime cleanup failed in category(ies): <list>
 
-  [a] resolvi manualmente, retoma checklist
-  [b] skip categoria + segue saída <A|B|C> (workspace fica inconsistente)
-  [c] cancela fase 08 (status volta COMPLETED_AWAITING_HUMAN)
+  [a] resolved manually, resume checklist
+  [b] skip category + proceed with exit <A|B|C> (workspace becomes inconsistent)
+  [c] cancel stage 08 (status reverts to COMPLETED_AWAITING_HUMAN)
   ```
 - Doc: `references/runtime-cleanup-protocol.md`.
 
 ---
 
-## 2. Thresholds calibrados por tier (itens 5, 7, 8)
+## 2. Thresholds calibrated by tier (items 5, 7, 8)
 
-Source: `templates/_config/profile-matrix.md` (chaves `stop_points_calibration.item_5`, `item_7`, `item_8`). Em caso de divergência, `<SKILL_DIR>/scripts/profile-merge.py` é a fonte da verdade operacional.
+Source: `templates/_config/profile-matrix.md` (keys `stop_points_calibration.item_5`, `item_7`, `item_8`). In case of divergence, `<SKILL_DIR>/scripts/profile-merge.py` is the operational source of truth.
 
 | Item | experimental | tool | development | production |
 |---|---|---|---|---|
@@ -205,118 +205,118 @@ Source: `templates/_config/profile-matrix.md` (chaves `stop_points_calibration.i
 | 7 — `over_eng` | warning | warning | hard | hard |
 | 8 — `pii` | warning | hard | hard | hard+DPO |
 
-Demais 12 stops (1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15) sempre `hard` em qualquer tier.
+Remaining 12 stops (1, 2, 3, 4, 6, 9, 10, 11, 12, 13, 14, 15) always `hard` in any tier.
 
-### 2.1 Modos de severidade
+### 2.1 Severity modes
 
-| Modo | Comportamento |
+| Mode | Behavior |
 |---|---|
-| `warning` | Agente avisa em prosa no output da sessão, segue trabalho com nota; **não bloqueia**. Não atualiza `status` do L1. Append em `history` opcional como `event: stop_point_warning`. |
-| `hard` | Agente para, escreve menu A/B/C (template §3), atualiza L1 `status: BLOCKED_STOP_POINT`, espera resposta humana. |
-| `hard+DPO` | `hard` + recomendação explícita "envolver DPO/legal antes de seguir" no menu. Status idem. |
+| `warning` | Agent warns in prose in session output, continues work with a note; **does not block**. Does not update L1 `status`. Optional append to `history` as `event: stop_point_warning`. |
+| `hard` | Agent stops, writes A/B/C menu (template §3), updates L1 `status: BLOCKED_STOP_POINT`, waits for human response. |
+| `hard+DPO` | `hard` + explicit recommendation "involve DPO/legal before proceeding" in the menu. Status same. |
 
 ---
 
-## 3. Template de menu A/B/C padronizado
+## 3. Standardized A/B/C menu template
 
-Disparo: agente em qualquer estágio ao detectar stop point com modo `hard` ou `hard+DPO`.
+Triggered: agent in any stage upon detecting a stop point with mode `hard` or `hard+DPO`.
 
 ```markdown
-# 🛑 STOP POINT — <id> (<descrição curta>)
+# 🛑 STOP POINT — <id> (<short description>)
 
-## Resumo
-<1-2 parágrafos descrevendo o que foi detectado e por que disparou>
+## Summary
+<1-2 paragraphs describing what was detected and why it triggered>
 
 ## Trade-offs
-- A) <opção A — descrição>
-- B) <opção B — descrição>
-- C) <opção C — geralmente "manter como está / escalar humano">
+- A) <option A — description>
+- B) <option B — description>
+- C) <option C — usually "keep as is / escalate to human">
 
-## Reversibilidade
-- A: <reversível? como? a que custo?>
-- B: <reversível? como? a que custo?>
-- C: <reversível>
+## Reversibility
+- A: <reversible? how? at what cost?>
+- B: <reversible? how? at what cost?>
+- C: <reversible>
 
-## Recomendação do agente
-<A/B/C> + justificativa em 1 parágrafo, citando trade-offs e contexto do projeto (tier, profile, lessons aplicáveis).
+## Agent recommendation
+<A/B/C> + justification in 1 paragraph, citing trade-offs and project context (tier, profile, applicable lessons).
 
-## Ação humano
+## Human action
 
-Responda no chat:
-- "A" / "B" / "C" para escolher
-- Texto livre para outra opção / pedir mais info
+Reply in chat:
+- "A" / "B" / "C" to choose
+- Free text for another option / to request more info
 
-Aguardando resposta. L1 atualizado: `status: BLOCKED_STOP_POINT`.
+Awaiting response. L1 updated: `status: BLOCKED_STOP_POINT`.
 ```
 
-Em modo `hard+DPO` adiciona linha extra logo após a recomendação:
+In `hard+DPO` mode, add an extra line right after the recommendation:
 
-> **Atenção LGPD:** envolver DPO/legal antes de seguir. Decisão técnica não substitui validação jurídica.
+> **LGPD Notice:** involve DPO/legal before proceeding. Technical decision does not replace legal validation.
 
 ---
 
-## 4. Update do L1 ao disparar
+## 4. L1 update when triggered
 
-Sessão DEVE executar atomicamente (1 commit):
+Session MUST execute atomically (1 commit):
 
-1. Append em `history`:
+1. Append to `history`:
    ```yaml
    - at: "<ISO 8601 UTC>"
      event: "stop_point_triggered"
      stop_point_id: "<id>"
-     note: "<texto curto descrevendo gatilho>"
+     note: "<short text describing the trigger>"
    ```
 2. Set `status: BLOCKED_STOP_POINT`.
-3. Set `last_action: "stop point <id> disparado"` + `last_action_at: <ISO>`.
-4. Set `next_action: "aguardando resposta humana ao menu A/B/C"`.
-5. Commit atômico (`workspace: stop_point <id> disparado`). Pre-commit hook valida atomicidade L1↔outputs.
+3. Set `last_action: "stop point <id> triggered"` + `last_action_at: <ISO>`.
+4. Set `next_action: "awaiting human response to A/B/C menu"`.
+5. Atomic commit (`workspace: stop_point <id> triggered`). Pre-commit hook validates L1↔outputs atomicity.
 
-Status enum e schema vêm de `references/state-machine-schema.md`.
+Status enum and schema come from `references/state-machine-schema.md`.
 
 ---
 
-## 5. Resposta humana — protocolo de retomada
+## 5. Human response — resume protocol
 
-Humano responde no chat com `A`, `B`, `C` ou texto livre. Sessão:
+Human replies in chat with `A`, `B`, `C`, or free text. Session:
 
-1. Lê resposta.
-2. Append em `history`:
+1. Reads response.
+2. Appends to `history`:
    ```yaml
    - at: "<ISO 8601 UTC>"
      event: "stop_point_resolved"
      stop_point_id: "<id>"
      resolution: "A" | "B" | "C" | "custom"
-     note: "<resumo da decisão humana>"
+     note: "<summary of human decision>"
    ```
-3. Set `status: IN_PROGRESS`.
-4. Atualiza `last_action`/`next_action` conforme escolha.
-5. Continua trabalho conforme opção escolhida.
-6. **Spawn de ADR:** se a escolha implica decisão arquitetural (típico em stops 1, 2, 3, 6, 10), spawnar `docs/decisions/NNNN-<slug>.md` — **apenas em fase 02 design**. Em outras fases, anotar no `decisions-pending.md` da fase 02 do próximo workspace ou registrar como tech debt.
+3. Sets `status: IN_PROGRESS`.
+4. Updates `last_action`/`next_action` per choice.
+5. Continues work per chosen option.
+6. **ADR spawn:** if the choice implies an architectural decision (typical for stops 1, 2, 3, 6, 10), spawn `docs/decisions/NNNN-<slug>.md` — **only in stage 02 design**. In other stages, annotate in the `decisions-pending.md` of the next workspace's stage 02 or record as tech debt.
 
 ---
 
 ## 6. Custom stop points (D3)
 
-Override em `.icm-profile.local.yaml` campo `custom_stop_points` (schema completo em `templates/_config/profile-matrix.md`). Lista adicional projeto-específica. Cada item exige `id`, `description`, `threshold` (dict tier→modo).
+Override in `.icm-profile.local.yaml` field `custom_stop_points` (full schema in `templates/_config/profile-matrix.md`). Additional project-specific list. Each item requires `id`, `description`, `threshold` (dict tier→mode).
 
-Bootstrap (`<SKILL_DIR>/scripts/profile-merge.py`) valida schema e bootstrap inclui custom stops em `recon-report.md` para visibilidade. Sessões consultam tanto a lista canônica quanto `custom_stop_points` do profile efetivo.
+Bootstrap (`<SKILL_DIR>/scripts/profile-merge.py`) validates the schema and bootstrap includes custom stops in `recon-report.md` for visibility. Sessions consult both the canonical list and `custom_stop_points` from the effective profile.
 
 ---
 
-## 7. Estágios onde stop points são esperados
+## 7. Stages where stop points are expected
 
-Tabela de aplicabilidade típica. `n/a` significa que o estágio raramente dispara aquele stop pela natureza do trabalho.
+Typical applicability table. `n/a` means the stage rarely triggers that stop by the nature of the work.
 
-| Estágio | Stops mais comuns |
+| Stage | Most common stops |
 |---|---|
 | 00 recon | 11 (`workspace_corrupt`), 12 (`profile_mismatch`) |
 | 01 discovery | 1 (`stack`), 3 (`external_api`), 5 (`paid_service`), 8 (`pii`) |
 | 02 design | 1, 2 (`db`), 4 (`new_dep`), 5, 6 (`irreversible`), 7 (`over_eng`), 8, 10 (`adr_drift`) |
-| 03 wave_planner | n/a (wave-planner é determinístico — gap-fill se aplicável) |
+| 03 wave_planner | n/a (wave-planner is deterministic — gap-fill if applicable) |
 | 04 implementation_waves | 4, 6, 7, 9 (`prod_migration`), 10 |
 | 05 verification | n/a |
 | 06 review | 7, 8, 10 |
 | 07 merge | 6, 9 |
-| 08 feedback_intake | n/a (fase 08 é análise + decisão A/B/C de iteração; stops detectados aqui rolam pro próximo workspace via saída C) |
+| 08 feedback_intake | n/a (stage 08 is analysis + A/B/C iteration decision; stops detected here carry over to the next workspace via exit C) |
 
-A tabela é orientativa. Qualquer estágio pode disparar qualquer stop se o sinal aparecer — não há whitelist enforçada.
+The table is indicative. Any stage can trigger any stop if the signal appears — there is no enforced whitelist.
