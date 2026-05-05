@@ -337,25 +337,44 @@ def migrate_3_10_0_to_3_11_0(workspace_root: Path, project_root: Path) -> None:
 
 
 def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
-    """v3.12.0 -> v3.12.1: Re-copy refs + surgical fixes + LLM guidance.
+    """v3.12.0 → v3.12.1: Full workspace migration.
 
-    Automated:
-    - Re-copies all 32 reference docs from skill references/ to workspace
-      _references/runtime/.
-    - Stage 04 CONTEXT.md: dead pseudo-code → render-critic-prompt.py CLI.
-    - Stage 08 CONTEXT.md: stop point #13 → #15.
-    - _config/stop-points.md: phantom wave_branch_missing → workspace_corrupt,
-      count 13→15.
-    - Prints post-migration verification checklist to stdout.
+    Automated fixes (40+ surgical replacements):
+    - L0 CLAUDE.md: stop count, script path, stop ID.
+    - _config/stop-points.md: phantom fix, count fix, new stop points.
+    - _config/xp-conventions.md: branch placeholders, TDD tier descriptions.
+    - Stage 04: 7→8 checks, 12→14-step, REFACTOR, cross-task coherence,
+      lead override, merge conflict, blocked output, references header,
+      critic invocation (render-critic-prompt.py).
+    - Stage 08: stop point #13→#15, tech debt decision tree.
+    - Stages 00/01/02/03/05: script-cli-reference cross-ref.
+    - Re-copies all 32 reference docs to _references/runtime/.
+    - Prints post-migration LLM verification checklist.
 
     Idempotent: safe to run on already-migrated workspace.
     """
-    import shutil
 
     _bump_version_only(workspace_root, "3.12.1")
     skill_root = Path(__file__).resolve().parent.parent
     skill_dir = str(skill_root).replace("\\", "/")
     changed: list[str] = []
+
+    def _apply(path: Path, replacements: list[tuple[str, str]], label: str) -> None:
+        """Apply surgical text replacements to a file if it exists."""
+        if not path.is_file():
+            return
+        try:
+            text = path.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            return
+        applied = False
+        for old, new in replacements:
+            if old in text:
+                text = text.replace(old, new)
+                applied = True
+        if applied:
+            path.write_text(text, encoding="utf-8")
+            changed.append(f"  - {label}")
 
     # ---- 1. Re-copy reference docs ----
     refs_src = skill_root / "references"
@@ -363,37 +382,21 @@ def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
     copied = 0
     if refs_src.is_dir() and runtime_dst.exists():
         _RUNTIME_REFS: tuple[str, ...] = (
-            "subagent-protocol.md",
-            "wave-planner-algorithm.md",
-            "state-machine-schema.md",
-            "recovery-wizard.md",
-            "stop-points-canonical.md",
-            "4-block-contract-template.md",
-            "feedback-intake-stage08.md",
-            "session-handoff-protocol.md",
-            "project-root-claude-md.md",
-            "context-format.md",
-            "agent-brief-template.md",
-            "adr-format.md",
-            "diagnose-protocol.md",
-            "task-types-hitl-afk.md",
-            "triage-state-machine.md",
-            "out-of-scope-kb.md",
-            "design-it-twice.md",
-            "deep-modules.md",
-            "design-system.md",
-            "forensic-plus-protocol.md",
-            "critic-protocol.md",
-            "lead-resolution-protocol.md",
-            "mocking-guidelines.md",
-            "preview-loop-protocol.md",
-            "runtime-cleanup-protocol.md",
-            "e2e-coverage-protocol.md",
-            "ci-rollback-protocol.md",
-            "conflict-resolution-protocol.md",
-            "icm-cleanup-protocol.md",
-            "script-cli-reference.md",
-            "wave-execution-protocol.md",
+            "subagent-protocol.md", "wave-planner-algorithm.md",
+            "state-machine-schema.md", "recovery-wizard.md",
+            "stop-points-canonical.md", "4-block-contract-template.md",
+            "feedback-intake-stage08.md", "session-handoff-protocol.md",
+            "project-root-claude-md.md", "context-format.md",
+            "agent-brief-template.md", "adr-format.md",
+            "diagnose-protocol.md", "task-types-hitl-afk.md",
+            "triage-state-machine.md", "out-of-scope-kb.md",
+            "design-it-twice.md", "deep-modules.md", "design-system.md",
+            "forensic-plus-protocol.md", "critic-protocol.md",
+            "lead-resolution-protocol.md", "mocking-guidelines.md",
+            "preview-loop-protocol.md", "runtime-cleanup-protocol.md",
+            "e2e-coverage-protocol.md", "ci-rollback-protocol.md",
+            "conflict-resolution-protocol.md", "icm-cleanup-protocol.md",
+            "script-cli-reference.md", "wave-execution-protocol.md",
             "worktree-model.md",
         )
         for fname in _RUNTIME_REFS:
@@ -408,9 +411,51 @@ def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
     if copied:
         changed.append(f"  - {copied} reference docs re-copied to _references/runtime/")
 
-    # ---- 2. Stage 04: critic invocation ----
-    stage04 = workspace_root / "stages" / "04_implementation_waves" / "CONTEXT.md"
-    _STAGE04_OLD = (
+    # ---- 2. L0 CLAUDE.md — text corrections ----
+    _apply(workspace_root / "CLAUDE.md", [
+        ("12 canonical stop points", "15 canonical stop points"),
+        ("via scripts/runtime-status.py", f"via {skill_dir}/scripts/runtime-status.py"),
+        ("runtime_cleanup_failed (#13)", "runtime_cleanup_failed (#15)"),
+        ("_references/runtime/worktree-model.md",
+         f"{{PROJECT_ROOT}}/workspaces/{workspace_root.name}/_references/runtime/worktree-model.md"),
+    ], "L0 CLAUDE.md: 4 text corrections")
+
+    # ---- 3. _config/stop-points.md — comprehensive fix ----
+    _apply(workspace_root / "_config" / "stop-points.md", [
+        ("13 stop points + thresholds", "15 stop points + thresholds"),
+        ("Canonical list of 13 stop points", "Canonical list of 15 stop points"),
+        ("## 1. Canonical list (13 items)", "## 1. Canonical list (15 items)"),
+        # Phantom → correct (LONGER match first)
+        ("`wave_branch_missing` — Missing wave branch",
+         "`workspace_corrupt` — ICM workspace corrupted"),
+        ("`wave_branch_missing`", "`workspace_corrupt`"),
+        # Renumber runtime_cleanup_failed if it got shifted into #13 slot by old template
+        ("### 13. `runtime_cleanup_failed`",
+         "### 15. `runtime_cleanup_failed`"),
+        # Applicability table
+        ("| 00 recon | 11 (`wave_branch_missing`)",
+         "| 00 recon | 11 (`workspace_corrupt`)"),
+    ], "_config/stop-points.md: 7 fixes")
+
+    # ---- 4. _config/xp-conventions.md — branch + TDD ----
+    _apply(workspace_root / "_config" / "xp-conventions.md", [
+        # Branch placeholders
+        ("`wave-{{WORKSPACE}}-<N>/<task>`", "`wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`"),
+        ("`wave-{{WORKSPACE}}-<N>/<task>` for code",
+         "`wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` for code"),
+        # TDD tier descriptions
+        ("- **experimental:** TDD optional",
+         "- **experimental:** TDD optional (skip allowed; no penalty in verification)"),
+        ("- **tool:** TDD recommended",
+         "- **tool:** TDD mandatory when task touches >1 module or public API; optional for single-file/internal tasks"),
+        ("- **development:** TDD mandatory",
+         "- **development:** TDD mandatory (all tasks; stage 05 verification enforces)"),
+        ("- **production:** TDD mandatory + security gate",
+         "- **production:** TDD mandatory + security gate (all tasks; stage 05 + stage 06 enforce)"),
+    ], "_config/xp-conventions.md: branch + TDD fixes")
+
+    # ---- 5. Stage 04 — comprehensive fixes ----
+    _STAGE04_CRITIC_OLD = (
         "       ```python\n"
         "       Agent(\n"
         '           description="L3 critic ortogonal task <slug>",\n'
@@ -420,7 +465,7 @@ def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
         "       )\n"
         "       ```"
     )
-    _STAGE04_NEW = (
+    _STAGE04_CRITIC_NEW = (
         "       1. **Render critic prompt** (automated — script captures diff + test output):\n"
         "          ```bash\n"
         f"          python {skill_dir}/scripts/render-critic-prompt.py \\\n"
@@ -440,90 +485,108 @@ def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
         "          )\n"
         "          ```"
     )
-    if stage04.is_file():
-        try:
-            text = stage04.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            text = ""
-        if _STAGE04_OLD in text:
-            text = text.replace(_STAGE04_OLD, _STAGE04_NEW)
-            stage04.write_text(text, encoding="utf-8")
-            changed.append("  - stage 04: critic invocation → render-critic-prompt.py")
+    _apply(workspace_root / "stages" / "04_implementation_waves" / "CONTEXT.md", [
+        # Count + branch fixes
+        ("7 deterministic checks", "8 deterministic checks"),
+        ("12-step pipeline", "14-step pipeline"),
+        ("7 checks (extended v3.9.0)", "8 checks (extended v3.10.0)"),
+        ("7 checks extended (v3.9.0)", "8 checks extended (v3.10.0)"),
+        ("wave-{{WORKSPACE}}-<N>/<task-slug>", "wave-{{WORKSPACE_NUM}}-<N>/<task-slug>"),
+        # REFACTOR
+        ("REFACTOR → optional, only if obvious complexity reduction",
+         "REFACTOR → mandatory after every GREEN. Skip ONLY when all three Dirt Check questions (duplication, naming, function/file size) answer NO."),
+        # Cross-task coherence
+        ("optional v3.9.0.",
+         "mandatory v3.12.1. Skip only when tier < production OR all tasks in wave touch disjoint file sets with no shared APIs."),
+        # Lead override
+        ("Lead may override (records choice in",
+         "Lead may override ONLY with explicit justification recorded in"),
+        # Merge conflict
+        ("Merge conflict → `references/conflict-resolution-protocol.md`.",
+         "**Merge conflict → STOP — NEVER resolve autonomously.** Merge code is high risk. Follow `references/conflict-resolution-protocol.md`: human must decide (rebase/abort/manual resolution). Autonomous merge conflict resolution = `BLOCKED_ERROR`."),
+        # Blocked output
+        ("blocked.md` — optional, created when subagent triggers",
+         "blocked.md` — conditional: MUST be written when subagent triggers"),
+        # References header
+        ("## v3.3.0 references applicable to this stage",
+         "## References applicable to this stage (v3.3.0+, consolidated through v3.12.1)"),
+        # Critic invocation (longest match last)
+        (_STAGE04_CRITIC_OLD, _STAGE04_CRITIC_NEW),
+    ], "stage 04: comprehensive fixes")
 
-    # ---- 3. Stage 08: stop point #13 → #15 ----
-    stage08 = workspace_root / "stages" / "08_feedback_intake" / "CONTEXT.md"
-    _STAGE08_REPLACEMENTS: list[tuple[str, str]] = [
+    # ---- 6. Stage 08 — stop points + tech debt + script ref ----
+    _apply(workspace_root / "stages" / "08_feedback_intake" / "CONTEXT.md", [
         ("#13 `runtime_cleanup_failed`", "#15 `runtime_cleanup_failed`"),
         ("stop point #13 `runtime_cleanup_failed`", "stop point #15 `runtime_cleanup_failed`"),
-    ]
-    if stage08.is_file():
-        try:
-            text = stage08.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            text = ""
-        for old, new in _STAGE08_REPLACEMENTS:
-            if old in text:
-                text = text.replace(old, new)
-                stage08.write_text(text, encoding="utf-8")
-                changed.append("  - stage 08: stop point #13 → #15")
+        ("conditional: optional — sample", "conditional: sample"),
+        # Tech debt decision tree
+        ("**(v3.7.0) Append tech debt during intake — optional:** if free-form feedback reveals durable technical debt (not a lesson), append to",
+         "**(v3.7.0) Append tech debt during intake — conditional, mandatory when debt is cited.** If free-form feedback reveals durable technical debt (not a lesson), append to"),
+    ], "stage 08: stop points + tech debt + script ref")
 
-    # ---- 4. _config/stop-points.md: phantom wave_branch_missing → workspace_corrupt ----
-    sp_md = workspace_root / "_config" / "stop-points.md"
-    _SP_REPLACEMENTS: list[tuple[str, str]] = [
-        # Count in header
-        ("13 stop points + thresholds", "15 stop points + thresholds"),
-        ("Canonical list of 13 stop points", "Canonical list of 15 stop points"),
-        ("## 1. Canonical list (13 items)", "## 1. Canonical list (15 items)"),
-        # Phantom → correct stop point (LONGER match first to avoid order bug)
-        ("wave_branch_missing` — Missing wave branch",
-         "workspace_corrupt` — ICM workspace corrupted"),
-        ("`wave_branch_missing`", "`workspace_corrupt`"),
-    ]
-    if sp_md.is_file():
-        try:
-            text = sp_md.read_text(encoding="utf-8")
-        except (UnicodeDecodeError, OSError):
-            text = ""
-        for old, new in _SP_REPLACEMENTS:
-            if old in text:
-                text = text.replace(old, new)
-                sp_md.write_text(text, encoding="utf-8")
-                changed.append(f"  - _config/stop-points.md: {old[:50]}... → {new[:50]}...")
+    # ---- 7. Stages 00/01/02/03/05 — script-cli-reference cross-ref ----
+    for stage_num in ("00", "01", "02", "03", "05"):
+        stage_names = {
+            "00": "00_recon", "01": "01_discovery", "02": "02_design",
+            "03": "03_wave_planner", "05": "05_verification",
+        }
+        _apply(
+            workspace_root / "stages" / stage_names[stage_num] / "CONTEXT.md",
+            [(
+                "   - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`",
+                "   - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.\n"
+                "   - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`",
+            )],
+            f"stage {stage_num}: script-cli-reference cross-ref",
+        )
 
-    # ---- 5. Print LLM verification checklist ----
+    # ---- 8. Print LLM verification checklist ----
     print("")
     print("=" * 60)
-    print(f" Migration v3.12.0 → v3.12.1 complete: {workspace_root.name}")
+    print(f" Migration v3.12.0 → v3.12.1: {workspace_root.name}")
     print("=" * 60)
     print("")
-    print("Automated changes:")
-    for c in changed:
-        print(c)
+    if changed:
+        print("Automated fixes applied:")
+        for c in changed:
+            print(c)
+    else:
+        print("Already at v3.12.1 — no changes needed.")
+        print("")
+        return
     print("")
-    print("MANUAL VERIFICATION (LLM — verify each item):")
+    print("MANUAL VERIFICATION — LLM must complete these items:")
     print("")
-    print("  1. _config/stop-points.md — verify 15 stop points match canonical:")
-    print(f"     {skill_dir}/references/stop-points-canonical.md")
-    print("     Missing items to add manually if surgical fix missed them:")
-    print("       #13 ambiguous_feedback, #14 design_system_cascade")
-    print("     Detail sections for these must exist at ### 13. and ### 14.")
+    print("  1. _config/stop-points.md:")
+    print("     Surgical fix applied, but detail sections for #13 ambiguous_feedback")
+    print("     and #14 design_system_cascade are MISSING. Add them manually:")
+    print(f"     Source: {skill_dir}/references/stop-points-canonical.md")
+    print("     Template: {skill_dir}/templates/_config/stop-points.md")
+    print("     Sections needed: ### 13. ambiguous_feedback, ### 14. design_system_cascade")
     print("")
-    print("  2. stages/04_implementation_waves/CONTEXT.md step 8c:")
-    print("     Verify critic invocation references render-critic-prompt.py")
-    print(f"     Script exists at: {skill_dir}/scripts/render-critic-prompt.py")
+    print("  2. stages/04_implementation_waves/CONTEXT.md:")
+    print("     Surgical fixes applied for most changes. Verify these structural items")
+    print("     (not automatable — session-specific content may exist):")
+    print("     - 'Common protocol violations' table exists (6 rows)")
+    print("     - Pre-flight checklist has 5 items (MANDATORY — do NOT skip)")
+    print("     - Agent() spawn includes model: <writer_model> parameter")
+    print("     - B4 VOID_TASK block shows Reason/Evidence/Action proposed schema")
+    print("     - Step 8d --files-touched has source annotation")
+    print("     If ANY are missing: copy from current skill template:")
+    print(f"     {skill_dir}/templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl")
     print("")
     print("  3. stages/08_feedback_intake/CONTEXT.md:")
-    print("     Verify all stop point references use current numbering.")
-    print("     runtime_cleanup_failed = #15 (was #13).")
-    print(f"     workspace_corrupt = #11 (was wave_branch_missing, now fixed).")
+    print("     Tech debt now has decision tree. Verify 5 questions present.")
+    print("     If missing: copy from current template.")
     print("")
-    print("  4. _references/runtime/ — verify new docs present:")
-    print("     script-cli-reference.md (NEW — LLM needs this for CLI formats)")
-    print("     wave-execution-protocol.md (was missing)")
-    print("     worktree-model.md (was missing)")
+    print("  4. stages/00,01,02,03,05 _kickoff.md files:")
+    print("     If any _kickoff.md has Portuguese headers 'Estado entregue' or")
+    print("     'O que esta sessao deve fazer', translate to 'State delivered by")
+    print("     previous session' / 'What this session must do'.")
     print("")
     print("  5. Run state validation:")
-    print(f"     python {skill_dir}/scripts/validate_state.py --context-md {workspace_root}/CONTEXT.md")
+    print(f"     python {skill_dir}/scripts/validate_state.py \\")
+    print(f"         --context-md {workspace_root}/CONTEXT.md")
     print("")
     print(f"  6. Commit: workspace {workspace_root.name.split('-', 1)[0]}: migrate v3.12.0→v3.12.1")
     print("=" * 60)
