@@ -1,8 +1,8 @@
-# CONTEXT.md (Ubiquitous Language) — formato canônico
+# CONTEXT.md (Ubiquitous Language) — canonical format
 
-Adaptado de [mattpocock/skills/skills/engineering/grill-with-docs/CONTEXT-FORMAT.md].
+Adapted from [mattpocock/skills/skills/engineering/grill-with-docs/CONTEXT-FORMAT.md].
 
-## Estrutura
+## Structure
 
 ```markdown
 ---
@@ -42,46 +42,46 @@ _Avoid_: Client, buyer, account
 - "account" was used to mean both **Customer** and **User** — resolved: these are distinct concepts.
 ```
 
-## Regras
+## Rules
 
-- **Be opinionated.** Quando múltiplas palavras existem para o mesmo conceito,
-  pick the best one e liste outras como aliases para evitar.
-- **Flag conflicts explicitly.** Se um termo é usado ambiguamente, call it out
-  em "Flagged ambiguities" com resolução clara.
+- **Be opinionated.** When multiple words exist for the same concept,
+  pick the best one and list others as aliases to avoid.
+- **Flag conflicts explicitly.** If a term is used ambiguously, call it out
+  in "Flagged ambiguities" with a clear resolution.
 - **Keep definitions tight.** One sentence max. Define what it IS, not what it does.
-- **Show relationships.** Use bold term names e expresse cardinalidade quando óbvio.
-- **Only include domain-specific terms.** Conceitos gerais de programação
-  (timeouts, error types, utility patterns) NÃO pertencem aqui mesmo que o
-  projeto use extensivamente. Antes de adicionar um termo, pergunte: é um
-  conceito único deste contexto, ou um conceito genérico de programação?
-  Apenas o primeiro pertence.
-- **Group terms under subheadings** quando clusters naturais emergem.
-- **Write an example dialogue.** Conversa entre dev e domain expert que
-  demonstra como os termos interagem naturalmente e clarifica boundaries
-  entre conceitos relacionados.
+- **Show relationships.** Use bold term names and express cardinality when obvious.
+- **Only include domain-specific terms.** Generic programming concepts
+  (timeouts, error types, utility patterns) do NOT belong here even if the
+  project uses them extensively. Before adding a term, ask: is this a concept
+  unique to this domain, or a generic programming concept?
+  Only the former belongs.
+- **Group terms under subheadings** when natural clusters emerge.
+- **Write an example dialogue.** A conversation between dev and domain expert that
+  demonstrates how the terms interact naturally and clarifies boundaries
+  between related concepts.
 
-## Quando atualizar
+## When to update
 
-- **Stage 01 (discovery):** sessão é grilling session. Cada termo resolvido
-  → atualiza `<workspace>/_config/CONTEXT.md` **inline** (não batchear no fim).
-- **Stage 02+ (design, waves, etc):** consomem o glossário ao escrever
-  outputs. Se um novo termo emerge ou se um termo existente é refinado,
-  atualizar inline e referenciar no commit message.
-- **Stage 04 subagent context-injection:** lead injeta o `_config/CONTEXT.md`
-  como L3 obrigatório. Subagent usa vocabulário ao escrever código + tests.
+- **Stage 01 (discovery):** the session is a grilling session. Each resolved term
+  → update `<workspace>/_config/CONTEXT.md` **inline** (do not batch at the end).
+- **Stage 02+ (design, waves, etc):** consume the glossary when writing
+  outputs. If a new term emerges or an existing term is refined,
+  update inline and reference it in the commit message.
+- **Stage 04 subagent context-injection:** lead injects `_config/CONTEXT.md`
+  as mandatory L3. Subagent uses the vocabulary when writing code + tests.
 
 ## Single-context vs multi-context
 
-**Single context (maioria dos workspaces):** um único `<workspace>/_config/CONTEXT.md`.
+**Single context (majority of workspaces):** a single `<workspace>/_config/CONTEXT.md`.
 
-**Multiple contexts (workspace cobre múltiplos bounded contexts distintos):**
-um `_config/CONTEXT-MAP.md` lista os contexts e onde vivem. Cada subpath tem
-seu próprio `CONTEXT.md`. Inferir a estrutura — se workspace é coeso, single
-context; senão, criar map.
+**Multiple contexts (workspace covers multiple distinct bounded contexts):**
+a `_config/CONTEXT-MAP.md` lists the contexts and where they live. Each subpath has
+its own `CONTEXT.md`. Infer the structure — if the workspace is cohesive, single
+context; otherwise, create the map.
 
-## Anti-padrões
+## Anti-patterns
 
-- Listar termos genéricos (`http`, `cache`, `event-loop`) — não são domínio.
-- Definições longas e prolixas — uma sentença basta.
-- Múltiplas palavras para o mesmo conceito sem resolver qual é canônica.
-- Atualização batched no fim do stage — perde contexto da resolução.
+- Listing generic terms (`http`, `cache`, `event-loop`) — they are not domain concepts.
+- Long, verbose definitions — one sentence is enough.
+- Multiple words for the same concept without resolving which is canonical.
+- Batched update at the end of the stage — loses context of the resolution.

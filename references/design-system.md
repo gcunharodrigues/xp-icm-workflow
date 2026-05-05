@@ -2,45 +2,45 @@
 
 > **Versão:** v3.10.0
 > **Skill:** `xp-icm-workflow`
-> **Aplica quando:** profile efetivo tem `design_system_required: True`
-> (atualmente: `app_web_frontend` e `fullstack`).
-> **Path canônico:** `<project_root>/.icm-main/DESIGN.md` (base branch,
-> persistente cross-iteration via worktree v3.4.0).
-> **Complementa:** `references/preview-loop-protocol.md` — DESIGN.md fornece
-> tokens; preview loop fornece o ciclo build-iterate visual que consome esses
-> tokens em telas reais com hot-reload.
+> **Applies when:** effective profile has `design_system_required: True`
+> (currently: `app_web_frontend` and `fullstack`).
+> **Canonical path:** `<project_root>/.icm-main/DESIGN.md` (base branch,
+> persistent cross-iteration via worktree v3.4.0).
+> **Complements:** `references/preview-loop-protocol.md` — DESIGN.md provides
+> tokens; preview loop provides the build-iterate visual cycle that consumes those
+> tokens in real screens with hot-reload.
 
-## Por que DESIGN.md e não outro formato
+## Why DESIGN.md and not another format
 
-ICM adota o formato **DESIGN.md** definido pela
-[spec do Google Stitch](https://stitch.withgoogle.com/docs/design-md/overview/).
-Razões:
+ICM adopts the **DESIGN.md** format defined by the
+[Google Stitch spec](https://stitch.withgoogle.com/docs/design-md/overview/).
+Reasons:
 
-1. **Plain markdown + YAML frontmatter** — LLM lê direto, sem tooling
-   especial. Subagente em fase 04 lê via `Read tool`, zero ceremony.
-2. **Spec aberta + comunidade** — 69 exemplos prontos em
+1. **Plain markdown + YAML frontmatter** — the LLM reads it directly, no special
+   tooling needed. Subagent in stage 04 reads via `Read tool`, zero ceremony.
+2. **Open spec + community** — 69 ready-made examples at
    [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md)
    (airbnb, apple, claude, figma, framer, ferrari, etc.).
-3. **File-based ≡ filosofia ICM** — vive ao lado dos ADRs em
-   `<project_root>/.icm-main/`. Mesmo padrão de escrita (worktree-mediated
-   commits em base branch).
-4. **Schema converte trivialmente** pra `tokens.json` (W3C DTCG), Figma
+3. **File-based ≡ ICM philosophy** — lives alongside ADRs in
+   `<project_root>/.icm-main/`. Same authoring pattern (worktree-mediated
+   commits on base branch).
+4. **Schema converts trivially** to `tokens.json` (W3C DTCG), Figma
    variables, Tailwind theme config, shadcn/ui theme.
 
-## Estrutura canônica do arquivo
+## Canonical file structure
 
 ```markdown
 ---
 version: alpha
 name: <Brand name>
-description: <opcional, 1-2 frases>
+description: <optional, 1-2 sentences>
 
 colors:
   primary: "#1A1C1E"
   secondary: "#6C7278"
   tertiary: "#B8422E"
   neutral: "#F7F5F2"
-  # Estados semânticos opcionais:
+  # Optional semantic states:
   # surface, on-surface, error, on-error, etc.
 
 typography:
@@ -53,7 +53,7 @@ typography:
   headline-lg: { ... }
   body-md: { ... }
   label-sm: { ... }
-  # Geralmente 9-15 níveis nomeados (display/headline/body/label/caption × sm/md/lg)
+  # Usually 9-15 named levels (display/headline/body/label/caption × sm/md/lg)
 
 rounded:
   sm: 4px
@@ -69,7 +69,7 @@ spacing:
   xl: 32px
 
 components:
-  # Composite tokens com refs cross-token via {path.to.token}
+  # Composite tokens with cross-token refs via {path.to.token}
   button:
     bg: "{colors.primary}"
     fg: "#ffffff"
@@ -79,14 +79,14 @@ components:
 
 ## Overview
 <Brand personality, target audience, emotional response. Foundational
-context pra agente fazer decisões high-level quando token específico
-não cobre.>
+context for the agent to make high-level decisions when a specific token
+does not apply.>
 
 ## Colors
-<Paleta + rationale por cor, mapeando palette description → semantic role>
+<Palette + rationale per color, mapping palette description → semantic role>
 
 ## Typography
-<Escala 9-15 níveis com role declarado por nível>
+<Scale with 9-15 levels and a declared role per level>
 
 ## Layout
 <Grid system, breakpoints, container max-widths>
@@ -98,17 +98,17 @@ não cobre.>
 <Border radius, shape language (sharp / rounded / pill / organic)>
 
 ## Components
-<Anatomia por componente importante: button, input, card, modal, navbar, etc.>
+<Anatomy per key component: button, input, card, modal, navbar, etc.>
 
 ## Do's and Don'ts
 <Patterns to use vs anti-patterns to avoid>
 ```
 
-Section order é canônica: omitir seção é OK; reordenar não é.
+Section order is canonical: omitting a section is OK; reordering is not.
 
-## 3-layer token architecture (princípio canônico)
+## 3-layer token architecture (canonical principle)
 
-Stage 02 designer estrutura tokens em três camadas hierárquicas:
+Stage 02 designer structures tokens in three hierarchical layers:
 
 ```
 Primitive (raw values) — colors.gray-900, colors.blue-600, spacing.16
@@ -118,29 +118,29 @@ Semantic (purpose aliases) — colors.primary, colors.text-default, spacing.md
 Component (component-specific) — button.bg, card.padding, input.border
 ```
 
-Exemplo CSS resultante:
+Resulting CSS example:
 
 ```css
 /* Primitive */
 --color-blue-600: #2563EB;
 --spacing-16: 16px;
 
-/* Semantic — referencia primitive via {colors.blue-600} */
+/* Semantic — references primitive via {colors.blue-600} */
 --color-primary: var(--color-blue-600);
 --spacing-md: var(--spacing-16);
 
-/* Component — referencia semantic */
+/* Component — references semantic */
 --button-bg: var(--color-primary);
 --button-padding: var(--spacing-md);
 ```
 
-Token reference syntax DESIGN.md: `"{colors.primary}"`. Conversão pra
-CSS variables, Tailwind config, ou Figma variables é determinística.
+Token reference syntax in DESIGN.md: `"{colors.primary}"`. Conversion to
+CSS variables, Tailwind config, or Figma variables is deterministic.
 
 ## Component spec table (template)
 
-Stage 02 plan.md inclui spec por componente não-trivial usando este
-template. Cobre 4 estados visuais + permite identificar gaps de design.
+Stage 02 plan.md includes a spec per non-trivial component using this
+template. Covers 4 visual states + allows identifying design gaps.
 
 | Property | Default | Hover | Active | Disabled |
 |----------|---------|-------|--------|----------|
@@ -149,125 +149,125 @@ template. Cobre 4 estados visuais + permite identificar gaps de design.
 | Border | none | none | none | `{colors.muted-border}` |
 | Shadow | `{elevation.sm}` | `{elevation.md}` | none | none |
 
-Subagente em fase 04 valida que implementação cobre os 4 estados ao
-escrever component tests.
+Subagent in stage 04 validates that the implementation covers all 4 states when
+writing component tests.
 
-## Fluxo por stage ICM
+## Flow per ICM stage
 
-| Stage | Ação |
+| Stage | Action |
 |---|---|
-| **00 recon** | Detecta se DESIGN.md já existe em `.icm-main/`. Reporta presença/ausência em `recon-report.md`. Se existe: stage 02 atualiza incrementalmente. Se ausente: stage 02 cria do zero. |
-| **01 discovery** | Brand voice, target audience, emotional tone emergem da clarificação humana. Não escreve DESIGN.md ainda — apenas captura inputs em `discovery.md` que stage 02 usará pra preencher seção `## Overview`. |
-| **02 design** | **Stage onde DESIGN.md é criado/atualizado.** Process step novo (apenas profiles `app_web_frontend` + `fullstack`). Ver "Stage 02 process" abaixo. |
-| **03 wave_planner** | Tasks com files frontend ganham flag `requires_design_system: true` no plan.md (consumido pelo lead em fase 04). |
-| **04 implementation_waves** | Lead injeta DESIGN.md no canal 2 do prompt do subagente quando task tem flag `requires_design_system`. Subagente lê tokens + escreve código respeitando refs. |
-| **05 verification** | `visual_regression` (production tier) audita aderência. Sample-check: 3 componentes implementados batem tokens declarados. |
-| **06 review** | Dimensão `conventions` audita aderência aos tokens (não hardcoded values quando token existe). |
-| **07 merge** | Mudanças em DESIGN.md vão junto no merge (commit em base via `.icm-main/`). |
-| **08 feedback intake** | Iteration nova lê DESIGN.md atual antes de propor mudanças visuais. |
+| **00 recon** | Detects whether DESIGN.md already exists in `.icm-main/`. Reports presence/absence in `recon-report.md`. If it exists: stage 02 updates incrementally. If absent: stage 02 creates from scratch. |
+| **01 discovery** | Brand voice, target audience, emotional tone emerge from human clarification. Does not write DESIGN.md yet — only captures inputs in `discovery.md` that stage 02 will use to fill the `## Overview` section. |
+| **02 design** | **Stage where DESIGN.md is created/updated.** New process step (only profiles `app_web_frontend` + `fullstack`). See "Stage 02 process" below. |
+| **03 wave_planner** | Tasks with frontend files get the flag `requires_design_system: true` in plan.md (consumed by the lead in stage 04). |
+| **04 implementation_waves** | Lead injects DESIGN.md into channel 2 of the subagent prompt when the task has the `requires_design_system` flag. Subagent reads tokens + writes code respecting refs. |
+| **05 verification** | `visual_regression` (production tier) audits adherence. Sample-check: 3 implemented components match the tokens declared in DESIGN.md. |
+| **06 review** | `conventions` dimension audits adherence to tokens (no hardcoded values when a token exists). |
+| **07 merge** | Changes to DESIGN.md go along in the merge (commit on base via `.icm-main/`). |
+| **08 feedback intake** | New iteration reads current DESIGN.md before proposing visual changes. |
 
-## Stage 02 process — criar/atualizar DESIGN.md
+## Stage 02 process — create/update DESIGN.md
 
-Após reading da seção `## Overview` desejada (de discovery.md) e tokens
-existentes (se brownfield), stage 02 designer apresenta menu A/B/C ao
-humano:
+After reading the desired `## Overview` section (from discovery.md) and
+existing tokens (if brownfield), the stage 02 designer presents a menu A/B/C
+to the human:
 
 ```
-## Design System — escolha ponto de partida
+## Design System — choose starting point
 
-A) **Criar do zero** — designer propõe tokens iniciais baseado em
-   brand voice + audience capturados em discovery. Depois iteração
-   humana refinará.
+A) **Create from scratch** — designer proposes initial tokens based on
+   brand voice + audience captured in discovery. Human iteration will
+   refine afterwards.
 
-B) **Inspirar em exemplo** — escolha brand de referência da galeria
-   awesome-design-md (airbnb, apple, claude, figma, framer, etc).
-   Designer adapta tokens pra novo projeto preservando vibe.
+B) **Inspire from example** — choose a reference brand from the
+   awesome-design-md gallery (airbnb, apple, claude, figma, framer, etc).
+   Designer adapts tokens for the new project preserving the vibe.
 
-C) **Extrair de URL existente** — humano fornece URL de site
-   referência. Designer instrui rodar `npx designlang <url>`
-   externamente e cola output base relevante. Designer adapta.
+C) **Extract from existing URL** — human provides a reference site URL.
+   Designer instructs running `npx designlang <url>`
+   externally and pastes the relevant base output. Designer adapts.
 
-Aguardando resposta humana.
+Awaiting human response.
 ```
 
-Após escolha:
+After the choice:
 
-1. Designer escreve/atualiza `<project_root>/.icm-main/DESIGN.md`
-   seguindo schema canônico (YAML frontmatter + section order).
-2. Commit em base branch via worktree:
+1. Designer writes/updates `<project_root>/.icm-main/DESIGN.md`
+   following the canonical schema (YAML frontmatter + section order).
+2. Commit on base branch via worktree:
    ```bash
    cd <project_root>/.icm-main
    git add DESIGN.md
-   git commit -m "design: <slug-do-workspace> — design system v<N>"
+   git commit -m "design: <workspace-slug> — design system v<N>"
    cd <project_root>
    ```
-3. Plan.md cita componentes não-triviais com tabela component spec
-   (Default/Hover/Active/Disabled) — refs aos tokens declarados em DESIGN.md.
-4. Stage 02 wave_planner consumirá flag `requires_design_system: true`
-   em tasks com files frontend.
+3. Plan.md cites non-trivial components with a component spec table
+   (Default/Hover/Active/Disabled) — refs to the tokens declared in DESIGN.md.
+4. Stage 02 wave_planner will consume the flag `requires_design_system: true`
+   in tasks with frontend files.
 
-## Stage 04 canal 2 — DESIGN.md no prompt do subagente
+## Stage 04 channel 2 — DESIGN.md in the subagent prompt
 
-Lead em fase 04, ao spawnar subagente pra task frontend, injeta no canal 2:
+Lead in stage 04, when spawning a subagent for a frontend task, injects in channel 2:
 
 ```
-## Design System (DESIGN.md fonte de verdade)
+## Design System (DESIGN.md source of truth)
 
-Ler ANTES de escrever código:
+Read BEFORE writing code:
   Read <project_root>/.icm-main/DESIGN.md
 
-Tokens disponíveis (seções relevantes pra essa task):
+Available tokens (sections relevant to this task):
 - colors.primary, colors.secondary, colors.tertiary
 - typography.body-md, typography.label-sm
 - spacing.md, spacing.lg
-- components.button (se aplica)
+- components.button (if applicable)
 
-Regra:
-- NÃO hardcoded values quando token existe.
-- Usar refs `{colors.primary}` ao invés de `#1A1C1E` literal.
-- Para componentes novos, propor entry em `components` section da DESIGN.md
+Rule:
+- DO NOT use hardcoded values when a token exists.
+- Use refs `{colors.primary}` instead of `#1A1C1E` literal.
+- For new components, propose an entry in the `components` section of DESIGN.md
   via stop point `design_system_drift`.
 ```
 
-Lead pré-cozinha — subagente NÃO lê DESIGN.md cru integralmente; recebe
-subset relevante (tokens + components section relacionada à task).
+Lead pre-processes — subagent does NOT read DESIGN.md raw in full; it receives
+a relevant subset (tokens + components section related to the task).
 
-## Galeria de referência
+## Reference gallery
 
 [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md):
-69 DESIGN.md prontos extraídos de sites populares. Stage 02 designer pode
-sugerir como ponto de partida (Caso B do menu).
+69 DESIGN.md files extracted from popular sites. Stage 02 designer can
+suggest them as a starting point (Case B of the menu).
 
-Brands disponíveis incluem: airbnb, airtable, apple, bmw, cal, claude,
+Available brands include: airbnb, airtable, apple, bmw, cal, claude,
 clay, clickhouse, cohere, coinbase, composio, cursor, elevenlabs, expo,
-ferrari, figma, framer, hashicorp, ibm, intercom, e mais.
+ferrari, figma, framer, hashicorp, ibm, intercom, and more.
 
-## Tool externo opcional — designlang
+## Optional external tool — designlang
 
-Para Caso C (extrair de URL), humano roda externamente:
+For Case C (extract from URL), the human runs externally:
 
 ```bash
-npx designlang <url>           # gera 17 files de output
-npx designlang <url> --dark    # captura também dark mode
-npx designlang <url> --depth 3 # crawl multi-page pra consistência
+npx designlang <url>           # generates 17 output files
+npx designlang <url> --dark    # also captures dark mode
+npx designlang <url> --depth 3 # multi-page crawl for consistency
 ```
 
-Output em `./design-extract-output/` inclui:
-- `*-design-language.md` — markdown 19-section pronto pra LLM
+Output in `./design-extract-output/` includes:
+- `*-design-language.md` — 19-section markdown ready for LLM
 - `*-design-tokens.json` — DTCG W3C format
 - `*-tailwind.config.js`, `*-shadcn-theme.css`
 
-Designer ICM lê o markdown gerado, extrai tokens relevantes, adapta pra
-DESIGN.md do projeto. designlang **não é deps** da skill — é tool externa
-opcional que humano roda quando útil.
+ICM designer reads the generated markdown, extracts relevant tokens, adapts to
+the project's DESIGN.md. designlang is **not a dependency** of the skill — it is an
+optional external tool the human runs when useful.
 
 Doc: https://github.com/Manavarya09/design-extract
 
 ## Escape hatch — ui-ux-pro-max-skill
 
-Para casos onde ICM design needs profundidade extra além do DESIGN.md
-spec, humano pode invocar a skill paralela `ui-ux-pro-max:ui-ux-pro-max`
-manualmente. Cobre:
+For cases where ICM design needs more depth beyond the DESIGN.md
+spec, the human can invoke the parallel skill `ui-ux-pro-max:ui-ux-pro-max`
+manually. Covers:
 
 - 161 reasoning rules + 99 UX guidelines
 - 67 UI styles (glassmorphism, claymorphism, minimalism, brutalism,
@@ -277,106 +277,106 @@ manualmente. Cobre:
 - 10 stacks (React, Next.js, Vue, Svelte, SwiftUI, RN, Flutter,
   Tailwind, shadcn/ui, HTML/CSS)
 
-**Quando invocar:**
+**When to invoke:**
 
-- Greenfield sem referência visual prévia (antes de stage 02 popular DESIGN.md)
-- Slides/decks/banners — out-of-scope ICM, ui-ux-pro-max tem `slides`
-  sub-skill com 8 CSVs de strategy
-- Stuck em decisão de design no stage 02 — ICM menu A/B/C limitado;
-  ui-ux-pro-max expande framework de decisão
-- Brand exploration antes de bootstrar workspace
+- Greenfield with no prior visual reference (before stage 02 populates DESIGN.md)
+- Slides/decks/banners — out of ICM scope; ui-ux-pro-max has a `slides`
+  sub-skill with 8 CSVs of strategy
+- Stuck on a design decision in stage 02 — ICM menu A/B/C is limited;
+  ui-ux-pro-max expands the decision framework
+- Brand exploration before bootstrapping a workspace
 
-**Quando NÃO invocar:**
+**When NOT to invoke:**
 
-- Mid-stage 04 (implementação). Lead lendo 161 rules durante TDD = ruído.
-  Subagentes recebem DESIGN.md (canônico do projeto) no canal 2, não
+- Mid stage 04 (implementation). Lead reading 161 rules during TDD = noise.
+  Subagents receive DESIGN.md (canonical for the project) in channel 2, not
   ui-ux-pro-max.
-- Refinamento de tokens já existentes em DESIGN.md — stage 02 ICM cuida.
-- Stage 06 review — dimensão `conventions` da ICM já valida aderência.
+- Refinement of tokens already in DESIGN.md — ICM stage 02 handles that.
+- Stage 06 review — ICM's `conventions` dimension already validates adherence.
 
-**Boundary:** ICM governa o ciclo do projeto. ui-ux-pro-max é tool
-consultivo paralelo. Invocação humana explícita ("ok, dispara
-ui-ux-pro-max"), nunca auto-invocação dentro de stage ICM. Igual padrão
-`superpowers:*` que ICM já adotou em v3.3.0.
+**Boundary:** ICM governs the project cycle. ui-ux-pro-max is a parallel
+consultive tool. Explicit human invocation ("ok, launch
+ui-ux-pro-max"), never auto-invocation inside an ICM stage. Same pattern as
+`superpowers:*` that ICM already adopted in v3.3.0.
 
-## Conversão pra outras representações
+## Conversion to other representations
 
-DESIGN.md frontmatter converte determinísticamente:
+DESIGN.md frontmatter converts deterministically:
 
-| Destino | Conversão |
+| Target | Conversion |
 |---|---|
 | W3C DTCG `tokens.json` | `colors`, `typography`, etc. → `$value`/`$type` schema |
-| Figma variables | YAML keys → variables com mesmo nome |
+| Figma variables | YAML keys → variables with the same name |
 | Tailwind `theme.extend` | `colors`, `spacing`, `borderRadius`, `fontFamily`, etc. |
-| shadcn/ui CSS vars | `colors` → `--primary`, `--secondary`, etc. via `oklch()` ou hex |
-| CSS custom properties | Direct mapping com `--<token-path>` |
+| shadcn/ui CSS vars | `colors` → `--primary`, `--secondary`, etc. via `oklch()` or hex |
+| CSS custom properties | Direct mapping with `--<token-path>` |
 
-Se projeto requer dual-source (DESIGN.md + tokens.json sincronizados),
-documentar em ADR e escolher fonte primária. Recomendação: **DESIGN.md
-é a fonte de verdade**; demais formatos são gerados.
+If the project requires dual-source (DESIGN.md + tokens.json synchronized),
+document in an ADR and choose the primary source. Recommendation: **DESIGN.md
+is the source of truth**; other formats are generated.
 
 ## Anti-patterns
 
-### Hardcoded values quando token existe
+### Hardcoded values when a token exists
 
 ```diff
 - background: #1A1C1E;
 + background: var(--color-primary);
 ```
 
-Code review (stage 06) sinaliza. Subagente em fase 04 já é instruído
-no canal 2.
+Code review (stage 06) flags this. Subagent in stage 04 is already instructed
+in channel 2.
 
-### DESIGN.md fora-do-padrão
+### Non-standard DESIGN.md
 
-Section order, schema YAML keys, token reference syntax `{path.to.token}`
-seguem spec Google rigidamente. Custom keys → fragmenta interop com
-exemplos awesome-design-md e tools (Figma, Tailwind generators).
+Section order, YAML schema keys, token reference syntax `{path.to.token}`
+strictly follow the Google spec. Custom keys → breaks interop with
+awesome-design-md examples and tools (Figma, Tailwind generators).
 
-### Componentes só em código, não em DESIGN.md
+### Components only in code, not in DESIGN.md
 
-Cada componente reusável merece entry na seção `## Components` da
-DESIGN.md com anatomia + estados (Default/Hover/Active/Disabled). Sem
-isso, onboarding de devs novos perde contexto.
+Every reusable component deserves an entry in the `## Components` section of
+DESIGN.md with anatomy + states (Default/Hover/Active/Disabled). Without
+this, onboarding new devs loses context.
 
-### Designer alterando código direto
+### Designer modifying code directly
 
-Stage 02 designer SÓ escreve em DESIGN.md (e plan.md). NÃO toca
-`src/`, `tests/` — isso é fase 04. Pre-commit hook do workspace branch
-rejeita.
+Stage 02 designer ONLY writes to DESIGN.md (and plan.md). Does NOT touch
+`src/`, `tests/` — that is stage 04. The workspace branch pre-commit hook
+rejects it.
 
 ## Build-iterate visual loop (v3.6.0)
 
-DESIGN.md tokens cobrem fonte de verdade declarativa. Mas frontend NÃO é
-construído via mockup-first em canvas externo (Figma/Penpot exigem trabalho
-manual em GUI ou plano pago). Em vez disso, ICM v3.6.0 adota loop
-**code-first**: agente gera UI com mock data, humano olha em browser real,
-dá feedback verbal/visual/screenshot, agente itera via hot-reload.
+DESIGN.md tokens cover the declarative source of truth. But frontend is NOT
+built mockup-first in an external canvas (Figma/Penpot require manual work in a
+GUI or a paid plan). Instead, ICM v3.6.0 adopts a **code-first** loop:
+agent generates UI with mock data, human inspects in a real browser,
+gives verbal/visual/screenshot feedback, agent iterates via hot-reload.
 
-Doc canônico: `references/preview-loop-protocol.md`. Cobre:
+Canonical doc: `references/preview-loop-protocol.md`. Covers:
 
-- Dev server lifecycle (start entry stage 04, kill exit).
-- Mock data tier-based (fixtures → MSW+Faker → MSW+Faker+Zod).
+- Dev server lifecycle (start at stage 04 entry, kill at exit).
+- Tier-based mock data (fixtures → MSW+Faker → MSW+Faker+Zod).
 - Chrome CDP live integration (`--remote-debugging-port=9222`).
-- Verificação uniforme (`tsc` cada edit + lint/Playwright wave-end).
-- Preview pages (`preview/<component>` ao invés de Storybook).
-- Feedback combo livre (texto, screenshot anotado, URL, HTML).
-- Iteração visual sem cap (humano fecha quando OK).
-- Design system cascade threshold (≤5 cascata direto, >5 stop point).
-- Multi-tela replay sob pedido + auto-detect keywords.
-- Recovery wizard tipos `DEV_SERVER_ORPHAN` + `CDP_DISCONNECTED`.
+- Uniform verification (`tsc` each edit + lint/Playwright wave-end).
+- Preview pages (`preview/<component>` instead of Storybook).
+- Free-form feedback (text, annotated screenshot, URL, HTML).
+- Visual iteration without cap (human closes when OK).
+- Design system cascade threshold (≤5 cascade directly, >5 stop point).
+- Multi-screen replay on demand + auto-detect keywords.
+- Recovery wizard types `DEV_SERVER_ORPHAN` + `CDP_DISCONNECTED`.
 
-DESIGN.md continua fonte canônica de tokens. Preview loop é o ciclo de
-execução que consome esses tokens em telas reais. Os dois docs operam
-juntos: design-system.md = O QUÊ; preview-loop-protocol.md = COMO ITERAR.
+DESIGN.md remains the canonical source of tokens. The preview loop is the
+execution cycle that consumes those tokens in real screens. The two docs work
+together: design-system.md = O QUÊ; preview-loop-protocol.md = COMO ITERAR.
 
-## Referências cruzadas
+## Cross-references
 
-- [Spec DESIGN.md (Google Stitch)](https://stitch.withgoogle.com/docs/design-md/overview/)
-- [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) — 69 exemplos
-- [Manavarya09/design-extract (designlang)](https://github.com/Manavarya09/design-extract) — extração de URL
+- [DESIGN.md spec (Google Stitch)](https://stitch.withgoogle.com/docs/design-md/overview/)
+- [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) — 69 examples
+- [Manavarya09/design-extract (designlang)](https://github.com/Manavarya09/design-extract) — URL extraction
 - [W3C Design Token JSON spec](https://www.designtokens.org/tr/2025.10/format/)
-- `references/preview-loop-protocol.md` — ciclo build-iterate visual (v3.6.0)
-- `references/worktree-model.md` — modelo de escritas em base branch via `.icm-main/`
-- `templates/_config/profile-matrix.md` — `design_system_required` por profile
-- `references/4-block-contract-template.md` — schema de tasks no plan.md
+- `references/preview-loop-protocol.md` — build-iterate visual cycle (v3.6.0)
+- `references/worktree-model.md` — model for writes on base branch via `.icm-main/`
+- `templates/_config/profile-matrix.md` — `design_system_required` per profile
+- `references/4-block-contract-template.md` — task schema in plan.md

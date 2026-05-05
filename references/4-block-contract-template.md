@@ -2,63 +2,63 @@
 
 > **Versão:** v3.9.0
 > **Skill:** `xp-icm-workflow`
-> **Propósito:** Define o contrato 4-block obrigatório por task no `plan.md` (output da fase 02 design, consumido pelas fases 03 wave_planner e 04 implementation_waves) **e** o ciclo TDD vertical canônico (tracer-first + 1 test → 1 impl → repeat) que todo subagente executa por task. Substitui v3.0.0-beta5 (Akita 15-item drop em v3.9.0).
+> **Purpose:** Defines the mandatory 4-block contract per task in `plan.md` (output of stage 02 design, consumed by stages 03 wave_planner and 04 implementation_waves) **and** the canonical vertical TDD cycle (tracer-first + 1 test → 1 impl → repeat) that every subagent executes per task. Replaces v3.0.0-beta5 (Akita 15-item drop in v3.9.0).
 
-> **Decisão de origem:** F1 do plan `reescrever-a-skill-zazzy-wirth.md` (linha 57) + §4.4 dev↔qa loop + §4.11 canal 3 (plan.md schema). v3.9.0: drop Akita inline; QA delegado a forensic+ extended (L2) + critic ortogonal (L3) per `references/critic-protocol.md`.
+> **Origin decision:** F1 of plan `reescrever-a-skill-zazzy-wirth.md` (line 57) + §4.4 dev↔qa loop + §4.11 channel 3 (plan.md schema). v3.9.0: drop inline Akita; QA delegated to forensic+ extended (L2) + orthogonal critic (L3) per `references/critic-protocol.md`.
 
 ---
 
-## 1. Os 4 blocos — schema obrigatório por task
+## 1. The 4 blocks — mandatory schema per task
 
-Toda task no `plan.md` (fase 02 design) **deve** declarar os 4 blocos abaixo, na ordem fixa. Cada bloco fica entre 50-200 tokens; total da task entre 200-800 tokens.
+Every task in `plan.md` (stage 02 design) **must** declare the 4 blocks below, in fixed order. Each block is 50-200 tokens; total task between 200-800 tokens.
 
 ```markdown
-## Task <SLUG>: <Título humano>
+## Task <SLUG>: <Human title>
 
 ### O QUE
-<Requisitos funcionais — o que esta task entrega.
- Linguagem de produto, não de implementação.
+<Functional requirements — what this task delivers.
+ Product language, not implementation language.
  2-5 bullets.>
 
 ### COMO
-<Abordagem técnica — quais arquivos, quais funções, qual padrão.
- Pode citar ADR explicitamente ("seguir 0004-auth-strategy").
+<Technical approach — which files, which functions, which pattern.
+ May explicitly cite an ADR ("follow 0004-auth-strategy").
  3-7 bullets.>
 
 ### NÃO QUERO
-<Anti-requisitos. Fora de escopo. O que NÃO fazer.
- Existe pra evitar scope creep e over-engineering.
+<Anti-requirements. Out of scope. What NOT to do.
+ Exists to prevent scope creep and over-engineering.
  2-5 bullets.>
 
 ### VALIDAÇÃO
-<Critérios de aceite mensuráveis + tests obrigatórios.
- Cada bullet deve mapear ≥1 test name (forensic+ Check 5 valida).
+<Measurable acceptance criteria + mandatory tests.
+ Each bullet must map to ≥1 test name (forensic+ Check 5 validates).
  3-7 bullets.>
 ```
 
-### Por que 4 blocos (e não 3 ou 5)
+### Why 4 blocks (and not 3 or 5)
 
-| Bloco | Sem ele... |
+| Block | Without it... |
 |---|---|
-| O QUE | Subagente inventa requisito; QA não tem âncora pra validar |
-| COMO | Decisões arquiteturais divergem entre tasks paralelas da mesma wave |
-| NÃO QUERO | Scope creep silencioso; subagente adiciona "enquanto está aqui..." |
-| VALIDAÇÃO | Tests cobrem o que o dev achou interessante, não o que importa |
+| O QUE | Subagent invents requirements; QA has no anchor to validate against |
+| COMO | Architectural decisions diverge between parallel tasks in the same wave |
+| NÃO QUERO | Silent scope creep; subagent adds things "while we're here..." |
+| VALIDAÇÃO | Tests cover what the dev found interesting, not what matters |
 
 ---
 
-## 2. Schema completo de task no `plan.md`
+## 2. Complete task schema in `plan.md`
 
-Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 (canal 3 do doc-reading-protocol):
+In addition to the 4 blocks, each task declares metadata consumed by the lead in stage 04 (channel 3 of the doc-reading-protocol):
 
 ```markdown
-## Task <SLUG>: <Título>
+## Task <SLUG>: <Title>
 
 ### O QUE / COMO / NÃO QUERO / VALIDAÇÃO
-<vide §1>
+<see §1>
 
 ### Depends on
-- <slug-de-task-pai> OR nenhum (task raiz)
+- <parent-task-slug> OR none (root task)
 
 ### Files touched
 - src/path/file.ts
@@ -73,205 +73,205 @@ Além dos 4 blocos, cada task declara metadados consumidos pelo lead da fase 04 
 - docs/decisions/0001-stack.md
 - docs/decisions/0004-auth-strategy.md
 
-### Lições críticas pré-marcadas
+### Critical pre-marked lessons
 - 0033 (log policy)
 
-### Conventions extras
-- (default xp-conventions.md basta)
+### Extra conventions
+- (default xp-conventions.md is sufficient)
 
 ### Tech debt paydown
-- nenhum    OR    - 0017 (refactor extração X)
+- none    OR    - 0017 (refactor extraction X)
 
 ### Requires_peer_review
-- true | false   (true se path crítico tier=production OR profile flag)
+- true | false   (true if critical path tier=production OR profile flag)
 
 ### Requires E2E update
-- true | false   <!-- v3.10.0: wave-planner auto-emite quando Files touched
-                      matches user_facing_paths do profile-effective.yaml.
-                      Subagente DEVE adicionar/atualizar ≥1 file em e2e/
+- true | false   <!-- v3.10.0: wave-planner auto-emits when Files touched
+                      matches user_facing_paths from profile-effective.yaml.
+                      Subagent MUST add/update ≥1 file in e2e/
                       cypress/, playwright/, tests/e2e/. Forensic+ Check 8
-                      audita. Override via `**E2E:** skip - <rationale>`
-                      no 4-block (audit Stage 05). -->
+                      audits. Override via `**E2E:** skip - <rationale>`
+                      in the 4-block (audit Stage 05). -->
 ```
 
-| Campo | Quem preenche | Quem consome |
+| Field | Who fills in | Who consumes |
 |---|---|---|
-| 4-block | Designer (fase 02) | Subagente (fase 04) |
-| Depends on | Designer (fase 02) | Wave-planner (DAG aresta explícita) |
-| Files touched | Designer; refinado wave-planner | Lead (boundary da branch); Wave-planner (valida ≥1 arquivo de teste) |
-| Estimated lines (opcional) | Designer (fase 02) | forensic-plus.py (Check 3 scope creep) |
-| ADRs aplicáveis | Designer | Subagente (read order); forensic+ Check 7 (import drift) |
-| Lições críticas | Wave-planner (Q10 match) | Subagente (audit pré-RED) |
-| Conventions extras | Designer (raro) | Subagente |
-| Tech debt paydown | Designer | Subagente (declara em commit) |
-| Requires_peer_review | Wave-planner (regra Q6) | Lead (decide spawn QA-pair) |
+| 4-block | Designer (stage 02) | Subagent (stage 04) |
+| Depends on | Designer (stage 02) | Wave-planner (explicit DAG edge) |
+| Files touched | Designer; refined by wave-planner | Lead (branch boundary); Wave-planner (validates ≥1 test file) |
+| Estimated lines (optional) | Designer (stage 02) | forensic-plus.py (Check 3 scope creep) |
+| ADRs aplicáveis | Designer | Subagent (read order); forensic+ Check 7 (import drift) |
+| Critical lessons | Wave-planner (Q10 match) | Subagent (pre-RED audit) |
+| Extra conventions | Designer (rare) | Subagent |
+| Tech debt paydown | Designer | Subagent (declares in commit) |
+| Requires_peer_review | Wave-planner (rule Q6) | Lead (decides to spawn QA-pair) |
 
-**Regra `Files touched` — test file obrigatório:** toda task que toca código funcional (`src/`, `app/`, `lib/`, etc.) deve declarar ≥1 arquivo de teste correspondente (`tests/`, `*.test.*`, `*_test.*`, `spec/`, etc.). Wave-planner valida esta regra no pré-voo do DAG; task sem arquivo de teste = `BLOCKED_ERROR` antes de alocar wave. Exceções: tasks declaradas como `doc-only` ou `config-only` em `Conventions extras` são isentas da regra.
+**`Files touched` rule — test file required:** every task that touches functional code (`src/`, `app/`, `lib/`, etc.) must declare ≥1 corresponding test file (`tests/`, `*.test.*`, `*_test.*`, `spec/`, etc.). Wave-planner validates this rule in the DAG pre-flight; task without a test file = `BLOCKED_ERROR` before wave allocation. Exceptions: tasks declared as `doc-only` or `config-only` in `Extra conventions` are exempt from the rule.
 
 ---
 
 ## 3. Vertical TDD cycle — tracer-first + 1 test → 1 impl → repeat
 
-Todo subagente executa **estritamente** vertical TDD. Anti-horizontal slicing. mattpocock-aligned.
+Every subagent executes **strictly** vertical TDD. Anti-horizontal slicing. mattpocock-aligned.
 
-### 3.1 Princípio vertical
+### 3.1 Vertical principle
 
-Vertical = **completar uma feature unit end-to-end** (test + impl + verify) antes de iniciar a próxima. Horizontal = "escrevo todos os tests primeiro, depois implemento" (proibido).
+Vertical = **complete one feature unit end-to-end** (test + impl + verify) before starting the next. Horizontal = "write all the tests first, then implement" (prohibited).
 
 ### 3.2 Tracer-first
 
-Antes do primeiro test unit/integration, subagente escreve **1 tracer test** — E2E golden path da task inteira, mínimo viável, espera-se que falhe inicialmente. Tracer guia a forma da impl, não cobre edge cases.
+Before the first unit/integration test, the subagent writes **1 tracer test** — the E2E golden path of the entire task, minimum viable, expected to fail initially. The tracer guides the shape of the impl, does not cover edge cases.
 
-| Profile | Tracer típico |
+| Profile | Typical tracer |
 |---------|---------------|
-| backend | HTTP request → DB assertion (ex: POST /users → user row exists) |
+| backend | HTTP request → DB assertion (e.g.: POST /users → user row exists) |
 | frontend | render component → user interaction → DOM assertion |
 | fullstack | browser action → API call → DB → response render |
 | ml | input fixture → model call → output shape assertion |
 | agent_ia | prompt fixture → tool sequence → final output match |
 
-Tracer é commitado vermelho como primeiro commit da task. Não conta como cobertura — é scaffold.
+Tracer is committed red as the first commit of the task. Does not count as coverage — it is scaffold.
 
-### 3.3 Loop por feature unit
+### 3.3 Loop per feature unit
 
-Após tracer, subagente itera:
+After the tracer, the subagent iterates:
 
 ```
 LOOP {
   RED      → write 1 test (1 acceptance bullet OR 1 edge case)
-  GREEN    → minimal impl pra test passar (não adicione lógica não-testada)
-  CI scope → run tests + types + lint só nos files touched (fast feedback)
-  REFACTOR → opcional; só se redução de complexity óbvia
+  GREEN    → minimal impl to make the test pass (do not add untested logic)
+  CI scope → run tests + types + lint only on files touched (fast feedback)
+  REFACTOR → optional; only if there is an obvious complexity reduction
 }
 ```
 
-**Cada iteração do loop = 1 commit.** Commits incrementais formam a história TDD verificable em `git log`. Forensic+ Check 1 valida ≥2 asserções no test file final.
+**Each loop iteration = 1 commit.** Incremental commits form a verifiable TDD history in `git log`. Forensic+ Check 1 validates ≥2 assertions in the final test file.
 
 ### 3.4 Anti-horizontal slicing
 
-❌ **Proibido:**
-- Escrever todos os tests da task de uma vez (sem impl entre)
-- Implementar todo o impl de uma vez (sem tests entre)
-- Pular `RED` ("já sei que vai funcionar")
-- Pular `GREEN minimal` (escrever lógica especulativa "pra próximo test")
+❌ **Prohibited:**
+- Writing all task tests at once (without impl in between)
+- Implementing all of the impl at once (without tests in between)
+- Skipping `RED` ("I already know it will work")
+- Skipping `GREEN minimal` (writing speculative logic "for the next test")
 
-Sinais que disparam stop:
-- Diff > 100 LOC sem novo test correspondente
-- Test file com 5+ test names mas impl files vazios
-- Impl file com classes completas e tests file vazio
+Signals that trigger a stop:
+- Diff > 100 LOC without a corresponding new test
+- Test file with 5+ test names but empty impl files
+- Impl file with complete classes and empty test file
 
-Forensic+ Check 5 (acceptance ↔ test mapping) detecta quando tests não correspondem aos critérios de aceite — gating estrutural anti-horizontal.
+Forensic+ Check 5 (acceptance ↔ test mapping) detects when tests do not correspond to acceptance criteria — structural anti-horizontal gating.
 
-### 3.5 Cap de iterações
+### 3.5 Iteration cap
 
-- **Cap:** 3 attempts da task inteira (cycle inteiro do loop esgotado).
-- Falha = forensic+ HARD ou critic REJECT 3 rounds.
-- Ao atingir cap → escala lead-resolution tier (3 buckets B1/B3/B4 — ver `references/lead-resolution-protocol.md`).
+- **Cap:** 3 attempts for the entire task (full loop cycle exhausted).
+- Failure = forensic+ HARD or critic REJECT 3 rounds.
+- When cap is reached → escalate to lead-resolution tier (3 buckets B1/B3/B4 — see `references/lead-resolution-protocol.md`).
 
-### 3.6 Stop points dentro do ciclo
+### 3.6 Stop points within the cycle
 
-Se durante qualquer passo o subagente detecta um stop point (ex: novo paid service não declarado em ADR), ele:
+If at any step the subagent detects a stop point (e.g.: new paid service not declared in an ADR), it:
 
-- Pausa o ciclo no estado atual (sem perder progresso).
-- Dispara menu A/B/C conforme `stop-points-canonical.md`.
-- Sinaliza lead via saída do Agent tool.
-- Espera resolução; ciclo retoma do passo onde parou.
+- Pauses the cycle at the current state (without losing progress).
+- Triggers menu A/B/C per `stop-points-canonical.md`.
+- Signals the lead via Agent tool output.
+- Waits for resolution; cycle resumes from the step where it paused.
 
 ### 3.7 Commit verify gate
 
-Antes de declarar COMPLETE, subagente confirma:
+Before declaring COMPLETE, subagent confirms:
 
 ```
 git log --oneline <BASE>..HEAD  →  ≥1 commit visible
 ```
 
-Zero commits = task report incomplete; volta ao cycle. forensic+ check estrutural detecta branch HEAD == BASE HEAD.
+Zero commits = incomplete task report; returns to cycle. forensic+ structural check detects branch HEAD == BASE HEAD.
 
 ---
 
-## 4. Integração com superpowers (sumários 200tok)
+## 4. Integration with superpowers (200tok summaries)
 
-Subagente na fase 04 tem na pasta `_references/superpowers-summary/` (copiada pelo bootstrap):
+Subagent in stage 04 has in the `_references/superpowers-summary/` folder (copied by bootstrap):
 
-| Sumário | Cobre passos |
+| Summary | Covers steps |
 |---|---|
 | `test-driven-development-200tok.md` | RED → GREEN → REFACTOR (vertical) |
 | `verification-before-completion-200tok.md` | CI gate scope |
-| `systematic-debugging-200tok.md` | suporte quando GREEN trava |
+| `systematic-debugging-200tok.md` | support when GREEN stalls |
 
 ---
 
-## 5. QA delegation — quem garante qualidade
+## 5. QA delegation — who ensures quality
 
-A partir de v3.9.0, QA da task é responsabilidade de:
+Starting from v3.9.0, task QA is the responsibility of:
 
-| Layer | Responsabilidade | Token cost |
+| Layer | Responsibility | Token cost |
 |-------|------------------|------------|
-| L1 writer (subagente) | Escreve tests vertical, código passa CI scope | (writer model) |
-| L2 forensic+ extended | 7 deterministic checks git-only | 0 |
-| L3 critic ortogonal | LLM independente (tier ceiling) avalia diff | ~3-8k input |
-| L4 wave gate | suite global green + cross-task coherence (production) | (CI infra) |
-| Lead-resolution tier | Último recurso quando cap esgota OR catastrophic | (lead model) |
+| L1 writer (subagent) | Writes vertical tests, code passes CI scope | (writer model) |
+| L2 forensic+ extended | 7 deterministic git-only checks | 0 |
+| L3 orthogonal critic | Independent LLM (tier ceiling) evaluates diff | ~3-8k input |
+| L4 wave gate | global suite green + cross-task coherence (production) | (CI infra) |
+| Lead-resolution tier | Last resort when cap exhausted OR catastrophic | (lead model) |
 
-Subagente NÃO escreve checklist QA inline no task report. Self-grading bias documentado (ICLR 2024 Huang, arxiv 2510.11822, arxiv 2509.16533) — delegado a layers ortogonais.
+Subagent does NOT write an inline QA checklist in the task report. Self-grading bias documented (ICLR 2024 Huang, arxiv 2510.11822, arxiv 2509.16533) — delegated to orthogonal layers.
 
-Task report (passo COMPLETE) é minimalista:
+Task report (COMPLETE step) is minimal:
 
 ```markdown
 # Task <slug> — COMPLETE
 
-## Resumo
-<1-3 sentences sobre escopo entregue>
+## Summary
+<1-3 sentences about the delivered scope>
 
-## Files modificados
+## Modified files
 - <list>
 
 ## Tests
 - <test file>: <count> tests
 - Coverage: <%>
 
-## ADRs aplicados
+## ADRs applied
 - <list>
 ```
 
 ---
 
-## 6. Exemplo concreto — task `auth-middleware`
+## 6. Concrete example — task `auth-middleware`
 
-Task fictícia que ilustra o schema completo (4-block + metadados; sem checklist Akita).
+Fictional task that illustrates the complete schema (4-block + metadata; no Akita checklist).
 
-### 6.1 Entrada do `plan.md` (fase 02 design)
+### 6.1 Input from `plan.md` (stage 02 design)
 
 ```markdown
 ## Task auth-middleware: JWT validation middleware
 
 ### O QUE
-- Middleware Express que valida JWT em headers `Authorization: Bearer <token>`.
-- Rejeita 401 quando token ausente, malformado ou expirado.
-- Anexa `req.user = { id, email, role }` quando válido.
-- Loga falhas (sem PII) com nível `warn`.
+- Express middleware that validates JWT in `Authorization: Bearer <token>` headers.
+- Rejects 401 when token is missing, malformed, or expired.
+- Attaches `req.user = { id, email, role }` when valid.
+- Logs failures (without PII) at `warn` level.
 
 ### COMO
-- Criar `src/auth/middleware.ts` exportando `requireJwt()`.
-- Usar lib `jose` (já em ADR 0001-stack), nunca `jsonwebtoken`.
-- Verificar assinatura via `JWKS_URI` lido de `process.env.JWKS_URI`.
-- Order pipeline: `cors → requireJwt → rateLimit` (lição 0017).
-- Erro: throw classes `AuthError`/`AuthExpiredError` capturadas em `errorHandler`.
+- Create `src/auth/middleware.ts` exporting `requireJwt()`.
+- Use lib `jose` (already in ADR 0001-stack), never `jsonwebtoken`.
+- Verify signature via `JWKS_URI` read from `process.env.JWKS_URI`.
+- Pipeline order: `cors → requireJwt → rateLimit` (lesson 0017).
+- Error: throw `AuthError`/`AuthExpiredError` classes caught in `errorHandler`.
 
 ### NÃO QUERO
-- Decodar JWT sem verificar (lição 0042).
-- Implementar refresh-token (escopo de outra task).
-- Logar valor do token nem email (PII; lição 0033).
-- Cachear resultados em memória (out-of-scope; ADR pendente).
-- Mock interno de jose nem JWKS client (use boundary mock; ver mocking-guidelines.md).
+- Decode JWT without verifying (lesson 0042).
+- Implement refresh-token (scope of another task).
+- Log token value or email (PII; lesson 0033).
+- Cache results in memory (out-of-scope; pending ADR).
+- Internal mock of jose or JWKS client (use boundary mock; see mocking-guidelines.md).
 
 ### VALIDAÇÃO
-- Test `test_missing_header_returns_401`: header ausente → 401 + body `{error: "missing_auth"}`.
-- Test `test_malformed_jwt_returns_401`: token malformado → 401 + log warn sem PII.
-- Test `test_expired_jwt_returns_401`: token expirado → 401 + body `{error: "expired"}`.
-- Test `test_valid_token_attaches_user`: token válido → `next()` chamado + `req.user` populado.
-- Test `test_pipeline_order_integration`: pipeline order (`cors` antes, `rateLimit` depois) — integration.
-- Cobertura ≥90% em `src/auth/middleware.ts`.
+- Test `test_missing_header_returns_401`: missing header → 401 + body `{error: "missing_auth"}`.
+- Test `test_malformed_jwt_returns_401`: malformed token → 401 + warn log without PII.
+- Test `test_expired_jwt_returns_401`: expired token → 401 + body `{error: "expired"}`.
+- Test `test_valid_token_attaches_user`: valid token → `next()` called + `req.user` populated.
+- Test `test_pipeline_order_integration`: pipeline order (`cors` first, `rateLimit` after) — integration.
+- Coverage ≥90% on `src/auth/middleware.ts`.
 
 ### Depends on
 - project-setup
@@ -290,32 +290,32 @@ Task fictícia que ilustra o schema completo (4-block + metadados; sem checklist
 - docs/decisions/0001-stack.md
 - docs/decisions/0004-auth-strategy.md
 
-### Lições críticas pré-marcadas
+### Critical pre-marked lessons
 - 0042 (never trust decoded JWT without verify)
-- 0033 (log auth failures sem PII)
+- 0033 (log auth failures without PII)
 - 0017 (middleware order: cors → auth → rate)
 
-### Conventions extras
-- (default xp-conventions.md basta)
+### Extra conventions
+- (default xp-conventions.md is sufficient)
 
 ### Tech debt paydown
-- nenhum
+- none
 
 ### Requires_peer_review
 - true (path /auth, tier=production)
 ```
 
-### 6.2 Saída esperada do subagente (`task-auth-middleware.md`, COMPLETE)
+### 6.2 Expected subagent output (`task-auth-middleware.md`, COMPLETE)
 
 ```markdown
 # Task auth-middleware — COMPLETE
 
-## Resumo
-Middleware JWT implementado em `src/auth/middleware.ts` (47 LOC) +
-classes de erro em `src/auth/errors.ts`. Vertical TDD: tracer + 5 tests +
-2 integration. Cobertura 94%.
+## Summary
+JWT middleware implemented in `src/auth/middleware.ts` (47 LOC) +
+error classes in `src/auth/errors.ts`. Vertical TDD: tracer + 5 tests +
+2 integration. Coverage 94%.
 
-## Files modificados
+## Modified files
 - src/auth/middleware.ts (+47 LOC)
 - src/auth/errors.ts (+22 LOC)
 - tests/auth/middleware.test.ts (+158 LOC, 5 tests)
@@ -326,49 +326,49 @@ classes de erro em `src/auth/errors.ts`. Vertical TDD: tracer + 5 tests +
 - tests/auth/middleware.integration.test.ts: 2 tests
 - Coverage: 94%
 
-## ADRs aplicados
+## ADRs applied
 - 0001-stack (jose lib)
 - 0004-auth-strategy (JWKS verification)
 ```
 
-QA é validado pelos layers L2 (forensic+) + L3 (critic) — ver `references/critic-protocol.md` e `references/forensic-plus-protocol.md`.
+QA is validated by layers L2 (forensic+) + L3 (critic) — see `references/critic-protocol.md` and `references/forensic-plus-protocol.md`.
 
 ---
 
-## 7. Referências cruzadas
+## 7. Cross-references
 
-| Doc | Conteúdo relacionado |
+| Doc | Related content |
 |---|---|
-| `references/doc-reading-protocol.md` | Canais 1/2/3 — quem injeta o quê no subagente |
+| `references/doc-reading-protocol.md` | Channels 1/2/3 — who injects what into the subagent |
 | `references/wave-planner-algorithm.md` | DAG, Q10 lesson match, Q6 peer-review trigger |
-| `references/subagent-protocol.md` | Lead spawn, saída do Agent tool, plan approval |
-| `references/stop-points-canonical.md` | 12 stop points + thresholds por tier |
+| `references/subagent-protocol.md` | Lead spawn, Agent tool output, plan approval |
+| `references/stop-points-canonical.md` | 12 stop points + thresholds per tier |
 | `references/forensic-plus-protocol.md` | L2 deterministic checks (7 in v3.9.0) |
-| `references/critic-protocol.md` | L3 LLM critic ortogonal |
-| `references/lead-resolution-protocol.md` | Buckets B1/B3/B4 quando cap esgota |
-| `references/mocking-guidelines.md` | Mock só boundaries; nunca internals |
-| `references/recovery-wizard.md` | Recuperação se ciclo trava sem COMPLETE |
-| `_references/superpowers-summary/test-driven-development-200tok.md` | Sumário TDD vertical |
-| `_references/superpowers-summary/verification-before-completion-200tok.md` | Sumário CI gate |
+| `references/critic-protocol.md` | L3 orthogonal LLM critic |
+| `references/lead-resolution-protocol.md` | Buckets B1/B3/B4 when cap exhausted |
+| `references/mocking-guidelines.md` | Mock only boundaries; never internals |
+| `references/recovery-wizard.md` | Recovery if cycle stalls without COMPLETE |
+| `_references/superpowers-summary/test-driven-development-200tok.md` | Vertical TDD summary |
+| `_references/superpowers-summary/verification-before-completion-200tok.md` | CI gate summary |
 
 ---
 
 ## 8. AGENT-BRIEF compatibility
 
-A partir de v3.3.0, todo 4-block deve ser parseável pelo
-`scripts/agent-brief-render.py` em fase 04. v3.9.0 adiciona model fields
-no header. Mapping:
+Starting from v3.3.0, every 4-block must be parseable by
+`scripts/agent-brief-render.py` in stage 04. v3.9.0 adds model fields
+in the header. Mapping:
 
 | 4-block | AGENT-BRIEF section |
 |---|---|
-| **O QUE:** | `Summary:` (1ª linha) + `Desired behavior:` (corpo) |
-| **COMO:** | `Key interfaces:` (sem paths absolutos / line numbers) |
+| **O QUE:** | `Summary:` (1st line) + `Desired behavior:` (body) |
+| **COMO:** | `Key interfaces:` (no absolute paths / line numbers) |
 | **NÃO QUERO:** | `Out of scope:` |
-| **VALIDAÇÃO:** | `Acceptance criteria:` (lista testável) |
+| **VALIDAÇÃO:** | `Acceptance criteria:` (testable list) |
 
-Adicionalmente, o bloco da task no plan.md DEVE ter:
-- `**Type:** AFK` ou `**Type:** HITL` (ver `task-types-hitl-afk.md`)
-- `**Files touched:** path1, path2` (sem line numbers)
+Additionally, the task block in plan.md MUST have:
+- `**Type:** AFK` or `**Type:** HITL` (see `task-types-hitl-afk.md`)
+- `**Files touched:** path1, path2` (no line numbers)
 
 v3.9.0 brief header:
 ```yaml
@@ -377,4 +377,4 @@ model_recommended_critic: <claude-haiku-4-5|claude-sonnet-4-6|claude-opus-4-7>
 complexity_score: <int>
 ```
 
-Doc canônico do AGENT-BRIEF: `references/agent-brief-template.md`.
+Canonical AGENT-BRIEF doc: `references/agent-brief-template.md`.
