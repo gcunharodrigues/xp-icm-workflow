@@ -171,12 +171,12 @@ def recommend_bucket(
 
     if trigger == "T2_convergence_trip":
         return "B1", (
-            f"Jaccard {convergence_score:.2f} ≥ {JACCARD_THRESHOLD}: writer e critic ciclam "
-            "sobre mesmas concerns. Spec ambígua/insuficiente. B1 reescreve spec mais rigorosa."
+            f"Jaccard {convergence_score:.2f} ≥ {JACCARD_THRESHOLD}: writer and critic cycle "
+            "over the same concerns. Spec is ambiguous/insufficient. B1 rewrites spec more rigorously."
         )
 
     if trigger == "T1_cap_exhausted":
-        return "B1", "Cap 3 retries exhausted sem convergence trip. Default B1 (rewrite spec)."
+        return "B1", "Cap 3 retries exhausted without convergence trip. Default B1 (rewrite spec)."
 
     raise ValueError(f"unknown trigger: {trigger}")
 
@@ -222,10 +222,10 @@ def render_surgical_brief(
         if ce:
             lines.append(f"   Counterexample: {ce}")
     lines.append("\n### Acceptance delta")
-    lines.append("Spec original tem critérios ambíguos. Reescreva VALIDAÇÃO com:")
+    lines.append("Original spec has ambiguous criteria. Rewrite VALIDAÇÃO with:")
     for sig, _count in top:
         c = examples[sig]
-        lines.append(f"- Test name específico cobrindo: {c.get('claim', '?')[:80]}")
+        lines.append(f"- Specific test name covering: {c.get('claim', '?')[:80]}")
     return "\n".join(lines)
 
 

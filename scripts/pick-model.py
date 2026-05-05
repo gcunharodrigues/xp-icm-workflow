@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Pick-model — heurística determinística pra escolher (writer, critic) por task.
+"""Pick-model — deterministic heuristic to choose (writer, critic) per task.
 
 Compute complexity score from task metadata + tier ceiling cap. Emit JSON to
-stdout. Consumido por agent-brief-render.py em fase 04 stage subagent dispatch.
+stdout. Consumed by agent-brief-render.py for stage 04 subagent dispatch.
 
 Spec: references/critic-protocol.md (critic always tier ceiling),
 plan v3.9.0 §7 (compute_score formula + TIER_CEILING + pick_models split).
@@ -121,7 +121,7 @@ def _model_min(a: str, b: str) -> str:
 
 
 def pick_models(score: int, tier: str) -> tuple[str, str]:
-    """Return (writer, critic) tuple per heurística + tier ceiling.
+    """Return (writer, critic) tuple per heuristic + tier ceiling.
 
     - writer = haiku if score < 2, sonnet if score < 5, else opus
     - writer = min(writer, TIER_CEILING[tier])  # ceiling cap
@@ -182,11 +182,11 @@ def _bullets_under(section: str, heading: str) -> list[str]:
 def parse_task_metadata(plan_path: Path, task_slug: str) -> dict:
     """Extract task metadata for score computation.
 
-    Heurísticas para flags (security_sensitive, public_api_change, etc.):
-    - security_sensitive: paths em `Files touched` matching auth|crypto|payments|secret|token + tier
+    Heuristics for flags (security_sensitive, public_api_change, etc.):
+    - security_sensitive: paths in `Files touched` matching auth|crypto|payments|secret|token + tier
     - public_api_change: bullet contains "public API" / "exported" / "interface change" in O QUE/COMO
     - algorithm_heavy: bullets contain state machine|concurrent|dag|algorithm|graph|tree
-    - doc_only / config_only: declared em `Conventions extras`
+    - doc_only / config_only: declared in `Conventions extras`
     - css_only: all files_touched end .css/.scss/.sass
     """
     section = _extract_task_section(plan_path, task_slug)

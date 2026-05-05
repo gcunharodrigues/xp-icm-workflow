@@ -736,9 +736,9 @@ def check_e2e_coverage(
         "check": "e2e_coverage_missing",
         "severity": sev,
         "evidence": (
-            "Task declarou `Requires E2E update: true` mas diff não toca "
-            "e2e/cypress/playwright/tests/e2e. Adicione test cobrindo fluxo "
-            "end-to-end OR declare `**E2E:** skip - <rationale>` no 4-block."
+            "Task declared `Requires E2E update: true` but diff does not touch "
+            "e2e/cypress/playwright/tests/e2e. Add a test covering the end-to-end "
+            "flow OR declare `**E2E:** skip - <rationale>` in the 4-block."
         ),
     }]
 
