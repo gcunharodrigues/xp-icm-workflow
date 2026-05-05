@@ -455,6 +455,42 @@ def test_render_wave_plan_contains_task_table():
         assert slug in rendered
 
 
+def test_render_wave_plan_includes_e2e_column(tmp_path):
+    """v3.10.0: render_wave_plan inclui coluna E2E required? na task table."""
+    plan_path = tmp_path / "plan.md"
+    plan_path.write_text(
+        "## Task auth-mw: JWT middleware\n\n"
+        "### Files touched\n- src/routes/auth.ts\n- tests/auth.test.ts\n\n"
+        "### Depends on\n\n",
+        encoding="utf-8",
+    )
+    result = plan_waves(plan_path=plan_path, tier="development", profile="app_web_backend")
+    rendered = render_wave_plan(result, plan_source="plan.md", workspace="042-test")
+    assert "E2E required?" in rendered
+    # task em src/routes/ deve ser flagged yes
+    assert "yes (auto)" in rendered
+    # annotation block aparece
+    assert "E2E coverage required" in rendered
+
+
+def test_render_wave_plan_no_e2e_flag_for_data_analysis(tmp_path):
+    """v3.10.0: profile data_analysis com user_facing_paths vazio → no flagged tasks."""
+    plan_path = tmp_path / "plan.md"
+    plan_path.write_text(
+        "## Task notebook-eda: Exploratory analysis\n\n"
+        "### Files touched\n- notebooks/eda.ipynb\n- tests/eda.test.py\n\n"
+        "### Depends on\n\n",
+        encoding="utf-8",
+    )
+    result = plan_waves(plan_path=plan_path, tier="development", profile="data_analysis")
+    rendered = render_wave_plan(result, plan_source="plan.md", workspace="042-test")
+    # E2E column ainda aparece, mas sem yes
+    assert "E2E required?" in rendered
+    assert "yes (auto)" not in rendered
+    # Annotation NÃO aparece (sem flagged)
+    assert "E2E coverage required" not in rendered
+
+
 def test_render_wave_plan_marks_subwaves_when_cap_exceeded(tmp_path):
     lines = []
     for i in range(7):

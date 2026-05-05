@@ -537,13 +537,13 @@ def test_forensic_plus_doc_canonical_exists():
 
     v3.9.0: section header renamed from "Os 4 checks" to "Os 7 checks" with
     Checks 5/6/7 added (acceptance↔test mapping, NÃO QUERO violations,
-    ADR import drift).
+    ADR import drift). v3.10.0: "Os 8 checks" — Check 8 user-journey coverage.
     """
     path = REPO_ROOT / "references" / "forensic-plus-protocol.md"
     assert path.is_file(), "forensic-plus-protocol.md missing"
     text = path.read_text(encoding="utf-8")
     assert "# Forensic+ Protocol" in text
-    assert "## Os 7 checks" in text
+    assert "## Os 8 checks" in text
     assert "## JSON schema" in text
 
 
@@ -577,6 +577,7 @@ SKILL_MD_INDEXED_DOCS: tuple[str, ...] = (
     "critic-protocol.md",            # v3.9.0
     "lead-resolution-protocol.md",   # v3.9.0
     "mocking-guidelines.md",         # v3.9.0
+    "e2e-coverage-protocol.md",      # v3.10.0
 )
 
 
@@ -692,3 +693,62 @@ def test_state_machine_schema_lists_v3_9_0_error_types():
     assert "lead_resolution_all_buckets_failed" in text
     assert "critic_unavailable" in text
     assert "critic_abstain_loop" in text
+
+
+# ============================================================================
+# v3.10.0 — E2E coverage drift detectors
+# ============================================================================
+
+def test_e2e_coverage_protocol_doc_canonical_exists():
+    """v3.10.0 e2e-coverage-protocol.md must exist with H1 + key sections."""
+    path = REPO_ROOT / "references" / "e2e-coverage-protocol.md"
+    assert path.is_file(), "e2e-coverage-protocol.md missing"
+    text = path.read_text(encoding="utf-8")
+    assert "# E2E Coverage Protocol" in text
+    assert "## User-facing path detection" in text
+    assert "## Forensic+ Check 8" in text
+
+
+def test_l2_stage_04_references_e2e_protocol():
+    """L2 stage 04 must cross-ref e2e-coverage-protocol.md."""
+    path = (
+        REPO_ROOT / "templates" / "workspace" / "stages"
+        / "04_implementation_waves" / "CONTEXT.md.tpl"
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "e2e-coverage-protocol.md" in text
+
+
+def test_l2_stage_05_references_e2e_protocol():
+    """L2 stage 05 must cross-ref e2e-coverage-protocol.md (sub-step 4.7 audit)."""
+    path = (
+        REPO_ROOT / "templates" / "workspace" / "stages"
+        / "05_verification" / "CONTEXT.md.tpl"
+    )
+    text = path.read_text(encoding="utf-8")
+    assert "e2e-coverage-protocol.md" in text
+
+
+def test_state_machine_schema_lists_v3_10_0_error_types():
+    """state-machine-schema.md must list v3.10.0 e2e error_type values."""
+    path = REPO_ROOT / "references" / "state-machine-schema.md"
+    text = path.read_text(encoding="utf-8")
+    assert "e2e_suite_failed" in text
+    assert "e2e_suite_missing" in text
+    assert "e2e_suite_stale" in text
+    assert "e2e_skip_unjustified" in text
+
+
+def test_4block_template_has_requires_e2e_field():
+    """4-block-contract-template.md must document Requires E2E update field."""
+    path = REPO_ROOT / "references" / "4-block-contract-template.md"
+    text = path.read_text(encoding="utf-8")
+    assert "Requires E2E update" in text
+
+
+def test_wave_planner_has_user_facing_paths_constant():
+    """wave-planner-script.py must expose USER_FACING_PATHS_BY_PROFILE."""
+    path = REPO_ROOT / "scripts" / "wave-planner-script.py"
+    text = path.read_text(encoding="utf-8")
+    assert "USER_FACING_PATHS_BY_PROFILE" in text
+    assert "_task_requires_e2e" in text

@@ -1091,3 +1091,171 @@ def test_check7_adr_no_forbidden_section_skip_silently(tmp_path):
     result = json.loads(stdout)
     adr_violations = [v for v in result["violations"] if v["check"] == "adr_import_drift"]
     assert adr_violations == []
+
+
+# ============================================================================
+# v3.10.0 — Check 8 user-journey coverage (e2e)
+# ============================================================================
+
+def _make_plan_v3_10_0(
+    repo,
+    task_slug,
+    files_touched,
+    *,
+    requires_e2e_update=False,
+    e2e_skip=None,
+    conventions_extras=None,
+):
+    """Plan with v3.10.0 Requires E2E update field + optional **E2E:** skip."""
+    plan = repo / "plan.md"
+    body = f"## Task {task_slug}:\n\n### O QUE\n- placeholder\n\n"
+    if e2e_skip:
+        body += f"**E2E:** skip - {e2e_skip}\n\n"
+    body += "### Files touched\n"
+    for f in files_touched:
+        body += f"- {f}\n"
+    if requires_e2e_update:
+        body += "\n### Requires E2E update\n- true\n"
+    if conventions_extras:
+        body += f"\n### Conventions extras\n- {conventions_extras}\n"
+    plan.write_text(body, encoding="utf-8")
+    return plan
+
+
+def test_check8_e2e_missing_hard_in_dev(tmp_path):
+    """requires_e2e_update=True, no e2e files in diff, dev tier → HARD."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/routes/checkout.ts": "// stub\n"},
+        branch_files={
+            "src/routes/checkout.ts": "// impl\nexport const checkout = () => {};\n",
+            "tests/checkout.test.ts": "test('a', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+        },
+        branch_name="wave-001-1/checkout",
+    )
+    _make_plan_v3_10_0(
+        repo, "checkout",
+        files_touched=["src/routes/checkout.ts", "tests/checkout.test.ts"],
+        requires_e2e_update=True,
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "checkout", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "development",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    e2e_violations = [v for v in result["violations"] if v["check"] == "e2e_coverage_missing"]
+    assert len(e2e_violations) == 1
+    assert e2e_violations[0]["severity"] == "HARD"
+
+
+def test_check8_e2e_present_passes(tmp_path):
+    """requires_e2e_update=True + e2e file in diff → no violation."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/routes/checkout.ts": "// stub\n"},
+        branch_files={
+            "src/routes/checkout.ts": "// impl\n",
+            "tests/checkout.test.ts": "test('a', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+            "e2e/checkout-flow.spec.ts": "test('e2e', () => { expect(1).toBe(1); });\n",
+        },
+        branch_name="wave-001-1/checkout",
+    )
+    _make_plan_v3_10_0(
+        repo, "checkout",
+        files_touched=["src/routes/checkout.ts", "tests/checkout.test.ts", "e2e/checkout-flow.spec.ts"],
+        requires_e2e_update=True,
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "checkout", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "development",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    e2e_violations = [v for v in result["violations"] if v["check"] == "e2e_coverage_missing"]
+    assert e2e_violations == []
+
+
+def test_check8_e2e_skip_override_silent(tmp_path):
+    """**E2E:** skip - rationale → Check 8 silent skip even if requires_e2e_update."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/routes/foo.ts": "// stub\n"},
+        branch_files={
+            "src/routes/foo.ts": "// refactor\n",
+            "tests/foo.test.ts": "test('a', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+        },
+        branch_name="wave-001-1/foo",
+    )
+    _make_plan_v3_10_0(
+        repo, "foo",
+        files_touched=["src/routes/foo.ts", "tests/foo.test.ts"],
+        requires_e2e_update=True,
+        e2e_skip="refactor interno, behavior preservado",
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "foo", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "development",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    e2e_violations = [v for v in result["violations"] if v["check"] == "e2e_coverage_missing"]
+    assert e2e_violations == []
+
+
+def test_check8_e2e_no_flag_skip(tmp_path):
+    """No requires_e2e_update field → Check 8 skip silently."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/utils/helper.ts": "// stub\n"},
+        branch_files={
+            "src/utils/helper.ts": "export const x = () => 1;\n",
+            "tests/helper.test.ts": "test('a', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+        },
+        branch_name="wave-001-1/helper",
+    )
+    _make_plan_v3_10_0(
+        repo, "helper",
+        files_touched=["src/utils/helper.ts", "tests/helper.test.ts"],
+        # requires_e2e_update=False (default)
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "helper", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "development",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    e2e_violations = [v for v in result["violations"] if v["check"] == "e2e_coverage_missing"]
+    assert e2e_violations == []
+
+
+def test_check8_e2e_soft_in_tool_tier(tmp_path):
+    """requires_e2e_update=True, no e2e files, tool tier → SOFT."""
+    repo = _make_repo_with_branch(
+        tmp_path,
+        base_files={"src/api/foo.ts": "// stub\n"},
+        branch_files={
+            "src/api/foo.ts": "// impl\n",
+            "tests/foo.test.ts": "test('a', () => { expect(1).toBe(1); expect(2).toBe(2); });\n",
+        },
+        branch_name="wave-001-1/foo",
+    )
+    _make_plan_v3_10_0(
+        repo, "foo",
+        files_touched=["src/api/foo.ts", "tests/foo.test.ts"],
+        requires_e2e_update=True,
+    )
+    rc, stdout, _ = _run([
+        "--workspace-num", "001", "--wave", "1",
+        "--task-slug", "foo", "--base-branch", "main",
+        "--plan", str(repo / "plan.md"), "--tier", "tool",
+    ], cwd=repo)
+    assert rc == 0
+    result = json.loads(stdout)
+    e2e_violations = [v for v in result["violations"] if v["check"] == "e2e_coverage_missing"]
+    assert len(e2e_violations) == 1
+    assert e2e_violations[0]["severity"] == "SOFT"
