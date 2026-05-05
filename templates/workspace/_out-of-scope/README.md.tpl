@@ -1,46 +1,46 @@
 # OUT-OF-SCOPE — workspace {{WORKSPACE}}
 
-> Knowledge base de feature requests rejeitadas. 1 arquivo por conceito,
-> NÃO por issue. Múltiplas requests para o mesmo conceito agrupadas.
+> Knowledge base of rejected feature requests. 1 file per concept,
+> NOT per issue. Multiple requests for the same concept are grouped.
 >
-> Formato canônico: `_references/runtime/out-of-scope-kb.md`.
+> Canonical format: `_references/runtime/out-of-scope-kb.md`.
 
-## Convenção
+## Convention
 
 ```
 _out-of-scope/
-├── README.md            (este arquivo)
-├── <conceito-1>.md
-├── <conceito-2>.md
+├── README.md            (this file)
+├── <concept-1>.md
+├── <concept-2>.md
 └── ...
 ```
 
-Cada `<conceito>.md` contém:
+Each `<concept>.md` contains:
 
 ```markdown
 # {Concept Name}
 
-Curta descrição do que é o conceito + decisão de não implementar.
+Short description of what the concept is + decision not to implement.
 
-## Por que está fora de escopo
+## Why it is out of scope
 
-Razão durável: project scope/philosophy, technical constraint, ou strategic
-decision. Não razão temporária ("muito ocupado agora").
+Durable reason: project scope/philosophy, technical constraint, or strategic
+decision. Not a temporary reason ("too busy right now").
 
 ## Prior requests
 
-- session NNN fase XX — "summary"
-- session NNN fase XX — "summary"
+- session NNN stage XX — "summary"
+- session NNN stage XX — "summary"
 ```
 
-## Quando consultar
+## When to consult
 
-- **Stage 02 (design):** se `iteration > 0`, ler todos arquivos antes de
-  propor design. Surface match ao humano.
-- **Stage 08 (feedback intake):** durante triage de feedback novo, check
-  matching antes de classificar.
+- **Stage 02 (design):** if `iteration > 0`, read all files before
+  proposing design. Surface matches to the human.
+- **Stage 08 (feedback intake):** during triage of new feedback, check
+  for matches before classifying.
 
-## Quando atualizar
+## When to update
 
-- **wontfix de enhancement:** append em arquivo existente OU criar novo.
-- **Reconsideração:** delete arquivo, issue prossegue triage normal.
+- **wontfix of enhancement:** append to existing file OR create new one.
+- **Reconsideration:** delete file, issue proceeds through normal triage.

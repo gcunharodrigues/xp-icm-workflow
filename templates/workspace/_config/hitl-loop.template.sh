@@ -1,17 +1,17 @@
 #!/usr/bin/env bash
 # HITL (Human-In-The-Loop) feedback loop template
 #
-# Use quando bug exige interação humana mas você ainda quer estrutura.
-# Driver para o humano: prompt → wait → capture → loop.
+# Use when a bug requires human interaction but you still want structure.
+# Driver for the human: prompt → wait → capture → loop.
 #
 # Doc: <SKILL_DIR>/references/diagnose-protocol.md (Phase 1, item 10).
 #
-# Customize: edite REPRO_STEPS, OBSERVE_CMD, PASS_PATTERN.
+# Customize: edit REPRO_STEPS, OBSERVE_CMD, PASS_PATTERN.
 
 set -euo pipefail
 
-# === CONFIGURAÇÃO ===
-REPRO_STEPS='Click no botão "Login". Digite credenciais. Submit.'
+# === CONFIGURATION ===
+REPRO_STEPS='Click the "Login" button. Enter credentials. Submit.'
 OBSERVE_CMD='tail -n 20 /var/log/app.log'
 PASS_PATTERN='login successful'
 MAX_ITERATIONS=10
@@ -25,29 +25,29 @@ while [ "$iteration" -lt "$MAX_ITERATIONS" ]; do
     echo "Iteration $iteration / $MAX_ITERATIONS"
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo ""
-    echo "Reproduza o bug:"
+    echo "Reproduce the bug:"
     echo "  $REPRO_STEPS"
     echo ""
-    read -r -p "Pressione ENTER após reproduzir (ou Ctrl+C para sair): "
+    read -r -p "Press ENTER after reproducing (or Ctrl+C to exit): "
 
     echo ""
-    echo "Capturando observação..."
+    echo "Capturing observation..."
     output=$(eval "$OBSERVE_CMD")
     echo "$output"
     echo ""
 
     if echo "$output" | grep -q "$PASS_PATTERN"; then
-        echo "✅ Bug não reproduziu (PASS_PATTERN encontrado)."
+        echo "✅ Bug did not reproduce (PASS_PATTERN found)."
         break
     else
-        echo "❌ Bug reproduziu (PASS_PATTERN ausente)."
-        read -r -p "Continuar próxima iteration? [y/n]: " cont
+        echo "❌ Bug reproduced (PASS_PATTERN absent)."
+        read -r -p "Continue to next iteration? [y/n]: " cont
         if [ "$cont" != "y" ]; then
-            echo "Loop interrompido pelo usuário."
+            echo "Loop interrupted by user."
             exit 1
         fi
     fi
 done
 
 echo ""
-echo "Loop terminou após $iteration iteração(ões)."
+echo "Loop finished after $iteration iteration(s)."

@@ -337,4 +337,4 @@ class TestRenderStopPointsTemplate:
         out = render_template(TEMPLATE_PATH, _full_render_vars("development", custom))
         assert "STOP POINT" in out
         assert "Trade-offs" in out
-        assert "Recomendação do agente" in out
+        assert "Agent recommendation" in out

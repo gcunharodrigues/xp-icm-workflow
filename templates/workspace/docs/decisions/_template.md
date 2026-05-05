@@ -3,30 +3,30 @@
 {1-3 sentences: what's the context, what did we decide, and why.}
 
 <!--
-Template para ADR individual em <project_root>/docs/decisions/NNNN-slug.md.
+Template for individual ADR at <project_root>/docs/decisions/NNNN-slug.md.
 
-Numeração sequencial: scan diretório para maior NNNN existente, increment.
+Sequential numbering: scan directory for the highest existing NNNN, increment.
 
-Gate de 3 critérios (TODOS verdade):
-1. Hard to reverse — custo de mudar de ideia depois é meaningful
-2. Surprising without context — leitor futuro vai perguntar "por quê?"
-3. Result of a real trade-off — havia alternativas reais
+3-criteria gate (ALL must be true):
+1. Hard to reverse — cost of changing your mind later is meaningful
+2. Surprising without context — future reader will ask "why?"
+3. Result of a real trade-off — there were real alternatives
 
-Se algum falha → não cria ADR, vai para decisions.md como nota.
+If any fails → do not create an ADR, go to decisions.md as a note.
 
-Sections opcionais (incluir só quando agrega valor):
+Optional sections (include only when they add value):
 
 ## Status
 proposed | accepted | deprecated | superseded by ADR-NNNN
 
 ## Considered Options
-- Option A: <descrição + por que rejeitada>
-- Option B (chosen): <descrição + por que escolhida>
+- Option A: <description + why rejected>
+- Option B (chosen): <description + why chosen>
 
 ## Consequences
 - Positive: ...
 - Negative: ...
 - Neutral: ...
 
-Doc canônico: <SKILL_DIR>/references/adr-format.md.
+Canonical doc: <SKILL_DIR>/references/adr-format.md.
 -->
