@@ -1,133 +1,133 @@
-# Feedback Intake — Fase 08
+# Feedback Intake — Stage 08
 
-> **Versão:** v3.0.0-beta5 · Define a fase 08 (feedback intake universal). Disparo manual humano após uso real do output do workspace. Três saídas: A close, B restart fase X, C spawn novo workspace.
-
----
-
-## Propósito
-
-Fase 08 é o **gate de iteração universal** do ciclo ICM. Não é monitoring, não é cron, não é Grafana. É uma sessão deliberada que o humano dispara quando já usou o output do workspace por tempo suficiente pra ter dados (logs, dor real, lição) e quer decidir: fechar, refazer um pedaço, ou escalar pra novo workspace.
-
-Resolução do plan: Q12 (universal todos tiers), H1 (saída B só fases 01-07), H2 (saída C UX cola comando em sessão nova).
+> **Version:** v3.0.0-beta5 · Defines stage 08 (universal feedback intake). Manual human trigger after real use of the workspace output. Three exits: A close, B restart stage X, C spawn new workspace.
 
 ---
 
-## Quando rodar fase 08
+## Purpose
 
-- **Sempre opcional, nunca automático.** Humano dispara explicitamente após uso real do output do workspace — semanas, meses depois do `COMPLETED` da fase 07.
-- **Universal.** Qualquer tier (`experimental` → `production`). O plan dropou a restrição "só production". A diferença por tier é só calibração interna (peso de cada saída, profundidade da análise de logs).
-- **Não-cron, não-agendada.** Disparo: humano abre nova sessão Claude Code no project_root e diz "rodar fase 08 do workspace 042".
+Stage 08 is the **universal iteration gate** of the ICM cycle. It is not monitoring, not cron, not Grafana. It is a deliberate session the human triggers when they have already used the workspace output long enough to have real data (logs, real pain, lessons) and want to decide: close, redo a part, or escalate to a new workspace.
 
-### Estágios pulados por profile
-
-A `profile-matrix.md` declara `stages_skipped` por profile. `experiment` lista `"08"` (e tipicamente `"03"`, `"05"`, `"06"`). Outros profiles rodam 08 quando humano dispara.
+Plan resolution: Q12 (universal all tiers), H1 (exit B only stages 01-07), H2 (exit C UX pastes command in new session).
 
 ---
 
-## Pré-condição
+## When to run stage 08
 
-Workspace deve estar em `status: COMPLETED_AWAITING_HUMAN` (fase 07 já concluída, aguardando humano) ou `status: COMPLETED` (fase 08 anterior decidiu A/C e workspace reaberto).
+- **Always optional, never automatic.** Human triggers explicitly after real use of the workspace output — weeks, months after the `COMPLETED` from stage 07.
+- **Universal.** Any tier (`experimental` → `production`). The plan dropped the "production only" restriction. The difference per tier is only internal calibration (weight of each exit, depth of log analysis).
+- **Non-cron, non-scheduled.** Trigger: human opens new Claude Code session at project_root and says "run stage 08 for workspace 042".
 
-Se status indefinido ou inconsistente → Stop point 11 (`workspace_corrupt`) → Recovery Wizard.
+### Stages skipped by profile
 
-Se status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → sessão recusa fase 08 com mensagem: "workspace ainda não foi concluído (fase 07). Termine o ciclo principal antes de rodar feedback intake."
-
-Se status = `COMPLETED_AWAITING_HUMAN` → válido, prosseguir (transição automática de 07).
+The `profile-matrix.md` declares `stages_skipped` per profile. `experiment` lists `"08"` (and typically `"03"`, `"05"`, `"06"`). Other profiles run 08 when human triggers it.
 
 ---
 
-## Runtime cleanup obrigatório pré-saída (v3.7+)
+## Pre-condition
 
-ANTES de qualquer ação Process (pre-flight, coleta, inferência), sessão DEVE rodar Runtime Cleanup Checklist via `scripts/runtime-status.py`. Strict universal — todos tiers passam pelo checklist sem opt-out.
+Workspace must be in `status: COMPLETED_AWAITING_HUMAN` (stage 07 already done, awaiting human) or `status: COMPLETED` (prior stage 08 decided A/C and workspace reopened).
 
-**9 steps explícitos:**
+If status is undefined or inconsistent → Stop point 11 (`workspace_corrupt`) → Recovery Wizard.
 
-1. Sessão lê L0 + L1 do workspace (read order normal).
-2. Sessão executa:
+If status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → session refuses stage 08 with message: "workspace not yet completed (stage 07). Finish the main cycle before running feedback intake."
+
+If status = `COMPLETED_AWAITING_HUMAN` → valid, proceed (automatic transition from 07).
+
+---
+
+## Mandatory runtime cleanup pre-exit (v3.7+)
+
+BEFORE any Process action (pre-flight, collection, inference), session MUST run the Runtime Cleanup Checklist via `scripts/runtime-status.py`. Strict universal — all tiers go through the checklist without opt-out.
+
+**9 explicit steps:**
+
+1. Session reads L0 + L1 of the workspace (normal read order).
+2. Session runs:
    ```
    python {SKILL_DIR}/scripts/runtime-status.py \
        --workspace-root <ws> --project-root <pr> --format text --exit-code
    ```
-3. 6 categorias verificadas: dev_servers, background_tasks, docker, wave_branches, working_tree, untracked.
-4. Pra cada categoria não-clean, sessão imprime detalhes (PIDs, branches, paths) + menu humano `[s/n/edit]`.
-5. Humano resolve item (kill processo, deletar branch, commitar dirt) e responde `[s]` pra retomar.
-6. Sessão re-roda checklist completo (idempotente).
-7. Loop até **todas categorias clean** OU humano cancela com `[n]` em alguma categoria.
-8. Sucesso → prosseguir Process step 1 (pre-flight L1 validation).
-9. Falha (humano `[n]` ou comando errou após retry) → stop point #13 `runtime_cleanup_failed`. Status `BLOCKED_STOP_POINT`. Sessão pausa, escreve menu A/B/C específico (resolveu / skip / cancela).
+3. 6 categories verified: dev_servers, background_tasks, docker, wave_branches, working_tree, untracked.
+4. For each non-clean category, session prints details (PIDs, branches, paths) + human menu `[y/n/edit]`.
+5. Human resolves item (kill process, delete branch, commit dirt) and replies `[y]` to resume.
+6. Session re-runs full checklist (idempotent).
+7. Loop until **all categories clean** OR human cancels with `[n]` on any category.
+8. Success → proceed to Process step 1 (pre-flight L1 validation).
+9. Failure (human `[n]` or command errored after retry) → stop point #13 `runtime_cleanup_failed`. Status `BLOCKED_STOP_POINT`. Session pauses, writes specific A/B/C menu (resolved / skip / cancel).
 
-**Output reportado em `intake-report.md`:** seção §"Runtime cleanup pré-saída" com snapshot final + categorias confirmadas + warnings (se algum cleanup foi skipado via stop point #13 menu B).
+**Output reported in `intake-report.md`:** section §"Runtime cleanup pre-exit" with final snapshot + confirmed categories + warnings (if any cleanup was skipped via stop point #13 menu B).
 
-**Falha → BLOCKED_ERROR não usado.** v3.7.0 introduziu stop point oficial (#13). `BLOCKED_ERROR` reserve-se a workspace-corrupt + IO failures duros.
+**Failure → BLOCKED_ERROR not used.** v3.7.0 introduced official stop point (#13). `BLOCKED_ERROR` is reserved for workspace-corrupt + hard IO failures.
 
-Doc canônico: `references/runtime-cleanup-protocol.md`.
+Canonical doc: `references/runtime-cleanup-protocol.md`.
 
 ---
 
-## O que a sessão fase 08 faz
+## What the stage 08 session does
 
 ### Pre-flight
 
-Lê:
+Reads:
 
-- L0 (`<workspace>/CLAUDE.md`) — paths absolutos, profile, tier, `logs_root`.
-- L1 (`<workspace>/CONTEXT.md`) — confirma `status: COMPLETED`, lê `iteration` atual e `history`.
-- L2 (`<workspace>/stages/08_feedback_intake/CONTEXT.md`) — instruções específicas do estágio.
-- Outputs anteriores: `stages/01..07/output/*` — sample-check de existência (audit).
+- L0 (`<workspace>/CLAUDE.md`) — absolute paths, profile, tier, `logs_root`.
+- L1 (`<workspace>/CONTEXT.md`) — confirms `status: COMPLETED`, reads current `iteration` and `history`.
+- L2 (`<workspace>/stages/08_feedback_intake/CONTEXT.md`) — stage-specific instructions.
+- Prior outputs: `stages/01..07/output/*` — existence sample-check (audit).
 
-Validações automáticas:
+Automatic validations:
 
 1. `status == "COMPLETED"`.
-2. Outputs 01-07 existem (sample-check de pelo menos 1 arquivo por estágio que rodou — respeitando `stages_skipped` do profile).
-3. `sub_stage` atual ∈ {`08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C`} ou ausente (primeiro disparo).
+2. Outputs 01-07 exist (sample-check of at least 1 file per stage that ran — respecting `stages_skipped` from the profile).
+3. Current `sub_stage` ∈ {`08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C`} or absent (first trigger).
 
-Falha em qualquer validação → abort com mensagem específica + ação proposta.
+Failure in any validation → abort with specific message + proposed action.
 
-### Coleta de inputs
+### Input collection
 
-**1. Logs do sistema** (se `logs_root` declarado em L0 e diferente de `null`)
+**1. System logs** (if `logs_root` declared in L0 and different from `null`)
 
-Sample dos últimos 30 dias de `<logs_root>`. Se `logs_root: null` (greenfield/texto/skill), pula esta etapa. Se path não existe ou está vazio, anota "logs vazios/inacessíveis" no report e segue.
+Sample from last 30 days of `<logs_root>`. If `logs_root: null` (greenfield/text/skill), skip this step. If path does not exist or is empty, notes "logs empty/inaccessible" in the report and continues.
 
-**2. Feedback humano estruturado**
+**2. Structured human feedback**
 
-Sessão pergunta humano em formato 4-block:
+Session asks human in 4-block format:
 
 ```
 ## O QUE FUNCIONOU
 
-(o que entregou valor de verdade)
+(what actually delivered value)
 
 ## O QUE NÃO FUNCIONOU
 
-(o que falhou, atritou, desperdiçou tempo)
+(what failed, caused friction, wasted time)
 
 ## QUAL DOR PERSISTE
 
-(o que ainda dói após este workspace)
+(what still hurts after this workspace)
 
 ## QUE LIÇÃO TIRAR
 
-(insight pra capturar em docs/lessons.md)
+(insight to capture in docs/lessons.md)
 ```
 
-Humano responde inline na sessão. Sessão valida que cada bloco tem ao menos 1 frase substantiva (não vazio nem placeholder).
+Human replies inline in the session. Session validates that each block has at least 1 substantive sentence (not empty or placeholder).
 
-**3. Análise top-N error patterns**
+**3. Top-N error pattern analysis**
 
-Agrupa logs + feedback em **≤5 padrões** com `frequencia` (count ou estimativa) + `impacto` (low/medium/high/critical) + `evidencia` (linhas log ou trecho do feedback). Se logs vazios e feedback curto, pode haver 0-2 padrões; aceita.
+Groups logs + feedback into **≤5 patterns** with `frequency` (count or estimate) + `impact` (low/medium/high/critical) + `evidence` (log lines or feedback excerpt). If logs are empty and feedback is brief, there may be 0-2 patterns; that is acceptable.
 
 ### Output
 
-Sessão escreve `<workspace>/stages/08_feedback_intake/output/intake-report.md`:
+Session writes `<workspace>/stages/08_feedback_intake/output/intake-report.md`:
 
 ```markdown
 # Intake Report — Workspace NNN, iteration M
 
 ## Logs sample
-(últimos 30 dias de <logs_root>, ou "n/a" se null)
+(last 30 days from <logs_root>, or "n/a" if null)
 
-## Feedback humano
+## Human feedback
 ### O QUE FUNCIONOU
 ...
 ### O QUE NÃO FUNCIONOU
@@ -138,70 +138,70 @@ Sessão escreve `<workspace>/stages/08_feedback_intake/output/intake-report.md`:
 ...
 
 ## Top-N patterns
-| # | Padrao | Frequencia | Impacto | Evidencia |
+| # | Pattern | Frequency | Impact | Evidence |
 |---|---|---|---|---|
 | 1 | ... | ... | ... | ... |
 
-## Recomendacao
-Saida sugerida: A | B (fase X) | C
-Justificativa: ...
+## Recommendation
+Suggested exit: A | B (stage X) | C
+Rationale: ...
 ```
 
-Pre-commit hook valida prefixo de commit `intake:` ou `feedback:`.
+Pre-commit hook validates commit prefix `intake:` or `feedback:`.
 
 ---
 
-## As 3 saídas A/B/C
+## The 3 exits A/B/C
 
-Após `intake-report.md` escrito, sessão dispara menu A/B/C com a recomendação destacada. Humano escolhe (pode discordar da recomendação). Sessão executa transição correspondente.
+After `intake-report.md` is written, session triggers the A/B/C menu with the recommendation highlighted. Human chooses (may disagree with the recommendation). Session executes the corresponding transition.
 
-### Saída A — Close workspace
+### Exit A — Close workspace
 
-**Quando:** ferramenta funciona, lições já capturadas, sem ação adicional.
+**When:** tool works, lessons already captured, no additional action needed.
 
-**Sessão executa:**
+**Session executes:**
 
-1. Append em `history`: `event: stage_transition`, `from: 08_in_progress`, `to: 08_decided_A`, `note: "<motivo curto>"`, `at: <ISO>`, `commit_sha: <a preencher pós-commit>`.
+1. Append to `history`: `event: stage_transition`, `from: 08_in_progress`, `to: 08_decided_A`, `note: "<short reason>"`, `at: <ISO>`, `commit_sha: <to be filled post-commit>`.
 2. Set `sub_stage: 08_decided_A`.
 3. Set `status: COMPLETED`.
-4. Append lições novas (extraídas do bloco "QUE LIÇÃO TIRAR" do intake-report) em `<project_root>/docs/lessons.md` respeitando frontmatter strict (id, date, tags, severity).
-5. Commit atômico (pre-commit hook valida atomicidade L1↔outputs↔lessons).
-6. Mensagem humano: "Workspace NNN fechado. M lições adicionadas em docs/lessons.md."
+4. Append new lessons (extracted from the "QUE LIÇÃO TIRAR" block of intake-report) to `<project_root>/docs/lessons.md` respecting strict frontmatter (id, date, tags, severity).
+5. Atomic commit (pre-commit hook validates atomicity L1↔outputs↔lessons).
+6. Human message: "Workspace NNN closed. M lessons added to docs/lessons.md."
 
-**Exemplo concreto — saída A:**
+**Concrete example — exit A:**
 
-Mensagem ao humano:
+Message to human:
 ```
-Workspace 042 fechado com decisao A (close).
+Workspace 042 closed with decision A (close).
 
-3 licoes adicionadas em docs/lessons.md:
-  #017 critical — race em rebase de wave grande
-  #018 medium — peer review on-demand pegou bug em path critico
-  #019 low — wave-reviewer com 1 task adiciona ruido (skip futuro)
+3 lessons added to docs/lessons.md:
+  #017 critical — race in large wave rebase
+  #018 medium — on-demand peer review caught bug in critical path
+  #019 low — wave-reviewer with 1 task adds noise (skip in future)
 
-Sub_stage final: 08_decided_A. Status: COMPLETED.
+Final sub_stage: 08_decided_A. Status: COMPLETED.
 ```
 
-Diff YAML em L1:
+YAML diff in L1:
 ```yaml
-# antes
+# before
 sub_stage: "07_completed"
 status: "COMPLETED"
-last_action: "fase 07 merged em main, CI green"
+last_action: "stage 07 merged into main, CI green"
 
-# depois
+# after
 sub_stage: "08_decided_A"
 status: "COMPLETED"
-last_action: "fase 08 saida A — close workspace"
+last_action: "stage 08 exit A — close workspace"
 last_action_at: "2026-04-25T16:00:00Z"
-next_action: "n/a — workspace arquivado"
+next_action: "n/a — workspace archived"
 last_transition:
   from: "08_in_progress"
   to: "08_decided_A"
   at: "2026-04-25T16:00:00Z"
   commit_sha: "f1e2d3c4b5a6"
 history:
-  # ... entradas anteriores preservadas
+  # ... prior entries preserved
   - at: "2026-04-25T15:30:00Z"
     event: "stage_transition"
     from: "07_completed"
@@ -212,82 +212,82 @@ history:
     from: "08_in_progress"
     to: "08_decided_A"
     commit_sha: "f1e2d3c4b5a6"
-    note: "ferramenta funciona, 3 licoes capturadas"
+    note: "tool works, 3 lessons captured"
 ```
 
 ---
 
-### Saída B — Restart fase X (iteration++)
+### Exit B — Restart stage X (iteration++)
 
-**Quando:** descoberta nova exige redesenho parcial. Workspace volta a fase X com lições do intake aplicadas.
+**When:** new discovery requires partial redesign. Workspace returns to stage X with lessons from the intake applied.
 
-**Constraint H1:** X ∈ {`01`, `02`, `03`, `04`, `05`, `06`, `07`}. Restart NÃO permitido para:
+**Constraint H1:** X ∈ {`01`, `02`, `03`, `04`, `05`, `06`, `07`}. Restart NOT permitted for:
 
-- `00` (recon — pra mudar `project_root` ou tipo do projeto, use saída C).
-- `08` (atual — não faz sentido restart no próprio gate).
+- `00` (recon — to change `project_root` or project type, use exit C).
+- `08` (current — restarting the gate itself makes no sense).
 
-Validação no L2 da fase 08: humano que escolher B precisa declarar X válido; sessão recusa X ∉ {01..07}.
+Validation in L2 of stage 08: human choosing B must declare valid X; session refuses X ∉ {01..07}.
 
-**Sessão executa:**
+**Session executes:**
 
-1. Append em `history`: `event: iteration_increment`, `from: 08_in_progress`, `to: <XX>_in_progress`, `iteration_new: <N+1>`, `note: "restart phase X — <motivo>"`, `at: <ISO>`.
-2. Move outputs antigos: `stages/<XX>/output/` → `stages/<XX>/output-iteration-<N>/` (N = iteration ANTES do incremento). Outputs preservados pra audit. Schema interno idêntico ao `output/`.
+1. Append to `history`: `event: iteration_increment`, `from: 08_in_progress`, `to: <XX>_in_progress`, `iteration_new: <N+1>`, `note: "restart stage X — <reason>"`, `at: <ISO>`.
+2. Move old outputs: `stages/<XX>/output/` → `stages/<XX>/output-iteration-<N>/` (N = iteration BEFORE increment). Outputs preserved for audit. Internal schema identical to `output/`.
 3. Set `iteration: N+1`.
 4. Set `stage_atual: <XX>`.
 5. Set `sub_stage: <XX>_in_progress`.
-6. Set `status: IN_PROGRESS` (sai de `COMPLETED`).
-7. Set `last_action: "restart fase <XX> iteration N+1"`.
-8. Set `next_action: "rodar fase <XX> com licoes do intake-report"`.
-9. Commit atômico.
-10. Mensagem humano: instrução pra abrir nova sessão.
-11. Sessão sai. Próxima sessão lê L1 e retoma fase XX naturalmente.
+6. Set `status: IN_PROGRESS` (exits `COMPLETED`).
+7. Set `last_action: "restart stage <XX> iteration N+1"`.
+8. Set `next_action: "run stage <XX> with lessons from intake-report"`.
+9. Atomic commit.
+10. Human message: instruction to open new session.
+11. Session exits. Next session reads L1 and naturally resumes stage XX.
 
-**Exemplo concreto — saída B (restart fase 03):**
+**Concrete example — exit B (restart stage 03):**
 
-Mensagem ao humano:
+Message to human:
 ```
-Workspace 042 voltou a fase 03 (wave planner), iteration 2.
+Workspace 042 returned to stage 03 (wave planner), iteration 2.
 
-Outputs antigos preservados em:
+Old outputs preserved in:
   stages/03/output-iteration-1/
   (wave-plan.md, ambiguities-resolved.md, llm_review_findings.md)
 
-Outputs novos da iteration 2 vao em stages/03/output/ (limpo).
+New iteration 2 outputs go in stages/03/output/ (clean).
 
-Abra nova sessao no project_root para retomar.
-A sessao vai ler L1, ver stage_atual=03 + iteration=2,
-e pegar as licoes do intake-report ao construir novo wave-plan.
+Open a new session at project_root to resume.
+The session will read L1, see stage_atual=03 + iteration=2,
+and pick up the lessons from intake-report when building the new wave-plan.
 ```
 
-Diff YAML em L1:
+YAML diff in L1:
 ```yaml
-# antes
+# before
 stage_atual: "08"
 sub_stage: "08_in_progress"
 status: "COMPLETED"
 iteration: 1
 
-# depois
+# after
 stage_atual: "03"
 sub_stage: "03_in_progress"
 status: "IN_PROGRESS"
 iteration: 2
-last_action: "restart fase 03 iteration 2"
+last_action: "restart stage 03 iteration 2"
 last_action_at: "2026-04-25T16:00:00Z"
-next_action: "rodar fase 03 com licoes do intake-report (wave 1 teve race em rebase, redesenhar DAG)"
+next_action: "run stage 03 with lessons from intake-report (wave 1 had race in rebase, redesign DAG)"
 last_transition:
   from: "08_in_progress"
   to: "03_in_progress"
   at: "2026-04-25T16:00:00Z"
   commit_sha: "9a8b7c6d5e4f"
 history:
-  # ... entradas anteriores preservadas
+  # ... prior entries preserved
   - at: "2026-04-25T16:00:00Z"
     event: "iteration_increment"
     from: "08_in_progress"
     to: "03_in_progress"
     iteration_new: 2
-    note: "restart phase 03 — DAG da wave 1 causou race em rebase, redesenhar"
+    note: "restart phase 03 — DAG from wave 1 caused race in rebase, redesign"
     commit_sha: "9a8b7c6d5e4f"
 ```
 
@@ -296,145 +296,145 @@ Filesystem move:
 stages/03/output/wave-plan.md            → stages/03/output-iteration-1/wave-plan.md
 stages/03/output/ambiguities-resolved.md → stages/03/output-iteration-1/ambiguities-resolved.md
 stages/03/output/llm_review_findings.md  → stages/03/output-iteration-1/llm_review_findings.md
-stages/03/output/                        → (vazio, pronto pra iteration 2)
+stages/03/output/                        → (empty, ready for iteration 2)
 ```
 
 ---
 
-### Saída C — Spawn novo workspace (herda lessons + ADRs)
+### Exit C — Spawn new workspace (inherits lessons + ADRs)
 
-**Quando:** feedback indica precisar de novo escopo (reescrita maior, evolução com escopo distinto, ou troca de `project_root`). Workspace 042 segue fechado; cria 043 herdando contexto.
+**When:** feedback indicates needing a new scope (major rewrite, evolution with distinct scope, or change of `project_root`). Workspace 042 stays closed; creates 043 inheriting context.
 
-**UX H2:** sessão fase 08 NÃO bootstrappa o 043 automaticamente. Humano abre nova sessão e cola o comando explícito. Isso preserva a separação "skill é parteira one-shot, sai".
+**UX H2:** stage 08 session does NOT bootstrap 043 automatically. Human opens a new session and pastes the explicit command. This preserves the separation "skill is a one-shot midwife, exits".
 
-**Sessão executa:**
+**Session executes:**
 
-1. Append em `history`: `event: stage_transition`, `from: 08_in_progress`, `to: 08_decided_C`, `spawn_to: <slug-novo>`, `note: "spawn novo workspace — <motivo>"`, `at: <ISO>`.
+1. Append to `history`: `event: stage_transition`, `from: 08_in_progress`, `to: 08_decided_C`, `spawn_to: <new-slug>`, `note: "spawn new workspace — <reason>"`, `at: <ISO>`.
 2. Set `sub_stage: 08_decided_C`.
 3. Set `status: COMPLETED`.
-4. Set `spawn_to: <slug-novo-workspace>` (humano sugere durante a sessão; default `043-<slug>` baseado em escopo do feedback).
-5. Commit atômico.
-6. Mensagem humano explícita com comando pra colar em nova sessão.
+4. Set `spawn_to: <new-workspace-slug>` (human suggests during session; default `043-<slug>` based on feedback scope).
+5. Atomic commit.
+6. Explicit human message with command to paste in new session.
 
-**Bootstrap do 043 (acontece em sessão SEPARADA, não nesta):**
+**Bootstrap of 043 (happens in a SEPARATE session, not this one):**
 
-- Lê `<project_root>/workspaces/042/CONTEXT.md` via `spawn_from=042` arg.
-- Herda `profile_base`, `tier`, `project_root` (humano confirma cada um — pode mudar).
-- L1 do 043 recebe `spawn_from: 042`.
-- recon-report inicial do 043 inclui seção "Herdado de 042: ADRs aplicáveis, lições críticas, escopo motivador do spawn".
-- L1 do 042 já tinha `spawn_to: 043` set; agora é referência cruzada confirmada.
+- Reads `<project_root>/workspaces/042/CONTEXT.md` via `spawn_from=042` arg.
+- Inherits `profile_base`, `tier`, `project_root` (human confirms each — may change).
+- L1 of 043 receives `spawn_from: 042`.
+- Initial recon-report of 043 includes section "Inherited from 042: applicable ADRs, critical lessons, motivating scope of spawn".
+- L1 of 042 already had `spawn_to: 043` set; now it is a confirmed cross-reference.
 
-**Exemplo concreto — saída C:**
+**Concrete example — exit C:**
 
-Mensagem ao humano:
+Message to human:
 ```
-Workspace 042 fechado com decisao SPAWN.
+Workspace 042 closed with decision SPAWN.
 
-L1 do 042 atualizado: spawn_to=043-feat-auth-v2, status=COMPLETED.
+042 L1 updated: spawn_to=043-feat-auth-v2, status=COMPLETED.
 
-Para criar 043 herdando contexto:
+To create 043 inheriting context:
 
-  1. Abra nova sessao Claude Code no mesmo project_root:
+  1. Open new Claude Code session at the same project_root:
      C:/Users/guicr/projects/aura-luz-api
 
-  2. Cole o comando:
+  2. Paste the command:
      /xp-icm-workflow project-root=C:/Users/guicr/projects/aura-luz-api spawn_from=042
 
-  3. Bootstrap vai:
-     - Ler CONTEXT.md de 042
-     - Propor profile=app_web_backend e tier=development (do 042); voce confirma
-     - Criar 043 com spawn_from=042 em recon-report
-     - Listar ADRs herdados (0001-stack, 0003-auth-strategy) pra voce confirmar quais aplicam
-     - Listar licoes critical de 042 pra contexto inicial
+  3. Bootstrap will:
+     - Read CONTEXT.md of 042
+     - Propose profile=app_web_backend and tier=development (from 042); you confirm
+     - Create 043 with spawn_from=042 in recon-report
+     - List inherited ADRs (0001-stack, 0003-auth-strategy) for you to confirm which apply
+     - List critical lessons from 042 for initial context
 
-Esta sessao termina aqui.
+This session ends here.
 ```
 
-Diff YAML em L1:
+YAML diff in L1:
 ```yaml
-# antes
+# before
 sub_stage: "08_in_progress"
 status: "COMPLETED"
-last_action: "fase 08 coletou feedback + intake-report escrito"
+last_action: "stage 08 collected feedback + intake-report written"
 
-# depois
+# after
 sub_stage: "08_decided_C"
 status: "COMPLETED"
 spawn_to: "043-feat-auth-v2"
-last_action: "fase 08 saida C — spawn novo workspace 043"
+last_action: "stage 08 exit C — spawn new workspace 043"
 last_action_at: "2026-04-25T16:00:00Z"
-next_action: "humano abre nova sessao + /xp-icm-workflow spawn_from=042"
+next_action: "human opens new session + /xp-icm-workflow spawn_from=042"
 last_transition:
   from: "08_in_progress"
   to: "08_decided_C"
   at: "2026-04-25T16:00:00Z"
   commit_sha: "5e4d3c2b1a09"
 history:
-  # ... entradas anteriores preservadas
+  # ... prior entries preserved
   - at: "2026-04-25T16:00:00Z"
     event: "stage_transition"
     from: "08_in_progress"
     to: "08_decided_C"
     commit_sha: "5e4d3c2b1a09"
     spawn_to: "043-feat-auth-v2"
-    note: "spawn novo workspace — auth precisa OAuth2 PKCE, escopo nao cabe em restart"
+    note: "spawn new workspace — auth needs OAuth2 PKCE, scope does not fit in restart"
 ```
 
 ---
 
-## Sub_stage enum fase 08 (recap state-machine-schema.md)
+## Sub_stage enum stage 08 (recap state-machine-schema.md)
 
-| Sub_stage | Significado | Status correspondente |
+| Sub_stage | Meaning | Corresponding status |
 |---|---|---|
-| `08_in_progress` | sessão coletando logs + feedback + escrevendo intake-report | `IN_PROGRESS` |
-| `08_decided_A` | humano escolheu A (close) | `COMPLETED` |
-| `08_decided_B` | humano escolheu B (restart fase X) | volta a `IN_PROGRESS` no estágio X |
-| `08_decided_C` | humano escolheu C (spawn) | `COMPLETED` + `spawn_to` set |
+| `08_in_progress` | session collecting logs + feedback + writing intake-report | `IN_PROGRESS` |
+| `08_decided_A` | human chose A (close) | `COMPLETED` |
+| `08_decided_B` | human chose B (restart stage X) | back to `IN_PROGRESS` in stage X |
+| `08_decided_C` | human chose C (spawn) | `COMPLETED` + `spawn_to` set |
 
 ---
 
-## Outputs preservados de iterations (saída B)
+## Preserved iteration outputs (exit B)
 
-Na saída B, outputs antigos vão pra `stages/<XX>/output-iteration-<N>/` — **não deletados**. Audit trail completo da evolução do workspace.
+In exit B, old outputs go to `stages/<XX>/output-iteration-<N>/` — **not deleted**. Full audit trail of the workspace evolution.
 
 Schema:
-- `output-iteration-<N>/` é diretório.
-- Estrutura interna idêntica à `output/` (mesmos nomes de arquivo).
-- Nova iteration escreve em `stages/<XX>/output/` limpo.
-- Iterations anteriores (`output-iteration-1/`, `output-iteration-2/`, ...) coexistem.
+- `output-iteration-<N>/` is a directory.
+- Internal structure identical to `output/` (same filenames).
+- New iteration writes to clean `stages/<XX>/output/`.
+- Prior iterations (`output-iteration-1/`, `output-iteration-2/`, ...) coexist.
 
-Pre-commit hook valida que `output-iteration-<N>/` é apenas criado em commits com prefixo `intake:` ou `feedback:`.
+Pre-commit hook validates that `output-iteration-<N>/` is only created in commits with prefix `intake:` or `feedback:`.
 
 ---
 
 ## Constraints
 
-- **Fase 08 NÃO faz código novo.** Apenas analisa + decide + transiciona estado. Qualquer código novo é responsabilidade de iteration nova (saída B) ou novo workspace (saída C).
-- **Pre-commit hook valida transição** como qualquer outra (atomicidade L1 ↔ outputs/lessons, prefixo `feedback:` ou `intake:`).
-- **Stop points raros mas possíveis:** item 11 `workspace_corrupt` se `intake-report.md` não escreve (disco cheio, permissão), ou se humano interrompe a sessão antes de decidir A/B/C (status fica `IN_PROGRESS` em `08_in_progress`; próxima sessão retoma).
-- **Lições novas só em saída A.** Saídas B e C reaproveitam lições naturalmente (B via intake-report do iteration N+1; C via herança em recon-report do 043). Saída A é o único caminho de append explícito em `docs/lessons.md`.
+- **Stage 08 does NOT write new code.** Only analyzes + decides + transitions state. Any new code is the responsibility of a new iteration (exit B) or new workspace (exit C).
+- **Pre-commit hook validates transition** like any other (atomicity L1 ↔ outputs/lessons, prefix `feedback:` or `intake:`).
+- **Stop points rare but possible:** item 11 `workspace_corrupt` if `intake-report.md` cannot be written (disk full, permission), or if human interrupts the session before deciding A/B/C (status stays `IN_PROGRESS` in `08_in_progress`; next session resumes).
+- **New lessons only in exit A.** Exits B and C naturally reuse lessons (B via intake-report of iteration N+1; C via inheritance in recon-report of 043). Exit A is the only path for explicit append to `docs/lessons.md`.
 
 ---
 
-## v3.3.0 — Triage classification (precede A/B/C)
+## v3.3.0 — Triage classification (precedes A/B/C)
 
-ANTES da inferência A/B/C, classificar feedback em **(category, state)**:
+BEFORE A/B/C inference, classify feedback in **(category, state)**:
 
-| Categoria | Estado | Saída |
+| Category | State | Exit |
 |---|---|---|
-| bug | ready-for-action | **B** restart fase X |
-| enhancement | ready-for-action | **C** spawn novo workspace |
+| bug | ready-for-action | **B** restart stage X |
+| enhancement | ready-for-action | **C** spawn new workspace |
 | enhancement | wontfix | **A** close + append `_out-of-scope/` |
-| qualquer | needs-info | pausa (status=COMPLETED_AWAITING_HUMAN) |
-| nada | tudo OK | **A** close |
+| any | needs-info | pause (status=COMPLETED_AWAITING_HUMAN) |
+| none | all OK | **A** close |
 
-Cada item classificado como B ou C **gera AGENT-BRIEF** (formato:
-`agent-brief-template.md`) que vira input para próxima sessão / spawn.
+Each item classified as B or C **generates an AGENT-BRIEF** (format:
+`agent-brief-template.md`) which becomes input for the next session / spawn.
 
-Enhancement rejeitado (wontfix) registra em
-`<workspace>/_out-of-scope/<conceito>.md` (formato: `out-of-scope-kb.md`).
+Enhancement rejected (wontfix) records in
+`<workspace>/_out-of-scope/<concept>.md` (format: `out-of-scope-kb.md`).
 
-CLAUDE.md root atualizado por handoff.py em todas as 3 saídas (ver
-`session-handoff-protocol.md` §"Saídas A/B/C e CLAUDE.md root").
+CLAUDE.md root updated by handoff.py in all 3 exits (see
+`session-handoff-protocol.md` §"Stage 08 exits A/B/C and CLAUDE.md root").
 
-Doc canônico: `references/triage-state-machine.md`.
+Canonical doc: `references/triage-state-machine.md`.

@@ -2,26 +2,26 @@
 
 **Paper:** "Interpretable Context Methodology: Folder Structure as Agent Architecture"
 **arXiv:** 2603.16021v2
-**Key takeaway:** Orquestração de agentes AI via estrutura de sistema de arquivos, sem framework.
+**Key takeaway:** AI agent orchestration via filesystem structure, without a framework.
 
 ---
 
 ## 5 Design Principles
 
 ### 1. One stage, one job
-Cada estágio faz uma coisa e escreve output na sua pasta. Segue McIlroy (Unix: um programa, uma coisa bem feita) e Parnas (information hiding).
+Each stage does one thing and writes output to its own folder. Follows McIlroy (Unix: one program, one thing done well) and Parnas (information hiding).
 
 ### 2. Plaintext as the interface
-Estágios se comunicam por markdown e JSON. Nenhum formato binário. Qualquer ferramenta que lê texto pode participar. Qualquer humano com editor pode inspecionar/modificar.
+Stages communicate via markdown and JSON. No binary format. Any tool that reads text can participate. Any human with an editor can inspect/modify.
 
 ### 3. Layered context loading
-Agentes carregam SOMENTE o contexto que precisam. Previne o problema "lost in the middle" (Liu et al., 2024) — modelos degradam quando contexto irrelevante é carregado. Cada estágio recebe 2.000–8.000 tokens focados vs. 30.000–50.000 de abordagem monolítica.
+Agents load ONLY the context they need. Prevents the "lost in the middle" problem (Liu et al., 2024) — models degrade when irrelevant context is loaded. Each stage receives 2,000–8,000 focused tokens vs. 30,000–50,000 in the monolithic approach.
 
 ### 4. Every output is an edit surface
-O output de cada estágio é um arquivo que o humano pode abrir, ler, editar e salvar. Implementa mixed-initiative (Horvitz, 1999) e direct manipulation (Shneiderman, 1983).
+The output of each stage is a file the human can open, read, edit and save. Implements mixed-initiative (Horvitz, 1999) and direct manipulation (Shneiderman, 1983).
 
 ### 5. Configure the factory, not the product
-Workspace configurado uma vez. Cada run produz novo deliverable com mesma configuração. Layer 3 (referência) é a fábrica. Layer 4 (trabalho) é o produto. Editar Layer 3 melhora todas as runs. Editar Layer 4 melhora esta run.
+Workspace configured once. Each run produces a new deliverable with the same configuration. Layer 3 (reference) is the factory. Layer 4 (working) is the product. Editing Layer 3 improves all runs. Editing Layer 4 improves this run.
 
 ---
 

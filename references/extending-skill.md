@@ -1,72 +1,72 @@
 # Extending the Skill — xp-icm-workflow
 
-Checklist para quando uma **nova skill** é instalada no ecossistema ou o usuário pede para incorporar uma nova capacidade ao workflow.
+Checklist for when a **new skill** is installed in the ecosystem or the user asks to incorporate a new capability into the workflow.
 
-Aplicar o princípio edit-source à própria skill: se você continua atualizando os mesmos arquivos manualmente toda vez que algo muda, crie mecanismo que garanta consistência automática.
-
----
-
-## Quando ler este arquivo
-
-Carregar sob demanda quando:
-
-1. Uma nova skill é instalada (ex: `superpowers:ui-ux-design`, `superpowers:data-pipeline`).
-2. Usuário pede "incorporar [capacidade] ao workflow".
-3. Orquestradora detecta skill invocada que não aparece no mapeamento.
-4. Skill existente muda de nome ou escopo.
+Apply the edit-source principle to the skill itself: if you keep updating the same files manually every time something changes, create a mechanism that ensures automatic consistency.
 
 ---
 
-## Perguntas de classificação (responder primeiro)
+## When to read this file
 
-Antes de atualizar arquivos:
+Load on demand when:
 
-1. **Esta skill afeta qual estágio?** → Define qual seção do `SKILL.md` e qual template de `CONTEXT.md` atualizar.
-2. **Substitui ou complementa skill existente?** → Substitui: remover a antiga. Complementa: adicionar como auxiliar.
-3. **Orquestradora precisa ler o output diretamente ou delegar?** → Markdown compacto (`discovery.md`, `plan.md`): orquestradora pode ler. Código-fonte (`src/`, `tests/`): delegar a subagentes/skills especializadas.
-4. **Skill introduz novo tipo de artefato?** → Se sim, adicionar na Inputs table dos estágios que o consomem. Exemplo: wireframes (Estágio 02) são input para Estágio 03.
-5. **Skill requer novo estágio?** → Etapa distinta com review gate próprio → criar estágio. Atividade dentro de estágio existente → adicionar como auxiliar.
+1. A new skill is installed (e.g., `superpowers:ui-ux-design`, `superpowers:data-pipeline`).
+2. User asks to "incorporate [capability] into the workflow".
+3. Orchestrator detects a skill being invoked that does not appear in the mapping.
+4. An existing skill changes name or scope.
 
 ---
 
-## Checklist de Extensibilidade
+## Classification questions (answer first)
 
-Para cada nova skill ou mudança, atualizar **todos** os itens relevantes:
+Before updating files:
 
-| # | Arquivo | O que atualizar | Exemplo |
+1. **Which stage does this skill affect?** → Determines which section of `SKILL.md` and which `CONTEXT.md` template to update.
+2. **Does it replace or complement an existing skill?** → Replaces: remove the old one. Complements: add as auxiliary.
+3. **Does the orchestrator need to read the output directly or delegate?** → Compact markdown (`discovery.md`, `plan.md`): orchestrator can read. Source code (`src/`, `tests/`): delegate to specialized subagents/skills.
+4. **Does the skill introduce a new artifact type?** → If so, add it to the Inputs table of the stages that consume it. Example: wireframes (Stage 02) are input to Stage 03.
+5. **Does the skill require a new stage?** → Distinct step with its own review gate → create a stage. Activity within an existing stage → add as auxiliary.
+
+---
+
+## Extensibility Checklist
+
+For each new skill or change, update **all** relevant items:
+
+| # | File | What to update | Example |
 |---|---|---|---|
-| 1 | `SKILL.md` — Division of Responsibilities | Adicionar skill na tabela com Quem e Decide/Faz | `superpowers:ui-ux-design` → "Design: wireframes, protótipos, guias de estilo" |
-| 2 | `SKILL.md` — Workflow Overview (tabela mestra) | Se cria novo estágio, adicionar no fluxo. Se complementa, adicionar como auxiliar. | Estágio 02.5: "UI/UX Design" com skill `ui-ux-design`, ou Estágio 03 com skill auxiliar |
-| 3 | `SKILL.md` — Estágio específico (Phase 1 enxuta) | Atualizar skill, input chave, output chave e gate do estágio afetado | Se UI/UX afeta Estágio 02: adicionar wireframes como output |
-| 4 | `references/stage-templates.md` | Atualizar template do estágio afetado com nova skill, inputs e outputs. Se a nova skill impactar identidade ou roteamento do workspace, atualizar também os templates de `CLAUDE.md` raiz e `CONTEXT.md` raiz nesse mesmo arquivo. | Adicionar `output/wireframes.md` nos outputs do Estágio 02; se skill adiciona novo campo (ex: design system name) ao workspace, atualizar template de `CLAUDE.md` raiz |
-| 5 | `references/superpowers-mapping.md` | Adicionar linha na tabela "Mapeamento por Estágio" e/ou "Situação Transversal" | `02 Design & Planning` → `superpowers:ui-ux-design` |
-| 6 | `references/xp-workflow-integration.md` | Se afeta fases do `/xp-workflow`, mapear. Se não afeta, marcar N/A. | Phase 1 do xp-workflow agora inclui UI/UX |
-| 7 | `references/icm-paper-summary.md` | **NÃO atualizar** — resumo do paper, não da skill | N/A |
-| 8 | `SKILL.md` — Protocolo de Delegação (se aplicável) | Se skill lê código-fonte ou produz artefatos que orquestradora consumiria, definir se lê direto ou via report | `ui-ux-design` produz wireframes (markdown) — orquestradora pode ler, não precisa de delegação |
-| 9 | `references/changelog.md` | Registrar extensão como nova versão menor | v2.X.0 — Extensão: [skill]. Estágio(s): [...]. Arquivos: [...] |
+| 1 | `SKILL.md` — Division of Responsibilities | Add skill to table with Who and Decides/Does | `superpowers:ui-ux-design` → "Design: wireframes, prototypes, style guides" |
+| 2 | `SKILL.md` — Workflow Overview (master table) | If creating new stage, add to flow. If complementing, add as auxiliary. | Stage 02.5: "UI/UX Design" with skill `ui-ux-design`, or Stage 03 with auxiliary skill |
+| 3 | `SKILL.md` — Specific stage (lean Phase 1) | Update skill, key input, key output and gate of the affected stage | If UI/UX affects Stage 02: add wireframes as output |
+| 4 | `references/stage-templates.md` | Update the affected stage template with new skill, inputs and outputs. If the new skill impacts workspace identity or routing, also update the root `CLAUDE.md` and `CONTEXT.md` templates in that same file. | Add `output/wireframes.md` to Stage 02 outputs; if skill adds new field (e.g., design system name) to workspace, update root `CLAUDE.md` template |
+| 5 | `references/superpowers-mapping.md` | Add row to "Mapping by Stage" and/or "Transversal Situation" table | `02 Design & Planning` → `superpowers:ui-ux-design` |
+| 6 | `references/xp-workflow-integration.md` | If it affects `/xp-workflow` phases, map it. If not, mark N/A. | Phase 1 of xp-workflow now includes UI/UX |
+| 7 | `references/icm-paper-summary.md` | **DO NOT update** — paper summary, not skill summary | N/A |
+| 8 | `SKILL.md` — Delegation Protocol (if applicable) | If skill reads source code or produces artifacts the orchestrator would consume, define whether it reads directly or via report | `ui-ux-design` produces wireframes (markdown) — orchestrator can read, no delegation needed |
+| 9 | `references/changelog.md` | Record extension as a new minor version | v2.X.0 — Extension: [skill]. Stage(s): [...]. Files: [...] |
 
 ---
 
-## Formato de registro no changelog
+## Changelog entry format
 
 ```
-## v2.X.0 — Extensão: [nome da skill]
-- Estágio(s) afetado(s): [lista]
-- Arquivos atualizados: [lista]
-- Motivo da adição: [1 frase]
-- Orquestradora lê output diretamente? [sim/não + motivo]
+## v2.X.0 — Extension: [skill name]
+- Affected stage(s): [list]
+- Updated files: [list]
+- Reason for addition: [1 sentence]
+- Orchestrator reads output directly? [yes/no + reason]
 ```
 
 ---
 
 ## Red flags
 
-Sinais de que a extensão está sendo feita mal:
+Signs that the extension is being done poorly:
 
-- Nova skill aparece em `SKILL.md` mas não em `references/superpowers-mapping.md` (mapeamento dessincronizado).
-- Template de estágio no `references/stage-templates.md` diz "invocar X skill" mas o X não está listado em Division of Responsibilities.
-- Orquestradora adicionou leitura direta de `src/` — viola Princípio de Delegação.
-- Stop points do `/xp-workflow` não foram considerados quando novo tipo de artefato foi introduzido.
-- Changelog não registrou a extensão — sessões futuras ficam sem rastreabilidade.
+- New skill appears in `SKILL.md` but not in `references/superpowers-mapping.md` (mapping out of sync).
+- Stage template in `references/stage-templates.md` says "invoke X skill" but X is not listed in Division of Responsibilities.
+- Orchestrator added direct read of `src/` — violates Delegation Principle.
+- Stop points of `/xp-workflow` were not considered when a new artifact type was introduced.
+- Changelog did not record the extension — future sessions have no traceability.
 
-Ao detectar qualquer red flag: parar, corrigir, só depois prosseguir.
+If any red flag is detected: stop, fix, only then proceed.

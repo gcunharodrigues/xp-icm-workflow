@@ -1,32 +1,32 @@
-# Stage Templates — Spec Canônico L2 (xp-icm-workflow v3.0.0-beta5)
+# Stage Templates — Canonical L2 Spec (xp-icm-workflow v3.0.0-beta5)
 
-> **Propósito:** define o **schema obrigatório** dos 9 templates L2 em `templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl`. Cada L2 é um *contrato de estágio*: declara o que o agente lê, processa e escreve quando aquele estágio está ativo.
+> **Purpose:** defines the **mandatory schema** of the 9 L2 templates in `templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl`. Each L2 is a *stage contract*: declares what the agent reads, processes and writes when that stage is active.
 
-> **Status:** spec. L2 templates concretos em `templates/workspace/stages/*/CONTEXT.md.tpl`. Toda alteração de schema aqui obriga regenerar os 9 .tpl + atualizar `tests/unit/test_l2_templates.py`.
+> **Status:** spec. Concrete L2 templates in `templates/workspace/stages/*/CONTEXT.md.tpl`. Any schema change here requires regenerating the 9 .tpl + updating `tests/unit/test_l2_templates.py`.
 
-> **Não confundir:** este doc é spec do **template** L2. O `.tpl` resultante carrega placeholders `{{PROJECT_ROOT}}` e `{{WORKSPACE}}` que o bootstrap resolve. O resultado materializado em `<project_root>/workspaces/<NNN-slug>/stages/<NN>_<slug>/CONTEXT.md` é o L2 efetivo lido por sessões.
+> **Do not confuse:** this doc is the spec of the **L2 template**. The resulting `.tpl` carries placeholders `{{PROJECT_ROOT}}` and `{{WORKSPACE}}` that bootstrap resolves. The materialized result in `<project_root>/workspaces/<NNN-slug>/stages/<NN>_<slug>/CONTEXT.md` is the effective L2 read by sessions.
 
 ---
 
-## Os 9 estágios
+## The 9 stages
 
-| NN | Nome (slug)              | Resumo 1 frase |
+| NN | Name (slug)              | One-sentence summary |
 |----|--------------------------|----------------|
-| 00 | `recon`                  | Reconnaissance do projeto/repositório: detecta stack, branch, ADRs e lessons existentes; gera baseline para os estágios seguintes. |
-| 01 | `discovery`              | Brainstorming guiado: público, requisitos funcionais/não-funcionais, alternativas, MVP IN/OUT, riscos, métricas. |
-| 02 | `design`                 | Plano arquitetural + ADRs formais; modelagem de dados, contratos de API, divisão em tasks com 4-block contract + Test Strategy global. |
-| 03 | `wave_planner`           | Constrói DAG de tasks, agrupa em waves respeitando cap de subagentes e dependências; LLM review subagent assina o plano. |
-| 04 | `implementation_waves`   | Execução paralela via subagentes em branches isoladas; lead orquestra spawn/saída do Agent tool/merge sequencial; uma sub-stage por wave. |
-| 05 | `verification`           | Verificação técnica do que foi entregue: CI, cobertura vs threshold (test_specs), sample-check tipos de teste, conformidade ao plano e ADRs; PASS/CONDITIONAL/FAIL. |
-| 06 | `review`                 | Code review nas 7 dimensões (correctness, security, tests, design, standards, readability, performance) + recebimento de feedback. |
-| 07 | `merge`                  | Finaliza branch: merge direto, PR, tag de release ou cleanup; atualiza lessons/tech_debt; fecha o ciclo de entrega. |
-| 08 | `feedback_intake`        | Pós-uso real: 3 saídas — A) close workspace, B) restart fase X (`iteration++`), C) spawn novo workspace herdando lessons+ADRs. |
+| 00 | `recon`                  | Project/repository reconnaissance: detects stack, branch, existing ADRs and lessons; generates baseline for subsequent stages. |
+| 01 | `discovery`              | Guided brainstorming: audience, functional/non-functional requirements, alternatives, MVP IN/OUT, risks, metrics. |
+| 02 | `design`                 | Architectural plan + formal ADRs; data modeling, API contracts, task breakdown with 4-block contract + global Test Strategy. |
+| 03 | `wave_planner`           | Builds task DAG, groups into waves respecting subagent cap and dependencies; LLM review subagent signs the plan. |
+| 04 | `implementation_waves`   | Parallel execution via subagents on isolated branches; lead orchestrates Agent tool spawn/exit/sequential merge; one sub-stage per wave. |
+| 05 | `verification`           | Technical verification of what was delivered: CI, coverage vs threshold (test_specs), sample-check test types, conformance to plan and ADRs; PASS/CONDITIONAL/FAIL. |
+| 06 | `review`                 | Code review on 7 dimensions (correctness, security, tests, design, standards, readability, performance) + feedback reception. |
+| 07 | `merge`                  | Finalizes branch: direct merge, PR, release tag or cleanup; updates lessons/tech_debt; closes the delivery cycle. |
+| 08 | `feedback_intake`        | Post-real-use: 3 exits — A) close workspace, B) restart stage X (`iteration++`), C) spawn new workspace inheriting lessons+ADRs. |
 
 ---
 
-## Schema obrigatório do L2 template
+## Mandatory L2 template schema
 
-Todo `stages/<NN>_<slug>/CONTEXT.md.tpl` DEVE conter as 12 seções abaixo, **na ordem**. Test parser falha se faltar qualquer uma.
+Every `stages/<NN>_<slug>/CONTEXT.md.tpl` MUST contain the 12 sections below, **in order**. The test parser fails if any is missing.
 
 ### 1. YAML frontmatter
 
@@ -35,173 +35,173 @@ Todo `stages/<NN>_<slug>/CONTEXT.md.tpl` DEVE conter as 12 seções abaixo, **na
 layer: L2
 stage: "<NN>"                              # string "00".."08"
 stage_name: "<slug>"                       # ∈ {recon, discovery, design, wave_planner, implementation_waves, verification, review, merge, feedback_intake}
-sub_stage_enum:                            # lista canônica do estágio (ver §Sub_stage enum)
+sub_stage_enum:                            # canonical list for the stage (see §Sub_stage enum)
   - "<NN>_in_progress"
   - "<NN>_completed"
-applicable_stop_points:                    # lista de IDs de stop-points-canonical.md aplicáveis aqui
+applicable_stop_points:                    # list of stop-points-canonical.md IDs applicable here
   - "<sp_id>"
-output_files:                              # paths relativos a stage dir
+output_files:                              # paths relative to stage dir
   - "output/<file>.md"
-next_stage: "<MM>"                         # próximo estágio padrão; null se 08 ou se profile pula
+next_stage: "<MM>"                         # next default stage; null if 08 or if profile skips
 ---
 ```
 
-**Campos obrigatórios:** `layer`, `stage`, `stage_name`, `sub_stage_enum`, `applicable_stop_points`, `output_files`, `next_stage`. Todos validados pelo parser de Round 2.
+**Required fields:** `layer`, `stage`, `stage_name`, `sub_stage_enum`, `applicable_stop_points`, `output_files`, `next_stage`. All validated by Round 2 parser.
 
-**Regra:** `stage_name` em snake_case sem prefixo numérico (o número está em `stage`). `sub_stage_enum` bate **exatamente** com `references/state-machine-schema.md` §Sub-stage enum.
+**Rule:** `stage_name` in snake_case without numeric prefix (the number is in `stage`). `sub_stage_enum` matches **exactly** with `references/state-machine-schema.md` §Sub-stage enum.
 
-### 2. Título + propósito (1 parágrafo)
+### 2. Title + purpose (1 paragraph)
 
 ```markdown
-# Estágio {{STAGE_NN}} — {{STAGE_NAME}} (L2)
+# Stage {{STAGE_NN}} — {{STAGE_NAME}} (L2)
 
-<1 parágrafo: o que este estágio entrega ao workspace, em linguagem direta. Sem floreio.>
+<1 paragraph: what this stage delivers to the workspace, in direct language. No filler.>
 ```
 
-### 3. Tabela `Inputs (lê SOMENTE estes, na ordem)`
+### 3. `Inputs (reads ONLY these, in order)` table
 
-Formato literal §4.11 do plan. Mínimo 3 linhas (L0, L1, L2 do estágio). Estágios subsequentes acrescentam outputs anteriores e ADRs/conventions.
+Literal format §4.11 of the plan. Minimum 3 rows (L0, L1, L2 of the stage). Subsequent stages add prior outputs and ADRs/conventions.
 
 ```markdown
-## Inputs (lê SOMENTE estes, na ordem)
+## Inputs (reads ONLY these, in order)
 
-| # | Path | Layer | Obrigatório? |
+| # | Path | Layer | Required? |
 |---|------|-------|--------------|
-| 1 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md | L0 | sim |
-| 2 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | sim |
-| 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<NN>_<slug>/CONTEXT.md | L2 | sim |
-| 4 | <path estágio-específico>                         | L3/L4 | sim/condicional |
+| 1 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md | L0 | yes |
+| 2 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | yes |
+| 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<NN>_<slug>/CONTEXT.md | L2 | yes |
+| 4 | <stage-specific path>                         | L3/L4 | yes/conditional |
 | ... | ...                                            | ...   | ... |
 ```
 
-**Placeholders:** apenas `{{PROJECT_ROOT}}` e `{{WORKSPACE}}` (Jinja-style). Bootstrap resolve. Nunca usar `../../`.
+**Placeholders:** only `{{PROJECT_ROOT}}` and `{{WORKSPACE}}` (Jinja-style). Bootstrap resolves. Never use `../../`.
 
-**Marcação `condicional`:** linha cuja obrigatoriedade depende de profile/tier (ex.: `tech_debt.md` só se `tech_debt_tracking: true`). Coluna deve dizer `condicional: <regra>`.
+**`conditional` marking:** row whose requirement depends on profile/tier (e.g., `tech_debt.md` only if `tech_debt_tracking: true`). Column must say `conditional: <rule>`.
 
-### 4. Seção `Não Lê (negative constraint)`
+### 4. `Does Not Read (negative constraint)` section
 
-Lista negativa explícita. Agente recusa ler diretórios/arquivos fora da Inputs e fora da pista declarada aqui.
+Explicit negative list. Agent refuses to read directories/files outside the Inputs and outside the declared track here.
 
 ```markdown
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
-- {{PROJECT_ROOT}}/src/, {{PROJECT_ROOT}}/tests/   (exceções: <listadas>)
-- ADRs não listados no plan.md desta wave
-- Outputs de outros estágios além dos declarados em Inputs
-- {{PROJECT_ROOT}}/docs/lessons.md (lições já vêm pré-injetadas pelo lead, se aplicável)
+- {{PROJECT_ROOT}}/src/, {{PROJECT_ROOT}}/tests/   (exceptions: <listed>)
+- ADRs not listed in this wave's plan.md
+- Outputs from stages other than those declared in Inputs
+- {{PROJECT_ROOT}}/docs/lessons.md (lessons are pre-injected by lead, if applicable)
 ```
 
 ### 5. Read order
 
-Numerado, preserva ordem da Inputs. Reforça Layer Loading Protocol.
+Numbered, preserves Inputs order. Reinforces the Layer Loading Protocol.
 
 ```markdown
 ## Read order
 
-1. L0 — identidade
+1. L0 — identity
 2. L1 — state machine
-3. L2 (este arquivo) — instruções do estágio
-4..N. Demais paths da Inputs, na ordem da tabela
+3. L2 (this file) — stage instructions
+4..N. Other Inputs paths, in table order
 ```
 
 ### 6. Process
 
-Passos do estágio em formato numerado. Cada passo pequeno e verificável. Inclui:
+Stage steps in numbered format. Each step small and verifiable. Includes:
 
-- Verificação pre-flight (existência dos paths Inputs).
-- Skill superpowers a invocar (ver §11).
-- Decisões que disparam stop point.
-- Ponto onde sub_stage transita para `<NN>_completed`.
-- Atualização de L1 + commit atômico.
+- Pre-flight check (existence of Input paths).
+- Superpowers skills to invoke (see §11).
+- Decisions that trigger a stop point.
+- Point where sub_stage transitions to `<NN>_completed`.
+- L1 update + atomic commit.
 
-### 7. Outputs esperados
+### 7. Expected outputs
 
-Paths **relativos a `stages/<NN>/output/`**. Igual ao campo `output_files` do frontmatter. Cada item descreve conteúdo mínimo (1 frase).
+Paths **relative to `stages/<NN>/output/`**. Same as the `output_files` field of frontmatter. Each item describes minimum content (1 sentence).
 
 ```markdown
 ## Outputs
 
-- `output/<file>.md` — <descrição mínima do conteúdo>
-- `output/reports/<...>` (se aplicável)
+- `output/<file>.md` — <minimum description of content>
+- `output/reports/<...>` (if applicable)
 ```
 
 ### 8. Sub_stage transitions
 
-Lista enums válidos do estágio (puxados de `state-machine-schema.md`) + regra textual da transição IN_PROGRESS → COMPLETED.
+Lists valid enums for the stage (pulled from `state-machine-schema.md`) + textual rule for the IN_PROGRESS → COMPLETED transition.
 
 ```markdown
 ## Sub_stage transitions
 
-Enum válido: <lista de sub_stage_enum do frontmatter>
+Valid enum: <list of sub_stage_enum from frontmatter>
 
-Transição IN_PROGRESS → COMPLETED dispara quando:
-- Todos os outputs declarados em §Outputs existem no FS.
-- Verify (§6 Process passo X) passou.
-- Humano aprovou (gate de §12) — quando aplicável.
+IN_PROGRESS → COMPLETED transition fires when:
+- All outputs declared in §Outputs exist in FS.
+- Verify (§6 Process step X) passed.
+- Human approved (gate of §12) — when applicable.
 ```
 
-Estágio 04 documenta sub_stages dinâmicos `04_wave_<N>_in_progress` / `04_wave_<N>_completed`. Estágio 08 documenta os 4 terminais `08_decided_A/B/C` além de `08_in_progress`.
+Stage 04 documents dynamic sub_stages `04_wave_<N>_in_progress` / `04_wave_<N>_completed`. Stage 08 documents the 4 terminal values `08_decided_A/B/C` in addition to `08_in_progress`.
 
-### 9. Status que pode setar
+### 9. Settable statuses
 
-Subset dos 5 canônicos de `references/state-machine-schema.md`.
+Subset of the 5 canonical ones from `references/state-machine-schema.md`.
 
 ```markdown
-## Status canônicos disponíveis neste estágio
+## Canonical statuses available in this stage
 
-- `IN_PROGRESS` — trabalho ativo.
-- `COMPLETED_AWAITING_HUMAN` — outputs prontos, aguarda gate humano.
-- `BLOCKED_STOP_POINT` — menu A/B/C disparado (ver §10).
-- `BLOCKED_ERROR` — runtime/CI/merge falhou.
-- `COMPLETED` — APENAS estágio 07 (saída) ou 08 saída A.
+- `IN_PROGRESS` — active work.
+- `COMPLETED_AWAITING_HUMAN` — outputs ready, awaiting human gate.
+- `BLOCKED_STOP_POINT` — A/B/C menu triggered (see §10).
+- `BLOCKED_ERROR` — runtime/CI/merge failed.
+- `COMPLETED` — ONLY stage 07 (exit) or 08 exit A.
 ```
 
-Estágios 00–06 nunca setam `COMPLETED` (terminal de workspace). Estágios 03 e 06 podem omitir `BLOCKED_ERROR` se profile pula.
+Stages 00–06 never set `COMPLETED` (workspace terminal). Stages 03 and 06 may omit `BLOCKED_ERROR` if profile skips.
 
-### 10. Stop points aplicáveis
+### 10. Applicable stop points
 
-Referência canônica a `references/stop-points-canonical.md` (escrito em paralelo). Lista IDs aplicáveis ao estágio.
+Canonical reference to `references/stop-points-canonical.md` (written in parallel). Lists IDs applicable to the stage.
 
 ```markdown
-## Stop points aplicáveis
+## Applicable stop points
 
-Catálogo canônico em `references/stop-points-canonical.md`. IDs disparáveis aqui:
+Canonical catalog in `references/stop-points-canonical.md`. IDs fireable here:
 
-- `sp_<id>` — <1 linha do que dispara>
+- `sp_<id>` — <1 line of what triggers it>
 - ...
 
-Disparo: agente pausa, escreve menu A/B/C no output, atualiza L1 `status: BLOCKED_STOP_POINT`. Humano responde, sessão retoma com `IN_PROGRESS`.
+Trigger: agent pauses, writes A/B/C menu to output, updates L1 `status: BLOCKED_STOP_POINT`. Human replies, session resumes with `IN_PROGRESS`.
 ```
 
-Catálogo canônico em `references/stop-points-canonical.md` define os 12 IDs e thresholds por tier. L2 do estágio cita SOMENTE IDs canônicos. Mapeamento autoritativo:
+Canonical catalog in `references/stop-points-canonical.md` defines the 12 IDs and thresholds per tier. L2 of the stage cites ONLY canonical IDs. Authoritative mapping:
 
-| Estágio | Stop points aplicáveis (IDs canônicos) |
+| Stage | Applicable stop points (canonical IDs) |
 |---|---|
 | 00 recon | `workspace_corrupt`, `profile_mismatch` |
 | 01 discovery | `stack`, `external_api`, `paid_service`, `pii` |
 | 02 design | `stack`, `db`, `new_dep`, `paid_service`, `irreversible`, `over_eng`, `pii`, `adr_drift` |
-| 03 wave_planner | (nenhum — wave-planner é determinístico) |
+| 03 wave_planner | (none — wave-planner is deterministic) |
 | 04 implementation_waves | `new_dep`, `irreversible`, `over_eng`, `prod_migration`, `adr_drift` |
-| 05 verification | (nenhum — falha CI é `BLOCKED_ERROR`, não stop point) |
+| 05 verification | (none — CI failure is `BLOCKED_ERROR`, not stop point) |
 | 06 review | `over_eng`, `pii`, `adr_drift` |
 | 07 merge | `irreversible`, `prod_migration` |
-| 08 feedback_intake | (nenhum — saídas A/B/C são decisão direta) |
+| 08 feedback_intake | (none — exits A/B/C are direct decision) |
 
-### 11. Skill superpowers de referência
+### 11. Reference superpowers skills
 
-Aponta o sumário 200tok a consultar. Path absoluto via placeholder; arquivos serão criados na Wave 5 da skill — paths são contratos.
+Points to the 200tok summary to consult. Absolute path via placeholder; files will be created in Wave 5 of the skill — paths are contracts.
 
 ```markdown
-## Skill superpowers de referência
+## Reference superpowers skills
 
-Sumário 200tok: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/<X>-200tok.md`
+200tok summary: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/<X>-200tok.md`
 
-Skill formal: `superpowers:<nome>` (escape hatch — invocação real só se complexidade justifica).
+Formal skill: `superpowers:<name>` (escape hatch — real invocation only if complexity warrants).
 ```
 
-#### Mapeamento estágio ↔ skill superpowers
+#### Stage ↔ superpowers skill mapping
 
-| Estágio | Skill superpowers principal | Sumário 200tok |
+| Stage | Main superpowers skill | 200tok summary |
 |---|---|---|
 | 00 recon | `brainstorming` + `writing-plans` (light) | `brainstorming-200tok.md` |
 | 01 discovery | `brainstorming` | `brainstorming-200tok.md` |
@@ -211,81 +211,81 @@ Skill formal: `superpowers:<nome>` (escape hatch — invocação real só se com
 | 05 verification | `verification-before-completion` | `verification-before-completion-200tok.md` |
 | 06 review | `requesting-code-review` + `receiving-code-review` | `requesting-code-review-200tok.md` |
 | 07 merge | `finishing-a-development-branch` | `finishing-a-development-branch-200tok.md` |
-| 08 feedback_intake | (nenhuma direta) | usa `references/feedback-intake-fase08.md` local |
+| 08 feedback_intake | (none direct) | uses local `references/feedback-intake-fase08.md` |
 
 ### 12. Gates
 
-Declara explicitamente quem libera o estágio.
+Explicitly declares who releases the stage.
 
 ```markdown
 ## Gates
 
-- **Humano:** <quando exige aprovação humana ou edição de output>
-- **Automático (CI):** <linters, testes, hooks que precisam estar verdes>
-- **Aprovação para transitar:** <regra exata para sub_stage IN_PROGRESS → COMPLETED>
+- **Human:** <when human approval or output editing is required>
+- **Automatic (CI):** <linters, tests, hooks that must be green>
+- **Approval to transition:** <exact rule for sub_stage IN_PROGRESS → COMPLETED>
 ```
 
-Estágio 04 referencia gate composto: peer review subagent + wave-reviewer + merge verde.
+Stage 04 references a composite gate: peer review subagent + wave-reviewer + green merge.
 
 ---
 
-## Sub_stage enum por estágio (canônico)
+## Sub_stage enum per stage (canonical)
 
-Réplica de `references/state-machine-schema.md` §Sub-stage enum. Frontmatter de cada L2 deve bater **exatamente** com a coluna correspondente.
+Replica of `references/state-machine-schema.md` §Sub-stage enum. Each L2 frontmatter must match **exactly** the corresponding column.
 
-| Estágio | Valores válidos |
+| Stage | Valid values |
 |---|---|
 | 00 Recon | `00_in_progress`, `00_completed` |
 | 01 Discovery | `01_in_progress`, `01_completed` |
 | 02 Design | `02_in_progress`, `02_completed` |
 | 03 Wave Planner | `03_in_progress`, `03_completed` |
-| 04 Implementation Waves | `04_wave_<N>_in_progress`, `04_wave_<N>_completed` (N inteiro positivo) |
+| 04 Implementation Waves | `04_wave_<N>_in_progress`, `04_wave_<N>_completed` (N positive integer) |
 | 05 Verification | `05_in_progress`, `05_completed` |
 | 06 Review | `06_in_progress`, `06_completed` |
 | 07 Merge | `07_in_progress`, `07_completed` |
 | 08 Feedback Intake | `08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C` |
 
-**Regra de prefixo:** `sub_stage` SEMPRE começa com prefixo `<stage>_`. Mismatch dispara Recovery Wizard inconsistência (ver `references/state-machine-schema.md` §R2.7).
+**Prefix rule:** `sub_stage` ALWAYS starts with prefix `<stage>_`. Mismatch triggers Recovery Wizard inconsistency (see `references/state-machine-schema.md` §R2.7).
 
 ---
 
-## Estágios pulados por profile
+## Stages skipped by profile
 
-Fonte: `templates/_config/profile-matrix.md`. Skill resolve `stages_skipped` no merge profile + tier + override e materializa SOMENTE os L2s não-pulados.
+Source: `templates/_config/profile-matrix.md`. Skill resolves `stages_skipped` in the profile + tier + override merge and materializes ONLY the non-skipped L2s.
 
 | Profile | `stages_skipped` |
 |---|---|
-| `experiment` | `["03", "05", "06", "08"]` (todos os tiers) |
-| `technical_article` | `["03"]` (todos os tiers) |
-| Demais 9 profiles | `[]` |
+| `experiment` | `["03", "05", "06", "08"]` (all tiers) |
+| `technical_article` | `["03"]` (all tiers) |
+| Other 9 profiles | `[]` |
 
-Override local em `.icm-profile.local.yaml` pode adicionar/remover (sujeito a `confirm_unsafe` para gates críticos). L1 declara `stages_skipped` final no `_config/profile-effective.yaml`; bootstrap NÃO cria pastas dos estágios pulados.
+Local override in `.icm-profile.local.yaml` can add/remove (subject to `confirm_unsafe` for critical gates). L1 declares the final `stages_skipped` in `_config/profile-effective.yaml`; bootstrap does NOT create folders for skipped stages.
 
-**Quando estágio é pulado:** L1 não pula transições — `next_stage` do L2 anterior aponta direto ao próximo estágio NÃO-pulado. Ex: em `experiment`, `next_stage` do estágio 02 design é `04` (pula 03).
-
----
-
-## Validação automatizada (Round 2)
-
-`tests/unit/test_l2_templates.py` parseia cada `templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl` e valida:
-
-1. **Frontmatter parseável** (PyYAML strict load) e contém os 7 campos obrigatórios.
-2. **`sub_stage_enum`** bate exatamente com `references/state-machine-schema.md` §Sub-stage enum (exceção: estágio 04 valida regex `^04_wave_<int>_(in_progress|completed)$`).
-3. **Placeholders Jinja**: somente `{{PROJECT_ROOT}}` e `{{WORKSPACE}}`. Qualquer outro placeholder (`{{...}}`) → falha. Verifica que ambos são substituíveis (re.findall encontra ≥1 ocorrência cada — exceto estágio 00 que pode não usar `WORKSPACE` em paths além dos default L0/L1/L2).
-4. **Tabela Inputs presente** com cabeçalho exato `## Inputs (lê SOMENTE estes, na ordem)` e ≥3 linhas de dados (L0, L1, L2 mínimo) — parser conta linhas de tabela após o cabeçalho.
-5. **Seção `## Não Lê (negative constraint)`** presente com ≥1 item.
-6. **`output_files` do frontmatter** bate com paths citados na seção `## Outputs` (set equality).
-7. **`applicable_stop_points`** ⊆ IDs declarados em `references/stop-points-canonical.md` (carrega catálogo, faz `issubset`).
-8. **`next_stage`** ∈ {`"00".."08"`, `null`}; null exclusivo do estágio 08.
-9. **Skill 200tok path** referenciado em §11 existe como string (arquivo real só na Wave 5 — teste só checa formato do path).
-
-Falha em qualquer item → CI bloqueia merge da wave.
+**When a stage is skipped:** L1 does not skip transitions — `next_stage` of the prior L2 points directly to the next NON-skipped stage. E.g., in `experiment`, `next_stage` of stage 02 design is `04` (skips 03).
 
 ---
 
-## Exemplo concreto — L2 estágio 02 design (placeholders resolvidos)
+## Automated validation (Round 2)
 
-Workspace fictício: `042-feat-auth`, `project_root=/repo/aura-luz-api`, profile `app_web_backend`, tier `development`.
+`tests/unit/test_l2_templates.py` parses each `templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl` and validates:
+
+1. **Frontmatter parseable** (PyYAML strict load) and contains the 7 required fields.
+2. **`sub_stage_enum`** matches exactly with `references/state-machine-schema.md` §Sub-stage enum (exception: stage 04 validates regex `^04_wave_<int>_(in_progress|completed)$`).
+3. **Jinja placeholders**: only `{{PROJECT_ROOT}}` and `{{WORKSPACE}}`. Any other placeholder (`{{...}}`) → fail. Verifies both are substitutable (re.findall finds ≥1 occurrence each — except stage 00 which may not use `WORKSPACE` in paths beyond the default L0/L1/L2).
+4. **Inputs table present** with exact header `## Inputs (reads ONLY these, in order)` and ≥3 data rows (L0, L1, L2 minimum) — parser counts table rows after the header.
+5. **Section `## Does Not Read (negative constraint)`** present with ≥1 item.
+6. **`output_files` from frontmatter** matches paths cited in the `## Outputs` section (set equality).
+7. **`applicable_stop_points`** ⊆ IDs declared in `references/stop-points-canonical.md` (loads catalog, does `issubset`).
+8. **`next_stage`** ∈ {`"00".."08"`, `null`}; null exclusive to stage 08.
+9. **Skill 200tok path** referenced in §11 exists as a string (actual file only in Wave 5 — test only checks path format).
+
+Failure in any item → CI blocks wave merge.
+
+---
+
+## Concrete example — L2 stage 02 design (resolved placeholders)
+
+Fictional workspace: `042-feat-auth`, `project_root=/repo/aura-luz-api`, profile `app_web_backend`, tier `development`.
 
 ```markdown
 ---
@@ -310,103 +310,103 @@ output_files:
 next_stage: "03"
 ---
 
-# Estágio 02 — design (L2)
+# Stage 02 — design (L2)
 
-Produz plano arquitetural executável + ADRs formais. Cada decisão não-trivial vira menu A/B/C. Saída alimenta o Wave Planner (estágio 03) com tasks contendo 4-block contract, files touched e ADRs aplicáveis.
+Produces an executable architectural plan + formal ADRs. Each non-trivial decision becomes an A/B/C menu. Output feeds the Wave Planner (stage 03) with tasks containing 4-block contract, files touched and applicable ADRs.
 
-## Inputs (lê SOMENTE estes, na ordem)
+## Inputs (reads ONLY these, in order)
 
-| # | Path | Layer | Obrigatório? |
+| # | Path | Layer | Required? |
 |---|------|-------|--------------|
-| 1 | /repo/aura-luz-api/workspaces/042-feat-auth/CLAUDE.md | L0 | sim |
-| 2 | /repo/aura-luz-api/workspaces/042-feat-auth/CONTEXT.md | L1 | sim |
-| 3 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/02_design/CONTEXT.md | L2 | sim |
-| 4 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/01_discovery/output/discovery.md | L4 | sim |
-| 5 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/00_recon/output/baseline.md | L4 | sim |
-| 6 | /repo/aura-luz-api/docs/decisions/ | L3 | condicional: ler ADRs já existentes referenciados em discovery.md |
-| 7 | /repo/aura-luz-api/docs/tech_debt.md | L3 | condicional: tier ≠ experimental |
-| 8 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/xp-conventions.md | L3 | sim |
-| 9 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/stop-points.md | L3 | sim |
-| 10 | /repo/aura-luz-api/workspaces/042-feat-auth/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
+| 1 | /repo/aura-luz-api/workspaces/042-feat-auth/CLAUDE.md | L0 | yes |
+| 2 | /repo/aura-luz-api/workspaces/042-feat-auth/CONTEXT.md | L1 | yes |
+| 3 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/02_design/CONTEXT.md | L2 | yes |
+| 4 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/01_discovery/output/discovery.md | L4 | yes |
+| 5 | /repo/aura-luz-api/workspaces/042-feat-auth/stages/00_recon/output/baseline.md | L4 | yes |
+| 6 | /repo/aura-luz-api/docs/decisions/ | L3 | conditional: read existing ADRs referenced in discovery.md |
+| 7 | /repo/aura-luz-api/docs/tech_debt.md | L3 | conditional: tier ≠ experimental |
+| 8 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/xp-conventions.md | L3 | yes |
+| 9 | /repo/aura-luz-api/workspaces/042-feat-auth/_config/stop-points.md | L3 | yes |
+| 10 | /repo/aura-luz-api/workspaces/042-feat-auth/_references/superpowers-summary/writing-plans-200tok.md | L3 | yes |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - /repo/aura-luz-api/src/, /repo/aura-luz-api/tests/
-- ADRs em /repo/aura-luz-api/docs/decisions/ NÃO referenciados em discovery.md
-- Outputs de estágios 03+ (não existem ainda)
-- /repo/aura-luz-api/docs/lessons.md (lead injetará lições relevantes na fase 04)
+- ADRs in /repo/aura-luz-api/docs/decisions/ NOT referenced in discovery.md
+- Outputs from stages 03+ (do not exist yet)
+- /repo/aura-luz-api/docs/lessons.md (lead will inject relevant lessons in stage 04)
 
 ## Read order
 
 1. L0 — /repo/aura-luz-api/workspaces/042-feat-auth/CLAUDE.md
 2. L1 — /repo/aura-luz-api/workspaces/042-feat-auth/CONTEXT.md
-3. L2 — este arquivo
-4. discovery.md (entrada principal)
+3. L2 — this file
+4. discovery.md (main input)
 5. baseline.md (recon)
-6. ADRs listados em discovery
-7. tech_debt.md (se tier permitir)
-8. xp-conventions.md, stop-points.md, sumário writing-plans
+6. ADRs listed in discovery
+7. tech_debt.md (if tier permits)
+8. xp-conventions.md, stop-points.md, writing-plans summary
 
 ## Process
 
-1. Pre-flight: validar todos os paths Inputs existem; sub_stage `02_in_progress`.
-2. Ler em ordem; consultar sumário 200tok writing-plans.
-3. Para cada decisão arquitetural não-trivial, montar menu A/B/C com recomendação.
-4. Disparar stop point se: mudança de stack, modelagem nova, API pública nova, dependência nova, serviço pago, decisão irreversível, over-engineering detectado.
-5. Escrever ADRs formais em /repo/aura-luz-api/docs/decisions/NNNN-<slug>.md (fonte da verdade).
-6. Escrever output/plan.md: tasks com 4-block contract (O QUE / COMO / NÃO QUERO / VALIDAÇÃO), files touched, ADRs aplicáveis, requires_peer_review.
-7. Escrever output/decisions.md: INDEX (título + slug + status) — não duplica ADR.
-8. Verify: cada requisito do MVP do discovery aparece em ≥1 task do plan OU está deferred com justificativa.
-9. **Handoff de fim de stage:** seguir protocolo gate-inline (v3.4.2) — split em duas fases na mesma sessão. Fase 1: update L1 (`sub_stage=02_completed, status=COMPLETED_AWAITING_HUMAN, last_transition.from=02_in_progress, last_transition.to=02_completed`), commit atômico 1/2 (outputs + L1, SEM kickoff), imprime prompt de gate, aguarda humano. Fase 2 (após aprovação): update L1 (`stage_atual=03, sub_stage=03_in_progress, status=IN_PROGRESS`), render `_kickoff.md` em `stages/03_wave_planner/`, commit atômico 2/2 (kickoff + L1), imprime KICKOFF block, SAIR. Doc canônico: `references/session-handoff-protocol.md`.
+1. Pre-flight: validate all Input paths exist; sub_stage `02_in_progress`.
+2. Read in order; consult writing-plans 200tok summary.
+3. For each non-trivial architectural decision, build A/B/C menu with recommendation.
+4. Trigger stop point if: stack change, new modeling, new public API, new dependency, paid service, irreversible decision, over-engineering detected.
+5. Write formal ADRs in /repo/aura-luz-api/docs/decisions/NNNN-<slug>.md (source of truth).
+6. Write output/plan.md: tasks with 4-block contract (O QUE / COMO / NÃO QUERO / VALIDAÇÃO), files touched, ADRs aplicáveis, requires_peer_review.
+7. Write output/decisions.md: INDEX (title + slug + status) — does not duplicate ADR.
+8. Verify: each MVP requirement from discovery appears in ≥1 plan task OR is deferred with rationale.
+9. **End-of-stage handoff:** follow gate-inline protocol (v3.4.2) — split in two phases in the same session. Phase 1: update L1 (`sub_stage=02_completed, status=COMPLETED_AWAITING_HUMAN, last_transition.from=02_in_progress, last_transition.to=02_completed`), atomic commit 1/2 (outputs + L1, WITHOUT kickoff), print gate prompt, wait for human. Phase 2 (after approval): update L1 (`stage_atual=03, sub_stage=03_in_progress, status=IN_PROGRESS`), render `_kickoff.md` in `stages/03_wave_planner/`, atomic commit 2/2 (kickoff + L1), print KICKOFF block, EXIT. Canonical doc: `references/session-handoff-protocol.md`.
 
 ## Outputs
 
-- `output/plan.md` — plano com tasks 4-block, DAG de dependências, files touched, ADRs aplicáveis por task.
-- `output/decisions.md` — INDEX dos ADRs criados (título + slug + status).
+- `output/plan.md` — plan with 4-block tasks, dependency DAG, files touched, applicable ADRs per task.
+- `output/decisions.md` — INDEX of created ADRs (title + slug + status).
 
 ## Sub_stage transitions
 
-Enum válido: `02_in_progress`, `02_completed`.
+Valid enum: `02_in_progress`, `02_completed`.
 
-Transição IN_PROGRESS → COMPLETED dispara quando:
-- output/plan.md e output/decisions.md existem.
-- Cada requisito MVP do discovery está coberto por ≥1 task ou explicitamente deferred.
-- ADRs novos commitados em /repo/aura-luz-api/docs/decisions/.
-- Humano aprovou via gate (status `COMPLETED_AWAITING_HUMAN` → humano responde).
+IN_PROGRESS → COMPLETED transition fires when:
+- output/plan.md and output/decisions.md exist.
+- Each MVP requirement from discovery is covered by ≥1 task or explicitly deferred.
+- New ADRs committed in /repo/aura-luz-api/docs/decisions/.
+- Human approved via gate (status `COMPLETED_AWAITING_HUMAN` → human replies).
 
-## Status canônicos disponíveis neste estágio
+## Canonical statuses available in this stage
 
-- `IN_PROGRESS` — escrevendo plano/ADRs.
-- `COMPLETED_AWAITING_HUMAN` — outputs prontos, humano revisa.
-- `BLOCKED_STOP_POINT` — menu A/B/C aguardando resposta.
-- `BLOCKED_ERROR` — pre-commit hook rejeitou ou path Input ausente.
+- `IN_PROGRESS` — writing plan/ADRs.
+- `COMPLETED_AWAITING_HUMAN` — outputs ready, human reviews.
+- `BLOCKED_STOP_POINT` — A/B/C menu awaiting response.
+- `BLOCKED_ERROR` — pre-commit hook rejected or Input path absent.
 
-## Stop points aplicáveis
+## Applicable stop points
 
-Catálogo canônico em `references/stop-points-canonical.md`. IDs disparáveis no estágio 02 design:
+Canonical catalog in `references/stop-points-canonical.md`. IDs fireable in stage 02 design:
 
-- `stack` — troca de linguagem/framework/runtime vs ADR vigente.
-- `db` — engine ou schema design novo.
-- `new_dep` — npm/pip/cargo nova no manifesto (license/maintenance/size).
-- `paid_service` — SaaS recorrente (calibrado por tier: warning R$50 / hard R$200/500/1000).
-- `irreversible` — drop table, migração destrutiva.
-- `over_eng` — 3+ camadas de abstração novas sem requisito (warning experimental/tool, hard development/production).
-- `pii` — LGPD, dados sensíveis (warning experimental, hard tool/development, hard+DPO production).
-- `adr_drift` — proposta diverge de ADR existente sem superseding declarado.
+- `stack` — language/framework/runtime change vs active ADR.
+- `db` — new engine or schema design.
+- `new_dep` — new npm/pip/cargo entry in manifest (license/maintenance/size).
+- `paid_service` — recurring SaaS (calibrated by tier: warning R$50 / hard R$200/500/1000).
+- `irreversible` — drop table, destructive migration.
+- `over_eng` — 3+ new abstraction layers without a requirement (warning experimental/tool, hard development/production).
+- `pii` — LGPD, sensitive data (warning experimental, hard tool/development, hard+DPO production).
+- `adr_drift` — proposal diverges from existing ADR without declared superseding.
 
-## Skill superpowers de referência
+## Reference superpowers skills
 
-Sumário 200tok: `/repo/aura-luz-api/workspaces/042-feat-auth/_references/superpowers-summary/writing-plans-200tok.md`
+200tok summary: `/repo/aura-luz-api/workspaces/042-feat-auth/_references/superpowers-summary/writing-plans-200tok.md`
 
-Skill formal: `superpowers:writing-plans` (escape hatch).
+Formal skill: `superpowers:writing-plans` (escape hatch).
 
 ## Gates
 
-- **Humano:** revisa output/plan.md e ADRs; aprova ou requisita ajustes.
-- **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/042-feat-auth`.
-- **Aprovação para transitar:** humano explicitamente aprova (input em sessão); automaticamente vira `02_completed` no próximo commit.
+- **Human:** reviews output/plan.md and ADRs; approves or requests adjustments.
+- **Automatic (CI):** pre-commit hook validates L1↔outputs atomicity and commit prefix `workspace/042-feat-auth`.
+- **Approval to transition:** human explicitly approves (input in session); automatically becomes `02_completed` on the next commit.
 ```
 
 ---
 
-## Fim do spec
+## End of spec

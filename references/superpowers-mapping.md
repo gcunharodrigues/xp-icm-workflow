@@ -1,32 +1,32 @@
 # Superpowers Mapping — xp-icm-workflow v3.0.0-beta5
 
-> **Versão:** v3.0.0-beta5
+> **Version:** v3.0.0-beta5
 > **Skill:** `xp-icm-workflow`
-> **Propósito:** documento canônico de como o `xp-icm-workflow` v3 **usa** as skills do plugin `superpowers`. Versão v3 inverte a relação v2.4: superpowers viram **referências sumarizadas**, não invocações no runtime. Skill formal só por escape hatch.
+> **Purpose:** canonical document of how `xp-icm-workflow` v3 **uses** skills from the `superpowers` plugin. v3 inverts the v2.4 relationship: superpowers become **summarized references**, not runtime invocations. Formal skill only as an escape hatch.
 
-> **Decisão de origem:** §4.7 do plan `reescrever-a-skill-zazzy-wirth.md` + §4.10 (tabela de mudanças v2.4 → v3, linha "Skills superpowers").
+> **Decision origin:** §4.7 of plan `reescrever-a-skill-zazzy-wirth.md` + §4.10 (v2.4 → v3 change table, row "Skills superpowers").
 
 ---
 
-## 1. Filosofia (mudança vs v2.4)
+## 1. Philosophy (change vs v2.4)
 
-| Aspecto | v2.4 | v3.0.0-beta1 |
+| Aspect | v2.4 | v3.0.0-beta1 |
 |---|---|---|
-| Forma de uso | `Skill({skill: "superpowers:writing-plans"})` invocada no runtime | Sumário 200tok pré-copiado em `<workspace>/_references/superpowers-summary/` |
-| Quem carrega | Orquestradora (skill sempre ativa durante o ciclo) | Bootstrap copia 1× no início; sessões leem como L3 estável |
-| Custo de tokens por estágio | ~3k SKILL.md + referências on-demand | ~200tok do sumário (15× menos) |
-| Atualização | Sempre carrega versão upstream atual | Snapshot copiado; sync manual via Wave 8 (futura) |
-| Escape hatch | n/a (sempre invoca) | Sessão pode `Skill({skill:"superpowers:<X>"})` se complexidade exige; logado em L1 history |
+| Usage form | `Skill({skill: "superpowers:writing-plans"})` invoked at runtime | 200tok summary pre-copied to `<workspace>/_references/superpowers-summary/` |
+| Who loads | Orchestrator (skill always active during cycle) | Bootstrap copies once at start; sessions read as stable L3 |
+| Token cost per stage | ~3k SKILL.md + on-demand references | ~200tok summary (15× less) |
+| Update | Always loads current upstream version | Snapshot copied; manual sync via Wave 8 (future) |
+| Escape hatch | n/a (always invokes) | Session may `Skill({skill:"superpowers:<X>"})` if complexity warrants; logged in L1 history |
 
-**Por que mudou.** `xp-icm-workflow` v3 é parteira one-shot, não orquestradora. Filesystem governa o ciclo via L0/L1/L2. Skills carregadas dinamicamente conflitam com o princípio "sessão lê só o que está declarado em Inputs". Sumários 200tok cabem em L3 estável; cada estágio referencia 1-2 sumários no L2 §11. Skill formal continua disponível, mas é fallback consciente.
+**Why it changed.** `xp-icm-workflow` v3 is a one-shot midwife, not an orchestrator. Filesystem governs the cycle via L0/L1/L2. Dynamically loaded skills conflict with the principle "session reads only what is declared in Inputs". 200tok summaries fit in stable L3; each stage references 1-2 summaries in L2 §11. Formal skill remains available, but is a conscious fallback.
 
 ---
 
-## 2. Mapeamento canônico estágio ↔ skill ↔ sumário
+## 2. Canonical stage ↔ skill ↔ summary mapping
 
-Tabela autoritativa. Espelho do mapeamento em `references/stage-templates.md` §11. Em caso de divergência, `stage-templates.md` é fonte da verdade (o L2 do estágio é quem determina o que a sessão lê).
+Authoritative table. Mirror of the mapping in `references/stage-templates.md` §11. In case of divergence, `stage-templates.md` is the source of truth (the stage's L2 determines what the session reads).
 
-| Estágio | Slug | Skill superpowers principal | Sumário 200tok |
+| Stage | Slug | Main superpowers skill | 200tok summary |
 |---|---|---|---|
 | 00 | `recon` | `brainstorming` + `writing-plans` (light) | `brainstorming-200tok.md`, `writing-plans-200tok.md` |
 | 01 | `discovery` | `brainstorming` | `brainstorming-200tok.md` |
@@ -36,23 +36,23 @@ Tabela autoritativa. Espelho do mapeamento em `references/stage-templates.md` §
 | 05 | `verification` | `verification-before-completion` | `verification-before-completion-200tok.md` |
 | 06 | `review` | `requesting-code-review` + `receiving-code-review` | `requesting-code-review-200tok.md`, `receiving-code-review-200tok.md` |
 | 07 | `merge` | `finishing-a-development-branch` | `finishing-a-development-branch-200tok.md` |
-| 08 | `feedback_intake` | (nenhuma direta) | usa `references/feedback-intake-fase08.md` local |
-| transversal | qualquer estágio com bug | `systematic-debugging` | `systematic-debugging-200tok.md` |
+| 08 | `feedback_intake` | (none direct) | uses local `references/feedback-intake-fase08.md` |
+| transversal | any stage with a bug | `systematic-debugging` | `systematic-debugging-200tok.md` |
 
-### 2.1 Skills auxiliares (não mapeadas a estágio fixo)
+### 2.1 Auxiliary skills (not mapped to a fixed stage)
 
-| Skill | Onde aparece | Sumário |
+| Skill | Where it appears | Summary |
 |---|---|---|
-| `using-git-worktrees` | fora do ciclo ICM (substituído por Agent tool) | `using-git-worktrees-200tok.md` |
-| `writing-skills` | fora do ciclo ICM (Guilherme criando/editando skills) | n/a — não copiado para workspace |
+| `using-git-worktrees` | outside the ICM cycle (replaced by Agent tool) | `using-git-worktrees-200tok.md` |
+| `writing-skills` | outside the ICM cycle (Guilherme creating/editing skills) | n/a — not copied to workspace |
 
 ---
 
-## 3. Os 10 sumários 200tok pré-copiados
+## 3. The 10 pre-copied 200tok summaries
 
-Bootstrap copia em `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/`. Origem dos templates: `C:\Users\guicr\.claude\skills\xp-icm-workflow\templates\_references\superpowers-summary\`.
+Bootstrap copies to `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/`. Source of templates: `C:\Users\guicr\.claude\skills\xp-icm-workflow\templates\_references\superpowers-summary\`.
 
-| # | Arquivo | Cobre estágio(s) |
+| # | File | Covers stage(s) |
 |---|---|---|
 | 1 | `brainstorming-200tok.md` | 00, 01 |
 | 2 | `writing-plans-200tok.md` | 00 (light), 02 |
@@ -63,137 +63,137 @@ Bootstrap copia em `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superp
 | 7 | `requesting-code-review-200tok.md` | 06 |
 | 8 | `receiving-code-review-200tok.md` | 06 |
 | 9 | `finishing-a-development-branch-200tok.md` | 07 |
-| 10 | `systematic-debugging-200tok.md` | transversal — qualquer estágio com bug |
-| 11 | `using-git-worktrees-200tok.md` | auxiliar (fora do ciclo ICM) |
+| 10 | `systematic-debugging-200tok.md` | transversal — any stage with a bug |
+| 11 | `using-git-worktrees-200tok.md` | auxiliary (outside the ICM cycle) |
 
-> Notar: lista efetiva tem 11 arquivos. O plan §7 lista 10 explicitamente; o 11º (`using-git-worktrees`) permanece como auxiliar genérico de git, não mais exigido pelo protocolo de subagentes. Arquivos materializados em `templates/_references/superpowers-summary/` e copiados pelo bootstrap.
+> Note: effective list has 11 files. Plan §7 lists 10 explicitly; the 11th (`using-git-worktrees`) remains as a generic git auxiliary, no longer required by the subagent protocol. Files materialized in `templates/_references/superpowers-summary/` and copied by bootstrap.
 
-### 3.1 Schema obrigatório do sumário
+### 3.1 Mandatory summary schema
 
-Todo `<X>-200tok.md` tem header padronizado:
+Every `<X>-200tok.md` has a standardized header:
 
 ```markdown
 ---
 source_skill: superpowers:<X>
-source_version: <semver da skill upstream>
+source_version: <upstream skill semver>
 summarized_at: <ISO 8601 date>
 target_tokens: 200
-actual_tokens: <int>   # validado em CI ≤250
+actual_tokens: <int>   # validated in CI ≤250
 ---
 
-# <Skill X> — sumário 200tok
+# <Skill X> — 200tok summary
 
-## Quando usar
-<1 parágrafo>
+## When to use
+<1 paragraph>
 
-## Passos canônicos
+## Canonical steps
 1. ...
 2. ...
 
-## Sinais de "invoque skill formal"
-- <gatilho 1>
-- <gatilho 2>
+## Signals for "invoke formal skill"
+- <trigger 1>
+- <trigger 2>
 ```
 
-CI valida `actual_tokens ≤ 250` (margem de 25% sobre alvo).
+CI validates `actual_tokens ≤ 250` (25% margin above target).
 
 ---
 
-## 4. Sincronização vs upstream
+## 4. Synchronization vs upstream
 
-Sumários são **snapshots**. Quando a skill upstream muda no plugin `superpowers`, o sumário fica desatualizado. Mitigação:
+Summaries are **snapshots**. When the upstream skill changes in the `superpowers` plugin, the summary becomes outdated. Mitigation:
 
-1. **Header `source_version`:** todo sumário declara a versão da skill upstream da qual foi sumarizado.
-2. **Wave 8 da reescrita (futura):** agente revisor lê diff entre `source_version` declarado e versão atual da skill upstream; gera task de update se houver mudança semântica relevante.
-3. **Drift policy:** sumário com >2 versões de defasagem dispara warning no bootstrap (`scripts/check-runtime.sh` checa via metadados de `~/.claude/plugins/superpowers/`).
+1. **`source_version` header:** every summary declares the version of the upstream skill from which it was summarized.
+2. **Wave 8 of the rewrite (future):** reviewer agent reads diff between declared `source_version` and current version of the upstream skill; generates update task if there is a relevant semantic change.
+3. **Drift policy:** summary with >2 version lag triggers a warning at bootstrap (`scripts/check-runtime.sh` checks via metadata from `~/.claude/plugins/superpowers/`).
 
-A skill `xp-icm-workflow` **não** sincroniza automaticamente — sync é decisão manual do mantenedor.
+The `xp-icm-workflow` skill does **not** synchronize automatically — sync is a manual maintainer decision.
 
 ---
 
-## 5. Escape hatch — invocação real da skill formal
+## 5. Escape hatch — real formal skill invocation
 
-Quando o sumário 200tok é **insuficiente** para a complexidade do que a sessão está fazendo, a sessão pode invocar a skill formal via `Skill({skill: "superpowers:<X>"})`. Casos típicos:
+When the 200tok summary is **insufficient** for the complexity of what the session is doing, the session may invoke the formal skill via `Skill({skill: "superpowers:<X>"})`. Typical cases:
 
-- Discovery (estágio 01) com domínio inédito — sumário de `brainstorming` não cobre nuance do problema.
-- Bug na fase 04 que sumário de `systematic-debugging` não desbloqueia.
-- Review (estágio 06) com feedback denso onde `receiving-code-review` cru ajuda mais do que sumário.
+- Discovery (stage 01) with an unprecedented domain — `brainstorming` summary does not cover problem nuance.
+- Bug in stage 04 that the `systematic-debugging` summary does not unblock.
+- Review (stage 06) with dense feedback where raw `receiving-code-review` helps more than the summary.
 
-### 5.1 Protocolo obrigatório
+### 5.1 Mandatory protocol
 
-Sessão que invoca skill formal **DEVE** registrar em L1 `history`:
+A session that invokes a formal skill **MUST** record in L1 `history`:
 
 ```yaml
 - at: "<ISO 8601 UTC>"
   event: "skill_escape_hatch"
   skill: "superpowers:<X>"
   stage: "<NN>"
-  reason: "<1-2 frases sobre por que o sumário não bastou>"
+  reason: "<1-2 sentences on why the summary was insufficient>"
   outcome: "resolved" | "escalated_to_human"
 ```
 
-Sem o registro, escape hatch é silencioso e quebra audit. Pre-commit hook valida que commits de sessão com `skill_escape_hatch` no diff têm prefixo `workspace:` ou `feedback:`.
+Without the record, the escape hatch is silent and breaks audit. Pre-commit hook validates that commits from sessions with `skill_escape_hatch` in the diff have prefix `workspace:` or `feedback:`.
 
-### 5.2 Rate limit informal
+### 5.2 Informal rate limit
 
-Se um workspace tem ≥3 `skill_escape_hatch` para a **mesma skill**, é sinal de que o sumário 200tok está mal calibrado. Disparar tarefa de revisão do sumário (Wave 8) ou escalar para mantenedor da skill `xp-icm-workflow`.
-
----
-
-## 6. Resolução de conflito superpowers ↔ ICM
-
-Quando uma instrução do sumário superpowers conflita com regra do ICM (L0/L1/L2 do workspace):
-
-1. **L0/L1/L2 vencem.** Skill é layer 4 na priority order de `SKILL.md` §Instruction Priority.
-2. **Sessão registra divergência** em comentário no output do estágio (não bloqueia).
-3. **Se conflito é estrutural** (ex: skill diz "leia src/", L2 diz "não leia src/"), abrir tarefa de revisão do sumário — provável bug de tradução.
+If a workspace has ≥3 `skill_escape_hatch` for the **same skill**, it is a signal that the 200tok summary is poorly calibrated. Trigger a summary review task (Wave 8) or escalate to the `xp-icm-workflow` skill maintainer.
 
 ---
 
-## 7. Manutenção dos sumários
+## 6. Superpowers ↔ ICM conflict resolution
 
-Para criar/atualizar um sumário 200tok, ver `references/extending-skill.md` §"Adding a superpower summary". Resumo do fluxo:
+When an instruction from the superpowers summary conflicts with an ICM rule (L0/L1/L2 of the workspace):
 
-1. Ler skill upstream em `~/.claude/plugins/superpowers/skills/<X>/SKILL.md`.
-2. Sumarizar em ≤250 tokens com schema §3.1.
-3. Atualizar `source_version` para versão atual.
-4. Adicionar entry em `tests/unit/test_summary_format.py` (verifica schema + tokens).
-5. Commit no skill repo (não no workspace de usuário).
+1. **L0/L1/L2 win.** Skill is layer 4 in the priority order of `SKILL.md` §Instruction Priority.
+2. **Session records divergence** in a comment in the stage output (does not block).
+3. **If conflict is structural** (e.g., skill says "read src/", L2 says "do not read src/"), open a summary review task — likely a translation bug.
 
 ---
 
-## 8. Referências cruzadas
+## 7. Summary maintenance
 
-| Doc | Conteúdo |
+To create/update a 200tok summary, see `references/extending-skill.md` §"Adding a superpower summary". Flow summary:
+
+1. Read upstream skill in `~/.claude/plugins/superpowers/skills/<X>/SKILL.md`.
+2. Summarize in ≤250 tokens with schema §3.1.
+3. Update `source_version` to current version.
+4. Add entry in `tests/unit/test_summary_format.py` (verifies schema + tokens).
+5. Commit in the skill repo (not in the user workspace).
+
+---
+
+## 8. Cross-references
+
+| Doc | Content |
 |---|---|
-| `references/stage-templates.md` §11 | Mapeamento estágio ↔ skill canônico (autoritativo) |
-| `references/extending-skill.md` | Como adicionar/atualizar sumários |
-| `references/changelog.md` | Histórico de versão do mapping |
-| `references/v2.4-snapshot/superpowers-mapping.md` | Versão anterior (referência histórica) |
-| `templates/_references/superpowers-summary/` | Templates dos 11 sumários |
-| `SKILL.md` §Instruction Priority | Priority order completa (1-5) |
+| `references/stage-templates.md` §11 | Stage ↔ skill canonical mapping (authoritative) |
+| `references/extending-skill.md` | How to add/update summaries |
+| `references/changelog.md` | Version history of the mapping |
+| `references/v2.4-snapshot/superpowers-mapping.md` | Previous version (historical reference) |
+| `templates/_references/superpowers-summary/` | Templates of the 11 summaries |
+| `SKILL.md` §Instruction Priority | Full priority order (1-5) |
 
 ---
 
-## v3.3.0 — Diagnose protocol mapping
+## v3.3.0 — Diagnose 6-phase protocol mapping
 
-Stage 05 (verification) ativa **diagnose 6-fase** quando CI fail OU coverage
-fail. Stage 04 (subagent) pode usar antes de declarar BLOCKED.
+Stage 05 (verification) activates the **Diagnose 6-phase** when CI fails OR coverage
+fails. Stage 04 (subagent) may use it before declaring BLOCKED.
 
-NÃO é invocação de skill via Skill tool (anti-superpowers). É protocolo
-inline com referência canônica em `_references/runtime/diagnose-protocol.md`.
+NOT a skill invocation via Skill tool (anti-superpowers). It is an inline
+protocol with canonical reference in `_references/runtime/diagnose-protocol.md`.
 
 Pipeline:
-1. Build feedback loop (THE skill — sem loop, não avança)
-2. Reproduce — confirma symptom exato
+1. Build feedback loop (THE skill — without loop, no progress)
+2. Reproduce — confirms exact symptom
 3. Hypothesise — 3-5 ranked falsifiable
 4. Instrument — tag logs `[DEBUG-xxxx]`, debugger > logs
-5. Fix + regression test (se há correct seam)
+5. Fix + regression test (if there is a correct seam)
 6. Cleanup + post-mortem
 
-Output stage 05: `output/diagnose-report.md` com repro evidence,
+Stage 05 output: `output/diagnose-report.md` with repro evidence,
 hypotheses, root cause, fix, test path.
 
-Para bugs HITL: `_config/hitl-loop.template.sh` template bash.
+For HITL bugs: `_config/hitl-loop.template.sh` bash template.
 
-Doc canônico: `references/diagnose-protocol.md`.
+Canonical doc: `references/diagnose-protocol.md`.

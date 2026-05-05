@@ -1,33 +1,33 @@
 # Git hooks — pre-commit + commit-msg (xp-icm-workflow)
 
-Dois hooks bash POSIX que enforcam isolamento entre workspace ICM e src do projeto pai. Distribuidos como templates em `templates/.git-hooks/{pre-commit,commit-msg}`. Instalados em conjunto pelo `scripts/git-hook-installer.sh` (Wave 2) ou pelo `bootstrap.py` (`_install_hooks`).
+Two POSIX bash hooks that enforce isolation between the ICM workspace and the parent project's src. Distributed as templates in `templates/.git-hooks/{pre-commit,commit-msg}`. Installed together by `scripts/git-hook-installer.sh` (Wave 2) or by `bootstrap.py` (`_install_hooks`).
 
-## Por que 2 hooks (split canonico)
+## Why 2 hooks (canonical split)
 
-Stages do git separam responsabilidades por timing:
+Git stages separate responsibilities by timing:
 
-| Stage | Quando roda | O que ve | O que valida (skill) |
+| Stage | When it runs | What it sees | What it validates (skill) |
 |---|---|---|---|
-| `pre-commit` | ANTES de `COMMIT_EDITMSG` ser persistido | Staged files apenas | File checks + atomicidade L1<->outputs |
-| `commit-msg` | DEPOIS user fornecer msg, recebe path em `$1` | Msg atual no arquivo | Prefix da mensagem |
+| `pre-commit` | BEFORE `COMMIT_EDITMSG` is persisted | Staged files only | File checks + L1<->outputs atomicity |
+| `commit-msg` | AFTER user provides msg, receives path in `$1` | Current message in the file | Message prefix |
 
-**Bug v1 (fixado):** versao inicial concentrava tudo em `pre-commit`, incluindo leitura de `.git/COMMIT_EDITMSG` para validar prefix. Mas `pre-commit` roda ANTES de git escrever a msg atual no arquivo — entao validava msg do commit ANTERIOR (ou empty no primeiro). Workaround temporario foi instalar hook depois dos commits do bootstrap, mas isso so protegia o bootstrap; commits futuros do user permaneciam validando msg stale. Fix: split em 2 stages canonicos.
+**Bug v1 (fixed):** the initial version concentrated everything in `pre-commit`, including reading `.git/COMMIT_EDITMSG` to validate the prefix. But `pre-commit` runs BEFORE git writes the current message to the file — so it was validating the PREVIOUS commit's message (or empty on the first). Temporary workaround was to install the hook after bootstrap commits, but that only protected bootstrap; future user commits kept validating a stale message. Fix: split into 2 canonical stages.
 
-**Anti-pattern:** NUNCA leia `COMMIT_EDITMSG` em `pre-commit`. Se precisa validar msg, use `commit-msg` que recebe path em `$1`.
+**Anti-pattern:** NEVER read `COMMIT_EDITMSG` in `pre-commit`. If you need to validate the message, use `commit-msg` which receives the path in `$1`.
 
 ## SessionStart hook — `icm-session-check.sh` (v3.4.0)
 
-Hook não-git que roda 1× quando Claude Code abre sessão no `<project_root>`. Valida estado runtime do modelo cross-branch:
+Non-git hook that runs 1× when Claude Code opens a session in `<project_root>`. Validates the cross-branch runtime state of the model:
 
-1. **Branch atual** = workspace branch ativo (extraído de `workspaces/.index.md`).
-2. **`.icm-main/` worktree** existe.
-3. **`.icm-main/`** está checada em `base_branch` (lido do L1 `CONTEXT.md`).
+1. **Current branch** = active workspace branch (extracted from `workspaces/.index.md`).
+2. **`.icm-main/` worktree** exists.
+3. **`.icm-main/`** is checked out at `base_branch` (read from L1 `CONTEXT.md`).
 
-Imprime warning na stdout (visível no chat) se algo errado. **Não bloqueia** session start — só sinaliza humano para corrigir antes de continuar.
+Prints warning to stdout (visible in chat) if something is wrong. **Does not block** session start — only signals the human to fix before continuing.
 
-**Instalação:**
-- Script copiado pelo bootstrap para `workspaces/<NNN-slug>/.claude/hooks/icm-session-check.sh`.
-- Registro vai em `<project_root>/.claude/settings.local.json` (gitignored). Bootstrap renderiza `.example` no project_root para humano copiar:
+**Installation:**
+- Script copied by bootstrap to `workspaces/<NNN-slug>/.claude/hooks/icm-session-check.sh`.
+- Registration goes in `<project_root>/.claude/settings.local.json` (gitignored). Bootstrap renders `.example` at project root for human to copy:
 
 ```bash
 cp .claude/settings.local.json.example .claude/settings.local.json
@@ -37,139 +37,139 @@ cp .claude/settings.local.json.example .claude/settings.local.json
 
 ## Pre-commit — file checks
 
-### R1 — Skip em rebase/merge
+### R1 — Skip during rebase/merge
 
-Se `.git/rebase-merge/` ou `.git/rebase-apply/` existe -> `exit 0`. Razao: durante rebase, git mexe em commits historicos que ja passaram pelo hook; revalidar quebra rebase automatico do lead na fase 04.
+If `.git/rebase-merge/` or `.git/rebase-apply/` exists -> `exit 0`. Reason: during rebase, git touches historical commits that already passed through the hook; revalidating breaks the lead's automatic rebase in stage 04.
 
-### R2 — Branch nao-workspace passa livre
+### R2 — Non-workspace branch passes freely
 
-Regex: `^workspace/[0-9]{3}-`. Se branch atual nao casa -> `exit 0`. Trabalho em `main`, `feat/*`, `wave-NNN-N/*` nao e afetado.
+Regex: `^workspace/[0-9]{3}-`. If current branch does not match -> `exit 0`. Work in `main`, `feat/*`, `wave-NNN-N/*` is not affected.
 
-### R3 — Reject src edits (whitelist apertada em v3.4.0)
+### R3 — Reject src edits (tightened whitelist in v3.4.0)
 
-Em workspace branch, todo staged file deve estar em:
+On a workspace branch, every staged file must be in:
 
-- `workspaces/NNN-slug/...` (escopo do workspace), OU
-- `workspaces/.index.md` (registry de workspaces ativos/completados), OU
-- `.gitignore` (atualizações de ignore pelo bootstrap), OU
-- `CLAUDE.md` (dashboard ICM no project root — escrito por handoff/bootstrap).
+- `workspaces/NNN-slug/...` (workspace scope), OR
+- `workspaces/.index.md` (registry of active/completed workspaces), OR
+- `.gitignore` (ignore updates by bootstrap), OR
+- `CLAUDE.md` (ICM dashboard at project root — written by handoff/bootstrap).
 
-**Removidos do whitelist em v3.4.0:** `docs/decisions/*.md`, `docs/lessons.md`,
-`docs/tech_debt.md`. Esses paths agora vivem APENAS na base branch e são
-modificados via `.icm-main/` worktree linkada (`cd .icm-main && git commit`).
-Doc canônico: `references/worktree-model.md`.
+**Removed from whitelist in v3.4.0:** `docs/decisions/*.md`, `docs/lessons.md`,
+`docs/tech_debt.md`. These paths now live ONLY in the base branch and are
+modified via the linked `.icm-main/` worktree (`cd .icm-main && git commit`).
+Canonical doc: `references/worktree-model.md`.
 
-Outros caminhos (`src/`, `tests/`, raiz, `docs/*`) -> reject:
+Other paths (`src/`, `tests/`, root, `docs/*`) -> reject:
 
 ```
-ERROR: branch workspace/NNN-slug pode tocar APENAS workspaces/NNN-slug/* ou arquivos whitelisted.
-File offendor: <path>
-Para tocar src/, docs/decisions/, docs/lessons.md, docs/tech_debt.md
-ou demais paths da base branch, use a worktree linkada:
+ERROR: branch workspace/NNN-slug may only touch workspaces/NNN-slug/* or whitelisted files.
+Offending file: <path>
+To touch src/, docs/decisions/, docs/lessons.md, docs/tech_debt.md
+or other base branch paths, use the linked worktree:
   cd .icm-main && git add <path> && git commit ...
 ```
 
 ### R3.5 — Reject `.icm-main/*` paths (v3.4.0)
 
-`.icm-main/` é worktree linkada da base branch e deve estar em
-`.gitignore`. Se algum staged file casa `.icm-main/*`, hook rejeita
-imediatamente:
+`.icm-main/` is the linked worktree of the base branch and must be in
+`.gitignore`. If any staged file matches `.icm-main/*`, hook rejects
+immediately:
 
 ```
-ERROR: file '.icm-main/<path>' esta em .icm-main/ — diretorio reservado pra worktree linkada da base branch.
-Worktree paths NAO devem ser tracked pelo workspace branch.
+ERROR: file '.icm-main/<path>' is in .icm-main/ — directory reserved for the linked worktree of the base branch.
+Worktree paths must NOT be tracked by the workspace branch.
 ```
 
-Razão: commits ao conteúdo de `.icm-main/` devem acontecer DENTRO da
-worktree (`cd .icm-main && git commit ...`), nunca pelo workspace branch.
+Reason: commits to `.icm-main/` contents must happen INSIDE the
+worktree (`cd .icm-main && git commit ...`), never via the workspace branch.
 
-**Valido:** `workspaces/042-feat-auth/CONTEXT.md`, `workspaces/042-feat-auth/stages/02/output/plan.md`, `CLAUDE.md`
+**Valid:** `workspaces/042-feat-auth/CONTEXT.md`, `workspaces/042-feat-auth/stages/02/output/plan.md`, `CLAUDE.md`
 
-**Invalido:** `src/auth/middleware.py`, `docs/decisions/0042.md` (use `.icm-main/`), `.icm-main/docs/foo.md` (use `cd .icm-main && commit`)
+**Invalid:** `src/auth/middleware.py`, `docs/decisions/0042.md` (use `.icm-main/`), `.icm-main/docs/foo.md` (use `cd .icm-main && commit`)
 
-### R4 — Atomicidade L1<->outputs
+### R4 — L1<->outputs atomicity
 
-Se algum staged file casa `workspaces/NNN-slug/stages/<NN>/output/...` E `workspaces/NNN-slug/CONTEXT.md` NAO esta staged -> reject:
+If any staged file matches `workspaces/NNN-slug/stages/<NN>/output/...` AND `workspaces/NNN-slug/CONTEXT.md` is NOT staged -> reject:
 
 ```
-ERROR: outputs do estagio <NN> staged sem update de CONTEXT.md.
-Atomicidade L1<->outputs requerida.
+ERROR: stage <NN> outputs staged without updating CONTEXT.md.
+L1<->outputs atomicity required.
 ```
 
-Razao: cada output novo precisa rastro em `history` e `last_transition` do CONTEXT.md raiz. Output sem state = sessoes futuras nao retomam corretamente.
+Reason: each new output needs a trace in `history` and `last_transition` of the root CONTEXT.md. Output without state = future sessions cannot resume correctly.
 
-## Commit-msg — msg validation
+## Commit-msg — message validation
 
-### R5 — Skip nos casos triviais
+### R5 — Skip in trivial cases
 
-- `$1` ausente ou arquivo inexistente -> `exit 0`.
-- Branch nao-workspace -> `exit 0`.
-- Rebase/merge em andamento -> `exit 0`.
+- `$1` absent or file does not exist -> `exit 0`.
+- Non-workspace branch -> `exit 0`.
+- Rebase/merge in progress -> `exit 0`.
 
-### R6 — Prefixo de mensagem (R2.3)
+### R6 — Message prefix (R2.3)
 
-Linha 1 da mensagem (ignorando linhas `#` de comentario do git) deve casar:
+Line 1 of the message (ignoring `#` comment lines from git) must match:
 
 ```
 ^workspace [0-9]{3}: 
 ```
 
-Exemplo valido: `workspace 042: discovery completa`.
+Valid example: `workspace 042: discovery complete`.
 
-Exemplo invalido: `feat: add auth` -> reject com sugestao de reescrita.
+Invalid example: `feat: add auth` -> reject with suggested rewrite.
 
-### R7 — Excecao ADR (R5.4)
+### R7 — ADR exception (R5.4)
 
-Se algum staged file casa `docs/decisions/*.md` E mensagem contem substring literal `(workspace NNN ` (parenteses + numero + espaco), aceita mesmo sem prefix R6.
+If any staged file matches `docs/decisions/*.md` AND the message contains the literal substring `(workspace NNN ` (parenthesis + number + space), accept even without R6 prefix.
 
-Razao: ADRs as vezes nasceram em outro contexto e sao refinados em workspace; o marker `(workspace NNN ...)` no corpo basta para rastreabilidade.
+Reason: ADRs sometimes originate in another context and are refined in a workspace; the `(workspace NNN ...)` marker in the body is sufficient for traceability.
 
-**Valido:** `docs(adr): record decision (workspace 042 design)`
+**Valid:** `docs(adr): record decision (workspace 042 design)`
 
-**Invalido:** `docs(adr): record decision` (nem prefix nem marker).
+**Invalid:** `docs(adr): record decision` (neither prefix nor marker).
 
-### R7.5 — Prefixos intake/feedback para stage 08 (R5.5)
+### R7.5 — intake/feedback prefixes for stage 08 (R5.5)
 
-Mensagens de commit no stage 08 podem usar prefixos `intake:` ou `feedback:` como alternativa ao prefix `workspace NNN:`. Estes prefixos sao especificos da fase de feedback intake onde o workspace ja esta em fase terminal e o contexto e diferente de stages anteriores.
+Commit messages in stage 08 may use prefixes `intake:` or `feedback:` as an alternative to the `workspace NNN:` prefix. These prefixes are specific to the feedback intake stage where the workspace is already in a terminal stage and the context is different from prior stages.
 
-**Valido:** `intake: stage 08 feedback coletado`, `feedback: close workspace`
+**Valid:** `intake: stage 08 feedback collected`, `feedback: close workspace`
 
-**Invalido:** `intake:` sem mensagem (vazio apos dois-pontos).
+**Invalid:** `intake:` without message (empty after colon).
 
-## Padroes regex exatos (R6.4)
+## Exact regex patterns (R6.4)
 
-| Regra | Regex / Glob | Hook |
+| Rule | Regex / Glob | Hook |
 |---|---|---|
-| Branch workspace | `^workspace/[0-9]{3}-` | ambos |
-| Workspace ID extraction | `${branch#workspace/}` split em primeiro `-` | ambos |
-| Mensagem prefix | `^workspace [0-9]{3}: ` | commit-msg |
+| Workspace branch | `^workspace/[0-9]{3}-` | both |
+| Workspace ID extraction | `${branch#workspace/}` split at first `-` | both |
+| Message prefix | `^workspace [0-9]{3}: ` | commit-msg |
 | Intake/feedback prefix (stage 08) | `^(intake\|feedback): ` | commit-msg |
-| ADR file glob | `docs/decisions/*.md` | ambos |
+| ADR file glob | `docs/decisions/*.md` | both |
 | Lessons file | `docs/lessons.md` | pre-commit |
 | Tech debt file | `docs/tech_debt.md` | pre-commit |
-| ADR mensagem marker | substring literal `(workspace NNN ` | commit-msg |
+| ADR message marker | literal substring `(workspace NNN ` | commit-msg |
 | Stage output glob | `workspaces/<NNN-slug>/stages/<NN>/output/*` | pre-commit |
 | Workspace index | `workspaces/.index.md` | pre-commit |
 | Gitignore | `.gitignore` | pre-commit |
-| Rebase markers | `.git/rebase-merge/` ou `.git/rebase-apply/` | ambos |
+| Rebase markers | `.git/rebase-merge/` or `.git/rebase-apply/` | both |
 | Wave branch detect | `^wave-[0-9]+-[0-9]+/` | commit-msg |
 | Conventional Commit types | `^(feat\|fix\|refactor\|test\|docs\|chore\|perf\|ci\|build\|style\|revert)(\(.+\))?: .+` | commit-msg (R8 warning) |
-| Comment lines (msg) | `^#` | commit-msg (strip antes parse) |
+| Comment lines (msg) | `^#` | commit-msg (strip before parse) |
 
-## Como instalar
+## How to install
 
-`scripts/git-hook-installer.sh <project_root>` instala AMBOS hooks idempotentemente:
+`scripts/git-hook-installer.sh <project_root>` installs BOTH hooks idempotently:
 
 ```bash
-bash scripts/git-hook-installer.sh /caminho/do/projeto
+bash scripts/git-hook-installer.sh /path/to/project
 ```
 
-Comportamento por hook:
-- Ausente: copia template, `chmod +x`.
-- Presente + igual: no-op.
-- Presente + diff: backup `.bak.<UTC-ts>`, overwrite, `chmod +x`.
+Behavior per hook:
+- Absent: copies template, `chmod +x`.
+- Present + identical: no-op.
+- Present + different: backup `.bak.<UTC-ts>`, overwrite, `chmod +x`.
 
-`bootstrap.py::_install_hooks(project_root, skill_root)` faz o mesmo via Python (chamado pelo `bootstrap.sh`/`bootstrap.py` ao final do bootstrap).
+`bootstrap.py::_install_hooks(project_root, skill_root)` does the same via Python (called by `bootstrap.sh`/`bootstrap.py` at the end of bootstrap).
 
 Manual:
 
@@ -183,60 +183,60 @@ chmod +x .git/hooks/pre-commit .git/hooks/commit-msg
 
 ### R8 — Wave branch Conventional Commit warning
 
-Wave branches recebem **warning** (não bloqueio) via commit-msg hook R8 se a mensagem não segue Conventional Commits:
+Wave branches receive a **warning** (not a block) via commit-msg hook R8 if the message does not follow Conventional Commits:
 
 ```
-WARNING: wave branch detectada sem Conventional Commit.
-Recomendação: use formato "<type>: <descrição>" (feat, fix, test, etc).
+WARNING: wave branch detected without Conventional Commit.
+Recommendation: use format "<type>: <description>" (feat, fix, test, etc).
 ```
 
 Regex: `^(feat|fix|refactor|test|docs|chore|perf|ci|build|style|revert)(\(.+\))?: .+`
 
-Commits em wave branches usam **Conventional Commits padrão** sem prefix ICM:
+Commits on wave branches use **standard Conventional Commits** without the ICM prefix:
 
-- Formato: `<type>: <descrição>`
+- Format: `<type>: <description>`
 - Types: `feat:`, `fix:`, `refactor:`, `test:`, `docs:`, `chore:`, `perf:`, `ci:`
-- Exemplos: `feat: add JWT validation`, `test: unit tests for auth middleware`
+- Examples: `feat: add JWT validation`, `test: unit tests for auth middleware`
 
-Hooks ICM passam livremente em wave branches (R2/R5: branch não casa padrão workspace = exit 0). Isso é intencional — wave branches são escopo de código, não de state files. CI gate (lint, type-check, testes) substitui enforcement de hook.
+ICM hooks pass freely on wave branches (R2/R5: branch does not match workspace pattern = exit 0). This is intentional — wave branches are code scope, not state files. CI gate (lint, type-check, tests) replaces hook enforcement.
 
-**Anti-pattern:** NÃO comitar state files (CONTEXT.md, _kickoff.md) em wave branches. State files pertencem à workspace branch.
+**Anti-pattern:** Do NOT commit state files (CONTEXT.md, _kickoff.md) on wave branches. State files belong on the workspace branch.
 
-## Bypass via `--no-verify` e anti-pattern
+## Bypass via `--no-verify` and anti-pattern
 
-`git commit --no-verify` pula AMBOS hooks. **Nao use.** Razoes:
+`git commit --no-verify` skips BOTH hooks. **Do not use.** Reasons:
 
-- Quebra atomicidade L1<->outputs -> sessoes futuras nao retomam.
-- Permite vazar src edits para workspace branches -> historico bagunca.
-- Mensagens sem prefix -> rastreabilidade perdida.
+- Breaks L1<->outputs atomicity -> future sessions cannot resume.
+- Allows src edits to leak into workspace branches -> messy history.
+- Messages without prefix -> traceability lost.
 
-Se hook rejeita algo que voce acredita ser legitimo:
+If the hook rejects something you believe is legitimate:
 
-1. Leia a mensagem de erro completa — sugere correcao especifica.
-2. Se acredita que e bug do hook, abra issue em vez de bypass.
-3. ADRs + commits cross-cutting tem excecao R7 documentada acima.
+1. Read the full error message — it suggests a specific fix.
+2. If you believe it is a hook bug, open an issue instead of bypassing.
+3. ADRs + cross-cutting commits have the documented R7 exception above.
 
-## Excecoes documentadas
+## Documented exceptions
 
-| Cenario | Comportamento |
+| Scenario | Behavior |
 |---|---|
-| Branches que nao casam `^workspace/NNN-` | Ambos hooks no-op |
-| Rebase em progresso | Ambos hooks no-op |
-| ADR (`docs/decisions/*.md`) | Liberado em workspace branch (pre-commit R3) |
-| ADR + msg com `(workspace NNN ` | Aceita sem prefix R6 (commit-msg R7) |
-| `commit-msg` chamado sem `$1` | exit 0 (deixa git tratar) |
+| Branches not matching `^workspace/NNN-` | Both hooks no-op |
+| Rebase in progress | Both hooks no-op |
+| ADR (`docs/decisions/*.md`) | Allowed on workspace branch (pre-commit R3) |
+| ADR + msg with `(workspace NNN ` | Accepted without R6 prefix (commit-msg R7) |
+| `commit-msg` called without `$1` | exit 0 (let git handle) |
 
-## Testes
+## Tests
 
-- `tests/integration/test_git_hooks.bats` — pre-commit (file checks). Cobre R1-R4.
-- `tests/integration/test_commit_msg_hook.bats` — commit-msg (msg validation). Cobre R5-R7 + regression do bug v1 (msg ATUAL via `$1`, nao stale do anterior).
+- `tests/integration/test_git_hooks.bats` — pre-commit (file checks). Covers R1-R4.
+- `tests/integration/test_commit_msg_hook.bats` — commit-msg (message validation). Covers R5-R7 + regression of bug v1 (CURRENT msg via `$1`, not stale from prior commit).
 
-CI-only via Ubuntu runner; bats nao roda em Windows local. Wave 6 configura GitHub Actions com badge.
+CI-only via Ubuntu runner; bats does not run on local Windows. Wave 6 configures GitHub Actions with badge.
 
 ## Changelog
 
-| Versao | Mudanca |
+| Version | Change |
 |---|---|
-| v1 (Wave 2 inicial) | Hook unico `pre-commit` com file checks + msg validation. **Bug:** msg validation usava `.git/COMMIT_EDITMSG` que pre-commit le stale (msg do commit anterior). Workaround temporario: instalar hook depois dos commits do bootstrap. |
-| v2 (Wave 2 fix) | Split em `pre-commit` (file checks) + `commit-msg` (msg validation). `commit-msg` recebe path em `$1` com msg atual, validacao correta. Regression test em `test_commit_msg_hook.bats`. |
-| v3.4.0 | Pre-commit whitelist apertada: removidos `docs/decisions/*.md`, `docs/lessons.md`, `docs/tech_debt.md` (vão via `.icm-main/` worktree). Adicionada R3.5 rejeita paths `.icm-main/*`. Novo SessionStart hook `icm-session-check.sh` valida branch + worktree no abrir de sessão. |
+| v1 (Wave 2 initial) | Single `pre-commit` hook with file checks + message validation. **Bug:** message validation used `.git/COMMIT_EDITMSG` which pre-commit reads as stale (prior commit's message). Temporary workaround: install hook after bootstrap commits. |
+| v2 (Wave 2 fix) | Split into `pre-commit` (file checks) + `commit-msg` (message validation). `commit-msg` receives path in `$1` with current message, correct validation. Regression test in `test_commit_msg_hook.bats`. |
+| v3.4.0 | Pre-commit whitelist tightened: removed `docs/decisions/*.md`, `docs/lessons.md`, `docs/tech_debt.md` (go via `.icm-main/` worktree). Added R3.5 rejects `.icm-main/*` paths. New SessionStart hook `icm-session-check.sh` validates branch + worktree on session open. |

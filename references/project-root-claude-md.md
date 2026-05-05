@@ -1,17 +1,16 @@
-# `<project_root>/CLAUDE.md` — Contrato canônico
+# `<project_root>/CLAUDE.md` — Canonical contract
 
-> Doc canônico do arquivo `CLAUDE.md` na raiz do projeto, gerenciado pela skill
-> `xp-icm-workflow`. Cobre: contrato com `/init`, brownfield, multi-workspace,
-> atomicidade, recovery, versionamento.
+> Canonical doc for the `CLAUDE.md` file at the project root, managed by the
+> `xp-icm-workflow` skill. Covers: contract with `/init`, brownfield, multi-workspace,
+> atomicity, recovery, versioning.
 
-## Propósito
+## Purpose
 
-`<project_root>/CLAUDE.md` é o **dashboard externo** do estado dos workspaces ICM
-ativos. Claude Code carrega esse arquivo automaticamente em qualquer sessão
-fresh aberta no project root, eliminando a necessidade de copy/paste manual de
-prompts KICKOFF entre sessões.
+`<project_root>/CLAUDE.md` is the **external dashboard** of active ICM workspace state.
+Claude Code loads this file automatically in any fresh session opened at the project root,
+eliminating the need for manual copy/paste of KICKOFF prompts between sessions.
 
-## Estrutura — duas regiões
+## Structure — two regions
 
 ```
 # CLAUDE.md — <project_name>
@@ -20,45 +19,45 @@ This file provides guidance ...
 
 <!-- ICM-START -->
 ## Active ICM Workspaces
-<bloco por workspace ativo>
+<block per active workspace>
 ...
 <!-- ICM-END -->
 
-<conteúdo livre — preenchido por /init ou pelo usuário>
+<free content — filled by /init or by the user>
 ```
 
-- **Região ICM** (entre `<!-- ICM-START -->` e `<!-- ICM-END -->`) — exclusiva
-  da skill. Bootstrap insere; handoff atualiza; recovery wizard regenera.
-- **Região codebase** (fora dos marcadores) — livre. Bootstrap nunca toca.
-  Pode ser preenchida por `/init` futuro ou manualmente.
+- **ICM region** (between `<!-- ICM-START -->` and `<!-- ICM-END -->`) — exclusive
+  to the skill. Bootstrap inserts; handoff updates; recovery wizard regenerates.
+- **Codebase region** (outside the markers) — free. Bootstrap never touches it.
+  Can be filled by a future `/init` or manually.
 
-## Quando é escrito
+## When it is written
 
-| Evento | Função | Comportamento |
+| Event | Function | Behavior |
 |---|---|---|
-| Bootstrap de workspace novo | `bootstrap.py:_render_project_claude_md` | Adiciona bloco do novo workspace à região ICM. Brownfield: preserva resto byte-a-byte. |
-| Handoff de transição de stage | `handoff.py:update_project_claude_md` | Atualiza só o bloco do workspace dono da transição. Demais blocos intactos. |
-| Saída A (close), Saída C (spawn) | `handoff.py:remove_workspace_block` | Remove o bloco do workspace que finalizou. Se zero workspaces ativos restam, `deactivate_project_claude_md` substitui região por mensagem "nenhum ativo" **e migra o CLAUDE.md root para a base branch via `.icm-main/`** (v3.4.1). **(v3.7.0)** sessão da fase 08 também auto-invoca `Skill(skill: "init")` quando exit code do CLI = `2` (`--exit-2-if-last-active`). |
-| Recovery wizard | `recovery-wizard.py` (Plan A) | Regenera bloco a partir do L1 quando detecta `CLAUDE_MD_ROOT_STALE` ou `CLAUDE_MD_ROOT_MISSING`. |
+| Bootstrap of new workspace | `bootstrap.py:_render_project_claude_md` | Adds block of new workspace to ICM region. Brownfield: preserves rest byte-for-byte. |
+| Handoff on stage transition | `handoff.py:update_project_claude_md` | Updates only the block of the workspace owning the transition. Other blocks untouched. |
+| Exit A (close), Exit C (spawn) | `handoff.py:remove_workspace_block` | Removes the block of the workspace that finished. If zero active workspaces remain, `deactivate_project_claude_md` replaces region with "none active" message **and migrates the CLAUDE.md root to the base branch via `.icm-main/`** (v3.4.1). **(v3.7.0)** stage 08 session also auto-invokes `Skill(skill: "init")` when CLI exit code = `2` (`--exit-2-if-last-active`). |
+| Recovery wizard | `recovery-wizard.py` (Plan A) | Regenerates block from L1 when it detects `CLAUDE_MD_ROOT_STALE` or `CLAUDE_MD_ROOT_MISSING`. |
 
-## Algoritmo de inserção idempotente (brownfield)
+## Idempotent insertion algorithm (brownfield)
 
-1. **Arquivo não existe:** criar a partir de
-   `templates/project_root/CLAUDE.md.tpl` com a região ICM completa.
-2. **Arquivo existe COM marcadores:** substituir conteúdo apenas entre
-   `<!-- ICM-START -->` e `<!-- ICM-END -->`. Bytes fora dos marcadores
-   preservados intactos.
-3. **Arquivo existe SEM marcadores (brownfield):** localizar primeiro `^# `
-   (título principal). Inserir região ICM logo após o título e linhas em branco
-   imediatas. Demais conteúdo preservado.
+1. **File does not exist:** create from
+   `templates/project_root/CLAUDE.md.tpl` with the complete ICM region.
+2. **File exists WITH markers:** replace content only between
+   `<!-- ICM-START -->` and `<!-- ICM-END -->`. Bytes outside the markers
+   preserved intact.
+3. **File exists WITHOUT markers (brownfield):** locate first `^# `
+   (main title). Insert ICM region right after the title and its immediate blank lines.
+   All other content preserved.
 
 ## Multi-workspace (G3)
 
-Mais de um workspace pode estar ativo simultaneamente
-(`status != COMPLETED`). A região ICM lista um bloco por workspace. Ordem:
-crescente por workspace ID.
+More than one workspace may be active simultaneously
+(`status != COMPLETED`). The ICM region lists one block per workspace. Order:
+ascending by workspace ID.
 
-Exemplo:
+Example:
 
 ```markdown
 <!-- ICM-START -->
@@ -67,13 +66,13 @@ Exemplo:
 > ...
 
 ### Workspace `042-feat-auth` · profile=app_web_backend · tier=development
-- Stage atual: `03` (03_wave_planner) ...
+- Current stage: `03` (03_wave_planner) ...
 - Read order: workspaces/042-feat-auth/CLAUDE.md → ...
 
 ---
 
 ### Workspace `043-payment-gateway` · profile=app_web_backend · tier=production
-- Stage atual: `06` (06_review) ...
+- Current stage: `06` (06_review) ...
 - Read order: workspaces/043-payment-gateway/CLAUDE.md → ...
 
 ---
@@ -82,67 +81,67 @@ Exemplo:
 <!-- ICM-END -->
 ```
 
-## Saídas da fase 08 e CLAUDE.md root
+## Stage 08 exits and CLAUDE.md root
 
-| Saída | Função | Estado pós-saída |
+| Exit | Function | Post-exit state |
 |---|---|---|
-| **A** (close) | `remove_workspace_block(workspace)` | Bloco do workspace removido. Se era o último: região ICM substituída por "nenhum ativo + rode /init"; CLAUDE.md root também é copiado para `.icm-main/CLAUDE.md` + commit em base branch (v3.4.1). **(v3.7.0)** sessão da fase 08 auto-invoca `Skill(skill: "init")` na MESMA sessão quando `remove-block --exit-2-if-last-active` retorna exit `2` (foi o último). Disparo pula se outros workspaces ativos remanescentes (`/init` proibido durante workspace ativo). |
+| **A** (close) | `remove_workspace_block(workspace)` | Workspace block removed. If it was the last: ICM region replaced by "none active + run /init"; CLAUDE.md root is also copied to `.icm-main/CLAUDE.md` + committed to base branch (v3.4.1). **(v3.7.0)** stage 08 session auto-invokes `Skill(skill: "init")` in the SAME session when `remove-block --exit-2-if-last-active` returns exit `2` (was the last). Skipped if other active workspaces remain (`/init` prohibited during active workspace). |
 
-### Owner transition na saída A (v3.4.1)
+### Owner transition on exit A (v3.4.1)
 
-Durante o ciclo ICM, o `<project_root>/CLAUDE.md` vive na **workspace branch**
-(escrito por bootstrap/handoff). Quando a workspace branch é arquivada/deletada
-após saída A, esse CLAUDE.md sumiria sem deixar rastro na base.
+During the ICM cycle, `<project_root>/CLAUDE.md` lives in the **workspace branch**
+(written by bootstrap/handoff). When the workspace branch is archived/deleted
+after exit A, that CLAUDE.md would disappear without a trace in the base.
 
-Para garantir continuidade, `deactivate_project_claude_md` (chamado quando
-zero workspaces ativos restam) faz:
+To ensure continuity, `deactivate_project_claude_md` (called when
+zero active workspaces remain) does:
 
-1. Reescreve `<project_root>/CLAUDE.md` com região idle (workspace branch tree).
-2. Copia o mesmo conteúdo para `<project_root>/.icm-main/CLAUDE.md` e commita
-   na base branch via worktree (`cd .icm-main && git commit ...`).
+1. Rewrites `<project_root>/CLAUDE.md` with idle region (workspace branch tree).
+2. Copies the same content to `<project_root>/.icm-main/CLAUDE.md` and commits
+   to the base branch via worktree (`cd .icm-main && git commit ...`).
 
-Resultado: dashboard idle persistido tanto na workspace branch (vai sumir
-quando branch deletada) quanto na base branch (sobrevive). Sessões futuras
-no project_root abertas em base branch lêem o idle direto.
+Result: idle dashboard persisted both in the workspace branch (will disappear
+when branch deleted) and in the base branch (survives). Future sessions
+at project_root opened on the base branch read the idle directly.
 
-Idempotente: re-execução com mesmo conteúdo não gera commit extra
-(`git status` detecta no-op).
-| **B** (restart fase X, iteration++) | `update_project_claude_md(workspace, stage_target=X, iteration=N+1, ...)` | Bloco atualizado mostrando nova fase e iteration. |
-| **C** (spawn novo workspace) | `remove_workspace_block(workspace)` na sessão A; bootstrap em sessão B adiciona bloco novo | Bloco do workspace dono removido. Sessão B (separada) bootstrappa novo workspace e adiciona seu bloco. **(v3.7.0)** sessão da fase 08 (saída C) também auto-invoca `Skill(skill: "init")` quando `remove-block --exit-2-if-last-active` retorna exit `2` (era último ativo) — captura snapshot do código pré-pivô. Pula se outros workspaces ativos. |
+Idempotent: re-execution with same content generates no extra commit
+(`git status` detects no-op).
+| **B** (restart stage X, iteration++) | `update_project_claude_md(workspace, stage_target=X, iteration=N+1, ...)` | Block updated showing new stage and iteration. |
+| **C** (spawn new workspace) | `remove_workspace_block(workspace)` in session A; bootstrap in session B adds new block | Block of owning workspace removed. Session B (separate) bootstraps new workspace and adds its block. **(v3.7.0)** stage 08 session (exit C) also auto-invokes `Skill(skill: "init")` when `remove-block --exit-2-if-last-active` returns exit `2` (was last active) — captures pre-pivot code snapshot. Skipped if other active workspaces. |
 
-## Contrato com `/init` (G4)
+## Contract with `/init` (G4)
 
-`/init` do Claude Code regenera CLAUDE.md a partir do código do projeto. **Não
-conhece os marcadores ICM por padrão.**
+`/init` from Claude Code regenerates CLAUDE.md from the project code. **Does not
+know about ICM markers by default.**
 
-**Regra durante workspace ativo:** **NÃO invoque `/init`**. Warning explícito
-fica na própria região ICM. Razão: `/init` pode sobrescrever a região ICM,
-quebrando signaling.
+**Rule during active workspace:** **DO NOT invoke `/init`**. Explicit warning
+is in the ICM region itself. Reason: `/init` may overwrite the ICM region,
+breaking signaling.
 
-**Após Saída A do último workspace ativo:** região ICM é substituída por
-mensagem "nenhum ativo + rode /init". A partir desse ponto, rodar `/init` é
-seguro — preencherá a região codebase com informações do código construído.
+**After Exit A of the last active workspace:** ICM region is replaced by
+"none active + run /init" message. From that point, running `/init` is
+safe — it will fill the codebase region with information from the built code.
 
-**(v3.7.0) Auto-trigger `/init` na própria sessão da fase 08:** quando saída
-A ou C remove o último workspace ativo, a sessão da fase 08 invoca
-`Skill(skill: "init")` automaticamente antes de SAIR. Detecção via
-`handoff.py remove-block --exit-2-if-last-active` (exit code `2` = era
-último). Em multi-workspace com remanescentes ativos, exit `0` e `/init`
-NÃO é disparado. Saída B nunca dispara `/init` (workspace continua ativo).
-Ver `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` saídas A
-e C step 6.
+**(v3.7.0) Auto-trigger `/init` in the stage 08 session itself:** when exit
+A or C removes the last active workspace, the stage 08 session invokes
+`Skill(skill: "init")` automatically before EXITING. Detection via
+`handoff.py remove-block --exit-2-if-last-active` (exit code `2` = was
+last). In multi-workspace with remaining active workspaces, exit `0` and `/init`
+is NOT triggered. Exit B never triggers `/init` (workspace remains active).
+See `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` exits A
+and C step 6.
 
-**Regra para `/init` consciente da skill (futuro):** uma versão futura do
-`/init` pode procurar pelos marcadores e preservá-los. Marcadores são
-sentinelas estáveis para qualquer ferramenta que queira respeitar a região.
+**Rule for `/init` skill-aware (future):** a future version of
+`/init` may look for the markers and preserve them. Markers are
+stable sentinels for any tool that wants to respect the region.
 
-**Tier 3 (future work):** PreToolUse hook que bloqueia invocação de `/init`
-durante workspace ativo. Fora do escopo da v3.1.0.
+**Tier 3 (future work):** PreToolUse hook that blocks `/init` invocation
+during active workspace. Out of scope for v3.1.0.
 
-## Atomicidade (G15)
+## Atomicity (G15)
 
-Todas as escritas em `<project_root>/CLAUDE.md` usam padrão write-tmp + fsync +
-rename:
+All writes to `<project_root>/CLAUDE.md` use the write-tmp + fsync +
+rename pattern:
 
 ```python
 tmp = claude_md.with_suffix(".md.tmp")
@@ -153,59 +152,58 @@ os.close(fd)
 tmp.replace(claude_md)
 ```
 
-Crash mid-write não corrompe o arquivo original — `tmp.replace` é atômico em
-POSIX e Windows (NTFS).
+Crash mid-write does not corrupt the original file — `tmp.replace` is atomic on
+POSIX and Windows (NTFS).
 
-## Concorrência (G12)
+## Concurrency (G12)
 
-Duas sessões abertas no mesmo project_root simultaneamente podem disparar
-`handoff.py` concorrente. Mitigação:
+Two sessions opened at the same project_root simultaneously may trigger
+concurrent `handoff.py`. Mitigation:
 
-- Workspace branch isola: cada sessão atua em sua workspace branch.
-- Commit atômico do git previne escrita simultânea no mesmo arquivo.
-- Em caso de conflito, segunda escrita falha com erro git → sessão aborta com
+- Workspace branch isolates: each session acts on its workspace branch.
+- Git atomic commit prevents simultaneous write to the same file.
+- In case of conflict, second write fails with git error → session aborts with
   `BLOCKED_ERROR`.
-- Recovery wizard (`CLAUDE_MD_ROOT_STALE`) detecta e regenera.
+- Recovery wizard (`CLAUDE_MD_ROOT_STALE`) detects and regenerates.
 
-## Versionamento (G13)
+## Versioning (G13)
 
-`CLAUDE.md` no project root é versionado em **workspace branch** (não na
-main) durante o ciclo de cada workspace. A whitelist do
-`templates/.git-hooks/pre-commit` libera o arquivo (R3.3 expandida em G6).
+`CLAUDE.md` at the project root is versioned on the **workspace branch** (not on
+main) during each workspace's cycle. The whitelist in
+`templates/.git-hooks/pre-commit` allows the file (R3.3 expanded in G6).
 
-Após Saída A, opções para preservar o `CLAUDE.md` em main:
+After Exit A, options for preserving `CLAUDE.md` in main:
 
-1. Merge workspace branch → main (preserva CLAUDE.md atual).
-2. Rodar `/init` em main para regenerar a região codebase a partir do código
-   atual (a região ICM já estará vazia — "nenhum ativo").
+1. Merge workspace branch → main (preserves current CLAUDE.md).
+2. Run `/init` on main to regenerate the codebase region from the current code
+   (the ICM region will already be empty — "none active").
 
-A divergência entre workspace branch (CLAUDE.md atualizado) e main (CLAUDE.md
-desatualizado ou ausente) é **intencional** e segura — workspace branch é
-layer de state efêmero por design ICM.
+The divergence between workspace branch (updated CLAUDE.md) and main (outdated
+or absent CLAUDE.md) is **intentional** and safe — workspace branch is
+an ephemeral state layer by ICM design.
 
 ## Encoding (G11)
 
-A região ICM gerada pela skill é em **PT-BR** (consistente com restante do
-skill). A região codebase fora dos marcadores é livre — qualquer idioma. Sem
-mistura forçada.
+The ICM region generated by the skill is in **en-US** (consistent with the rest of the
+skill as of v3.11.0). The codebase region outside the markers is free — any language. No forced mixing.
 
 ## Recovery (G5)
 
-Inconsistências entre L1 e CLAUDE.md root são detectadas pelo recovery wizard:
+Inconsistencies between L1 and CLAUDE.md root are detected by the recovery wizard:
 
-- `CLAUDE_MD_ROOT_STALE` — `<project_root>/CLAUDE.md` mostra `stage_atual`
-  diferente do `L1.stage_atual` para algum workspace ativo. Causa típica:
-  sessão crash sem chamar handoff.
-- `CLAUDE_MD_ROOT_MISSING` — workspace tem `L1.status=IN_PROGRESS` mas não
-  aparece como bloco na região ICM do CLAUDE.md root.
+- `CLAUDE_MD_ROOT_STALE` — `<project_root>/CLAUDE.md` shows `stage_atual`
+  different from `L1.stage_atual` for some active workspace. Typical cause:
+  session crash without calling handoff.
+- `CLAUDE_MD_ROOT_MISSING` — workspace has `L1.status=IN_PROGRESS` but does not
+  appear as a block in the ICM region of CLAUDE.md root.
 
-Recovery (Plan A): regenerar a região ICM completa a partir do `.index.md` +
-L1 de todos workspaces ativos.
+Recovery (Plan A): regenerate the full ICM region from `.index.md` +
+L1 of all active workspaces.
 
 ## Templating (G17)
 
-O template `templates/project_root/CLAUDE.md.tpl` é usado **apenas pelo
-bootstrap inicial** quando o arquivo não existe. Updates subsequentes (handoff,
-recovery) escrevem markdown direto via funções helper, sem usar `{{}}`
-placeholders. Isso evita confusão entre templating de boostrap e regeneração
-runtime.
+The template `templates/project_root/CLAUDE.md.tpl` is used **only by the
+initial bootstrap** when the file does not exist. Subsequent updates (handoff,
+recovery) write markdown directly via helper functions, without using `{{}}`
+placeholders. This avoids confusion between bootstrap templating and runtime
+regeneration.

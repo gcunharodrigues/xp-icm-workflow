@@ -1,190 +1,190 @@
 # xp-workflow ↔ xp-icm-workflow Integration
 
-> **Versão:** v3.0.0-beta5
+> **Version:** v3.0.0-beta5
 > **Skill:** `xp-icm-workflow`
-> **Propósito:** doc canônico de como `xp-icm-workflow` (esta skill, parteira de workspaces ICM) se relaciona com `xp-workflow` (skill irmã no plugin, executora direta de tarefas). Define quando usar cada uma, hierarquia de invocação, conventions compartilhadas e fluxo de "lift" de uma para outra.
+> **Purpose:** canonical doc of how `xp-icm-workflow` (this skill, workspace ICM midwife) relates to `xp-workflow` (sister skill in the plugin, direct task executor). Defines when to use each, invocation hierarchy, shared conventions and the "lift" flow from one to the other.
 
-> **Decisão de origem:** §4.10 do plan + Q1 (skill = parteira), Q3 (sessões batched) + memória do projeto Aura (xp-workflow é skill cotidiana; xp-icm-workflow é só pra projetos formais).
+> **Decision origin:** §4.10 of plan + Q1 (skill = midwife), Q3 (batched sessions) + Aura project memory (xp-workflow is the everyday skill; xp-icm-workflow is only for formal projects).
 
 ---
 
-## 1. Quando usar cada uma
+## 1. When to use each
 
-### 1.1 `/xp-workflow` direto
+### 1.1 `/xp-workflow` directly
 
-Use quando a tarefa é **trivial ou cosmética** e não precisa de estrutura ICM:
+Use when the task is **trivial or cosmetic** and does not need ICM structure:
 
-- 1 arquivo, sem decisões arquiteturais.
-- Bug fix simples (test reproduz, fix óbvio, regressão coberta).
-- Refinamento de docstring, rename, refactor local.
-- Ajuste de config, bump de dependência sem implicação de stack.
-- Sessão única, ≤30min, ≤2k tok.
+- 1 file, no architectural decisions.
+- Simple bug fix (test reproduces, obvious fix, regression covered).
+- Docstring refinement, rename, local refactor.
+- Config adjustment, dependency bump without stack implications.
+- Single session, ≤30min, ≤2k tok.
 
 ### 1.2 `/xp-icm-workflow`
 
-Use quando há **estrutura, paralelismo ou decisões não-triviais**:
+Use when there is **structure, parallelism or non-trivial decisions**:
 
-- Projeto novo (greenfield ou existente) com múltiplos estágios + revisão humana entre passos.
-- Feature complexa (discovery → design → impl → review → merge).
-- Implementação que se beneficia de paralelismo (subagentes na fase 04).
-- Quer ver, editar e aprovar artefatos intermediários (L4 outputs por estágio).
-- Decisões arquiteturais não-triviais que precisam de menu A/B/C + ADR formal.
-- Tier `development` ou `production` com auditabilidade obrigatória.
+- New project (greenfield or existing) with multiple stages + human review between steps.
+- Complex feature (discovery → design → impl → review → merge).
+- Implementation that benefits from parallelism (subagents in stage 04).
+- Want to see, edit and approve intermediate artifacts (L4 outputs per stage).
+- Non-trivial architectural decisions needing A/B/C menu + formal ADR.
+- Tier `development` or `production` with mandatory auditability.
 
-### 1.3 Não use **nem** uma nem outra
+### 1.3 Use **neither**
 
-- Pergunta conceitual ("como funciona X").
-- Conversa exploratória sem ação concreta.
-- Tarefa de pesquisa pura (cita fontes, não escreve código).
+- Conceptual question ("how does X work").
+- Exploratory conversation without concrete action.
+- Pure research task (cites sources, does not write code).
 
 ---
 
-## 2. Comparativo lado-a-lado
+## 2. Side-by-side comparison
 
-| Dimensão | `xp-workflow` | `xp-icm-workflow` |
+| Dimension | `xp-workflow` | `xp-icm-workflow` |
 |---|---|---|
-| Tipo | Executora direta | Bootstrap one-shot + filesystem-driven |
-| Estágios formais | Phases 0-10 internas (no SKILL.md da skill) | 9 estágios materializados em pastas (`stages/00..08`) |
-| Sessões típicas | 1 sessão única ponta a ponta | N sessões (1 por estágio ou batch) |
-| State machine externa | n/a (skill é stateless por sessão) | L1 `<workspace>/CONTEXT.md` (yaml frontmatter + history append-only) |
-| Paralelismo | n/a (sequencial single-agent) | subagentes na fase 04 (cap 2/3/5/5 por tier, branches isoladas) |
-| ADRs formais | Pode escrever em `docs/decisions/` se a tarefa pedir | Obrigatório quando estágio 02 dispara stop point arquitetural |
-| Profile/Tier | Implícito (inferido pela tarefa) | Explícito em L0 (`profile: app_web_backend`, `tier: development`) — calibra rigor |
-| Stop points | Sim (lista interna do `xp-workflow`) | Sim (12 canônicos em `references/stop-points-canonical.md`, calibrados por tier) |
-| 4-block contract | Phase 1 internal | Obrigatório por task no `plan.md` (fase 02), consumido em fase 04 |
-| Wave Planner determinístico | n/a | Sim (`scripts/wave-planner-script.py`) + LLM review subagent |
-| Recovery Wizard | n/a | Sim (6 inconsistências detectadas em pre-flight) |
-| Pre-commit hook | n/a | Instalado pelo bootstrap; valida atomicidade L1↔outputs |
-| Git branches | Trabalha em `main` ou branch existente | Cria `workspace/NNN-slug` (state) + `wave-N/<task>` (código) |
-| Feedback intake fase 08 | n/a | Sim — humano dispara após uso real, 3 saídas A/B/C |
-| Token budget alvo (sessão) | 2-8k | 1-6k por estágio (mais agressivo) |
+| Type | Direct executor | One-shot bootstrap + filesystem-driven |
+| Formal stages | Internal phases 0-10 (in skill's SKILL.md) | 9 stages materialized in folders (`stages/00..08`) |
+| Typical sessions | 1 end-to-end session | N sessions (1 per stage or batch) |
+| External state machine | n/a (skill is stateless per session) | L1 `<workspace>/CONTEXT.md` (yaml frontmatter + append-only history) |
+| Parallelism | n/a (sequential single-agent) | subagents in stage 04 (cap 2/3/5/5 per tier, isolated branches) |
+| Formal ADRs | Can write in `docs/decisions/` if task calls for it | Mandatory when stage 02 triggers architectural stop point |
+| Profile/Tier | Implicit (inferred from task) | Explicit in L0 (`profile: app_web_backend`, `tier: development`) — calibrates rigor |
+| Stop points | Yes (internal list from `xp-workflow`) | Yes (12 canonical in `references/stop-points-canonical.md`, calibrated by tier) |
+| 4-block contract | Internal Phase 1 | Mandatory per task in `plan.md` (stage 02), consumed in stage 04 |
+| Deterministic Wave Planner | n/a | Yes (`scripts/wave-planner-script.py`) + LLM review subagent |
+| Recovery Wizard | n/a | Yes (6 inconsistencies detected in pre-flight) |
+| Pre-commit hook | n/a | Installed by bootstrap; validates L1↔outputs atomicity |
+| Git branches | Works in `main` or existing branch | Creates `workspace/NNN-slug` (state) + `wave-N/<task>` (code) |
+| Feedback intake stage 08 | n/a | Yes — human triggers after real use, 3 exits A/B/C |
+| Target token budget (session) | 2-8k | 1-6k per stage (more aggressive) |
 
 ---
 
-## 3. Hierarquia de invocação (priority order)
+## 3. Invocation hierarchy (priority order)
 
-Definida em `SKILL.md` §Instruction Priority. Recap:
+Defined in `SKILL.md` §Instruction Priority. Recap:
 
-1. **User explicit instructions** (CLAUDE.md do projeto, AGENTS.md, mensagens diretas) — sempre vencem.
-2. **L0/L1/L2 do workspace ICM** — instruções específicas do projeto/estágio em curso (só quando há workspace ICM ativo).
-3. **`/xp-icm-workflow`** — só ativa no bootstrap one-shot.
-4. **Skills especializadas** — `xp-workflow`, `superpowers:*` etc.
-5. **Default system prompt** — perde para 1-4.
+1. **User explicit instructions** (project's CLAUDE.md, AGENTS.md, direct messages) — always win.
+2. **L0/L1/L2 of ICM workspace** — project/stage-specific instructions currently in progress (only when there is an active ICM workspace).
+3. **`/xp-icm-workflow`** — only active during the one-shot bootstrap.
+4. **Specialized skills** — `xp-workflow`, `superpowers:*` etc.
+5. **Default system prompt** — loses to 1-4.
 
-Implicações práticas:
+Practical implications:
 
-- Sessão dentro de workspace ICM (L1 ativo): regras do L2 do estágio vencem qualquer skill especializada se houver conflito.
-- Sessão sem workspace ICM: `xp-workflow` é a default para tarefas de código.
-- Bootstrap do `xp-icm-workflow` roda 1× e sai; depois disso, é o filesystem que governa.
+- Session inside ICM workspace (active L1): L2 rules of the stage beat any specialized skill if there is a conflict.
+- Session without ICM workspace: `xp-workflow` is the default for code tasks.
+- Bootstrap of `xp-icm-workflow` runs once and exits; after that, it is the filesystem that governs.
 
 ---
 
-## 4. Conventions compartilhadas
+## 4. Shared conventions
 
-### 4.1 `xp-conventions.md` (único arquivo de convenções)
+### 4.1 `xp-conventions.md` (single conventions file)
 
-Define padrões aplicáveis ao profile/tier do workspace. Na v3, é o **único** arquivo de convenções — contém tanto regras compartilhadas (naming, TDD, clean code) quanto regras ICM-specific (branches, commit prefixes, stop points).
+Defines standards applicable to the workspace's profile/tier. In v3, it is the **only** conventions file — contains both shared rules (naming, TDD, clean code) and ICM-specific rules (branches, commit prefixes, stop points).
 
-Regras compartilhadas (derivadas do xp-workflow v3):
-- TDD obrigatório se `tier ∈ {development, production}`.
+Shared rules (derived from xp-workflow v3):
+- TDD mandatory if `tier ∈ {development, production}`.
 - Conventional Commits (`feat`, `fix`, `chore`, `refactor`, `docs`, `test`).
-- Funções 4-20 linhas, arquivos <300/500, nesting máx 2.
-- Docstrings em PT obrigatórias em função pública (4 elementos).
-- Clean Code gates por linguagem (formatter, linter, type check, complexity, security, secrets, coverage).
-- Dirt check pós-cycle (duplicação, naming, tamanho).
+- Functions 4-20 lines, files <300/500, max nesting 2.
+- Docstrings mandatory in public functions (4 elements).
+- Clean Code gates per language (formatter, linter, type check, complexity, security, secrets, coverage).
+- Post-cycle dirt check (duplication, naming, size).
 - LGPD/PII handling baseline.
-- Secrets policy (nunca commit, env var only).
+- Secrets policy (never commit, env var only).
 
-Regras ICM-specific:
-- Prefixos de commit por contexto: `workspace NNN:` em branch workspace (validado por hook), Conventional Commits em wave branches e base branch (sem validação de hook), `intake:`/`feedback:` em stage 08 (validado por hook).
-- Branches por contexto (`workspace/NNN` para state, `wave-NNN-N/task` para código).
-- Nunca `--no-verify` no workspace branch.
-- Files touched discipline: cada task declara seu footprint.
+ICM-specific rules:
+- Commit prefixes by context: `workspace NNN:` on workspace branch (hook-validated), Conventional Commits on wave branches and base branch (no hook validation), `intake:`/`feedback:` on stage 08 (hook-validated).
+- Branches by context (`workspace/NNN` for state, `wave-NNN-N/task` for code).
+- Never `--no-verify` on workspace branch.
+- Files touched discipline: each task declares its footprint.
 
-**Estado atual (v3.0.0-beta5):** o arquivo `xp-conventions.md` existe como `templates/workspace/_config/xp-conventions.md.tpl` e é renderizado para `<workspace>/_config/xp-conventions.md` no bootstrap com placeholders preenchidos.
+**Current state (v3.0.0-beta5):** the file `xp-conventions.md` exists as `templates/workspace/_config/xp-conventions.md.tpl` and is rendered to `<workspace>/_config/xp-conventions.md` at bootstrap with filled placeholders.
 
 ---
 
-## 5. Fluxo de "lift": de `xp-workflow` para `xp-icm-workflow`
+## 5. "Lift" flow: from `xp-workflow` to `xp-icm-workflow`
 
-Cenário típico: usuário começa com `/xp-workflow`, descobre que a tarefa cresceu (3+ tasks paralelas, decisões arquiteturais aparecendo, revisão entre passos seria bom). Pode "promover" para `/xp-icm-workflow`.
+Typical scenario: user starts with `/xp-workflow`, discovers the task grew (3+ parallel tasks, architectural decisions appearing, review between steps would be good). Can "promote" to `/xp-icm-workflow`.
 
-### 5.1 Sinais de que cabe promover
+### 5.1 Signals that promotion is warranted
 
-- Tarefa cresceu para 3+ arquivos com files-conflict potencial.
-- Apareceu decisão de stack/db/dep que merece ADR formal.
-- Usuário quer ver outputs intermediários antes de seguir.
-- Tier subiu (de `tool` para `development`).
-- Bug fix descobriu que precisa redesign (vai virar feature complexa).
+- Task grew to 3+ files with potential files-conflict.
+- A stack/db/dep decision appeared that deserves a formal ADR.
+- User wants to see intermediate outputs before proceeding.
+- Tier went up (from `tool` to `development`).
+- Bug fix revealed that redesign is needed (will become a complex feature).
 
-### 5.2 Como promover (sessão nova)
+### 5.2 How to promote (new session)
 
-A skill `xp-icm-workflow` é parteira **one-shot**; não pode ser invocada por dentro do `xp-workflow`. O usuário (ou agente) abre **sessão nova** e roda:
+The `xp-icm-workflow` skill is a **one-shot** midwife; it cannot be invoked from within `xp-workflow`. The user (or agent) opens a **new session** and runs:
 
 ```
 /xp-icm-workflow profile=<X> tier=<Y> project-root=<absolute-path> workspace-name=<slug>
 ```
 
-Bootstrap cria estrutura ICM. Trabalho parcial feito no `xp-workflow` é tratado como **input do estágio 00 recon** — agente lê o branch atual, infere ADRs já implícitos, registra em `recon-report.md`.
+Bootstrap creates the ICM structure. Partial work done in `xp-workflow` is treated as **input for stage 00 recon** — agent reads the current branch, infers already-implicit ADRs, records in `recon-report.md`.
 
-### 5.3 Como **não** promover
+### 5.3 How **not** to promote
 
-- Não invocar `/xp-icm-workflow` dentro de uma sessão ativa do `xp-workflow` — quebra a separação one-shot.
-- Não tentar "fundir" workspaces: workspace ICM novo nasce limpo, herda contexto via recon.
-- Não rebatizar branches manualmente — bootstrap cria as próprias.
-
----
-
-## 6. Convivência (mesmo projeto, ambas as skills)
-
-Um mesmo `project_root` pode ter:
-
-- `workspaces/042-feat-auth/` (ciclo ICM em andamento).
-- `main` ou outras branches ativas onde `/xp-workflow` opera diretamente.
-- Contas separadas: `workspace/042-feat-auth` toca SOMENTE state files; `main` (e seus descendentes) toca código.
-
-**Regra de não-interferência:** sessão `xp-workflow` na `main` **não** lê `workspaces/NNN/` (não é input dela). Sessão `xp-icm-workflow` em workspace ativo respeita L2 §"Não Lê" (não toca `src/` fora das branches da fase 04).
+- Do not invoke `/xp-icm-workflow` inside an active `xp-workflow` session — breaks the one-shot separation.
+- Do not try to "merge" workspaces: a new ICM workspace is born clean, inherits context via recon.
+- Do not manually rename branches — bootstrap creates its own.
 
 ---
 
-## 7. Mapeamento conceitual de phases (v3 ↔ v3)
+## 6. Coexistence (same project, both skills)
 
-Recap rápido — `xp-workflow` v3 tem phases 0-10 internas; `xp-icm-workflow` v3 tem 9 estágios externos materializados em pastas.
+The same `project_root` may have:
 
-| Phase `xp-workflow` | Estágio `xp-icm-workflow` | Notas |
+- `workspaces/042-feat-auth/` (ICM cycle in progress).
+- `main` or other active branches where `/xp-workflow` operates directly.
+- Separate accounts: `workspace/042-feat-auth` touches ONLY state files; `main` (and its descendants) touches code.
+
+**Non-interference rule:** `xp-workflow` session in `main` does **not** read `workspaces/NNN/` (not its input). `xp-icm-workflow` session in an active workspace respects L2 §"Does Not Read" (does not touch `src/` outside stage 04 branches).
+
+---
+
+## 7. Conceptual phase mapping (v3 ↔ v3)
+
+Quick recap — `xp-workflow` v3 has internal phases 0-10; `xp-icm-workflow` v3 has 9 external stages materialized in folders.
+
+| Phase `xp-workflow` | Stage `xp-icm-workflow` | Notes |
 |---|---|---|
-| 0 Reconnaissance | 00 recon | ICM materializa o output em `stages/00_recon/output/baseline.md` |
-| 1 4-block communication | Embutido em fase 02 (plan.md schema) | 4-block-contract-template.md formaliza |
-| 2 Division of responsibilities | Embutido no `SKILL.md` §Division | Tabela L0/L1/L2/L3/L4 cobre |
-| 3 Bootstrap or continuation | One-shot bootstrap (esta skill) | Sai depois — filesystem governa |
-| 4 TDD cycles | 04 implementation_waves (cada subagente roda os 7 passos) | Ver `4-block-contract-template.md` §3 |
-| 5 Stop points | Em qualquer estágio com decisão | 12 canônicos em `stop-points-canonical.md` |
-| 6 CI Gate | Passos 3 e 5 do TDD ciclo + 05 verification | Dupla verificação |
-| 7 Pair check | Wave-reviewer (sempre) + peer-reviewer ad-hoc (path crítico) | Detalhes em `subagent-protocol.md` §5, §10 |
-| 8 Post-deploy | 08 feedback_intake (universal todos os tiers) | 3 saídas A/B/C |
-| 9 Tech debt dashboard | `docs/tech_debt.md` mantido pela fase 04 | Sample-check em 05/06 |
-| 10 Self-revision | **Dropada** | Skill ICM é starter, não runtime |
+| 0 Reconnaissance | 00 recon | ICM materializes output in `stages/00_recon/output/baseline.md` |
+| 1 4-block communication | Embedded in stage 02 (plan.md schema) | 4-block-contract-template.md formalizes |
+| 2 Division of responsibilities | Embedded in `SKILL.md` §Division | L0/L1/L2/L3/L4 table covers |
+| 3 Bootstrap or continuation | One-shot bootstrap (this skill) | Exits after — filesystem governs |
+| 4 TDD cycles | 04 implementation_waves (each subagent runs the 7 steps) | See `4-block-contract-template.md` §3 |
+| 5 Stop points | In any stage with a decision | 12 canonical in `stop-points-canonical.md` |
+| 6 CI Gate | Steps 3 and 5 of TDD cycle + 05 verification | Double verification |
+| 7 Pair check | Wave-reviewer (always) + peer-reviewer ad-hoc (critical path) | Details in `subagent-protocol.md` §5, §10 |
+| 8 Post-deploy | 08 feedback_intake (universal all tiers) | 3 exits A/B/C |
+| 9 Tech debt dashboard | `docs/tech_debt.md` maintained by stage 04 | Sample-check in 05/06 |
+| 10 Self-revision | **Dropped** | ICM skill is a starter, not a runtime |
 
 ---
 
-## 8. Documentos compartilhados entre as duas skills
+## 8. Documents shared between both skills
 
-| Documento | Path | Quem escreve | Quem lê |
+| Document | Path | Who writes | Who reads |
 |---|---|---|---|
-| `docs/decisions/NNNN-slug.md` | `<project_root>/docs/decisions/` | fase 02 design (ICM) ou xp-workflow ad-hoc | qualquer estágio posterior; xp-workflow consulta |
-| `docs/lessons.md` | `<project_root>/docs/lessons.md` | fase 08 saída A (ICM); xp-workflow ad-hoc | retomada de sessão; pré-cozinhada pelo lead na fase 04 |
-| `docs/tech_debt.md` | `<project_root>/docs/tech_debt.md` | subagente em fase 04 declarando débito | fases 04, 05, 06 |
-| `xp-conventions.md` | `<workspace>/_config/xp-conventions.md` (ICM) ou implicit (xp-workflow) | bootstrap renderiza `templates/_config/xp-conventions.md.tpl` | ambas as skills |
+| `docs/decisions/NNNN-slug.md` | `<project_root>/docs/decisions/` | stage 02 design (ICM) or xp-workflow ad-hoc | any subsequent stage; xp-workflow consults |
+| `docs/lessons.md` | `<project_root>/docs/lessons.md` | stage 08 exit A (ICM); xp-workflow ad-hoc | session resumption; pre-cooked by lead in stage 04 |
+| `docs/tech_debt.md` | `<project_root>/docs/tech_debt.md` | subagent in stage 04 declaring debt | stages 04, 05, 06 |
+| `xp-conventions.md` | `<workspace>/_config/xp-conventions.md` (ICM) or implicit (xp-workflow) | bootstrap renders `templates/_config/xp-conventions.md.tpl` | both skills |
 
 ---
 
-## 9. Referências cruzadas
+## 9. Cross-references
 
-| Doc | Conteúdo |
+| Doc | Content |
 |---|---|
-| `SKILL.md` §When to Use / §When NOT to Use | Critérios canônicos de seleção |
-| `SKILL.md` §Instruction Priority | Hierarquia 1-5 completa |
-| `references/stage-templates.md` | Mapeamento dos 9 estágios ICM |
-| `references/superpowers-mapping.md` | Como ICM usa superpowers (sumários 200tok) |
-| `references/v2.4-snapshot/xp-workflow-integration.md` | Versão v2.4 anterior (referência histórica) |
-| Plugin `xp-workflow` SKILL.md | Phases 0-10 internas |
+| `SKILL.md` §When to Use / §When NOT to Use | Canonical selection criteria |
+| `SKILL.md` §Instruction Priority | Full hierarchy 1-5 |
+| `references/stage-templates.md` | Mapping of the 9 ICM stages |
+| `references/superpowers-mapping.md` | How ICM uses superpowers (200tok summaries) |
+| `references/v2.4-snapshot/xp-workflow-integration.md` | Previous v2.4 version (historical reference) |
+| Plugin `xp-workflow` SKILL.md | Internal phases 0-10 |

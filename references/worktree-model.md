@@ -1,43 +1,43 @@
-# Worktree Model — Opção B (canônico v3.4.0)
+# Worktree Model — Option B (canonical v3.4.0)
 
-> **Versão:** v3.4.0
+> **Version:** v3.4.0
 > **Skill:** `xp-icm-workflow`
-> **Substitui:** modelo cross-branch implícito da v3.3.x
+> **Replaces:** implicit cross-branch model from v3.3.x
 
-## Problema (v3.3.x)
+## Problem (v3.3.x)
 
-Workspace branch (`workspace/NNN-slug`) não tem `docs/`, `src/`, `tests/`
-no working tree (esses paths vivem só em `base_branch`). Mas:
+Workspace branch (`workspace/NNN-slug`) does not have `docs/`, `src/`, `tests/`
+in the working tree (those paths only live in `base_branch`). But:
 
-- L0 declara paths absolutos `<project_root>/docs/decisions/...` como
-  fonte de verdade.
-- L2 do estágio 02 lista `docs/decisions/` como Input.
-- Read tool lê filesystem do working tree atual = workspace branch tree.
-- Resultado: `Read docs/decisions/0001.md` em sessão de stage 02 retorna
-  ENOENT mesmo se arquivo existe em main.
+- L0 declares absolute paths `<project_root>/docs/decisions/...` as
+  source of truth.
+- L2 of stage 02 lists `docs/decisions/` as Input.
+- Read tool reads from the current working tree filesystem = workspace branch tree.
+- Result: `Read docs/decisions/0001.md` in a stage 02 session returns
+  ENOENT even if the file exists in main.
 
-Workarounds frágeis:
-- `git show main:docs/decisions/0001.md` via Bash (verbose, não-cacheable).
-- `git checkout main -- docs/decisions/` (deixa untracked, conflito com
+Fragile workarounds:
+- `git show main:docs/decisions/0001.md` via Bash (verbose, not cacheable).
+- `git checkout main -- docs/decisions/` (leaves untracked, conflicts with
   pre-commit hook).
-- Stash/checkout/commit/checkout/pop para criar ADRs em main mid-stage.
+- Stash/checkout/commit/checkout/pop to create ADRs in main mid-stage.
 
-## Modelo canônico v3.4.0 — `.icm-main/` worktree paralelo
+## Canonical model v3.4.0 — `.icm-main/` parallel worktree
 
-Bootstrap cria worktree linkada de `<BASE_BRANCH>` em
-`<project_root>/.icm-main/`. Sempre presente, sempre checada na base
-branch, sempre disponível para read **e** write cross-branch.
+Bootstrap creates a linked worktree of `<BASE_BRANCH>` at
+`<project_root>/.icm-main/`. Always present, always checked out on the base
+branch, always available for both read **and** write cross-branch.
 
 ```
-<project_root>/                       # worktree principal (workspace branch durante ciclo ICM)
-├── .git/                             # repo (compartilhado entre worktrees)
-├── .gitignore                        # contém .icm-main/
+<project_root>/                       # main worktree (workspace branch during ICM cycle)
+├── .git/                             # repo (shared between worktrees)
+├── .gitignore                        # contains .icm-main/
 ├── CLAUDE.md                         # workspace branch tree
 ├── workspaces/                       # workspace branch tree
 │   ├── .index.md
 │   └── 001-.../
-└── .icm-main/                        # worktree linkada → base_branch (gitignored)
-    ├── .git                          # arquivo (não dir) apontando pra repo
+└── .icm-main/                        # linked worktree → base_branch (gitignored)
+    ├── .git                          # file (not dir) pointing to repo
     ├── docs/
     │   ├── decisions/
     │   ├── lessons.md
@@ -47,132 +47,132 @@ branch, sempre disponível para read **e** write cross-branch.
     └── ...
 ```
 
-Worktree é **filesystem real**: Read tool funciona; Edit/Write funciona;
-git status/add/commit dentro de `.icm-main/` são commits em base_branch.
+Worktree is a **real filesystem**: Read tool works; Edit/Write works;
+git status/add/commit inside `.icm-main/` are commits on base_branch.
 
-## Comandos canônicos
+## Canonical commands
 
-| Operação | Comando |
+| Operation | Command |
 |---|---|
 | Setup (bootstrap) | `git worktree add .icm-main <BASE_BRANCH>` |
-| Listar worktrees | `git worktree list` |
-| Atualizar `.icm-main` (pull main novo) | `cd .icm-main && git pull --ff-only` |
-| Criar ADR | `Write .icm-main/docs/decisions/NNNN-slug.md` |
-| Commitar ADR | `cd .icm-main && git add docs/decisions/NNNN-*.md && git commit -m "docs(decisions): ..."` |
-| Ler ADR | `Read .icm-main/docs/decisions/NNNN-slug.md` |
-| Ler código existente (stage 04+) | `Read .icm-main/src/...` |
-| Remover (cleanup, raríssimo) | `git worktree remove .icm-main` |
+| List worktrees | `git worktree list` |
+| Update `.icm-main` (pull new main) | `cd .icm-main && git pull --ff-only` |
+| Create ADR | `Write .icm-main/docs/decisions/NNNN-slug.md` |
+| Commit ADR | `cd .icm-main && git add docs/decisions/NNNN-*.md && git commit -m "docs(decisions): ..."` |
+| Read ADR | `Read .icm-main/docs/decisions/NNNN-slug.md` |
+| Read existing code (stage 04+) | `Read .icm-main/src/...` |
+| Remove (cleanup, very rare) | `git worktree remove .icm-main` |
 
-## Regras de uso
+## Usage rules
 
-### 1. Worktree é READ-ONLY conceitualmente do workspace branch
+### 1. Worktree is conceptually READ-ONLY from workspace branch
 
-Sessões em workspace branch (estágios 00–08) operam no `<project_root>`
-checkout (workspace branch). Para tocar em arquivos da base branch
-(ADRs, lessons, tech_debt), agente DEVE usar `.icm-main/`:
+Sessions on the workspace branch (stages 00–08) operate in `<project_root>`
+checkout (workspace branch). To touch base branch files
+(ADRs, lessons, tech_debt), agent MUST use `.icm-main/`:
 
-- Editar `<project_root>/docs/decisions/...` direto **falha**: pre-commit
-  hook rejeita workspace branch tocando paths fora de `workspaces/`.
-- Editar `<project_root>/.icm-main/docs/decisions/...` **funciona**: é
-  área da base branch, não do workspace.
+- Editing `<project_root>/docs/decisions/...` directly **fails**: pre-commit
+  hook rejects workspace branch touching paths outside `workspaces/`.
+- Editing `<project_root>/.icm-main/docs/decisions/...` **works**: it is
+  the base branch area, not the workspace.
 
-### 2. Stage 02 design — ADRs canônicos via `.icm-main/`
+### 2. Stage 02 design — canonical ADRs via `.icm-main/`
 
-Process step 6 do L2 stage 02 instrui:
+Process step 6 of L2 stage 02 instructs:
 
 ```
-Spawn ADR novo:
-  1. Write .icm-main/docs/decisions/NNNN-<slug>.md (formato canônico)
+Spawn new ADR:
+  1. Write .icm-main/docs/decisions/NNNN-<slug>.md (canonical format)
   2. cd .icm-main
   3. git add docs/decisions/NNNN-*.md
   4. git commit -m "docs(decisions): <slug> (workspace <NNN>)"
   5. cd <project_root>
-  6. plan.md cita filename (não inline)
+  6. plan.md cites filename (not inline)
 ```
 
-Saída do passo 4 dá SHA do commit em base_branch. plan.md pode
-referenciar `(commit <SHA>)` se útil.
+Output of step 4 gives SHA of commit on base_branch. plan.md may
+reference `(commit <SHA>)` if useful.
 
-### 3. Stage 04 implementation_waves — código via subagent worktrees
+### 3. Stage 04 implementation_waves — code via subagent worktrees
 
-Lead permanece em workspace branch (no `<project_root>`). Subagentes via
-Agent tool DEVEM usar `isolation: "worktree"` (parâmetro nativo do tool):
+Lead stays on workspace branch (in `<project_root>`). Subagents via
+Agent tool MUST use `isolation: "worktree"` (native tool parameter):
 
-- Tool cria worktree efêmero `<project_root>/.icm-wave-001-N-<task>/`
-  (ou similar) checkado em `wave-NNN-N/<task-slug>` derivada de
+- Tool creates ephemeral worktree `<project_root>/.icm-wave-001-N-<task>/`
+  (or similar) checked out on `wave-NNN-N/<task-slug>` derived from
   base_branch.
-- Subagente trabalha lá: read código existente em `.` (próprio worktree),
-  read ADRs em `../.icm-main/docs/decisions/` (stage 04 brief inclui
-  paths relativos — `agent-brief-render.py` resolve).
-- Ao final do subagente, branch pushed; lead merge em base_branch via
-  protocol da fase 04.
+- Subagent works there: read existing code in `.` (own worktree),
+  read ADRs in `../.icm-main/docs/decisions/` (stage 04 brief includes
+  relative paths — `agent-brief-render.py` resolves).
+- At subagent end, branch pushed; lead merges in base_branch via
+  stage 04 protocol.
 
-Tool com `isolation: worktree` cleanup automático se subagente não
-modifica nada; branch + path retornados se modificou.
+Tool with `isolation: worktree` auto-cleanup if subagent modifies nothing;
+branch + path returned if it modified.
 
-**Cleanup obrigatório pós-merge (v3.4.3):** subagente em fase 04 SEMPRE
-modifica (TDD escreve tests + impl), logo Agent tool nunca auto-cleanup
-worktree de wave. Lead DEVE executar cleanup explícito após merge
-sequencial + CI verde, antes de escrever wave-summary.md:
+**Mandatory cleanup post-merge (v3.4.3):** subagent in stage 04 ALWAYS
+modifies (TDD writes tests + impl), so Agent tool never auto-cleans up
+wave worktree. Lead MUST execute explicit cleanup after sequential merge
++ CI green, before writing wave-summary.md:
 
 ```bash
-# Para cada task da wave:
-git worktree remove <path-retornado-pelo-Agent-tool>
-git branch -d wave-<NNN>-<N>/<task-slug>     # safe se já merged --no-ff
+# For each wave task:
+git worktree remove <path-returned-by-Agent-tool>
+git branch -d wave-<NNN>-<N>/<task-slug>     # safe if already merged --no-ff
 
-# Fallback se path do worktree foi perdido — busca por pattern:
+# Fallback if worktree path was lost — search by pattern:
 git worktree list --porcelain \
   | awk '/^worktree /{p=$2} /^branch refs\/heads\/wave-<NNN>-<N>/{print p}' \
   | xargs -I {} git worktree remove {}
 ```
 
-Falha não-fatal: registrar warning em `wave-summary.md`. `git branch -d`
-recusa branch não-merged (intencional — não usar `-D` mascararia bugs).
-Recovery Wizard novo tipo `WAVE_WORKTREE_ORPHAN` (v3.4.3) detecta +
-auto-cleanup workspaces buggy pré-v3.4.3 onde cleanup nunca rodou.
+Non-fatal failure: record warning in `wave-summary.md`. `git branch -d`
+refuses un-merged branch (intentional — not using `-D` would mask bugs).
+New Recovery Wizard type `WAVE_WORKTREE_ORPHAN` (v3.4.3) detects +
+auto-cleans buggy workspaces pre-v3.4.3 where cleanup never ran.
 
-### 4. Read code de iteração anterior — stage 00 + 04+ casos
+### 4. Read code from prior iteration — stage 00 + 04+ cases
 
-Stage 00 recon precisa scan ADRs vigentes + lessons + tech_debt vigente.
-Worktree garante visibilidade:
+Stage 00 recon needs to scan active ADRs + lessons + current tech_debt.
+Worktree ensures visibility:
 
-- Stage 00 lê `.icm-main/docs/decisions/*.md` lista ADRs.
-- Stage 04 subagente em wave branch lê seu próprio working tree (já tem
+- Stage 00 reads `.icm-main/docs/decisions/*.md` for ADR list.
+- Stage 04 subagent in wave branch reads its own working tree (already has
   `src/`, `docs/`).
 
-### 5. CLAUDE.md root — exceção
+### 5. CLAUDE.md root — exception
 
-`<project_root>/CLAUDE.md` é dashboard externo do estado, mantido por
-`handoff.update_project_claude_md`. Vive no workspace branch durante
-ciclo ICM ativo. Saída A do workspace migra para base_branch (ver
+`<project_root>/CLAUDE.md` is the external state dashboard, maintained by
+`handoff.update_project_claude_md`. Lives in the workspace branch during
+the active ICM cycle. Workspace exit A migrates to base_branch (see
 `session-handoff-protocol.md`).
 
-Não vai em `.icm-main/CLAUDE.md` — esse arquivo nunca existe na base
-branch enquanto workspace ativo.
+Does not go in `.icm-main/CLAUDE.md` — that file never exists in the base
+branch while a workspace is active.
 
-### 6. Sincronização do `.icm-main/` quando wave merges
+### 6. Synchronizing `.icm-main/` when waves merge
 
-Após stage 07 mergiar wave branch em base_branch:
+After stage 07 merges the wave branch into base_branch:
 
 ```
 cd .icm-main
-git pull --ff-only origin <BASE_BRANCH>   # ou git fetch + git merge --ff-only
+git pull --ff-only origin <BASE_BRANCH>   # or git fetch + git merge --ff-only
 ```
 
-Lead da fase 07 executa esse comando logo após o merge para que estágios
-seguintes (08 ou outro workspace) vejam código atualizado em `.icm-main/`.
+Stage 07 lead executes this command right after the merge so that
+subsequent stages (08 or another workspace) see updated code in `.icm-main/`.
 
-Recovery wizard valida fast-forwardability como check de saúde.
+Recovery wizard validates fast-forwardability as a health check.
 
-### 7. Multi-workspace coexistência
+### 7. Multi-workspace coexistence
 
-Se houver 2+ workspaces ativos no mesmo project_root (ex: `001-feat-a` +
-`002-feat-b` em paralelo), `.icm-main/` é compartilhada entre os 2.
-Cada workspace tem seu próprio working tree em `<project_root>` mas
-trocar entre eles requer `git checkout workspace/<outro>` que força
-mudança no `<project_root>` checkout — `.icm-main/` permanece intocada.
+If 2+ workspaces are active at the same project_root (e.g., `001-feat-a` +
+`002-feat-b` in parallel), `.icm-main/` is shared between both.
+Each workspace has its own working tree in `<project_root>` but
+switching between them requires `git checkout workspace/<other>` which forces
+a change in the `<project_root>` checkout — `.icm-main/` remains untouched.
 
-## Setup verificável (bootstrap)
+## Verifiable setup (bootstrap)
 
 `scripts/bootstrap.py` step `_setup_main_worktree(project_root, base_branch)`:
 
@@ -180,91 +180,90 @@ mudança no `<project_root>` checkout — `.icm-main/` permanece intocada.
 def _setup_main_worktree(project_root: Path, base_branch: str) -> None:
     worktree_path = project_root / ".icm-main"
     if worktree_path.exists():
-        return  # idempotente
+        return  # idempotent
     _run_git(
         ["worktree", "add", str(worktree_path), base_branch],
         cwd=project_root,
     )
 ```
 
-Idempotente: roda 1× no bootstrap; chamadas subsequentes no-op.
+Idempotent: runs once at bootstrap; subsequent calls are no-ops.
 
-`.gitignore` no project_root ganha entry `.icm-main/`. Aplicado em todas
+`.gitignore` at project_root gains entry `.icm-main/`. Applied to all
 branches via:
 
-- main branch: gitignore versionado lista `.icm-main/`.
-- workspace branch: mesma lista (workspaces herdam .gitignore via merge
-  no bootstrap).
+- main branch: versioned gitignore lists `.icm-main/`.
+- workspace branch: same list (workspaces inherit .gitignore via merge
+  at bootstrap).
 
-## Falhas comuns + recovery
+## Common failures + recovery
 
-### `.icm-main/` ausente
+### `.icm-main/` absent
 
-Sintoma: `Read .icm-main/docs/decisions/...` retorna ENOENT.
+Symptom: `Read .icm-main/docs/decisions/...` returns ENOENT.
 
-Causa: bootstrap antigo (pré-v3.4.0) ou worktree removida manualmente.
+Cause: old bootstrap (pre-v3.4.0) or worktree manually removed.
 
 Recovery: `git worktree add .icm-main <BASE_BRANCH>`. Recovery wizard
-detecta + sugere comando.
+detects + suggests command.
 
-### Worktree corrupta (`.icm-main/.git` quebrado)
+### Corrupted worktree (`.icm-main/.git` broken)
 
-Sintoma: comandos git em `.icm-main/` falham.
+Symptom: git commands in `.icm-main/` fail.
 
-Recovery: `git worktree repair` ou `git worktree remove .icm-main --force` +
-recriar.
+Recovery: `git worktree repair` or `git worktree remove .icm-main --force` +
+recreate.
 
-### Branch errada em `.icm-main/`
+### Wrong branch in `.icm-main/`
 
-Sintoma: `cd .icm-main && git branch --show-current` retorna `wave-...`
-em vez de `<BASE_BRANCH>`.
+Symptom: `cd .icm-main && git branch --show-current` returns `wave-...`
+instead of `<BASE_BRANCH>`.
 
-Causa: subagente checkou wrong branch dentro da worktree.
+Cause: subagent checked out wrong branch inside the worktree.
 
 Recovery: `cd .icm-main && git checkout <BASE_BRANCH>`. Recovery wizard
-detecta + sugere comando.
+detects + suggests command.
 
-### Workspace branch tem `docs/`, `src/` orfãos
+### Workspace branch has orphan `docs/`, `src/`
 
-Sintoma: workspaces antigos (pré-v3.4.0) tinham `docs/lessons.md`,
-`docs/tech_debt.md` no workspace branch tree.
+Symptom: old workspaces (pre-v3.4.0) had `docs/lessons.md`,
+`docs/tech_debt.md` in the workspace branch tree.
 
-Causa: bootstrap antigo criava esses paths no workspace branch.
+Cause: old bootstrap created those paths in the workspace branch.
 
-Recovery: migration script (em `scripts/migrate-v3.3-to-v3.4.py` —
-NotImplemented; documentar como manual) remove esses paths do workspace
-branch e copia conteúdo pra base_branch (`.icm-main/`).
+Recovery: migration script (in `scripts/migrate-v3.3-to-v3.4.py` —
+NotImplemented; document as manual) removes those paths from the workspace
+branch and copies content to base_branch (`.icm-main/`).
 
-## Por que não outras opções
+## Why not other options
 
-| Opção | Pro | Contra |
+| Option | Pro | Con |
 |---|---|---|
-| **A** — só em main, agente lê via `git show main:` | sem disco extra; sem worktree | verbose; não cacheia bem; difícil pra Read tool; hooks SessionStart-side fragmentados |
-| **B** — `.icm-main/` worktree paralelo (escolhida) | Read/Write/Bash funcionam direto; commits cross-branch trivialmente atomicos; multi-workspace sharing | duplica disco do projeto; bootstrap precisa criar |
-| **C** — single-branch (workspace + código convivem) | sem cross-branch | perde isolamento; hooks de atomicidade difíceis; saída A vira squash merge gigante |
-| **D** — copy-on-session via SessionStart hook | sem worktree visível | hook setup machine-specific; não atomicidade write-back; gitignore complexo |
+| **A** — only on main, agent reads via `git show main:` | no extra disk; no worktree | verbose; does not cache well; hard for Read tool; fragmented SessionStart-side hooks |
+| **B** — `.icm-main/` parallel worktree (chosen) | Read/Write/Bash work directly; cross-branch commits trivially atomic; multi-workspace sharing | duplicates project disk; bootstrap needs to create |
+| **C** — single-branch (workspace + code coexist) | no cross-branch | loses isolation; atomicity hooks hard; exit A becomes a giant squash merge |
+| **D** — copy-on-session via SessionStart hook | no visible worktree | machine-specific hook setup; no write-back atomicity; complex gitignore |
 
-Opção B vence por: (1) zero ambiguidade de path; (2) ferramentas
-existentes (`Read`, `Edit`, `Write`, `Bash`) funcionam sem mudança;
-(3) commits cross-branch via `cd .icm-main && git commit` são ZERO-FRAGE
-(uma única transação por commit, não 2 commits + stash).
+Option B wins because: (1) zero path ambiguity; (2) existing tools (`Read`, `Edit`, `Write`, `Bash`) work without change;
+(3) cross-branch commits via `cd .icm-main && git commit` are ZERO-FRAGILE
+(a single transaction per commit, not 2 commits + stash).
 
-## Compatibilidade backward
+## Backward compatibility
 
-Workspaces criados em v3.3.x sem `.icm-main/`:
+Workspaces created in v3.3.x without `.icm-main/`:
 
-1. Migration manual: `cd <project_root> && git worktree add .icm-main <BASE_BRANCH>`.
-2. Adicionar `.icm-main/` ao `.gitignore` na workspace branch + commit (workspace branch).
-3. Adicionar `.icm-main/` ao `.gitignore` na base_branch + commit (via worktree).
-4. L0 do workspace antigo permanece com paths v3.3.x; agente em v3.4.0 entende ambos formatos via fallback documented em recovery-wizard.
+1. Manual migration: `cd <project_root> && git worktree add .icm-main <BASE_BRANCH>`.
+2. Add `.icm-main/` to `.gitignore` in workspace branch + commit (workspace branch).
+3. Add `.icm-main/` to `.gitignore` in base_branch + commit (via worktree).
+4. Old workspace L0 remains with v3.3.x paths; v3.4.0 agent understands both formats via fallback documented in recovery-wizard.
 
-## Referências cruzadas
+## Cross-references
 
-- `templates/workspace/CLAUDE.md.tpl` — L0 template com paths `.icm-main/`.
-- `templates/workspace/stages/02_design/CONTEXT.md.tpl` — process step 6 atualizado.
+- `templates/workspace/CLAUDE.md.tpl` — L0 template with `.icm-main/` paths.
+- `templates/workspace/stages/02_design/CONTEXT.md.tpl` — process step 6 updated.
 - `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` — subagent worktree usage.
-- `templates/.git-hooks/pre-commit` — whitelist tightened (sem docs/decisions/lessons/tech_debt).
+- `templates/.git-hooks/pre-commit` — whitelist tightened (no docs/decisions/lessons/tech_debt).
 - `scripts/bootstrap.py` — `_setup_main_worktree` step.
 - `scripts/recovery-wizard.py` — branch + worktree validation.
-- `references/git-hooks.md` — pre-commit + commit-msg + opcional SessionStart.
+- `references/git-hooks.md` — pre-commit + commit-msg + optional SessionStart.
 - `references/changelog.md` — entry v3.4.0.

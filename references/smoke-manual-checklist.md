@@ -1,182 +1,182 @@
 ---
 name: smoke-manual-checklist
-purpose: Checklist de smoke tests manuais pré-release (plan §8.2)
+purpose: Manual smoke test checklist pre-release (plan §8.2)
 gate: v3.0.0-beta5 → v3.0.0 promotion
 required_projects: 3
 ---
 
-# Smoke manual — pré-release v3.0.0-beta5
+# Smoke manual — pre-release v3.0.0-beta5
 
-> Antes de promover `v3.0.0-beta5` para `v3.0.0`: rodar todos os 10 itens em ≥3 projetos reais distintos. Documentar resultado por projeto em `references/smoke-results-<projeto>-<YYYY-MM-DD>.md`.
+> Before promoting `v3.0.0-beta5` to `v3.0.0`: run all 10 items in ≥3 distinct real projects. Document result per project in `references/smoke-results-<project>-<YYYY-MM-DD>.md`.
 
-## Critérios gerais (todos os itens)
+## General criteria (all items)
 
-- ✅ **PASS** se: comportamento conforme documentação + sem crash + sem corrupção FS/git.
-- ❌ **FAIL** se: crash, escrita fora do escopo declarado, regressão de qualquer Wave anterior, perda de trabalho do humano.
-- ⚠️ **WARN** se: comportamento correto mas UX confusa / mensagem ruim / passo extra inesperado. Anotar para Wave 8 (futuras melhorias).
+- ✅ **PASS** if: behavior per documentation + no crash + no FS/git corruption.
+- ❌ **FAIL** if: crash, write outside declared scope, regression of any prior Wave, loss of human work.
+- ⚠️ **WARN** if: correct behavior but confusing UX / poor message / unexpected extra step. Note for Wave 8 (future improvements).
 
-## Os 13 itens
+## The 13 items
 
-### 1. Greenfield real
+### 1. Real greenfield
 
-`profile=app_web_backend tier=development project_root=<path-novo>`. Percorrer 00→07 em projeto pequeno (3-5 tasks).
+`profile=app_web_backend tier=development project_root=<new-path>`. Walk through 00→07 on a small project (3-5 tasks).
 
-**Verificar:**
-- [ ] Bootstrap exit 0, 9 dirs criados, L0/L1 sem placeholders sobrando
-- [ ] Cada estágio transiciona conforme L2 declara
-- [ ] Pre-commit hook bloqueia tentativa de bypass
-- [ ] Token spend total ≤ 60% da v2.4 mesma escala (se houver baseline)
+**Verify:**
+- [ ] Bootstrap exit 0, 9 dirs created, L0/L1 with no leftover placeholders
+- [ ] Each stage transitions as declared by L2
+- [ ] Pre-commit hook blocks bypass attempts
+- [ ] Total token spend ≤ 60% of v2.4 at same scale (if baseline exists)
 
 ### 2. Existing repo Aura ecosystem
 
-Repo já com CLAUDE.md, ADRs em `docs/decisions/`, `docs/lessons.md`.
+Repo already with CLAUDE.md, ADRs in `docs/decisions/`, `docs/lessons.md`.
 
-**Verificar:**
-- [ ] Recon (estágio 00) detecta tipo `existing` corretamente
-- [ ] ADRs vigentes aparecem no recon-report (índice apenas, sem ler corpo)
-- [ ] Discovery (estágio 01) NÃO repete perguntas já respondidas em CLAUDE.md
-- [ ] Lessons herdáveis citadas no recon-report
+**Verify:**
+- [ ] Recon (stage 00) correctly detects type `existing`
+- [ ] Active ADRs appear in recon-report (index only, without reading body)
+- [ ] Discovery (stage 01) does NOT repeat questions already answered in CLAUDE.md
+- [ ] Inheritable lessons cited in recon-report
 
 ### 3. External repo
 
-Clone read-only de skill qualquer (ex: `superpowers/skills/brainstorming`).
+Read-only clone of any skill (e.g., `superpowers/skills/brainstorming`).
 
-**Verificar:**
-- [ ] Bootstrap não comita acidentalmente em master/main do upstream
-- [ ] Branch atual = `workspace/NNN-<slug>`
-- [ ] master/main do clone permanece com 1 commit (initial do upstream)
-- [ ] Hook local instalado mas não propagado pra upstream
+**Verify:**
+- [ ] Bootstrap does not accidentally commit to upstream master/main
+- [ ] Current branch = `workspace/NNN-<slug>`
+- [ ] master/main of the clone remains at 1 commit (upstream initial)
+- [ ] Local hook installed but not propagated to upstream
 
-### 4. tier=production com 5 subagentes
+### 4. tier=production with 5 subagents
 
-Plan.md com ≥5 tasks paralelizáveis.
+Plan.md with ≥5 parallelizable tasks.
 
-**Verificar:**
-- [ ] Wave Planner constrói DAG correto (sem ciclo, deps respeitadas)
-- [ ] 5 branches criadas em `wave-NNN-1/<task-slug>`
-- [ ] Cada subagente em branch isolada `wave-NNN-1/<task-slug>`
-- [ ] Sync barreira aguarda todos COMPLETE antes wave-reviewer
-- [ ] Merge sequencial limpo OU conflito escalado para humano com mensagem clara
-- [ ] CI gate global verde antes wave 2
+**Verify:**
+- [ ] Wave Planner builds correct DAG (no cycle, deps respected)
+- [ ] 5 branches created in `wave-NNN-1/<task-slug>`
+- [ ] Each subagent on isolated branch `wave-NNN-1/<task-slug>`
+- [ ] Sync barrier waits for all COMPLETE before wave-reviewer
+- [ ] Clean sequential merge OR conflict escalated to human with clear message
+- [ ] CI global gate green before wave 2
 
-### 5. Stop point real
+### 5. Real stop point
 
-Design (estágio 02) lista nova dependência paga (ex: SaaS Auth0 R$ 300/mês).
+Design (stage 02) lists new paid dependency (e.g., SaaS Auth0 R$ 300/month).
 
-**Verificar:**
-- [ ] Stop point `paid_service` dispara conforme calibração tier
-- [ ] Menu A/B/C escrito com trade-offs + recomendação + reversibilidade
-- [ ] L1 status vira `BLOCKED_STOP_POINT`, history append
-- [ ] Humano responde "B", sessão retoma `IN_PROGRESS`
-- [ ] history append `stop_point_resolved` com escolha
+**Verify:**
+- [ ] Stop point `paid_service` fires per tier calibration
+- [ ] A/B/C menu written with trade-offs + recommendation + reversibility
+- [ ] L1 status becomes `BLOCKED_STOP_POINT`, history append
+- [ ] Human replies "B", session resumes `IN_PROGRESS`
+- [ ] history append `stop_point_resolved` with choice
 
-### 6. Override yaml com guard-rail
+### 6. Override yaml with guard-rail
 
-`.icm-profile.local.yaml` com `tdd_required: false` em `tier=production` (sem `confirm_unsafe`).
+`.icm-profile.local.yaml` with `tdd_required: false` on `tier=production` (without `confirm_unsafe`).
 
-**Verificar:**
-- [ ] Bootstrap recusa com `ProfileMergeError("override perigoso requer confirm_unsafe: true")`
-- [ ] Adicionar `confirm_unsafe: true`, retry → bootstrap aceita
-- [ ] L0 reflete `tdd_required: false` no profile-effective.yaml
+**Verify:**
+- [ ] Bootstrap refuses with `ProfileMergeError("dangerous override requires confirm_unsafe: true")`
+- [ ] Add `confirm_unsafe: true`, retry → bootstrap accepts
+- [ ] L0 reflects `tdd_required: false` in profile-effective.yaml
 
 ### 7. Recovery Wizard
 
-Forçar workspace órfão: matar sessão mid-fase 04 (kill processo durante wave-1 spawn).
+Force orphan workspace: kill session mid-stage 04 (kill process during wave-1 spawn).
 
-**Verificar:**
-- [ ] Próxima sessão pre-flight detecta inconsistência (R2.7)
-- [ ] Recovery Wizard dispara automaticamente com 3 ações A/B/C
-- [ ] Aplicar A (rebuild from history) → L1 reconstruído
-- [ ] Sessão retoma do `stage_atual` correto sem perder trabalho
+**Verify:**
+- [ ] Next session pre-flight detects inconsistency (R2.7)
+- [ ] Recovery Wizard triggers automatically with 3 actions A/B/C
+- [ ] Apply A (rebuild from history) → L1 reconstructed
+- [ ] Session resumes from correct `stage_atual` without losing work
 
-### 8. Feedback intake fase 08 — 3 saídas
+### 8. Feedback intake stage 08 — 3 exits
 
-Workspace COMPLETED → humano dispara fase 08 manualmente, 3 vezes (3 workspaces ou 1 com 3 iterations).
+Workspace COMPLETED → human triggers stage 08 manually, 3 times (3 workspaces or 1 with 3 iterations).
 
-**Verificar:**
-- [ ] **Saída A** (close): status → `COMPLETED`, sub_stage → `08_decided_A`, lessons append em `docs/lessons.md`
-- [ ] **Saída B** (restart fase X): X ∈ {01..07} aceito (recusa 00 e 08), iteration++, outputs antigos movidos para `output-iteration-<N>/`, status → `IN_PROGRESS`, stage_atual → X
-- [ ] **Saída C** (spawn novo): mensagem para humano com comando exato, sub_stage → `08_decided_C`, spawn_to set, sessão termina sem bootstrappar 043
+**Verify:**
+- [ ] **Exit A** (close): status → `COMPLETED`, sub_stage → `08_decided_A`, lessons append in `docs/lessons.md`
+- [ ] **Exit B** (restart stage X): X ∈ {01..07} accepted (refuses 00 and 08), iteration++, old outputs moved to `output-iteration-<N>/`, status → `IN_PROGRESS`, stage_atual → X
+- [ ] **Exit C** (spawn new): message to human with exact command, sub_stage → `08_decided_C`, spawn_to set, session exits without bootstrapping 043
 
-### 9. Comparação custo $
+### 9. Cost $ comparison
 
-Mesmo projeto canônico (3-5 tasks) executado em v2.4 e v3.0-beta1. Medir input + output tokens totais.
+Same canonical project (3-5 tasks) run on v2.4 and v3.0-beta1. Measure total input + output tokens.
 
-**Verificar:**
-- [ ] v3 ≤ 60% de v2.4 (alvo plan §8.3)
-- [ ] Ganho vem de: sumários 200tok vs invocação skill formal + sub_stage tracking + sessões enxutas
-- [ ] Documentar números em `references/smoke-results-<projeto>.md`
+**Verify:**
+- [ ] v3 ≤ 60% of v2.4 (target plan §8.3)
+- [ ] Gain comes from: 200tok summaries vs formal skill invocation + sub_stage tracking + lean sessions
+- [ ] Document numbers in `references/smoke-results-<project>.md`
 
-### 10. Path absoluto (Windows / cross-drive)
+### 10. Absolute path (Windows / cross-drive)
 
-Workspace em `D:\workspaces\NNN-<slug>\`, projeto em `C:\projects\X\`.
+Workspace in `D:\workspaces\NNN-<slug>\`, project in `C:\projects\X\`.
 
-**Verificar:**
-- [ ] L0 resolve `project_root: C:/projects/X/` corretamente
-- [ ] Código escrito sai em `C:\projects\X\src\` (NUNCA dentro do workspace)
-- [ ] Branches criadas em `C:\projects\X\` (formato `wave-NNN-N/<task-slug>`)
-- [ ] Pre-commit hook valida prefixo `workspaces/NNN/` no workspace branch (não permite escrever em `src/`)
+**Verify:**
+- [ ] L0 resolves `project_root: C:/projects/X/` correctly
+- [ ] Code written goes into `C:\projects\X\src\` (NEVER inside the workspace)
+- [ ] Branches created in `C:\projects\X\` (format `wave-NNN-N/<task-slug>`)
+- [ ] Pre-commit hook validates prefix `workspaces/NNN/` on workspace branch (does not allow writing to `src/`)
 
 ### 11. Test Infrastructure — profile-effective.yaml
 
-`profile=app_web_backend tier=development`. Verificar geração de test_specs.
+`profile=app_web_backend tier=development`. Verify test_specs generation.
 
-**Verificar:**
-- [ ] `profile-effective.yaml` contém campo `test_specs` com sub-campos `test_types_required`, `coverage_threshold`, `http_integration`, `db_integration`
-- [ ] `coverage_threshold` = 80 para tier=development (conforme tabela de defaults)
-- [ ] `test_types_required` = `[unit, integration]` para profile `app_web_backend`
-- [ ] Campo `test_specs` ausente em `.icm-profile.local.yaml` — não-overridável
+**Verify:**
+- [ ] `profile-effective.yaml` contains field `test_specs` with sub-fields `test_types_required`, `coverage_threshold`, `http_integration`, `db_integration`
+- [ ] `coverage_threshold` = 80 for tier=development (per defaults table)
+- [ ] `test_types_required` = `[unit, integration]` for profile `app_web_backend`
+- [ ] Field `test_specs` absent from `.icm-profile.local.yaml` — not overridable
 
-### 12. Test Strategy no plan.md (stage 02)
+### 12. Test Strategy in plan.md (stage 02)
 
-Percorrer stage 02 em workspace real.
+Walk through stage 02 on a real workspace.
 
-**Verificar:**
-- [ ] Stage 02 produz seção `§Test Strategy` no plan.md (framework, pirâmide, threshold, path crítico)
-- [ ] Toda task com arquivos em `src/` declara ≥1 arquivo de teste em `Files touched`
-- [ ] Task sem arquivo de teste em `Files touched` para código funcional → Wave Planner dispara `BLOCKED_ERROR "test file missing for task <slug>"`
-- [ ] Transition condition do stage 02 bloqueia se Test Strategy ausente
+**Verify:**
+- [ ] Stage 02 produces section `§Test Strategy` in plan.md (framework, pyramid, threshold, critical path)
+- [ ] Every task with files in `src/` declares ≥1 test file in `Files touched`
+- [ ] Task without test file in `Files touched` for functional code → Wave Planner fires `BLOCKED_ERROR "test file missing for task <slug>"`
+- [ ] Stage 02 transition condition blocks if Test Strategy is absent
 
-### 13. Test-recipe copiada no bootstrap
+### 13. Test-recipe copied in bootstrap
 
-Bootstrap com qualquer profile (ex: `agent_ia`, `ml_project`).
+Bootstrap with any profile (e.g., `agent_ia`, `ml_project`).
 
-**Verificar:**
-- [ ] `workspace/_references/test-recipes/<profile>.md` existe após bootstrap
-- [ ] Conteúdo da receita bate com `templates/_references/test-recipes/<profile>.md` da skill
-- [ ] Stage 01 lista o arquivo na tabela Inputs (Input #12) como `condicional`
-- [ ] Stage 05 passo 4.6 executa sample-check e reporta PASS/CONDITIONAL/FAIL
+**Verify:**
+- [ ] `workspace/_references/test-recipes/<profile>.md` exists after bootstrap
+- [ ] Recipe content matches `templates/_references/test-recipes/<profile>.md` from the skill
+- [ ] Stage 01 lists the file in the Inputs table (Input #12) as `conditional`
+- [ ] Stage 05 step 4.6 runs sample-check and reports PASS/CONDITIONAL/FAIL
 
-## Critérios de aceitação para promover beta1 → v3.0.0 (plan §8.3)
+## Acceptance criteria for promoting beta1 → v3.0.0 (plan §8.3)
 
-- ✅ Suite formal: ≥80% coverage críticos, ≥60% resto. CI verde 7 dias consecutivos.
-- ✅ ≥3 projetos reais usaram v3.0.0-beta1 sem regressão grave (bug que destrói trabalho).
-- ✅ Comparação $ documentada: v3 ≤ 60% v2.4 em ≥3 projetos.
-- ✅ 10 itens deste checklist PASS em ≥3 projetos.
-- ✅ Lessons coletadas em `docs/lessons.md` da própria skill (Wave 7 cria).
+- ✅ Formal suite: ≥80% coverage on critical, ≥60% on rest. CI green 7 consecutive days.
+- ✅ ≥3 real projects used v3.0.0-beta1 without severe regression (bug destroying work).
+- ✅ $ comparison documented: v3 ≤ 60% v2.4 in ≥3 projects.
+- ✅ 10 items from this checklist PASS in ≥3 projects.
+- ✅ Lessons collected in `docs/lessons.md` of the skill itself (Wave 7 creates).
 
-## Template de relatório por projeto
+## Report template per project
 
 ```markdown
-# Smoke result — <projeto> — <YYYY-MM-DD>
+# Smoke result — <project> — <YYYY-MM-DD>
 
-| # | Item | Status | Notas |
+| # | Item | Status | Notes |
 |---|---|---|---|
-| 1 | Greenfield real | ✅/❌/⚠️ | ... |
+| 1 | Real greenfield | ✅/❌/⚠️ | ... |
 | 2 | Existing repo | ✅/❌/⚠️ | ... |
 | 3 | External repo | ✅/❌/⚠️ | ... |
-| 4 | 5 subagentes | ✅/❌/⚠️ | ... |
-| 5 | Stop point real | ✅/❌/⚠️ | ... |
+| 4 | 5 subagents | ✅/❌/⚠️ | ... |
+| 5 | Real stop point | ✅/❌/⚠️ | ... |
 | 6 | Override guard-rail | ✅/❌/⚠️ | ... |
 | 7 | Recovery Wizard | ✅/❌/⚠️ | ... |
 | 8 | Feedback intake A/B/C | ✅/❌/⚠️ | ... |
-| 9 | Custo $ vs v2.4 | ✅/❌/⚠️ | v3=Xtok / v2.4=Ytok = Z% |
-| 10 | Path absoluto | ✅/❌/⚠️ | ... |
-| 11 | test_specs no profile-effective | ✅/❌/⚠️ | ... |
-| 12 | Test Strategy no plan.md | ✅/❌/⚠️ | ... |
-| 13 | test-recipe copiada no bootstrap | ✅/❌/⚠️ | ... |
+| 9 | Cost $ vs v2.4 | ✅/❌/⚠️ | v3=Xtok / v2.4=Ytok = Z% |
+| 10 | Absolute path | ✅/❌/⚠️ | ... |
+| 11 | test_specs in profile-effective | ✅/❌/⚠️ | ... |
+| 12 | Test Strategy in plan.md | ✅/❌/⚠️ | ... |
+| 13 | test-recipe copied in bootstrap | ✅/❌/⚠️ | ... |
 
-## Bugs descobertos
+## Bugs found
 - ...
 
 ## UX warnings
@@ -188,62 +188,62 @@ Bootstrap com qualquer profile (ex: `agent_ia`, `ml_project`).
 
 ---
 
-## v3.3.0 — novos itens de smoke manual
+## v3.3.0 — new smoke manual items
 
-Após bootstrap em `tier=development`, verificar:
+After bootstrap in `tier=development`, verify:
 
-- [ ] `<project_root>/CLAUDE.md` criado com região ICM (`<!-- ICM-START/END -->`)
-- [ ] `<workspace>/_config/CONTEXT.md` (L3 ubiquitous language) presente, frontmatter `layer: L3, scope: ubiquitous_language`
-- [ ] `<workspace>/_out-of-scope/README.md` presente
-- [ ] `<workspace>/_references/runtime/agent-brief-template.md` presente
-- [ ] `<workspace>/_references/runtime/context-format.md` presente
-- [ ] `<workspace>/_references/runtime/adr-format.md` presente
-- [ ] `<workspace>/_references/runtime/diagnose-protocol.md` presente
-- [ ] `<workspace>/_references/runtime/triage-state-machine.md` presente
-- [ ] `<workspace>/_references/runtime/out-of-scope-kb.md` presente
-- [ ] `<workspace>/_references/runtime/design-it-twice.md` presente
-- [ ] `<workspace>/_config/hitl-loop.template.sh` presente
-- [ ] `docs/decisions/_template.md` presente
+- [ ] `<project_root>/CLAUDE.md` created with ICM region (`<!-- ICM-START/END -->`)
+- [ ] `<workspace>/_config/CONTEXT.md` (L3 ubiquitous language) present, frontmatter `layer: L3, scope: ubiquitous_language`
+- [ ] `<workspace>/_out-of-scope/README.md` present
+- [ ] `<workspace>/_references/runtime/agent-brief-template.md` present
+- [ ] `<workspace>/_references/runtime/context-format.md` present
+- [ ] `<workspace>/_references/runtime/adr-format.md` present
+- [ ] `<workspace>/_references/runtime/diagnose-protocol.md` present
+- [ ] `<workspace>/_references/runtime/triage-state-machine.md` present
+- [ ] `<workspace>/_references/runtime/out-of-scope-kb.md` present
+- [ ] `<workspace>/_references/runtime/design-it-twice.md` present
+- [ ] `<workspace>/_config/hitl-loop.template.sh` present
+- [ ] `docs/decisions/_template.md` present
 
-Em workspace branch:
-- [ ] Editar `<project_root>/CLAUDE.md` e `git add CLAUDE.md` — pre-commit hook permite (G6 whitelist)
-- [ ] Recovery wizard detecta `CLAUDE_MD_ROOT_STALE` quando L1.stage_atual diverge do bloco em CLAUDE.md root
+On workspace branch:
+- [ ] Edit `<project_root>/CLAUDE.md` and `git add CLAUDE.md` — pre-commit hook allows (G6 whitelist)
+- [ ] Recovery wizard detects `CLAUDE_MD_ROOT_STALE` when L1.stage_atual diverges from the block in CLAUDE.md root
 
 Brownfield:
-- [ ] Bootstrap em projeto com CLAUDE.md preexistente preserva conteúdo fora dos marcadores ICM byte-a-byte
-- [ ] Sem marcadores: insere região ICM logo após primeiro `^# ` (título principal)
+- [ ] Bootstrap on a project with pre-existing CLAUDE.md preserves content outside ICM markers byte-for-byte
+- [ ] Without markers: inserts ICM region right after the first `^# ` (main title)
 
 Multi-workspace:
-- [ ] Bootstrap segundo workspace adiciona bloco preservando o primeiro
+- [ ] Bootstrap of second workspace adds block preserving the first
 
-Saída A do último workspace:
-- [ ] Região ICM substituída por mensagem "Nenhum workspace ICM ativo + rode /init"
+Exit A of last workspace:
+- [ ] ICM region replaced by message "No active ICM workspace + run /init"
 
 ## v3.5.0 — wave protocol checks
 
-- [ ] L1 history grava `pre_wave_sha` em evento `wave_started` (passo 1 stage 04).
-- [ ] Task report tem `qa_loops_used: <N>` + `auto_qa_passed: <bool>` no frontmatter.
-- [ ] Wave-reviewer roda sem worktree (CWD = lead workspace; lê via `git show`).
-- [ ] Sort buffer aplica plan order pré-merge (mesmo que Agents retornem fora de ordem).
-- [ ] Conflict mid-wave: lead pausa em `BLOCKED_ERROR`, escreve `merge-conflict-<slug>.md`, gate humano A/B/C.
-- [ ] CI global vermelho: diagnose-protocol primeiro, rollback com `pre_wave_sha`, gate A/B/C.
-- [ ] Wave mista com 1 task HITL: tasks não-HITL completam em paralelo, status final `BLOCKED_HITL`.
-- [ ] Cleanup `--force` apenas com `auto_qa_passed: true` no task report.
-- [ ] `.icm-main` sync condicional (skip silencioso se ausente).
-- [ ] Validator aceita `BLOCKED_HITL` em L1 status.
+- [ ] L1 history records `pre_wave_sha` in `wave_started` event (step 1 of stage 04).
+- [ ] Task report has `qa_loops_used: <N>` + `auto_qa_passed: <bool>` in frontmatter.
+- [ ] Wave-reviewer runs without worktree (CWD = lead workspace; reads via `git show`).
+- [ ] Sort buffer applies plan order pre-merge (even if Agents return out of order).
+- [ ] Conflict mid-wave: lead pauses at `BLOCKED_ERROR`, writes `merge-conflict-<slug>.md`, human gate A/B/C.
+- [ ] CI global red: diagnose-protocol first, rollback with `pre_wave_sha`, gate A/B/C.
+- [ ] Mixed wave with 1 HITL task: non-HITL tasks complete in parallel, final status `BLOCKED_HITL`.
+- [ ] Cleanup `--force` only with `auto_qa_passed: true` in task report.
+- [ ] `.icm-main` conditional sync (silent skip if absent).
+- [ ] Validator accepts `BLOCKED_HITL` in L1 status.
 
 ## v3.9.0 — layered dev↔QA loop checks
 
 ### Bootstrap
-- [ ] Workspace tier=experimental: novo CONTEXT.md.tpl com L3 critic enabled (Haiku ceiling).
-- [ ] Workspace tier=production: novo CONTEXT.md.tpl com L3 critic Opus.
-- [ ] Bootstrap copia 3 docs novos pra `_references/runtime/` (critic-protocol, lead-resolution-protocol, mocking-guidelines).
+- [ ] Workspace tier=experimental: new CONTEXT.md.tpl with L3 critic enabled (Haiku ceiling).
+- [ ] Workspace tier=production: new CONTEXT.md.tpl with L3 critic Opus.
+- [ ] Bootstrap copies 3 new docs to `_references/runtime/` (critic-protocol, lead-resolution-protocol, mocking-guidelines).
 
 ### Pick-model
 - [ ] `pick-model.py` task `complexity_score: 1` + tier=production → writer Haiku + critic Opus.
 - [ ] `pick-model.py` task `complexity_score: 6` + tier=experimental → writer Haiku + critic Haiku (ceiling caps).
 - [ ] `pick-model.py` task `complexity_score: 5` + tier=development → writer Opus + critic Opus.
-- [ ] `agent-brief-render.py --tier production` injeta `model_recommended_writer/critic` + `complexity_score` no header.
+- [ ] `agent-brief-render.py --tier production` injects `model_recommended_writer/critic` + `complexity_score` in header.
 
 ### Lead-diagnose
 - [ ] `lead-diagnose.py` round 1 fail + Jaccard < 0.7 → recommend `surgical_retry` (no trigger met).
@@ -252,68 +252,68 @@ Saída A do último workspace:
 - [ ] diagnose.md schema: trigger condition + Jaccard table + bucket recommend + surgical brief (when B1).
 
 ### Forensic+ extended
-- [ ] `forensic-plus.py` Check 5 fixture (acceptance criterion sem test mapping) → HARD em production.
-- [ ] `forensic-plus.py` Check 6 fixture (diff toca pattern NÃO QUERO `Mock interno de jose`) → HARD em dev/prod.
-- [ ] `forensic-plus.py` Check 7 fixture (import lib proibida por ADR `## Forbidden imports`) → HARD em dev/prod.
-- [ ] ADR sem section `## Forbidden imports` → check 7 silently skipped (backward compat).
+- [ ] `forensic-plus.py` Check 5 fixture (acceptance criterion without test mapping) → HARD in production.
+- [ ] `forensic-plus.py` Check 6 fixture (diff touches NÃO QUERO pattern `Mock interno de jose`) → HARD in dev/prod.
+- [ ] `forensic-plus.py` Check 7 fixture (import lib forbidden by ADR `## Forbidden imports`) → HARD in dev/prod.
+- [ ] ADR without section `## Forbidden imports` → check 7 silently skipped (backward compat).
 
 ### Lead-resolution tier
-- [ ] B1 REWRITE_SPEC: lead reescreve task spec, 1 final spawn writer, output passa L2+L3 igual.
-- [ ] B3 DIRECT_IMPL: lead escreve em branch `wave-<NNN>-<N>/<slug>-lead-resolved`, output passa L2+L3 igual (não auto-aprovado).
-- [ ] B4 VOID_TASK: bloco `### VOIDED` em plan.md com rationale concreto, wave-planner --recalculate.
-- [ ] L1 status `LEAD_RESOLUTION_IN_PROGRESS` durante bucket execution.
-- [ ] Recovery wizard detecta `LEAD_RESOLUTION_STALE` se status > 24h sem progresso.
+- [ ] B1 REWRITE_SPEC: lead rewrites task spec, 1 final writer spawn, output passes L2+L3 equally.
+- [ ] B3 DIRECT_IMPL: lead writes directly in branch `wave-<NNN>-<N>/<slug>-lead-resolved`, output passes L2+L3 equally (not auto-approved).
+- [ ] B4 VOID_TASK: `### VOIDED` block in plan.md with concrete rationale, wave-planner --recalculate.
+- [ ] L1 status `LEAD_RESOLUTION_IN_PROGRESS` during bucket execution.
+- [ ] Recovery wizard detects `LEAD_RESOLUTION_STALE` if status > 24h without progress.
 
 ### Stage 05 audit
-- [ ] Sub-step 5.5 audit lead resolutions detecta B1 loosen (FAIL), B3 critic concerns silenced (FAIL), B4 vague rationale (FAIL).
-- [ ] B1/B3/B4 corretamente aplicados → audit PASS.
+- [ ] Sub-step 5.5 audit lead resolutions detects B1 loosen (FAIL), B3 critic concerns silenced (FAIL), B4 vague rationale (FAIL).
+- [ ] B1/B3/B4 correctly applied → audit PASS.
 - [ ] FAIL → `BLOCKED_ERROR error_type: lead_resolution_audit_failed`.
 
 ### Migration
-- [ ] migrate-workspace v3.8.0→v3.9.0 idempotente em smoke fixture.
-- [ ] L0 frontmatter de workspace existente ganha `icm_skill_version: "3.9.0"` sem quebrar parse.
-- [ ] Status enum atualizado (`LEAD_RESOLUTION_IN_PROGRESS` valid em validate_state.py).
+- [ ] migrate-workspace v3.8.0→v3.9.0 idempotent on smoke fixture.
+- [ ] Existing workspace L0 frontmatter gains `icm_skill_version: "3.9.0"` without breaking parse.
+- [ ] Status enum updated (`LEAD_RESOLUTION_IN_PROGRESS` valid in validate_state.py).
 
 ### E2E
-- [ ] Workspace lifecycle 04 wave com 2 tasks (1 forensicamente válida + 1 forçada B3 catastrophic).
-- [ ] Lead resolve via B3 (escreve direto, passa L2+L3).
-- [ ] Stage 05 audit aprova lead resolution.
-- [ ] Handoff stage 04 → 05 verde.
+- [ ] Workspace lifecycle stage 04 wave with 2 tasks (1 forensically valid + 1 forced B3 catastrophic).
+- [ ] Lead resolves via B3 (writes directly, passes L2+L3).
+- [ ] Stage 05 audit approves lead resolution.
+- [ ] Handoff stage 04 → 05 green.
 
 ## v3.10.0 — E2E coverage reinforcement checks
 
 ### Bootstrap
-- [ ] Workspace tier=production profile=app_web_backend: novo CONTEXT.md.tpl com step 11b E2E suite gate.
-- [ ] Bootstrap copia `e2e-coverage-protocol.md` pra `_references/runtime/`.
+- [ ] Workspace tier=production profile=app_web_backend: new CONTEXT.md.tpl with step 11b E2E suite gate.
+- [ ] Bootstrap copies `e2e-coverage-protocol.md` to `_references/runtime/`.
 
 ### Wave-planner detection
-- [ ] Plan com task tocando `src/routes/checkout.ts` profile=app_web_backend → wave-plan.md mostra `yes (auto)` na coluna E2E required + annotation `> **E2E coverage required**`.
-- [ ] Plan com task tocando `notebooks/eda.ipynb` profile=data_analysis → coluna E2E required = `no`, sem annotation.
-- [ ] Profile fullstack pega paths frontend AND backend.
+- [ ] Plan with task touching `src/routes/checkout.ts` profile=app_web_backend → wave-plan.md shows `yes (auto)` in E2E required column + annotation `> **E2E coverage required**`.
+- [ ] Plan with task touching `notebooks/eda.ipynb` profile=data_analysis → E2E required column = `no`, no annotation.
+- [ ] Profile fullstack picks up frontend AND backend paths.
 
 ### Forensic+ Check 8
-- [ ] Task com `Requires E2E update: true` no plan.md SEM file em `e2e/`/`cypress/`/`playwright/`/`tests/e2e/` no diff → HARD em tier dev/prod, SOFT em tier exp/tool.
-- [ ] Task com `Requires E2E update: true` + e2e file presente → no violation.
-- [ ] Task com `**E2E:** skip - rationale` → Check 8 silent skip.
-- [ ] Task sem field `Requires E2E update` → Check 8 silent skip.
+- [ ] Task with `Requires E2E update: true` in plan.md WITHOUT file in `e2e/`/`cypress/`/`playwright/`/`tests/e2e/` in diff → HARD in tier dev/prod, SOFT in tier exp/tool.
+- [ ] Task with `Requires E2E update: true` + e2e file present → no violation.
+- [ ] Task with `**E2E:** skip - rationale` → Check 8 silent skip.
+- [ ] Task without field `Requires E2E update` → Check 8 silent skip.
 
 ### Stage 04 wave gate L4
-- [ ] tier production profile=backend + e2e_command declarado → step 11b roda E2E suite. Vermelho → BLOCKED_ERROR error_type=e2e_suite_failed → diagnose protocol.
-- [ ] tier exp profile=backend sem e2e_command → step 11b skip silently (warning).
-- [ ] profile=data_analysis (user_facing_paths vazio) → step 11b skip integral.
+- [ ] tier production profile=backend + e2e_command declared → step 11b runs E2E suite. Red → BLOCKED_ERROR error_type=e2e_suite_failed → diagnose protocol.
+- [ ] tier exp profile=backend without e2e_command → step 11b skip silently (warning).
+- [ ] profile=data_analysis (user_facing_paths empty) → step 11b skip entirely.
 
 ### Stage 05 audit (4.7)
-- [ ] Suite e2e ausente em workspace tier dev/prod com user_facing_paths não-vazio → BLOCKED_ERROR error_type=e2e_suite_missing.
-- [ ] Suite e2e > 7 dias com tasks user-facing entregues → BLOCKED_ERROR error_type=e2e_suite_stale.
-- [ ] Task com `**E2E:** skip` sem rationale → BLOCKED_ERROR error_type=e2e_skip_unjustified.
-- [ ] CI report e2e vermelho → FAIL.
+- [ ] E2E suite absent in workspace tier dev/prod with non-empty user_facing_paths → BLOCKED_ERROR error_type=e2e_suite_missing.
+- [ ] E2E suite > 7 days with user-facing tasks delivered → BLOCKED_ERROR error_type=e2e_suite_stale.
+- [ ] Task with `**E2E:** skip` without rationale → BLOCKED_ERROR error_type=e2e_skip_unjustified.
+- [ ] CI report e2e red → FAIL.
 
 ### Recovery wizard
-- [ ] Detector E2E_SUITE_STALE alerta workspace com suite > 7 dias + tasks user-facing recentes em wave-summary.
+- [ ] Detector E2E_SUITE_STALE alerts workspace with suite > 7 days + recent user-facing tasks in wave-summary.
 
 ### Migration
-- [ ] migrate-workspace v3.9.0→v3.10.0 idempotente em smoke fixture.
-- [ ] L0 frontmatter de workspace existente ganha `icm_skill_version: "3.10.0"` sem quebrar parse.
+- [ ] migrate-workspace v3.9.0→v3.10.0 idempotent on smoke fixture.
+- [ ] Existing workspace L0 frontmatter gains `icm_skill_version: "3.10.0"` without breaking parse.
 
-### E2E (meta-test do reforço)
-- [ ] Workspace lifecycle: criar plan com 2 tasks (1 user-facing forencic-flagged, 1 não); confirmar wave-plan.md mostra E2E annotation; designer adiciona `Requires E2E update: true`; subagente A esquece e2e file → Check 8 HARD; subagente B adiciona e2e/checkout.spec.ts → PASS; L4 wave gate roda suite; Stage 05 4.7 audita freshness verde.
+### E2E (meta-test of reinforcement)
+- [ ] Workspace lifecycle: create plan with 2 tasks (1 user-facing forensic-flagged, 1 not); confirm wave-plan.md shows E2E annotation; designer adds `Requires E2E update: true`; subagent A forgets e2e file → Check 8 HARD; subagent B adds e2e/checkout.spec.ts → PASS; L4 wave gate runs suite; Stage 05 4.7 audits freshness green.
