@@ -15,22 +15,22 @@ Every task in `plan.md` (stage 02 design) **must** declare the 4 blocks below, i
 ```markdown
 ## Task <SLUG>: <Human title>
 
-### O QUE
+### WHAT
 <Functional requirements — what this task delivers.
  Product language, not implementation language.
  2-5 bullets.>
 
-### COMO
+### HOW
 <Technical approach — which files, which functions, which pattern.
  May explicitly cite an ADR ("follow 0004-auth-strategy").
  3-7 bullets.>
 
-### NÃO QUERO
+### OUT OF SCOPE
 <Anti-requirements. Out of scope. What NOT to do.
  Exists to prevent scope creep and over-engineering.
  2-5 bullets.>
 
-### VALIDAÇÃO
+### VALIDATION
 <Measurable acceptance criteria + mandatory tests.
  Each bullet must map to ≥1 test name (forensic+ Check 5 validates).
  3-7 bullets.>
@@ -40,10 +40,10 @@ Every task in `plan.md` (stage 02 design) **must** declare the 4 blocks below, i
 
 | Block | Without it... |
 |---|---|
-| O QUE | Subagent invents requirements; QA has no anchor to validate against |
-| COMO | Architectural decisions diverge between parallel tasks in the same wave |
-| NÃO QUERO | Silent scope creep; subagent adds things "while we're here..." |
-| VALIDAÇÃO | Tests cover what the dev found interesting, not what matters |
+| WHAT | Subagent invents requirements; QA has no anchor to validate against |
+| HOW | Architectural decisions diverge between parallel tasks in the same wave |
+| OUT OF SCOPE | Silent scope creep; subagent adds things "while we're here..." |
+| VALIDATION | Tests cover what the dev found interesting, not what matters |
 
 ---
 
@@ -54,7 +54,7 @@ In addition to the 4 blocks, each task declares metadata consumed by the lead in
 ```markdown
 ## Task <SLUG>: <Title>
 
-### O QUE / COMO / NÃO QUERO / VALIDAÇÃO
+### WHAT / HOW / OUT OF SCOPE / VALIDATION
 <see §1>
 
 ### Depends on
@@ -69,7 +69,7 @@ In addition to the 4 blocks, each task declares metadata consumed by the lead in
             actual diff insertions > 3 × estimate. Plan author opts in for
             tasks where bounded scope matters. Absent → check skipped. -->
 
-### ADRs aplicáveis
+### Applicable ADRs
 - docs/decisions/0001-stack.md
 - docs/decisions/0004-auth-strategy.md
 
@@ -100,7 +100,7 @@ In addition to the 4 blocks, each task declares metadata consumed by the lead in
 | Depends on | Designer (stage 02) | Wave-planner (explicit DAG edge) |
 | Files touched | Designer; refined by wave-planner | Lead (branch boundary); Wave-planner (validates ≥1 test file) |
 | Estimated lines (optional) | Designer (stage 02) | forensic-plus.py (Check 3 scope creep) |
-| ADRs aplicáveis | Designer | Subagent (read order); forensic+ Check 7 (import drift) |
+| Applicable ADRs | Designer | Subagent (read order); forensic+ Check 7 (import drift) |
 | Critical lessons | Wave-planner (Q10 match) | Subagent (pre-RED audit) |
 | Extra conventions | Designer (rare) | Subagent |
 | Tech debt paydown | Designer | Subagent (declares in commit) |
@@ -245,27 +245,27 @@ Fictional task that illustrates the complete schema (4-block + metadata; no Akit
 ```markdown
 ## Task auth-middleware: JWT validation middleware
 
-### O QUE
+### WHAT
 - Express middleware that validates JWT in `Authorization: Bearer <token>` headers.
 - Rejects 401 when token is missing, malformed, or expired.
 - Attaches `req.user = { id, email, role }` when valid.
 - Logs failures (without PII) at `warn` level.
 
-### COMO
+### HOW
 - Create `src/auth/middleware.ts` exporting `requireJwt()`.
 - Use lib `jose` (already in ADR 0001-stack), never `jsonwebtoken`.
 - Verify signature via `JWKS_URI` read from `process.env.JWKS_URI`.
 - Pipeline order: `cors → requireJwt → rateLimit` (lesson 0017).
 - Error: throw `AuthError`/`AuthExpiredError` classes caught in `errorHandler`.
 
-### NÃO QUERO
+### OUT OF SCOPE
 - Decode JWT without verifying (lesson 0042).
 - Implement refresh-token (scope of another task).
 - Log token value or email (PII; lesson 0033).
 - Cache results in memory (out-of-scope; pending ADR).
 - Internal mock of jose or JWKS client (use boundary mock; see mocking-guidelines.md).
 
-### VALIDAÇÃO
+### VALIDATION
 - Test `test_missing_header_returns_401`: missing header → 401 + body `{error: "missing_auth"}`.
 - Test `test_malformed_jwt_returns_401`: malformed token → 401 + warn log without PII.
 - Test `test_expired_jwt_returns_401`: expired token → 401 + body `{error: "expired"}`.
@@ -286,7 +286,7 @@ Fictional task that illustrates the complete schema (4-block + metadata; no Akit
 ### Estimated lines
 ~120
 
-### ADRs aplicáveis
+### Applicable ADRs
 - docs/decisions/0001-stack.md
 - docs/decisions/0004-auth-strategy.md
 
@@ -361,10 +361,10 @@ in the header. Mapping:
 
 | 4-block | AGENT-BRIEF section |
 |---|---|
-| **O QUE:** | `Summary:` (1st line) + `Desired behavior:` (body) |
-| **COMO:** | `Key interfaces:` (no absolute paths / line numbers) |
-| **NÃO QUERO:** | `Out of scope:` |
-| **VALIDAÇÃO:** | `Acceptance criteria:` (testable list) |
+| **WHAT:** | `Summary:` (1st line) + `Desired behavior:` (body) |
+| **HOW:** | `Key interfaces:` (no absolute paths / line numbers) |
+| **OUT OF SCOPE:** | `Out of scope:` |
+| **VALIDATION:** | `Acceptance criteria:` (testable list) |
 
 Additionally, the task block in plan.md MUST have:
 - `**Type:** AFK` or `**Type:** HITL` (see `task-types-hitl-afk.md`)

@@ -186,7 +186,7 @@ Playwright plugin disabled in `pyproject.toml` (workaround — leave it).
 Stage 04 gains 3 QA layers, executed **always, all tiers**:
 
 - **L1 writer** (subagent) — vertical TDD: tracer-first + loop `RED → GREEN → CI scope → REFACTOR` (anti-horizontal slicing). Drops Akita 15-item inline (self-grading bias documented: Huang ICLR 2024, arxiv 2510.11822, arxiv 2509.16533).
-- **L2 forensic+ extended** — 7 deterministic git-only checks (4 original v3.8.0 + 3 new): Check 5 acceptance↔test mapping, Check 6 NÃO QUERO violations, Check 7 ADR import drift. HARD → skip L3, surgical retry.
+- **L2 forensic+ extended** — 7 deterministic git-only checks (4 original v3.8.0 + 3 new): Check 5 acceptance↔test mapping, Check 6 OUT OF SCOPE violations, Check 7 ADR import drift. HARD → skip L3, surgical retry.
 - **L3 orthogonal critic** — Agent fresh context, `model = TIER_CEILING[tier]` always, anti-sycophancy hardcoded in `templates/critic-prompt.md`. Output triplet (claim, evidence file:line, counterexample, severity BLOCKING|MAJOR|MINOR; decision APPROVE|REJECT|ABSTAIN).
 
 **Per-task loop cap 3 attempts.** Exhausted OR convergence trip (Jaccard ≥ 0.7) OR catastrophic detected → **lead-resolution tier**:
@@ -275,7 +275,7 @@ Canonical doc: `references/preview-loop-protocol.md`. Covers 10 consolidated dec
 |---|---|---|
 | 1 | Dev server lifecycle | Starts on stage 04 entry, killed on exit. PID in `.icm-main/.dev-server.pid` |
 | 2 | Mock data | Tier-based: exp/tool=fixtures; dev=msw_faker; prod=msw_faker_zod |
-| 3 | Feedback comm | Free combo + priming kickoff. Stop `feedback_ambiguous` |
+| 3 | Feedback comm | Free combo + priming kickoff. Stop `ambiguous_feedback` |
 | 4 | Current URL | CDP live (`--remote-debugging-port=9222 --user-data-dir=.icm-chrome-profile`) |
 | 5 | Verification | `tsc` each Edit; lint+Playwright wave-end or on request |
 | 6 | Storybook? | Vite/Next preview pages in `preview/` excluded from production build |

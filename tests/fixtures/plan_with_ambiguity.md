@@ -11,7 +11,7 @@ Comportamento esperado da fase deterministica:
 ## Task payments-charge: Payments Charge
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/payments/charge.ts
@@ -22,7 +22,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task payments-refund: Payments Refund
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/payments/refund.ts

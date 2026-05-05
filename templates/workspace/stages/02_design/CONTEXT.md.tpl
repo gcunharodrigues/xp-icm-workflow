@@ -58,10 +58,10 @@ Detailed technical design from the scope refined in discovery. Produces `plan.md
 ## Process
 
 1. **Pre-flight:** validate Input paths marked `yes`; sub_stage `02_in_progress`. If `discovery.md` is absent → status `BLOCKED_ERROR`.
-2. **Read 4-block-contract-template** to internalize the mandatory schema for each task in plan.md (O QUE / COMO / NÃO QUERO / VALIDAÇÃO + Files touched + ADRs aplicáveis + Critical lessons + Tech debt paydown + Requires_peer_review).
-   - **Canonical heading levels (CRITICAL):** task header is **h2** (`## Task <slug>: <title>`); 4-block subsections + metadata are **h3** (`### O QUE`, `### COMO`, `### NÃO QUERO`, `### VALIDAÇÃO`, `### Files touched`, `### Depends on`, etc). Wave-planner in stage 03 runs pre-flight `_detect_heading_drift` in `parse_plan` and aborts with `WavePlannerError` if it finds `#### Task` (h4) or `##### O QUE` (h5+). Do not copy the schema from the template with an offset; use literal `## ` and `### `.
+2. **Read 4-block-contract-template** to internalize the mandatory schema for each task in plan.md (WHAT / HOW / OUT OF SCOPE / VALIDATION + Files touched + Applicable ADRs + Critical lessons + Tech debt paydown + Requires_peer_review).
+   - **Canonical heading levels (CRITICAL):** task header is **h2** (`## Task <slug>: <title>`); 4-block subsections + metadata are **h3** (`### WHAT`, `### HOW`, `### OUT OF SCOPE`, `### VALIDATION`, `### Files touched`, `### Depends on`, etc). Wave-planner in stage 03 runs pre-flight `_detect_heading_drift` in `parse_plan` and aborts with `WavePlannerError` if it finds `#### Task` (h4) or `##### WHAT` (h5+). Do not copy the schema from the template with an offset; use literal `## ` and `### `.
 3. **Map discovery → technical tasks:** break the macro option chosen in 01 into a list of discrete tasks. Each task fits into ≤1 wave of the Wave Planner (see `references/wave-planner-algorithm.md` — under construction, Wave 4 of the skill).
-4. **For each task, write 4-block + metadata** (Files touched, ADRs aplicáveis, Critical lessons if there is a match, etc.). Direct language, avoids over-engineering.
+4. **For each task, write 4-block + metadata** (Files touched, Applicable ADRs, Critical lessons if there is a match, etc.). Direct language, avoids over-engineering.
 5. **Detect stop points during design:** stack/db/new_dep/paid_service/irreversible/over_eng/pii/adr_drift. Calibration by tier in `_config/stop-points.md`. Trigger: pause, A/B/C menu, update L1 `BLOCKED_STOP_POINT`, wait for human response, resume.
 6. **Spawn new ADRs** when an architectural decision is irreversible or diverges from what was declared: canonical v3.4.0 workflow via `.icm-main/` worktree:
    ```
@@ -98,7 +98,7 @@ Detailed technical design from the scope refined in discovery. Produces `plan.md
      - `msw_faker_zod` (production): designer writes a complete **Zod** schema in plan.md (code block), saved as `mocks/schema.ts` in stage 04. Schema is the source of truth for the API contract the real backend will implement later — refactoring mock → real = replacing MSW handler with a real HTTP call, without touching the component.
    - **Reusable components** get flag `requires_preview_page: true` in task metadata. Indicates to the subagent in stage 04 that along with the component it should write `preview/<component>/page.tsx` (Next.js app router) or equivalent for the detected build tool, with ≥4 states (Default/Hover/Active/Disabled). Canonical path in `preview_loop.preview_pages_path` (default `preview/`).
    - **Routes map (CDP fallback):** designer populates `output/routes.md` listing planned routes + main component per route + associated fixture/handler. Activates automatic fallback when CDP is unavailable in stage 04.
-   - **Optional ASCII wireframe:** plan.md task with non-trivial layout (e.g., multi-grid dashboard) includes an ASCII wireframe in the `COMO` block. Stage 04 lead injects the wireframe in the subagent's channel 2. Wireframe does NOT replace DESIGN.md tokens; it is aux for layout coords.
+   - **Optional ASCII wireframe:** plan.md task with non-trivial layout (e.g., multi-grid dashboard) includes an ASCII wireframe in the `HOW` block. Stage 04 lead injects the wireframe in the subagent's channel 2. Wireframe does NOT replace DESIGN.md tokens; it is aux for layout coords.
    - Canonical doc: `_references/runtime/preview-loop-protocol.md`.
 8. **Define global Test Strategy for the workspace** (once in plan.md, not per task). Read `test_specs` from `_config/profile-effective.yaml` for calibration. Mandatory section with:
    - **Framework**: language → main framework (e.g., Python → pytest + httpx; TS → vitest + @testing-library/react)
@@ -282,10 +282,10 @@ If human replies "abort":
   each task in plan.md gets field `**Type:** HITL|AFK`. AFK is the default.
   HITL requires justification in field `**Reason:**`.
 - **AGENT-BRIEF compatibility (`_references/runtime/agent-brief-template.md`):**
-  4-block (O QUE / COMO / NÃO QUERO / VALIDAÇÃO) per task MUST be parseable
-  by `agent-brief-render.py` in stage 04. Mapping: O QUE→Summary+Desired,
-  COMO→Key interfaces (no absolute paths!), NÃO QUERO→Out of scope,
-  VALIDAÇÃO→Acceptance criteria.
+  4-block (WHAT / HOW / OUT OF SCOPE / VALIDATION) per task MUST be parseable
+  by `agent-brief-render.py` in stage 04. Mapping: WHAT→Summary+Desired,
+  HOW→Key interfaces (no absolute paths!), OUT OF SCOPE→Out of scope,
+  VALIDATION→Acceptance criteria.
 - **Design It Twice (`_references/runtime/design-it-twice.md`):** modules
   marked `core: true` in plan.md trigger Design It Twice. Spawn 3+
   parallel Agent tool calls with distinct constraints (minimize

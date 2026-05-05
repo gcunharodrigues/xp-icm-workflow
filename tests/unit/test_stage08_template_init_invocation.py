@@ -25,9 +25,9 @@ def _read() -> str:
 def _split_outcomes(content: str) -> dict[str, str]:
     """Splits template into 3 sub-strings for exits A/B/C."""
     markers = {
-        "A": "### Saída A — Close",
-        "B": "### Saída B — Restart phase X",
-        "C": "### Saída C — Spawn novo workspace",
+        "A": "### Exit A — Close",
+        "B": "### Exit B — Restart stage X",
+        "C": "### Exit C — Spawn new workspace",
     }
     a_start = content.find(markers["A"])
     b_start = content.find(markers["B"])
@@ -58,7 +58,7 @@ def test_outcome_A_invokes_skill_init_when_exit_2():
         "exit A must instruct invoking Skill init"
     )
     assert "exit code" in sec.lower() and "2" in sec
-    assert "último ativo" in sec.lower() or "ultimo ativo" in sec.lower()
+    assert "last active" in sec.lower() or "último ativo" in sec.lower() or "ultimo ativo" in sec.lower()
 
 
 def test_outcome_C_uses_exit_2_flag():

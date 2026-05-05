@@ -198,10 +198,10 @@ def test_parse_task_metadata_basic(pm, tmp_path: Path):
     plan = tmp_path / "plan.md"
     plan.write_text(
         "## Task auth-mw: JWT middleware\n\n"
-        "### O QUE\n- Validate JWT in headers (public API change).\n\n"
-        "### COMO\n- Use jose lib.\n\n"
-        "### NÃO QUERO\n- Decode without verify.\n\n"
-        "### VALIDAÇÃO\n- Test missing header → 401.\n\n"
+        "### WHAT\n- Validate JWT in headers (public API change).\n\n"
+        "### HOW\n- Use jose lib.\n\n"
+        "### OUT OF SCOPE\n- Decode without verify.\n\n"
+        "### VALIDATION\n- Test missing header → 401.\n\n"
         "### Files touched\n- src/auth/middleware.ts\n- tests/auth/middleware.test.ts\n\n"
         "### Estimated lines\n~150\n\n",
         encoding="utf-8",
@@ -210,17 +210,17 @@ def test_parse_task_metadata_basic(pm, tmp_path: Path):
     assert meta["estimated_lines"] == 150
     assert "src/auth/middleware.ts" in meta["files_touched"]
     assert meta["security_sensitive"]  # auth/ in path
-    assert meta["public_api_change"]   # "public api" in O QUE
+    assert meta["public_api_change"]   # "public api" in WHAT
 
 
 def test_parse_task_metadata_doc_only(pm, tmp_path: Path):
     plan = tmp_path / "plan.md"
     plan.write_text(
         "## Task readme-update: Update README\n\n"
-        "### O QUE\n- Update docs.\n\n"
-        "### COMO\n- Edit README.md.\n\n"
-        "### NÃO QUERO\n- Code changes.\n\n"
-        "### VALIDAÇÃO\n- README rendered correctly.\n\n"
+        "### WHAT\n- Update docs.\n\n"
+        "### HOW\n- Edit README.md.\n\n"
+        "### OUT OF SCOPE\n- Code changes.\n\n"
+        "### VALIDATION\n- README rendered correctly.\n\n"
         "### Files touched\n- README.md\n\n"
         "### Conventions extras\n- doc-only\n\n",
         encoding="utf-8",

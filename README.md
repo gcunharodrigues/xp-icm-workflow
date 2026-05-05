@@ -5,7 +5,7 @@
 [![tests](https://img.shields.io/badge/tests-855%20passed-brightgreen)](tests/)
 [![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)](pyproject.toml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](system-requirements.md)
-[![version](https://img.shields.io/badge/version-v3.11.0-blue)](references/changelog.md)
+[![version](https://img.shields.io/badge/version-v3.12.0-blue)](references/changelog.md)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -177,7 +177,7 @@ Tier scales rigor independently of profile. The same profile at tier `experiment
 | [`references/4-block-contract-template.md`](references/4-block-contract-template.md) | 4-block + 7-step TDD cycle + Akita 15-item |
 | [`references/wave-planner-algorithm.md`](references/wave-planner-algorithm.md) | DAG + LLM review subagent |
 | [`references/subagent-protocol.md`](references/subagent-protocol.md) | Spawn via Agent tool + mid-wave reduce |
-| [`references/feedback-intake-fase08.md`](references/feedback-intake-fase08.md) | 3 outcomes A/B/C |
+| [`references/feedback-intake-stage08.md`](references/feedback-intake-stage08.md) | 3 outcomes A/B/C |
 | [`references/recovery-wizard.md`](references/recovery-wizard.md) | 14 inconsistencies + reconstruction |
 | [`references/worktree-model.md`](references/worktree-model.md) | Parallel worktree `.icm-main/` (v3.4.0) |
 | [`references/changelog.md`](references/changelog.md) | Full version history |
@@ -239,7 +239,11 @@ Flow details, code standards, and drift rules in [CONTRIBUTING.md](CONTRIBUTING.
 
 ## Current version
 
-**v3.11.0** — Full migration to en-US. All user-facing text, templates, reference docs, scripts, and tests translated from pt-BR to en-US. No schema or behavioral change; pure language normalization. See [`references/changelog.md`](references/changelog.md) for full entry.
+**v3.12.0** — Zero pt-BR (full migration). All previously preserved pt-BR keywords (4-block headers, stop point IDs, retrospective headers, exit markers, historical changelog) have been translated to en-US. Single en-US canonical source with zero exceptions. See [`references/changelog.md`](references/changelog.md) for full entry.
+
+## v3.12.0 — Zero pt-BR (full migration)
+
+Eliminated all preserved pt-BR keywords. Parser regex updated to match en-US headers (`### WHAT`, `### HOW`, `### OUT OF SCOPE`, `### VALIDATION`). Migration step `migrate_3_11_0_to_3_12_0` handles L1 history + plan.md 4-block rewrite. ADR amended: zero pt-BR keywords. Cross-ref: [`references/changelog.md`](references/changelog.md).
 
 ## v3.11.0 — Full migration to en-US
 
@@ -253,6 +257,7 @@ Canonical version: [`scripts/bootstrap.py:SKILL_VERSION`](scripts/bootstrap.py).
 
 ### Highlights by version
 
+- **v3.12.0** (2026-05-05) — Zero pt-BR (full migration). All preserved pt-BR keywords translated; parser regex updated to en-US headers; migration step `migrate_3_11_0_to_3_12_0`; ADR amended; changelog fully en-US.
 - **v3.10.0** (2026-05-04) — E2E coverage reinforcement. Wave-planner auto-detects user-facing tasks; forensic+ Check 8 enforces ≥1 e2e file in diff (HARD dev/prod); L4 wave gate universal tier dev/prod; Stage 05 audits suite freshness. Doc: `e2e-coverage-protocol.md`.
 - **v3.9.0** (2026-05-04) — Layered dev↔QA loop + lead-resolution tier. L2 forensic+ extended (7 checks) + L3 orthogonal critic (intra-Claude Sonnet/Opus mix, anti-sycophancy) + buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK. Vertical TDD + tracer-first. Drop Akita 15-item checklist. Pick-model heuristic (writer/critic split by complexity score + tier ceiling). Docs: `critic-protocol.md`, `lead-resolution-protocol.md`, `mocking-guidelines.md`.
 - **v3.8.0** (2026-05-03) — Forensic+ wave reviewer. 4 anti-fraud checks per task in step 8 wave-reviewer (test assertions, files outside declared, scope creep, TODO/FIXME). Tier-aware HARD/SOFT severity. Re-spawn cap 2. Doc: `references/forensic-plus-protocol.md`.

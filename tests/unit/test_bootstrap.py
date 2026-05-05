@@ -404,7 +404,7 @@ class TestScaffoldWorkspaceDirs:
             "recovery-wizard.md",
             "stop-points-canonical.md",
             "4-block-contract-template.md",
-            "feedback-intake-fase08.md",
+            "feedback-intake-stage08.md",
             "session-handoff-protocol.md",
         }
         actual = {p.name for p in runtime_dir.iterdir() if p.is_file()}

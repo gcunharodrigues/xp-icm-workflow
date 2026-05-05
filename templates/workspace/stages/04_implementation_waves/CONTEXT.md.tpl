@@ -12,7 +12,7 @@ applicable_stop_points:
   - "over_eng"
   - "prod_migration"
   - "adr_drift"
-  - "feedback_ambiguous"
+  - "ambiguous_feedback"
   - "design_system_cascade"
 output_files:
   - "output/wave-<N>/task-<slug>.md"
@@ -45,7 +45,7 @@ Parallel execution in waves. Lead session orchestrates subagents via Agent tool 
 | 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/CONTEXT.md | L2 | yes |
 | 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/output/wave-plan.md | L4 | yes |
 | 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md | L4 | yes |
-| 6 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | conditional: read ONLY ADRs listed in "ADRs aplicáveis" of the task in plan.md |
+| 6 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | conditional: read ONLY ADRs listed in "Applicable ADRs" of the task in plan.md |
 | 7 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | conditional: lessons-match.py pre-extracts relevant lessons; lead injects via channel 2 |
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/test-driven-development-200tok.md | L3 | yes |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/subagent-driven-development-200tok.md | L3 | yes |
@@ -65,7 +65,7 @@ Parallel execution in waves. Lead session orchestrates subagents via Agent tool 
 ## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/workspaces/ (other workspaces — workspace isolation)
-- ADRs in {{PROJECT_ROOT}}/.icm-main/docs/decisions/ NOT listed in "ADRs aplicáveis" of the current task
+- ADRs in {{PROJECT_ROOT}}/.icm-main/docs/decisions/ NOT listed in "Applicable ADRs" of the current task
 - Outputs of other stages in the same workspace (00, 01, 05+) — only plan.md (02) and wave-plan.md (03)
 - {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md directly — enters via lead's channel 2 if applicable
 
@@ -148,7 +148,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 9. **Lead-resolution tier (B1/B3/B4) — when step 8 escalated:**
    Lead reads `output/wave-<N>/task-<slug>-diagnose.md` recommended bucket. Lead may override (records choice in `output/wave-<N>/task-<slug>-lead-decision.md`). L1 status: `LEAD_RESOLUTION_IN_PROGRESS`. Canonical doc: `references/lead-resolution-protocol.md`.
 
-   - **B1 REWRITE_SPEC:** lead rewrites task in plan.md (VALIDAÇÃO more specific, additional NÃO QUERO, prescriptive COMO). Commit plan update. 1 final writer spawn with new brief. Output passes L2+L3 (return to step 8). APPROVE → merge. REJECT → escalate B3.
+   - **B1 REWRITE_SPEC:** lead rewrites task in plan.md (VALIDATION more specific, additional OUT OF SCOPE, prescriptive HOW). Commit plan update. 1 final writer spawn with new brief. Output passes L2+L3 (return to step 8). APPROVE → merge. REJECT → escalate B3.
    - **B3 DIRECT_IMPL:** lead writes code directly in branch `wave-<NNN>-<N>/<slug>-lead-resolved`. Same vertical TDD cycle. Output passes L2+L3 same as normal writer (return to step 8). APPROVE → merge. REJECT → escalate B4.
    - **B4 VOID_TASK:** lead rewrites task with block `### VOIDED — wave <N> attempt <date>` (concrete rationale: ADR conflict / invalid scope / upstream blocker). Commit plan update. Trigger `wave-planner-script.py --recalculate` re-derives DAG without task. Wave continues with remaining tasks. L1 history append `event: task_voided`.
 
@@ -222,7 +222,7 @@ Canonical catalogue in `references/stop-points-canonical.md`. IDs triggerable in
 - `over_eng` — 3+ new abstraction layers without requirement (calibrated: warning experimental/tool, hard development/production).
 - `prod_migration` — migration touches a production-volume table without an agreed maintenance window.
 - `adr_drift` — implementation diverges from active ADR without declared superseding.
-- `feedback_ambiguous` — (preview loop v3.6.0) human visual feedback with low confidence: vague description, screenshot without clear annotation, contradiction between text and visual. Always `hard`.
+- `ambiguous_feedback` — (preview loop v3.6.0) human visual feedback with low confidence: vague description, screenshot without clear annotation, contradiction between text and visual. Always `hard`.
 - `design_system_cascade` — (preview loop v3.6.0) token change affects > `preview_loop.design_cascade_threshold` components. Always `hard`.
 
 ## Skill superpowers reference
@@ -489,7 +489,7 @@ Lead executes BEFORE step 1 (pre-flight) above:
      - URL: "/checkout, header misaligned"
      - HTML: paste outerHTML of the problematic element
 
-   If ambiguous, I'll ask before making changes (stop point feedback_ambiguous).
+   If ambiguous, I'll ask before making changes (stop point ambiguous_feedback).
    ```
 
 ### Tier-aware verification during implementation
@@ -506,7 +506,7 @@ Replace/complement Auto-QA Akita from step 4.6:
 - **Always active:** native Vite/Next overlay shows compile errors
   on the human's screen directly.
 
-### New stop point: `feedback_ambiguous`
+### New stop point: `ambiguous_feedback`
 
 Triggerable during the wave when human gives visual feedback with low
 confidence (vague description, screenshot without clear annotation, contradiction

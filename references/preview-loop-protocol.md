@@ -1,6 +1,6 @@
-# Preview Loop Protocol — build-iterate visual (v3.11.0)
+# Preview Loop Protocol — build-iterate visual (v3.12.0)
 
-> **Version:** v3.11.0 (preview loop introduced in v3.6.0; v3.7.0 migrated
+> **Version:** v3.12.0 (preview loop introduced in v3.6.0; v3.7.0 migrated
 > dev-server PID file → runtime-registry, see `runtime-cleanup-protocol.md`)
 > **Skill:** `xp-icm-workflow`
 > **Applies when:** effective profile has `preview_loop_enabled: True`
@@ -295,7 +295,7 @@ Decision 3: agent accepts free-form combo, no forced standardization.
 Agent reads PNG via native vision (zero MCP). No screenshot tool standardization —
 human uses whatever they prefer.
 
-### Stop point `feedback_ambiguous`
+### Stop point `ambiguous_feedback`
 
 When confidence is low (vague description, screenshot without clear annotation,
 contradiction between text and visual):
@@ -321,7 +321,7 @@ To give visual feedback, any combo works:
   - URL: "/checkout, header is skewed"
   - HTML: paste outerHTML of the problematic element
 
-If ambiguous, I ask before making changes (stop point feedback_ambiguous).
+If ambiguous, I ask before making changes (stop point ambiguous_feedback).
 ```
 
 ## Visual iteration

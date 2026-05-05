@@ -1,6 +1,23 @@
 # Changelog — xp-icm-workflow
 
-Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.md`.
+Version history for the skill. The current version lives in the `SKILL.md` frontmatter.
+
+> **Note:** Entire changelog written in en-US (v3.12.0+).
+
+---
+
+## v3.12.0 — Zero pt-BR (2026-05-05)
+
+### Changes
+
+- Eliminated all preserved pt-BR keywords (4-block headers, stop point IDs, retrospective headers, exit markers).
+- Parser regex updated to match en-US headers (`### WHAT`, `### HOW`, `### OUT OF SCOPE`, `### VALIDATION`, `### Applicable ADRs`).
+- File rename `references/feedback-intake-fase08.md` → `references/feedback-intake-stage08.md`.
+- Stop point ID `feedback_ambiguous` → `ambiguous_feedback`.
+- Migration step `migrate_3_11_0_to_3_12_0` handles L1 history + plan.md 4-block rewrite.
+- Historical changelog translated to en-US (mixed-language cutoff marker removed).
+- ADR `ubiquitous-language-adr.md` amended: zero pt-BR keywords preserved.
+- `scripts/i18n-audit.py` PRESERVED_KEYWORDS whitelist updated (removed all 4-block + retrospective + ADR field literals); `references/changelog.md` removed from FILE_WHITELIST.
 
 ---
 
@@ -21,172 +38,172 @@ No schema or behavioral change. All existing workspaces (any tier, any stage) mi
 
 ## v3.10.0 — E2E coverage reinforcement (2026-05-04)
 
-### Mudanças
+### Changes
 
-- **NEW:** `references/e2e-coverage-protocol.md` — doc canônico do reforço E2E. 4 frentes: (1) wave-planner detecta user-facing paths e auto-emite annotation, (2) forensic+ Check 8 valida task com `Requires E2E update: true` tem ≥1 file em e2e/cypress/playwright, (3) L4 wave gate roda E2E suite universal tier dev/prod (independe profile), (4) Stage 05 audit suite freshness < 7 dias.
-- **EXTENDED:** `scripts/forensic-plus.py` +Check 8 user-journey coverage (HARD dev/prod, SOFT exp/tool). Plan parser extrai `Requires E2E update` field + detect `**E2E:** skip - <rationale>` override. JSON schema bump `e2e_coverage_missing` (backward-compat).
-- **EXTENDED:** `scripts/wave-planner-script.py` +`USER_FACING_PATHS_BY_PROFILE` constant (defaults 11 profiles) + helper `_task_requires_e2e()`. render_wave_plan inclui coluna `E2E required?` na task table + annotation `> **E2E coverage required**` quando ≥1 task flagged.
-- **EXTENDED:** `scripts/recovery-wizard.py` +`CODE_E2E_SUITE_STALE` em CANONICAL_ORDER (alerta quando suite > 7 dias sem update + tasks user-facing entregues).
+- **NEW:** `references/e2e-coverage-protocol.md` — canonical doc for E2E reinforcement. 4 fronts: (1) wave-planner detects user-facing paths and auto-emits annotation, (2) forensic+ Check 8 validates that tasks with `Requires E2E update: true` have ≥1 file in e2e/cypress/playwright, (3) L4 wave gate runs E2E suite universal tier dev/prod (profile-independent), (4) Stage 05 audits suite freshness < 7 days.
+- **EXTENDED:** `scripts/forensic-plus.py` +Check 8 user-journey coverage (HARD dev/prod, SOFT exp/tool). Plan parser extracts `Requires E2E update` field + detects `**E2E:** skip - <rationale>` override. JSON schema bump `e2e_coverage_missing` (backward-compat).
+- **EXTENDED:** `scripts/wave-planner-script.py` +`USER_FACING_PATHS_BY_PROFILE` constant (defaults 11 profiles) + helper `_task_requires_e2e()`. render_wave_plan includes column `E2E required?` in task table + annotation `> **E2E coverage required**` when ≥1 task flagged.
+- **EXTENDED:** `scripts/recovery-wizard.py` +`CODE_E2E_SUITE_STALE` in CANONICAL_ORDER (alert when suite > 7 days without update + user-facing tasks delivered).
 - **EXTENDED:** `scripts/migrate-workspace.py` +entry `migrate_3_9_0_to_3_10_0` (bump-only, backward-compat). SUPPORTED_VERSIONS += "3.10.0".
-- **EXTENDED:** `references/forensic-plus-protocol.md` Check 8 spec + tier×severity matrix expandida 8 checks. v3.9.0 → v3.10.0.
-- **EXTENDED:** `references/4-block-contract-template.md` schema +`### Requires E2E update` field opcional (auto-emit por wave-planner; subagente DEVE adicionar e2e files; override `**E2E:** skip - <rationale>`).
-- **EXTENDED:** `references/state-machine-schema.md` error_types adicionais: `e2e_suite_failed`, `e2e_suite_missing`, `e2e_suite_stale`, `e2e_skip_unjustified`.
-- **EXTENDED:** `templates/.../04_implementation_waves/CONTEXT.md.tpl` step 11 expandido em 11a/11b/11c (CI universal / E2E suite tier dev/prod / cross-task coherence). Inputs +e2e-coverage-protocol.md.
-- **EXTENDED:** `templates/.../05_verification/CONTEXT.md.tpl` step 4.7 NEW (audit E2E suite existe + freshness + skip rationale). BLOCKED_ERROR causa list +e2e_suite_*. Inputs +e2e-coverage-protocol.md.
+- **EXTENDED:** `references/forensic-plus-protocol.md` Check 8 spec + expanded tier×severity matrix 8 checks. v3.9.0 → v3.10.0.
+- **EXTENDED:** `references/4-block-contract-template.md` schema +`### Requires E2E update` optional field (auto-emitted by wave-planner; subagent MUST add e2e files; override `**E2E:** skip - <rationale>`).
+- **EXTENDED:** `references/state-machine-schema.md` additional error_types: `e2e_suite_failed`, `e2e_suite_missing`, `e2e_suite_stale`, `e2e_skip_unjustified`.
+- **EXTENDED:** `templates/.../04_implementation_waves/CONTEXT.md.tpl` step 11 expanded into 11a/11b/11c (universal CI / E2E suite tier dev/prod / cross-task coherence). Inputs +e2e-coverage-protocol.md.
+- **EXTENDED:** `templates/.../05_verification/CONTEXT.md.tpl` step 4.7 NEW (audit E2E suite exists + freshness + skip rationale). BLOCKED_ERROR cause list +e2e_suite_*. Inputs +e2e-coverage-protocol.md.
 - **BUMP:** SKILL_VERSION 3.9.0 → 3.10.0 (`scripts/bootstrap.py`); 5 canonical files synced (SKILL.md, README.md badge + section, design-system.md, preview-loop-protocol.md, bootstrap.py runtime_refs +e2e-coverage-protocol.md).
 
-### Notas
+### Notes
 
-E2E coverage gap docs em ICM v3.9.0: tracer-first cobre task isolada (não regressão); wave gate L4 e2e profile-conditional (só frontend/fullstack); Stage 05 confiava em CI projeto sem audit. v3.10.0 fecha gaps via 4 frentes complementares — wave-planner advisory (annotation), forensic+ enforcement (Check 8 HARD), wave gate universal (step 11b), stage 05 audit (4.7).
+E2E coverage gaps in ICM v3.9.0: tracer-first covers isolated task (not regression); wave gate L4 e2e profile-conditional (frontend/fullstack only); Stage 05 relied on project CI without audit. v3.10.0 closes gaps via 4 complementary fronts — wave-planner advisory (annotation), forensic+ enforcement (Check 8 HARD), wave gate universal (step 11b), stage 05 audit (4.7).
 
-Nível 3 (mutation testing oracle, preview-loop suite completa wave-end) deferido pra v3.11.0+.
+Level 3 (mutation testing oracle, full preview-loop suite wave-end) deferred to v3.11.0+.
 
 ---
 
 ## v3.9.0 — Layered dev↔QA loop + lead-resolution tier (2026-05-04)
 
-### Mudanças
+### Changes
 
-- **NEW:** `references/critic-protocol.md` — L3 LLM critic ortogonal canonical. Fresh context, anti-sycophancy hardcoded, triplet output (claim, evidence, counterexample, severity), decision APPROVE/REJECT/ABSTAIN. Critic model = `TIER_CEILING[tier]` sempre. Cobre gap semântico do forensic+ (lógica errada, ADR drift disfarçado, edge cases ausentes).
+- **NEW:** `references/critic-protocol.md` — L3 orthogonal LLM critic canonical doc. Fresh context, anti-sycophancy hardcoded, triplet output (claim, evidence, counterexample, severity), decision APPROVE/REJECT/ABSTAIN. Critic model = `TIER_CEILING[tier]` always. Covers semantic gap of forensic+ (wrong logic, disguised ADR drift, missing edge cases).
 - **NEW:** `references/lead-resolution-protocol.md` — buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK. Trigger conditions T1 (cap 3 retries) / T2 (Jaccard ≥ 0.7 convergence trip) / T3 (catastrophic detector universal). Cap 1 attempt per bucket. Stage 05 audit trail.
-- **NEW:** `references/mocking-guidelines.md` — mattpocock alignment. Mock só boundaries (HTTP/DB/time/randomness/env); nunca internals. Per-profile guidance + tier-aware enforcement via forensic+ Check 6.
+- **NEW:** `references/mocking-guidelines.md` — mattpocock alignment. Mock only boundaries (HTTP/DB/time/randomness/env); never internals. Per-profile guidance + tier-aware enforcement via forensic+ Check 6.
 - **NEW:** `scripts/lead-diagnose.py` — Jaccard cluster + catastrophic detector (tests broken outside scope, build globally broken, scope creep > 5×) + bucket recommendation + surgical brief render. Output diagnose.md schema.
-- **NEW:** `scripts/pick-model.py` — heurística determinística. compute_score (estimated_lines, hot_paths, security_sensitive, public_api_change, algorithm_heavy, doc_only/config_only/css_only, tier) + tier ceiling cap. Writer/critic split.
-- **NEW:** `templates/critic-prompt.md` — renderable prompt template para Agent tool (anti-sycophancy + triplet schema).
-- **EXTENDED:** `scripts/forensic-plus.py` — +Checks 5/6/7 (acceptance↔test mapping, NÃO QUERO violations, ADR import drift). JSON schema bump backward-compat (campos novos opcionais).
-- **EXTENDED:** `scripts/agent-brief-render.py` — `--tier` flag opcional integra `pick-model.py`; brief header ganha `model_recommended_writer/critic` + `complexity_score`.
+- **NEW:** `scripts/pick-model.py` — deterministic heuristic. compute_score (estimated_lines, hot_paths, security_sensitive, public_api_change, algorithm_heavy, doc_only/config_only/css_only, tier) + tier ceiling cap. Writer/critic split.
+- **NEW:** `templates/critic-prompt.md` — renderable prompt template for Agent tool (anti-sycophancy + triplet schema).
+- **EXTENDED:** `scripts/forensic-plus.py` — +Checks 5/6/7 (acceptance↔test mapping, OUT OF SCOPE violations, ADR import drift). JSON schema bump backward-compat (new optional fields).
+- **EXTENDED:** `scripts/agent-brief-render.py` — optional `--tier` flag integrates `pick-model.py`; brief header gains `model_recommended_writer/critic` + `complexity_score`.
 - **EXTENDED:** `scripts/migrate-workspace.py` — entry `migrate_3_8_0_to_3_9_0` (bump-only, backward-compat). SUPPORTED_VERSIONS += "3.9.0".
-- **EXTENDED:** `scripts/recovery-wizard.py` — tipo novo `LEAD_RESOLUTION_STALE` (workspace em LEAD_RESOLUTION_IN_PROGRESS sem progresso > 24h).
-- **EXTENDED:** `scripts/validate_state.py:VALID_STATUSES` += `LEAD_RESOLUTION_IN_PROGRESS` (additive, schema mantido).
-- **REWRITE:** `references/4-block-contract-template.md` — § 3 vertical TDD + tracer-first + anti-horizontal slicing seção dedicada. § 5 Akita 15-itens DELETED. § 6 exemplo `auth-middleware` atualizado sem Akita output. v3.0.0-beta5 → v3.9.0.
-- **REWRITE:** `references/forensic-plus-protocol.md` — 7 checks (4 originais + 3 novos), tier×severity matriz consolidada. v3.8.0 → v3.9.0.
-- **EXTENDED:** `references/state-machine-schema.md` — status `LEAD_RESOLUTION_IN_PROGRESS` (additive, 7º status canônico). error_types adicionais: `lead_resolution_audit_failed`, `lead_resolution_all_buckets_failed`, `lead_decision_missing`, `critic_unavailable`, `critic_abstain_loop`.
-- **REWRITE:** `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` — flow novo (TDD vertical → L2 forensic+ → L3 critic always → diagnose → retry/lead-bucket). Drop refs Akita. Step 8 expanded em 8a-8e. Step 9 novo (lead-resolution). Inputs +4 docs (critic, lead-resolution, forensic-plus, mocking-guidelines).
-- **EXTENDED:** `templates/workspace/stages/05_verification/CONTEXT.md.tpl` — sub-step 5.5 audit lead resolutions (B1 tighten / B3 critic concerns endereçados / B4 rationale concreto). FAIL → `BLOCKED_ERROR error_type: lead_resolution_audit_failed`.
-- **DROP:** Akita 15-itens inline removed do task report subagente. QA delegado a layers ortogonais (L2 forensic+ extended + L3 critic). Self-grading bias documentado (Huang ICLR 2024, arxiv 2510.11822, arxiv 2509.16533).
-- **BUMP:** SKILL_VERSION 3.8.0 → 3.9.0 (`scripts/bootstrap.py`); 5 canonical files synced (SKILL.md, README.md badge + section, design-system.md, preview-loop-protocol.md, bootstrap.py runtime_refs +3 docs novos).
+- **EXTENDED:** `scripts/recovery-wizard.py` — new type `LEAD_RESOLUTION_STALE` (workspace in LEAD_RESOLUTION_IN_PROGRESS with no progress > 24h).
+- **EXTENDED:** `scripts/validate_state.py:VALID_STATUSES` += `LEAD_RESOLUTION_IN_PROGRESS` (additive, schema maintained).
+- **REWRITE:** `references/4-block-contract-template.md` — § 3 vertical TDD + tracer-first + dedicated anti-horizontal slicing section. § 5 Akita 15-items DELETED. § 6 `auth-middleware` example updated without Akita output. v3.0.0-beta5 → v3.9.0.
+- **REWRITE:** `references/forensic-plus-protocol.md` — 7 checks (4 original + 3 new), consolidated tier×severity matrix. v3.8.0 → v3.9.0.
+- **EXTENDED:** `references/state-machine-schema.md` — status `LEAD_RESOLUTION_IN_PROGRESS` (additive, 7th canonical status). Additional error_types: `lead_resolution_audit_failed`, `lead_resolution_all_buckets_failed`, `lead_decision_missing`, `critic_unavailable`, `critic_abstain_loop`.
+- **REWRITE:** `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` — new flow (vertical TDD → L2 forensic+ → L3 critic always → diagnose → retry/lead-bucket). Drop Akita refs. Step 8 expanded into 8a-8e. Step 9 new (lead-resolution). Inputs +4 docs (critic, lead-resolution, forensic-plus, mocking-guidelines).
+- **EXTENDED:** `templates/workspace/stages/05_verification/CONTEXT.md.tpl` — sub-step 5.5 audit lead resolutions (B1 tighten / B3 critic concerns addressed / B4 concrete rationale). FAIL → `BLOCKED_ERROR error_type: lead_resolution_audit_failed`.
+- **DROP:** Akita 15-items inline removed from subagent task report. QA delegated to orthogonal layers (L2 extended forensic+ + L3 critic). Self-grading bias documented (Huang ICLR 2024, arxiv 2510.11822, arxiv 2509.16533).
+- **BUMP:** SKILL_VERSION 3.8.0 → 3.9.0 (`scripts/bootstrap.py`); 5 canonical files synced (SKILL.md, README.md badge + section, design-system.md, preview-loop-protocol.md, bootstrap.py runtime_refs +3 new docs).
 
-### Notas
+### Notes
 
-Self-grading drop é mudança de filosofia, não de capacidade. Forensic+ Checks 4/6/7 + critic L3 cobrem dimensões de qualidade que Akita pretendia auditar (clean code, secrets/PII, ADR compliance), com gate ortogonal imune a sycophancy. `akita-derive.py` post-hoc opcional pra telemetria — deferred até stage 08 reportar gap.
+Self-grading drop is a philosophy change, not a capability change. Forensic+ Checks 4/6/7 + critic L3 cover quality dimensions that Akita intended to audit (clean code, secrets/PII, ADR compliance), with an orthogonal gate immune to sycophancy. `akita-derive.py` optional post-hoc for telemetry — deferred until stage 08 reports gap.
 
-Cross-family critic (E2 abandonado) e mutation testing oracle (R2) seguem out-of-scope. Compensação via stage 06 review humano + stage 08 feedback intake.
+Cross-family critic (E2 abandoned) and mutation testing oracle (R2) remain out of scope. Compensated by stage 06 human review + stage 08 feedback intake.
 
 ---
 
 ## v3.8.0 — Forensic+ wave reviewer (2026-05-03)
 
-### Mudanças
+### Changes
 
-- **NEW:** `scripts/forensic-plus.py` — auditoria estrutural per task no step 8 wave-reviewer (4 checks git-only).
-- **NEW:** `references/forensic-plus-protocol.md` — doc canônico.
-- **NEW:** schema `task-<slug>.md` frontmatter ganha `forensic_violations`, `forensic_passed`, `forensic_max_severity`, `forensic_respawn_count` (opcionais, backward compat).
-- **NEW:** `wave-summary.md` ganha seção `## Forensic+ summary`.
-- **NEW:** `plan.md` task aceita `### Estimated lines` opcional (Check 3 scope creep).
-- **CHANGE:** step 8 do pipeline 12-passos expandido em 8a/8b/8c/8d (`references/wave-execution-protocol.md` + L2 stage 04 template).
-- **CHANGE:** flag wave-plan.md `skip_wave_reviewer` renomeado pra `skip_cross_task_audit`. Backward-compat alias mantido em v3.8.0; removido em v3.9.0.
-- **CHANGE:** `state-machine-schema.md` documenta novos `error_type: forensic_max_retries|forensic_script_crash` (sem enum change).
-- **DEPS:** sem novas dependências runtime. PyYAML já presente em `requirements.txt`.
+- **NEW:** `scripts/forensic-plus.py` — structural audit per task in step 8 wave-reviewer (4 git-only checks).
+- **NEW:** `references/forensic-plus-protocol.md` — canonical doc.
+- **NEW:** schema `task-<slug>.md` frontmatter gains `forensic_violations`, `forensic_passed`, `forensic_max_severity`, `forensic_respawn_count` (optional, backward compat).
+- **NEW:** `wave-summary.md` gains section `## Forensic+ summary`.
+- **NEW:** `plan.md` task accepts optional `### Estimated lines` (Check 3 scope creep).
+- **CHANGE:** step 8 of the 12-step pipeline expanded into 8a/8b/8c/8d (`references/wave-execution-protocol.md` + L2 stage 04 template).
+- **CHANGE:** wave-plan.md flag `skip_wave_reviewer` renamed to `skip_cross_task_audit`. Backward-compat alias maintained in v3.8.0; removed in v3.9.0.
+- **CHANGE:** `state-machine-schema.md` documents new `error_type: forensic_max_retries|forensic_script_crash` (no enum change).
+- **DEPS:** no new runtime dependencies. PyYAML already present in `requirements.txt`.
 - **TESTS:** +20 unit (`test_forensic_plus.py`), +6 snapshot fixtures, +4 drift detectors, +1 bats e2e.
 
-### Migração
+### Migration
 
-`migrate_3_7_2_to_3_8_0` é bump-only — workspaces existentes são compatíveis sem mutação destrutiva. Campos novos no task-md frontmatter têm parser default tolerante a ausência.
+`migrate_3_7_2_to_3_8_0` is bump-only — existing workspaces are compatible without destructive mutation. New fields in task-md frontmatter have a tolerant parser with defaults for absent fields.
 
 ### Rationale
 
-Self-grading do subagente (Auto-QA Akita 15-itens) sofre de bias documentado (Huang et al. ICLR 2024, Self-Correction Benchmark 2025). Forensic+ adiciona auditoria externa estrutural sem importar prompt-only re-grade caro. Aproveita strength único do ICM (forensic git-log audit) ampliando cobertura de 1 vetor (qa_loops_used vs commits) pra 4 vetores de fraude estrutural.
+Subagent self-grading (Auto-QA Akita 15-items) suffers from documented bias (Huang et al. ICLR 2024, Self-Correction Benchmark 2025). Forensic+ adds external structural auditing without importing expensive prompt-only re-grading. Leverages ICM's unique strength (forensic git-log audit) expanding coverage from 1 vector (qa_loops_used vs commits) to 4 structural fraud vectors.
 
 ---
 
-## v3.7.2 — Saída A/C último ativo: auto-/init + cleanup ICM opt-in (2026-05-01)
+## v3.7.2 — Exit A/C last active: auto-/init + ICM cleanup opt-in (2026-05-01)
 
 ### Why v3.7.2
 
-Sessão real ICM (workspace 002 spawn de 001 via saída C) revelou 4 gaps:
+Real ICM session (workspace 002 spawned from 001 via Exit C) revealed 4 gaps:
 
-1. Sem instrução pra rodar `/init` ao fim do stage 8 — região idle citava
-   "rode /init" mas não era ação executada na sessão.
-2. `.index.md` ficava stale com workspace fechado listado como `active`.
-   SessionStart hook lia índice e detectava 001 fechado como ativo.
-3. `.claude/settings.local.json` acumulava entries de hooks por workspace
-   (bootstrap append, saída A/C nunca removia).
-4. `.icm-main/` worktree + workspace branch + subagent worktrees órfãs
-   permaneciam pós-saída A/C, humano via raiz em workspace branch tree
-   "duplicada" da `.icm-main/`.
+1. No instruction to run `/init` at the end of stage 8 — the idle region cited
+   "run /init" but it was not an action executed in the session.
+2. `.index.md` became stale with a closed workspace listed as `active`.
+   SessionStart hook read the index and detected closed 001 as active.
+3. `.claude/settings.local.json` accumulated hook entries per workspace
+   (bootstrap append, Exit A/C never removed them).
+4. `.icm-main/` worktree + workspace branch + subagent worktrees remained
+   orphaned after Exit A/C; the human saw the root in workspace branch tree
+   as a "duplicate" of `.icm-main/`.
 
-### Mudanças
+### Changes
 
-**Stage 08 saída A/C último workspace ativo:**
+**Stage 08 Exit A/C last active workspace:**
 
 - **Auto-`/init` invocation** — `handoff.py remove-block --exit-2-if-last-active`
-  retorna exit 2 quando deactivate disparou. Stage 08 template captura e
-  invoca `Skill(skill: "init")` na MESMA sessão antes de SAIR. Saída B
-  intocada. Multi-workspace com remanescentes ativos pula (proibido).
-- **Cleanup ICM opt-in** — `scripts/icm-cleanup.py` novo: pre-checks
-  (uncommitted abort, --force bypass), remove subagent worktrees órfãs,
-  remove `.icm-main/` worktree, checkout main, deleta workspace branch,
-  prune. Menu `[s/n/dry-run]` no template stage 08 invoca o script.
+  returns exit 2 when deactivate was triggered. Stage 08 template captures this and
+  invokes `Skill(skill: "init")` in the SAME session before exiting. Exit B
+  untouched. Multi-workspace with remaining active workspaces skips (prohibited).
+- **ICM cleanup opt-in** — `scripts/icm-cleanup.py` new: pre-checks
+  (uncommitted abort, --force bypass), removes orphaned subagent worktrees,
+  removes `.icm-main/` worktree, checks out main, deletes workspace branch,
+  prunes. Menu `[s/n/dry-run]` in stage 08 template invokes the script.
   Doc: `references/icm-cleanup-protocol.md`.
-- **`.index.md` cleanup** — `handoff.py:_update_index_status` reescreve
-  linha do workspace `active` → `COMPLETED`. Chamado em `remove_workspace_block`.
+- **`.index.md` cleanup** — `handoff.py:_update_index_status` rewrites
+  workspace line from `active` → `COMPLETED`. Called in `remove_workspace_block`.
 - **`settings.local.json` hooks unregister** — `handoff.py:_unregister_workspace_hooks`
-  remove entries do workspace fechado. Preserva hooks não-ICM.
-- **SessionStart hook prefere L1** — `icm-session-check.sh` agora itera
-  `workspaces/*/CONTEXT.md` frontmatter status ao invés de `.index.md`.
+  removes entries for the closed workspace. Preserves non-ICM hooks.
+- **SessionStart hook prefers L1** — `icm-session-check.sh` now iterates
+  `workspaces/*/CONTEXT.md` frontmatter status instead of `.index.md`.
 
 **Recovery wizard:**
 
-- Novo detector `STALE_ICM_MAIN_AFTER_CLOSE` (16ª na CANONICAL_ORDER):
-  dispara quando workspace COMPLETED + `.icm-main/` presente + zero outros
-  workspaces ativos. Plan A registra warning sugerindo `icm-cleanup.py`
-  (destrutivo, não auto-executa). Helper `_count_active_workspaces`.
+- New detector `STALE_ICM_MAIN_AFTER_CLOSE` (16th in CANONICAL_ORDER):
+  fires when workspace is COMPLETED + `.icm-main/` present + zero other
+  active workspaces. Plan A registers warning suggesting `icm-cleanup.py`
+  (destructive, does not auto-execute). Helper `_count_active_workspaces`.
 
 ### Tests
 
-41 tests novos: `test_handoff_remove_block_exit_code.py` (5),
+41 new tests: `test_handoff_remove_block_exit_code.py` (5),
 `test_stage08_template_init_invocation.py` (8),
 `test_close_cleanup_v3_7_1.py` (10), `test_icm_cleanup.py` (10),
-`test_recovery_stale_icm_main.py` (8). Suite: 823 passed (era 782),
-sem regressão.
+`test_recovery_stale_icm_main.py` (8). Suite: 823 passed (was 782),
+no regression.
 
 ### Doc
 
-- `references/icm-cleanup-protocol.md` (novo) — D1-D5 decisions, algoritmo,
-  edge cases, idempotência.
+- `references/icm-cleanup-protocol.md` (new) — D1-D5 decisions, algorithm,
+  edge cases, idempotency.
 - `references/project-root-claude-md.md` — auto-`/init` trigger.
-- `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` — saídas
-  A/C steps reescritos.
+- `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` — Exit
+  A/C steps rewritten.
 
-### v3.7.1 (intermediária, mergeada em 3.7.2)
+### v3.7.1 (intermediate, merged into 3.7.2)
 
-`.index.md` + settings.local.json hooks fixes implementados em commit
-separado (`ed838ce`) mas versão pulada — agrupado em v3.7.2.
+`.index.md` + settings.local.json hooks fixes implemented in a separate
+commit (`ed838ce`) but version skipped — grouped into v3.7.2.
 
 ### Post-release drift fix (2026-05-01)
 
-`scripts/migrate-workspace.py` ficou em `CURRENT_SKILL_VERSION = "3.7.0"`
-após bump 3.7.0→3.7.2 do bootstrap — `test_no_drift.py` original cobria
-só 4 arquivos canônicos (SKILL.md, README.md, design-system.md,
-preview-loop-protocol.md), não scripts auxiliares.
+`scripts/migrate-workspace.py` remained at `CURRENT_SKILL_VERSION = "3.7.0"`
+after the 3.7.0→3.7.2 bootstrap bump — the original `test_no_drift.py` only
+covered 4 canonical files (SKILL.md, README.md, design-system.md,
+preview-loop-protocol.md), not auxiliary scripts.
 
 Fixes:
 
 - `scripts/migrate-workspace.py`: `CURRENT_SKILL_VERSION` 3.7.0 → 3.7.2,
-  `SUPPORTED_VERSIONS` add `"3.7.2"`, novo `migrate_3_7_0_to_3_7_2`
-  (bump-only — v3.7.1 colapsada em 3.7.2 sem schema change), dispatcher
+  `SUPPORTED_VERSIONS` add `"3.7.2"`, new `migrate_3_7_0_to_3_7_2`
+  (bump-only — v3.7.1 collapsed into 3.7.2 without schema change), dispatcher
   entry `"3.7.0->3.7.2"`, docstring + CLI example bumped.
-- `tests/unit/test_migrate_workspace.py`: 6 tests novos cobrem step novo,
-  cadeia full 3.3.0→canonical, sync com `bootstrap.SKILL_VERSION`.
-- `tests/unit/test_no_drift.py`: detector H novo `test_scripts_skill_version_sync`
-  varre `scripts/**/*.py` por `CURRENT_SKILL_VERSION` + última entry de
-  `SUPPORTED_VERSIONS` tuple, valida == canonical. Whitelist only para
-  `migrate-v3.3-to-v3.4.py` (target histórico fixo). `VERSION_MUST_MATCH`
-  ganha entry cirúrgica pra `migrate-workspace.py`.
-- `CLAUDE.md` raiz: regra "bump SKILL_VERSION" estendida pra incluir
-  `scripts/migrate-workspace.py` na lista de arquivos sincronizados.
+- `tests/unit/test_migrate_workspace.py`: 6 new tests cover new step,
+  full chain 3.3.0→canonical, sync with `bootstrap.SKILL_VERSION`.
+- `tests/unit/test_no_drift.py`: new detector H `test_scripts_skill_version_sync`
+  scans `scripts/**/*.py` for `CURRENT_SKILL_VERSION` + last entry of
+  `SUPPORTED_VERSIONS` tuple, validates == canonical. Whitelist only for
+  `migrate-v3.3-to-v3.4.py` (fixed historical target). `VERSION_MUST_MATCH`
+  gains surgical entry for `migrate-workspace.py`.
+- `CLAUDE.md` root: "bump SKILL_VERSION" rule extended to include
+  `scripts/migrate-workspace.py` in the list of synchronized files.
 
-Suite: 831 passed (era 823), 0 regressão.
+Suite: 831 passed (was 823), 0 regression.
 
 ---
 
@@ -194,148 +211,148 @@ Suite: 831 passed (era 823), 0 regressão.
 
 ### Why v3.7.0
 
-20 gaps identificados durante uso real do workspace 001-001-saas-psicologo-mvp
-(transição saída C → 002). Categorias: side-effects órfãos (uvicorn, vite,
+20 gaps identified during real usage of workspace 001-001-saas-psicologo-mvp
+(transition Exit C → 002). Categories: orphaned side-effects (uvicorn, vite,
 docker, background tasks), working tree consistency (.icm-main dirt,
-gitignore incompleto, wave branch sweep, TD append durante intake),
-skill bugs cosmetic (handoff.py "Saída A" hardcoded em ambos A/C, profile-matrix
-version drift), UX/runbook (comando spawn longo, checklist runtime ausente,
-mini-menu não-strict), edge cases (mid-flow crash recovery, lessons gap C/B,
+incomplete gitignore, wave branch sweep, tech debt append during intake),
+cosmetic skill bugs (handoff.py "Exit A" hardcoded in both A/C, profile-matrix
+version drift), UX/runbook (long spawn command, missing runtime checklist,
+non-strict mini-menu), edge cases (mid-flow crash recovery, lessons gap C/B,
 restart B baseline dirty).
 
-v3.7.0 fecha 10 mudanças concretas:
+v3.7.0 closes 10 concrete changes:
 
-### Mudanças
+### Changes
 
 **1. Drift detector hardened (`tests/unit/test_no_drift.py`):**
-- `PROFILE_COUNT_PARENS_RE` pega "Profiles canônicos (N):" format.
-- `PROFILE_COMBO_RE` valida "(N × T = M combos)" tripla consistência.
+- `PROFILE_COUNT_PARENS_RE` catches "Canonical profiles (N):" format.
+- `PROFILE_COMBO_RE` validates "(N × T = M combos)" triple consistency.
 - SKILL.md L158/L162 sweep: 10→11 profiles, 40→44 combos, +fullstack.
 
 **2. handoff.py outcome-aware idle render (`scripts/handoff.py`):**
 - `_render_icm_idle(closed_at, *, outcome={A,C}, spawn_to=None)` — branch
-  por outcome em vez de hardcoded "Saída A".
-- `remove_workspace_block` + `deactivate_project_claude_md` propagam
-  outcome+spawn_to via kwargs com defaults backward-compat.
-- CLI `remove-block` + `deactivate-project-md` ganham `--outcome`+`--spawn-to`.
-- Validação: outcome=C requer spawn_to; outcome ∉ {A,C} raise.
+  by outcome instead of hardcoded "Exit A".
+- `remove_workspace_block` + `deactivate_project_claude_md` propagate
+  outcome+spawn_to via kwargs with backward-compat defaults.
+- CLI `remove-block` + `deactivate-project-md` gain `--outcome`+`--spawn-to`.
+- Validation: outcome=C requires spawn_to; outcome ∉ {A,C} raises.
 
-**3. Runtime registry novo (`scripts/runtime-registry.py`):**
-- CRUD em `workspaces/<NNN>/_state/runtime-registry.json` (gitignored).
+**3. New runtime registry (`scripts/runtime-registry.py`):**
+- CRUD in `workspaces/<NNN>/_state/runtime-registry.json` (gitignored).
 - Kinds: dev_server, background_task, docker_container, subagent_worktree.
 - `_is_pid_alive` cross-platform (POSIX `os.kill`, Windows `ctypes`
   `OpenProcess`+`GetExitCodeProcess`).
-- `purge_dead` remove entries com PID morto.
-- `detect_legacy_pid_files`: identifica `.icm-main/.dev-server.pid` v3.6.0
-  pra migração graceful.
+- `purge_dead` removes entries with dead PIDs.
+- `detect_legacy_pid_files`: identifies `.icm-main/.dev-server.pid` v3.6.0
+  for graceful migration.
 - CLI: register, list, unregister, purge-dead, detect-legacy.
 
 **4. Runtime status checklist (`scripts/runtime-status.py`):**
-- 6 categorias: dev_servers, background_tasks, docker, wave_branches,
+- 6 categories: dev_servers, background_tasks, docker, wave_branches,
   working_tree, untracked.
-- `check_all` agrega; CLI suporta `--check <category>`, `--format json|text`,
+- `check_all` aggregates; CLI supports `--check <category>`, `--format json|text`,
   `--exit-code` (gating).
-- Falhas graceful: docker daemon down/git ausente → assumed clean.
+- Graceful failures: docker daemon down/git absent → assumed clean.
 
-**5. Migrate workspace orquestrador (`scripts/migrate-workspace.py`):**
+**5. Migrate workspace orchestrator (`scripts/migrate-workspace.py`):**
 - Floor v3.3.0 (beta1/beta2 unsupported).
-- Encadeia v3.3 → v3.4 → v3.5 → v3.6 → v3.7.
-- Trigger híbrido: COMPLETED/AWAITING auto-prompt; IN_PROGRESS warning-only.
-- Backup automático em `<pr>/.icm-migration-backup/<ts>/<ws>/`.
-- Idempotente. Step v3.6→v3.7 substantive: bump L0 + cria `_state/` +
-  migra `.icm-main/.dev-server.pid` → registry (se PID alive).
+- Chains v3.3 → v3.4 → v3.5 → v3.6 → v3.7.
+- Hybrid trigger: COMPLETED/AWAITING auto-prompt; IN_PROGRESS warning-only.
+- Automatic backup in `<pr>/.icm-migration-backup/<ts>/<ws>/`.
+- Idempotent. Step v3.6→v3.7 substantive: bump L0 + create `_state/` +
+  migrate `.icm-main/.dev-server.pid` → registry (if PID alive).
 
 **6. Bootstrap.py — spawn-pending + spawn-from + gitignore extend:**
-- `detect_spawn_pending` parse + valida schema 9 campos.
-- `resolve_spawn_source` consolida arquivo + CLI arg (sources: file, arg,
-  conflict, none). Conflict marca file_value/arg_value pra menu humano.
-- `consume_spawn_pending` unlink pós-bootstrap successful (idempotente).
-- CLI `--spawn-from <slug>` (dest=spawn_from, fallback explícito).
+- `detect_spawn_pending` parse + validates 9-field schema.
+- `resolve_spawn_source` consolidates file + CLI arg (sources: file, arg,
+  conflict, none). Conflict marks file_value/arg_value for human menu.
+- `consume_spawn_pending` unlink after successful bootstrap (idempotent).
+- CLI `--spawn-from <slug>` (dest=spawn_from, explicit fallback).
 - GITIGNORE_LINES extended: `.icm/spawn-pending.json`, `workspaces/*/_state/`,
   `**/coverage/`, `**/coverage.json`, `**/tsconfig.tsbuildinfo`, `**/.vite/`.
 
-**7. Recovery wizard novo tipo `RUNTIME_REGISTRY_STALE` (v3.7.0):**
-- 14º entry em CANONICAL_ORDER.
-- Detecta entries com PID morto em registry; sugere `purge-dead` (humano
-  confirma, sem auto-purga).
-- `_pid_alive_for_registry` wrapper testável.
+**7. Recovery wizard new type `RUNTIME_REGISTRY_STALE` (v3.7.0):**
+- 14th entry in CANONICAL_ORDER.
+- Detects entries with dead PIDs in registry; suggests `purge-dead` (human
+  confirms, no auto-purge).
+- `_pid_alive_for_registry` testable wrapper.
 
 **8. Pre-commit hook block `_state/` paths:**
-- Reject staged paths `workspaces/*/_state/*` (privacy: PID/port leak em
-  PRs públicos). Mensagem orienta diretório local-only gitignored.
+- Reject staged paths `workspaces/*/_state/*` (privacy: PID/port leak in
+  public PRs). Message guides to local-only gitignored directory.
 
 **9. L2 stage 08 substantive update:**
-- `applicable_stop_points: ["runtime_cleanup_failed"]` (era `[]`).
-- §"Runtime Cleanup Checklist" antes de §Process — 6 categorias, strict
-  universal todos tiers, comando `runtime-status.py` documented.
-- Process step 0 obrigatório (rodar checklist).
-- Saída A step 3: TD append durante intake (opcional, só se feedback cita
-  débito explícito) + step 6: handoff.py remove-block --outcome A.
-- Saída C step 3: render `.icm/spawn-pending.json` schema completo
-  (spawn_from, intake_report_*, agent_brief structured 4 campos +
-  notes_livre, proposed_*, intake_commit_sha, created_at) + step 5:
+- `applicable_stop_points: ["runtime_cleanup_failed"]` (was `[]`).
+- §"Runtime Cleanup Checklist" before §Process — 6 categories, strict
+  universal all tiers, `runtime-status.py` command documented.
+- Process step 0 mandatory (run checklist).
+- Exit A step 3: tech debt append during intake (optional, only if feedback
+  explicitly cites debt) + step 6: handoff.py remove-block --outcome A.
+- Exit C step 3: render `.icm/spawn-pending.json` full schema
+  (spawn_from, intake_report_*, agent_brief structured 4 fields +
+  notes_free, proposed_*, intake_commit_sha, created_at) + step 5:
   remove-block --outcome C --spawn-to.
 
 **10. L2 stage 04 entry/exit hook → registry calls:**
-- Entry: `runtime-registry.py list --kind dev_server`, register na start.
-- Exit: list + kill processo + unregister entries.
-- Legacy v3.6.0 PID file path documented com migration via
+- Entry: `runtime-registry.py list --kind dev_server`, register on start.
+- Exit: list + kill process + unregister entries.
+- Legacy v3.6.0 PID file path documented with migration via
   `migrate-workspace.py`.
 
-### Refs novas
+### New refs
 
-- `references/runtime-cleanup-protocol.md` (~150 LOC) — protocolo canônico
-  6 categorias × cleanup default × override humano + per-OS quirks +
-  recovery se cleanup falha mid-saída.
-- `references/spawn-handoff-protocol.md` — schema spawn-pending.json +
+- `references/runtime-cleanup-protocol.md` (~150 LOC) — canonical protocol
+  6 categories × default cleanup × human override + per-OS quirks +
+  recovery if cleanup fails mid-exit.
+- `references/spawn-handoff-protocol.md` — spawn-pending.json schema +
   cross-branch read pattern via git show + bootstrap detection flow +
-  edge cases (clone, colisão slug, multi-pendentes).
+  edge cases (clone, slug collision, multiple pending).
 
-### Refs atualizadas
+### Updated refs
 
-- `references/feedback-intake-fase08.md` — §"Runtime cleanup obrigatório
-  pré-saída (v3.7+)" com 9 steps explícitos.
-- `references/stop-points-canonical.md` — 14 → 15 itens, #15
-  `runtime_cleanup_failed` (sinais, trade-offs, calibração strict
-  universal, menu A/B/C específico).
+- `references/feedback-intake-stage08.md` — §"Mandatory runtime cleanup
+  pre-exit (v3.7+)" with 9 explicit steps.
+- `references/stop-points-canonical.md` — 14 → 15 items, #15
+  `runtime_cleanup_failed` (signals, trade-offs, strict universal calibration,
+  specific A/B/C menu).
 
 ### Templates
 
-- `workspace/CLAUDE.md.tpl` R10 nova: runtime side-effects são
-  responsabilidade humana. Skill detecta + imprime checklist + aguarda
-  confirmação per categoria. Nunca mata processo automaticamente.
-- `_config/stop-points.md` 12 → 13 itens; #13 `runtime_cleanup_failed`
-  com menu A/B/C específico.
+- `workspace/CLAUDE.md.tpl` new R10: runtime side-effects are
+  human responsibility. Skill detects + prints checklist + awaits
+  confirmation per category. NEVER kills a process automatically.
+- `_config/stop-points.md` 12 → 13 items; #13 `runtime_cleanup_failed`
+  with specific A/B/C menu.
 
 ### Backward compat
 
-- Workspaces v3.6.0 in-flight: rodar `migrate-workspace.py --workspace-root <ws>`
-  pra migrar PID file → registry. Idempotente.
-- Workspaces v3.3 → v3.6: encadeia migrations no orquestrador.
-- Workspaces beta1/beta2 (pre-v3.3.0): unsupported. Migration manual.
+- Workspaces v3.6.0 in-flight: run `migrate-workspace.py --workspace-root <ws>`
+  to migrate PID file → registry. Idempotent.
+- Workspaces v3.3 → v3.6: chains migrations in the orchestrator.
+- Workspaces beta1/beta2 (pre-v3.3.0): unsupported. Manual migration.
 
-### Decisões consolidadas (12)
+### Consolidated decisions (12)
 
-| # | Tópico | Resolução |
+| # | Topic | Resolution |
 |---|---|---|
-| 1 | TD append fase 08 | (b) flexibilizar — saída A/B append opcional |
-| 2 | Cross-platform tooling | (b) Python puro `runtime-status.py`. Drop Makefile |
-| 3 | Drift profile count | (c) sweep + endurecer detector |
+| 1 | Tech debt append stage 08 | (b) relax — Exit A/B append optional |
+| 2 | Cross-platform tooling | (b) pure Python `runtime-status.py`. Drop Makefile |
+| 3 | Profile count drift | (c) sweep + harden detector |
 | 4 | Tier override checklist | (a) strict universal |
 | 5 | Spawn handoff | (c) `.icm/spawn-pending.json` + `--spawn-from` arg fallback |
-| 6 | Registry path + migração | (c×y) `_state/` workspace-scoped + migrate dev-server graceful |
+| 6 | Registry path + migration | (c×y) `_state/` workspace-scoped + migrate dev-server graceful |
 | 7 | Pre-commit `_state/` | (a) block staged paths |
-| 8 | Migration trigger | (d) híbrido COMPLETED auto-prompt; IN_PROGRESS warning |
+| 8 | Migration trigger | (d) hybrid COMPLETED auto-prompt; IN_PROGRESS warning |
 | 9 | Migration floor | (b) v3.3.0 |
-| 10 | Cleanup failure | (b) stop point #13 (#15 em references/) |
-| 11 | agent_brief schema | (c+d) estruturado 4 blocos + git show cross-branch |
+| 10 | Cleanup failure | (b) stop point #13 (#15 in references/) |
+| 11 | agent_brief schema | (c+d) structured 4 blocks + git show cross-branch |
 | 12 | Stage 04 entry hook | (c) helper docs + custom dev server fallback |
 
 ### Tests
 
-49 tests novos (handoff outcome 7, runtime-registry 13, bootstrap spawn-pending
+49 new tests (handoff outcome 7, runtime-registry 13, bootstrap spawn-pending
 14, recovery RUNTIME_REGISTRY_STALE 4, runtime-status 8, migrate-workspace 15).
-Total: 781 → 781+ tests verde, zero regressão.
+Total: 781 → 781+ tests green, zero regression.
 
 ---
 
@@ -343,84 +360,84 @@ Total: 781 → 781+ tests verde, zero regressão.
 
 ### Why v3.6.0
 
-Frontend ICM até v3.5.0 cobria DESIGN.md tokens (Google Stitch) mas
-faltava ciclo build-iterate visual. Humano pedia "mostra como vai
-ficar" e ICM não tinha resposta integrada além de "spawn subagente
-implementa". Sem hot-reload coordenado, sem feedback loop visual,
-sem mock data automático, sem CDP integration.
+Frontend ICM up to v3.5.0 covered DESIGN.md tokens (Google Stitch) but
+lacked a build-iterate visual cycle. The human asked "show me how it looks"
+and ICM had no integrated response beyond "spawn subagent to implement".
+No coordinated hot-reload, no visual feedback loop, no automatic mock data,
+no CDP integration.
 
-v3.6.0 fecha a lacuna: profile `app_web_frontend` + `fullstack`
-ganham preview loop opt-in-by-default que orquestra dev server,
-mock data tier-based, Chrome CDP live, preview pages, verificação
-uniforme, feedback combo livre, design system cascade, e replay
-multi-tela. Doc canônico: `references/preview-loop-protocol.md`.
+v3.6.0 closes the gap: profile `app_web_frontend` + `fullstack`
+gain an opt-in-by-default preview loop that orchestrates dev server,
+tier-based mock data, live Chrome CDP, preview pages, uniform verification,
+free-form feedback, design system cascade, and multi-screen replay.
+Canonical doc: `references/preview-loop-protocol.md`.
 
-### Mudanças
+### Changes
 
-**1. Doc canônico novo (`references/preview-loop-protocol.md`):**
-- 10 decisões consolidadas (dev server lifecycle, mock data
-  tier-based, feedback combo, CDP live, verificação uniforme,
-  preview pages, screenshot livre, sem cap iter, design cascade
-  threshold 5, multi-tela sob pedido).
-- Cobre stack canônico, comandos por package manager, helper
-  scripts, scope de leitura CDP, fallback gracioso.
-- Anti-patterns + recovery wizard tipos novos documentados.
+**1. New canonical doc (`references/preview-loop-protocol.md`):**
+- 10 consolidated decisions (dev server lifecycle, tier-based mock data,
+  feedback combo, live CDP, uniform verification,
+  preview pages, free screenshot, no iter cap, design cascade
+  threshold 5, multi-screen on request).
+- Covers canonical stack, commands by package manager, helper
+  scripts, CDP read scope, graceful fallback.
+- Anti-patterns + new recovery wizard types documented.
 
-**2. Helper scripts CDP (`templates/.claude/scripts/`):**
-- `launch-chrome-cdp.bat` (Windows): lança Chrome com
+**2. CDP helper scripts (`templates/.claude/scripts/`):**
+- `launch-chrome-cdp.bat` (Windows): launches Chrome with
   `--remote-debugging-port=9222 --user-data-dir=.icm-chrome-profile`.
-- `launch-chrome-cdp.sh` (POSIX): mesma função, autodetecta
-  Chrome/Chromium em macOS/Linux.
+- `launch-chrome-cdp.sh` (POSIX): same function, auto-detects
+  Chrome/Chromium on macOS/Linux.
 
 **3. Profile flags (`profile-merge.py` + `profile-matrix.md`):**
-- Função nova `_preview_loop_config(profile, tier)` emite bloco
-  `preview_loop` em `profile-effective.yaml`:
+- New function `_preview_loop_config(profile, tier)` emits block
+  `preview_loop` in `profile-effective.yaml`:
   - `preview_loop_enabled: true`
   - `mock_data_strategy` tier-based (`fixtures` | `msw_faker` | `msw_faker_zod`)
   - `cdp_live_enabled: true`
   - `visual_iter_cap: null`
   - `design_cascade_threshold: 5`
   - `preview_pages_path: preview/`
-- Aplica APENAS em `app_web_frontend` + `fullstack`.
+- Applies ONLY to `app_web_frontend` + `fullstack`.
 
 **4. Stage 02 design template — step 7.6:**
-- Preview Loop schema mock data + preview pages flag.
-- Tier ≥ development: designer escreve schema Zod em plan.md.
-- Tasks com componente reusável ganham `requires_preview_page: true`.
-- Routes map `output/routes.md` populado pra fallback CDP.
-- Wireframe ASCII opcional pra layout não-trivial.
+- Preview Loop mock data schema + preview pages flag.
+- Tier ≥ development: designer writes Zod schema in plan.md.
+- Tasks with reusable component gain `requires_preview_page: true`.
+- Routes map `output/routes.md` populated for CDP fallback.
+- Optional ASCII wireframe for non-trivial layout.
 
 **5. Stage 04 implementation template — entry/exit hooks + sub-steps:**
 - Entry hook: detect package manager via lockfile, start dev server
-  em background, salvar PID em `.icm-main/.dev-server.pid`,
-  imprimir kickoff priming.
-- Verificação tier-aware reescrita: `tsc` cada Edit, lint+Playwright
-  wave-end, full sob pedido.
-- Stop points novos `feedback_ambiguous` + `design_system_cascade`.
-- Exit hook: matar PID, apagar PID file, preservar `.icm-chrome-profile/`.
+  in background, save PID in `.icm-main/.dev-server.pid`,
+  print kickoff priming.
+- Tier-aware verification rewritten: `tsc` per Edit, lint+Playwright
+  wave-end, full on request.
+- New stop points `ambiguous_feedback` + `design_system_cascade`.
+- Exit hook: kill PID, delete PID file, preserve `.icm-chrome-profile/`.
 
-**6. Recovery wizard tipos novos (`scripts/recovery-wizard.py`):**
-- `DEV_SERVER_ORPHAN`: PID file existe + processo morto. Plan A:
-  apaga PID file + log, registra warning. Cross-platform (POSIX
+**6. New recovery wizard types (`scripts/recovery-wizard.py`):**
+- `DEV_SERVER_ORPHAN`: PID file exists + process dead. Plan A:
+  delete PID file + log, register warning. Cross-platform (POSIX
   via `os.kill(pid, 0)`, Windows via `ctypes.OpenProcess`).
-- `CDP_DISCONNECTED`: `.icm-chrome-profile/` existe + Chrome não
-  listening em :9222. Plan A: warning, sugere helper relaunch
-  (não mata profile dir).
+- `CDP_DISCONNECTED`: `.icm-chrome-profile/` exists + Chrome not
+  listening on :9222. Plan A: warning, suggests helper relaunch
+  (does not delete profile dir).
 - Helpers `_is_pid_alive(pid)` + `_is_port_listening(host, port)`
-  adicionados (sem deps externas).
+  added (no external deps).
 
 **7. Bootstrap (`scripts/bootstrap.py`):**
 - `SKILL_VERSION = "3.6.0"`.
-- `.icm-chrome-profile/` adicionado a `GITIGNORE_LINES`.
-- Função nova `detect_package_manager(project_root)` retorna
-  `(pm, dev_cmd)` baseado em lockfile (prioridade
+- `.icm-chrome-profile/` added to `GITIGNORE_LINES`.
+- New function `detect_package_manager(project_root)` returns
+  `(pm, dev_cmd)` based on lockfile (priority
   `bun > pnpm > yarn > npm`).
 
 **8. Cross-refs:**
-- `references/design-system.md` v3.6.0 → seção "Build-iterate visual
-  loop" + cross-ref ao novo doc.
-- `templates/_config/profile-matrix.md` → tabela de flags preview loop
-  na seção `app_web_frontend` e `fullstack`.
+- `references/design-system.md` v3.6.0 → section "Build-iterate visual
+  loop" + cross-ref to new doc.
+- `templates/_config/profile-matrix.md` → preview loop flags table
+  in `app_web_frontend` and `fullstack` sections.
 
 ---
 
@@ -428,120 +445,120 @@ multi-tela. Doc canônico: `references/preview-loop-protocol.md`.
 
 ### Why v3.5.0
 
-10 gaps de protocolo identificados no stage 04 wave execution durante
-revisão de execução real. Cada gap mascarava edge cases que produziam
-estado inconsistente (worktrees órfãs, merge order não-determinístico,
-conflict mid-wave sem fluxo de retomada, HITL granularidade insuficiente).
-Adicionalmente: 12 arquivos com drift cross-file e introdução de drift
+10 protocol gaps identified in stage 04 wave execution during
+review of a real execution. Each gap masked edge cases that produced
+inconsistent state (orphaned worktrees, non-deterministic merge order,
+mid-wave conflict with no resume flow, insufficient HITL granularity).
+Additionally: 12 files with cross-file drift and introduction of a drift
 prevention test gate.
 
-### Mudanças
+### Changes
 
 **1. Doc drift fix (CLAUDE.md skill root + README.md):**
-- Linha "no worktrees" removida; substituída por referência a
-  `Agent(isolation: "worktree")` (alinhamento com v3.4.0+).
-- README.md "10 profiles" → "11 profiles" (drift pré-existente desde v3.4.4).
+- "no worktrees" line removed; replaced with reference to
+  `Agent(isolation: "worktree")` (alignment with v3.4.0+).
+- README.md "10 profiles" → "11 profiles" (pre-existing drift since v3.4.4).
 
-**2. Branch lifecycle determinismo (L2 stage 04):**
-- Passo 2 explicita: lead cria branch ANTES do spawn (`git branch
-  wave-<NNN>-<N>/<slug> <BASE_BRANCH>`), Agent harness faz worktree
-  add em branch existente. Branch órfã detectável via `git branch
+**2. Branch lifecycle determinism (L2 stage 04):**
+- Step 2 makes explicit: lead creates branch BEFORE spawn (`git branch
+  wave-<NNN>-<N>/<slug> <BASE_BRANCH>`), Agent harness does worktree
+  add on existing branch. Orphaned branch detectable via `git branch
   --merged`.
-- Passo 11 ganha decision matrix `--force` determinística:
-  `auto_qa_passed: true` no task report → safe `--force`; senão
+- Step 11 gains deterministic `--force` decision matrix:
+  `auto_qa_passed: true` in task report → safe `--force`; otherwise
   BLOCKED_ERROR.
 
 **3. Subagent protocol additions (L2 stage 04):**
-- Passo 8 declara wave-reviewer SEM `isolation: "worktree"` — lê
+- Step 8 declares wave-reviewer WITHOUT `isolation: "worktree"` — reads
   via `git show wave-<branch>:<file>` / `git diff <BASE>...<wave>`.
-- Passo 4.6 + passo 6: subagente grava `qa_loops_used: <N>` no
-  frontmatter de `task-<slug>.md`; reviewer audita contra git log
-  da wave branch (anti-fraude).
-- HITL handling reescrito com granularity task-level: wave mista
-  spawna Agents pra tasks não-HITL em paralelo, tasks HITL
-  registradas com `status: AWAITING_HITL`. Status novo:
-  `BLOCKED_HITL` (distinto de `BLOCKED_ERROR`).
+- Step 4.6 + step 6: subagent writes `qa_loops_used: <N>` in
+  `task-<slug>.md` frontmatter; reviewer audits against git log
+  of wave branch (anti-fraud).
+- HITL handling rewritten with task-level granularity: mixed wave
+  spawns Agents for non-HITL tasks in parallel, HITL tasks
+  registered with `status: AWAITING_HITL`. New status:
+  `BLOCKED_HITL` (distinct from `BLOCKED_ERROR`).
 
 **4. Merge orchestration (L2 stage 04):**
-- Passo 7 ganha sort buffer: `{task_slug: agent_result}` → ordena
-  por índice em `plan.md > tasks[]` antes do passo 9. Merge order =
-  plan order, não retorno order.
-- Passo 1 grava `pre_wave_sha` em L1 history evento `wave_started`
-  (usado por rollback).
-- Novo doc `references/conflict-resolution-protocol.md`: lead pausa
-  em `BLOCKED_ERROR`, escreve `merge-conflict-<slug>.md`, gate
-  humano A/B/C (resolvido / abort task / abort wave). Lead JAMAIS
-  resolve conflict autonomamente.
-- Novo doc `references/ci-rollback-protocol.md`: passo 10 vermelho
-  → diagnose-protocol obrigatório (cap 3 attempts, fix < 50 LOC) →
-  rollback (`git reset --hard <pre_wave_sha>`) → gate humano A/B/C
-  (redo wave / redo task / abandon). Wave branches preservadas
-  durante BLOCKED_ERROR.
+- Step 7 gains sort buffer: `{task_slug: agent_result}` → sorts
+  by index in `plan.md > tasks[]` before step 9. Merge order =
+  plan order, not return order.
+- Step 1 writes `pre_wave_sha` in L1 history event `wave_started`
+  (used by rollback).
+- New doc `references/conflict-resolution-protocol.md`: lead pauses
+  on `BLOCKED_ERROR`, writes `merge-conflict-<slug>.md`, human gate
+  A/B/C (resolved / abort task / abort wave). Lead NEVER resolves
+  conflict autonomously.
+- New doc `references/ci-rollback-protocol.md`: step 10 red
+  → diagnose-protocol mandatory (cap 3 attempts, fix < 50 LOC) →
+  rollback (`git reset --hard <pre_wave_sha>`) → human gate A/B/C
+  (redo wave / redo task / abandon). Wave branches preserved
+  during BLOCKED_ERROR.
 
 **5. `.icm-main` robustness (L2 stage 04):**
-- Sync `cd .icm-main && git pull --ff-only` agora condicional:
-  só executa se `git worktree list --porcelain | grep -q
-  ".icm-main"` retorna match. Skip silencioso senão (`.icm-main` é
-  convenção opcional setup pelo recovery wizard / bootstrap).
+- Sync `cd .icm-main && git pull --ff-only` now conditional:
+  only executes if `git worktree list --porcelain | grep -q
+  ".icm-main"` returns a match. Silent skip otherwise (`.icm-main` is
+  an optional convention set up by recovery wizard / bootstrap).
 
-**6. Doc canônico consolidado:**
-- Novo `references/wave-execution-protocol.md` consolida pipeline
-  12-passos, atores, branches, status, cross-references.
-  Single source of truth — outros docs apontam pra cá.
+**6. Consolidated canonical doc:**
+- New `references/wave-execution-protocol.md` consolidates
+  12-step pipeline, actors, branches, status, cross-references.
+  Single source of truth — other docs point here.
 
 **7. Stale files audit (Chunk 6):**
-- `scripts/bootstrap.py` SKILL_VERSION 3.4.1 → 3.5.0 (CRÍTICO —
-  versão real injetada em workspaces novos).
+- `scripts/bootstrap.py` SKILL_VERSION 3.4.1 → 3.5.0 (CRITICAL —
+  real version injected into new workspaces).
 - `scripts/validate_state.py` ALLOWED_STATUSES const + BLOCKED_HITL
-  no enum.
+  in enum.
 - `references/state-machine-schema.md` row BLOCKED_HITL.
 - `references/design-system.md` v3.4.4 → v3.5.0.
 - CLAUDE.md + SKILL.md + profile-merge.py + test_profile_merge.py:
-  10 → 11 profiles (drift pré-existente).
-- `scripts/recovery-wizard.py` detector novo `MISSING_PRE_WAVE_SHA`
-  + auto-fix marca `unknown` para waves pré-v3.5.0.
-- `references/task-types-hitl-afk.md`: seção task-level granularity
+  10 → 11 profiles (pre-existing drift).
+- `scripts/recovery-wizard.py` new detector `MISSING_PRE_WAVE_SHA`
+  + auto-fix marks `unknown` for waves pre-v3.5.0.
+- `references/task-types-hitl-afk.md`: task-level granularity section
   + status BLOCKED_HITL.
-- `references/subagent-protocol.md`: cross-ref pra
-  wave-execution-protocol.md (anti-duplicação).
-- `references/example-run.md`: walkthrough sync com fields
+- `references/subagent-protocol.md`: cross-ref to
+  wave-execution-protocol.md (anti-duplication).
+- `references/example-run.md`: walkthrough synced with fields
   `pre_wave_sha` / `qa_loops_used`.
 - `references/smoke-manual-checklist.md`: 10 checks v3.5.0.
 
-**8. Drift prevention permanente (Chunk 7):**
-- Novo `tests/unit/test_no_drift.py` (5 detectores):
-  - Versão consistente (canonical = `bootstrap.py:SKILL_VERSION`).
+**8. Permanent drift prevention (Chunk 7):**
+- New `tests/unit/test_no_drift.py` (5 detectors):
+  - Consistent version (canonical = `bootstrap.py:SKILL_VERSION`).
   - Profile count (canonical = `len(CANONICAL_PROFILES)`).
   - Status enum sync (validate_state.py ↔ schema.md).
-  - Cross-refs markdown resolvem em `references/`.
-- `validate_state.py` exporta `ALLOWED_STATUSES` const module-level
-  → single source pra drift test.
-- CLAUDE.md ganha seção "Pre-merge drift audit (mandatory)" — test
-  gate bloqueia drift no commit, sem precisar lembrar.
+  - Cross-refs markdown resolve in `references/`.
+- `validate_state.py` exports `ALLOWED_STATUSES` const at module level
+  → single source for drift test.
+- CLAUDE.md gains section "Pre-merge drift audit (mandatory)" — test
+  gate blocks drift at commit time, no need to remember.
 
 ### Migrations / breaking changes
 
-Não há breaking changes pra workspaces v3.4.x existentes:
-- Status novo `BLOCKED_HITL` é additive (workspaces antigos não
-  usam, mas validador aceita).
-- `qa_loops_used` no task report é additive (workspaces antigos
-  sem o field continuam válidos; reviewer trata ausente como N/A).
-- `pre_wave_sha` em L1 history é additive (recovery wizard ganha
-  detector novo `MISSING_PRE_WAVE_SHA` opcional para waves
-  iniciadas pré-v3.5.0; auto-fix marca `pre_wave_sha: unknown`).
+No breaking changes for existing v3.4.x workspaces:
+- New status `BLOCKED_HITL` is additive (old workspaces don't
+  use it, but validator accepts it).
+- `qa_loops_used` in task report is additive (old workspaces
+  without the field remain valid; reviewer treats absent as N/A).
+- `pre_wave_sha` in L1 history is additive (recovery wizard gains
+  new optional detector `MISSING_PRE_WAVE_SHA` for waves
+  started pre-v3.5.0; auto-fix marks `pre_wave_sha: unknown`).
 
 ### Tests
 
-- `tests/unit/test_v3_5_0_wave_protocol.py` — 14 tests cobrindo
-  todos os gaps fechados (presença de seções em L2, existência
-  dos novos docs, version bump, changelog entry).
-- `tests/unit/test_no_drift.py` — 5 tests cobrindo drift detection
-  permanente. Bloqueia regressão automaticamente.
+- `tests/unit/test_v3_5_0_wave_protocol.py` — 14 tests covering
+  all closed gaps (section presence in L2, existence of new docs,
+  version bump, changelog entry).
+- `tests/unit/test_no_drift.py` — 5 tests covering permanent drift detection.
+  Automatically blocks regression.
 
 ### Plan
 
-- `docs/plans/2026-04-29-stage-04-gaps-fix.md` — implementation
-  plan completo (7 chunks, 30 tasks).
+- `docs/plans/2026-04-29-stage-04-gaps-fix.md` — complete implementation
+  plan (7 chunks, 30 tasks).
 
 ---
 
@@ -549,84 +566,83 @@ Não há breaking changes pra workspaces v3.4.x existentes:
 
 ### Why v3.4.4
 
-Dois adds em uma versão:
+Two additions in one version:
 
-1. **Profile `fullstack`** — projetos onde backend + frontend coexistem
-   no mesmo repo (Next.js com API routes, Remix + Prisma, T3 stack,
-   Django + React colocated). `app_web_backend` deixava metade dos
-   gates frontend desligados (component testing, e2e, a11y, visual
-   regression); `app_web_frontend` deixava metade dos gates backend
-   (http_integration, db_integration). Resultado: bugs UI escapavam
-   audit em projetos fullstack reais.
-2. **Design system L3** — stage 02 design pra profiles
-   `app_web_frontend` e `fullstack` agora cria/atualiza
-   `<project_root>/.icm-main/DESIGN.md` (formato Google Stitch spec)
-   como fonte de verdade do visual. Subagentes em fase 04 ganham
-   subset relevante via canal 2.
+1. **Profile `fullstack`** — projects where backend + frontend coexist
+   in the same repo (Next.js with API routes, Remix + Prisma, T3 stack,
+   Django + React colocated). `app_web_backend` left half the frontend
+   gates disabled (component testing, e2e, a11y, visual regression);
+   `app_web_frontend` left half the backend gates disabled
+   (http_integration, db_integration). Result: UI bugs escaped
+   audit in real fullstack projects.
+2. **Design system L3** — stage 02 design for profiles
+   `app_web_frontend` and `fullstack` now creates/updates
+   `<project_root>/.icm-main/DESIGN.md` (Google Stitch spec format)
+   as the visual source of truth. Subagents in stage 04 gain
+   the relevant subset via channel 2.
 
-### Mudanças
+### Changes
 
-**1. Profile `fullstack` (11º profile canônico):**
-- `scripts/profile-merge.py`: `CANONICAL_PROFILES` adiciona
-  `"fullstack"`. `_test_specs` novo branch retornando superset
+**1. Profile `fullstack` (11th canonical profile):**
+- `scripts/profile-merge.py`: `CANONICAL_PROFILES` adds
+  `"fullstack"`. `_test_specs` new branch returning superset
   backend + frontend (`test_types_required: [unit, integration,
   component, e2e]`, `http_integration`, `db_integration`,
   `component_testing`, `e2e_required`, `visual_regression` (prod),
   `a11y_testing` (dev+prod), `design_system_required: True`).
-- `_apply_profile_rules`: `fullstack` ganha `security_gate: True`
-  em qualquer tier ≠ `experimental` (igual app_web_backend e
+- `_apply_profile_rules`: `fullstack` gains `security_gate: True`
+  in any tier ≠ `experimental` (same as app_web_backend and
   app_web_frontend).
-- `templates/_config/profile-matrix.md`: tabelas atualizadas pra
-  refletir 11 profiles + nova linha de overrides combinando
+- `templates/_config/profile-matrix.md`: tables updated to
+  reflect 11 profiles + new overrides row combining
   app_web_backend, app_web_frontend, fullstack.
 
 **2. Design system L3 + DESIGN.md format:**
-- Novo `references/design-system.md` (~290 linhas) adotando spec
-  DESIGN.md do Google Stitch como formato canônico:
-  - Schema YAML frontmatter: `colors`, `typography`, `rounded`,
+- New `references/design-system.md` (~290 lines) adopting the
+  DESIGN.md spec from Google Stitch as canonical format:
+  - YAML frontmatter schema: `colors`, `typography`, `rounded`,
     `spacing`, `components` + token reference syntax `{path.to.token}`
   - Section order: Overview → Colors → Typography → Layout →
     Elevation & Depth → Shapes → Components → Do's and Don'ts
   - 3-layer token architecture (primitive → semantic → component)
   - Component spec table template (Default/Hover/Active/Disabled)
-  - Fluxo por stage ICM 00-08 mapeado
-  - Stage 02 menu A/B/C: criar do zero / inspirar awesome-design-md /
-    extrair de URL via designlang externamente
-  - Galeria referência: VoltAgent/awesome-design-md (69 brands)
-  - Tool externa opcional: Manavarya09/design-extract (designlang)
-  - Escape hatch: ui-ux-pro-max-skill com boundary explícita
-- L0 (`templates/workspace/CLAUDE.md.tpl`): adiciona path
-  `<project_root>/.icm-main/DESIGN.md` em "Paths absolutos"
+  - Flow per ICM stage 00-08 mapped
+  - Stage 02 menu A/B/C: create from scratch / inspire awesome-design-md /
+    extract from URL via designlang externally
+  - Reference gallery: VoltAgent/awesome-design-md (69 brands)
+  - Optional external tool: Manavarya09/design-extract (designlang)
+  - Escape hatch: ui-ux-pro-max-skill with explicit boundary
+- L0 (`templates/workspace/CLAUDE.md.tpl`): adds path
+  `<project_root>/.icm-main/DESIGN.md` in "Absolute paths"
 - L2 stage 02 (`02_design/CONTEXT.md.tpl`):
-  - Inputs ganha 2 rows (design-system.md doc + DESIGN.md brownfield)
-  - Process step 7.5 NOVO condicional ao profile
+  - Inputs gains 2 rows (design-system.md doc + DESIGN.md brownfield)
+  - Process step 7.5 NEW conditional on profile
 - L2 stage 04 (`04_implementation_waves/CONTEXT.md.tpl`):
-  - Process step 3 (canal 2 inject) ganha cláusula condicional
-    pra tasks com flag `requires_design_system: true`
-- Bootstrap (`scripts/bootstrap.py`): `runtime_refs` tuple adiciona
-  `"design-system.md"` (copiado pro `_references/runtime/` no workspace)
+  - Process step 3 (channel 2 inject) gains conditional clause
+    for tasks with flag `requires_design_system: true`
+- Bootstrap (`scripts/bootstrap.py`): `runtime_refs` tuple adds
+  `"design-system.md"` (copied to `_references/runtime/` in workspace)
 
-### Compatibilidade
+### Compatibility
 
-Workspaces v3.4.x existentes não-fullstack continuam funcionando
-(retrocompatível). Workspace antigo querendo migrar pra fullstack:
+Existing non-fullstack v3.4.x workspaces continue working
+(backward compatible). Old workspace wanting to migrate to fullstack:
 edit L0 + recompute hash via `profile-merge.py --profile fullstack`.
 
-Profile `app_web_frontend` ganha `design_system_required: True`
-retroativamente — workspaces antigos sem DESIGN.md continuam OK
-(stage 02 detecta ausência e oferece menu A/B/C ao retomar).
+Profile `app_web_frontend` gains `design_system_required: True`
+retroactively — old workspaces without DESIGN.md continue OK
+(stage 02 detects absence and offers A/B/C menu on resume).
 
-### Testes
+### Tests
 
-18 tests novos:
-- `tests/unit/test_profile_merge.py`: classe `TestFullstackProfile`
-  com 7 tests (test types superset, dimensões backend+frontend,
-  visual_regression só prod, design_system_required pros 2 profiles,
-  ausência em outros, hash distinto)
-- `tests/unit/test_design_system_doc.py`: 11 smoke tests pro doc
-  canônico
+18 new tests:
+- `tests/unit/test_profile_merge.py`: class `TestFullstackProfile`
+  with 7 tests (test types superset, backend+frontend dimensions,
+  visual_regression prod-only, design_system_required for 2 profiles,
+  absence in others, distinct hash)
+- `tests/unit/test_design_system_doc.py`: 11 smoke tests for canonical doc
 
-Suite total: 649 tests verde. Coverage 76% mantido.
+Total suite: 649 tests green. Coverage 76% maintained.
 
 ---
 
@@ -634,172 +650,171 @@ Suite total: 649 tests verde. Coverage 76% mantido.
 
 ### Why v3.4.3
 
-Bug observado em uso real: após cada wave de fase 04, worktrees efêmeras
-criadas pelos subagentes (Agent tool com `isolation: "worktree"`)
-ficavam orfãs em `<project_root>/.icm-wave-*` (ou path retornado pelo
-tool), e branches `wave-<NNN>-<N>/<task-slug>` poluíam `git branch`
-listing. Lead nunca executava cleanup pós-merge.
+Bug observed in real usage: after each wave in stage 04, ephemeral worktrees
+created by subagents (Agent tool with `isolation: "worktree"`)
+remained orphaned in `<project_root>/.icm-wave-*` (or path returned by the
+tool), and `wave-<NNN>-<N>/<task-slug>` branches polluted the `git branch`
+listing. Lead never executed cleanup after merge.
 
-### Mudanças
+### Changes
 
-**1. L2 stage 04: novo passo 11 cleanup pós-merge:**
-- Após merge sequencial + CI gate global verde, lead executa:
+**1. L2 stage 04: new step 11 post-merge cleanup:**
+- After sequential merge + global CI gate green, lead executes:
   ```bash
-  git worktree remove <path-do-worktree>     # paths capturados dos Agent tool results
-  git branch -d wave-<NNN>-<N>/<task-slug>   # safe pq merged --no-ff
+  git worktree remove <path-to-worktree>     # paths captured from Agent tool results
+  git branch -d wave-<NNN>-<N>/<task-slug>   # safe because merged --no-ff
   ```
-- Fallback robusto se path foi perdido: `git worktree list --porcelain`
-  filtrado por branch pattern.
-- Falha não-fatal — registra warning em `wave-summary.md`, prossegue.
-- `git branch -d` recusa não-merged (intencional). Não usar `-D`.
+- Robust fallback if path was lost: `git worktree list --porcelain`
+  filtered by branch pattern.
+- Non-fatal failure — registers warning in `wave-summary.md`, proceeds.
+- `git branch -d` refuses non-merged (intentional). Do not use `-D`.
 
-**2. Recovery Wizard: novo tipo `WAVE_WORKTREE_ORPHAN`:**
-- Detect: `git worktree list` mostra worktrees com branch pattern
-  `wave-<NNN>-` (NNN=workspace num) AND branch já merged em base_branch.
+**2. Recovery Wizard: new type `WAVE_WORKTREE_ORPHAN`:**
+- Detect: `git worktree list` shows worktrees with branch pattern
+  `wave-<NNN>-` (NNN=workspace num) AND branch already merged into base_branch.
 - Plan A (auto-cleanup): `git worktree remove <path>` + `git branch -d`.
-  Cleanup safe pq detecção filtrou por já-merged.
-- Skip orfas com branch não-merged (sinal de wave incompleta — atenção
-  humana, não auto-cleanup).
-- Helpers novos: `_list_worktrees`, `_is_branch_merged`.
+  Cleanup safe because detection filtered by already-merged.
+- Skip orphans with non-merged branch (signal of incomplete wave — human
+  attention required, no auto-cleanup).
+- New helpers: `_list_worktrees`, `_is_branch_merged`.
 
-**3. Docs atualizados:**
-- `references/worktree-model.md` seção 3 (cleanup obrigatório).
-- `references/subagent-protocol.md` seção 5.1 (Cleanup pós-merge).
-- `references/recovery-wizard.md` (novo tipo).
+**3. Updated docs:**
+- `references/worktree-model.md` section 3 (mandatory cleanup).
+- `references/subagent-protocol.md` section 5.1 (Post-merge cleanup).
+- `references/recovery-wizard.md` (new type).
 
-### Compatibilidade
+### Compatibility
 
-Workspaces v3.4.0/v3.4.1/v3.4.2 com worktrees orfãs acumuladas: rodar
-Recovery Wizard manualmente quando aparecer. Plan A auto-cleanup remove
-tudo de uma vez. Novos workspaces criados via v3.4.3 nascem com
-cleanup automático no protocol da fase 04.
+Workspaces v3.4.0/v3.4.1/v3.4.2 with accumulated orphaned worktrees: run
+Recovery Wizard manually when it appears. Plan A auto-cleanup removes
+everything at once. New workspaces created via v3.4.3 start with
+automatic cleanup in the stage 04 protocol.
 
-### Testes
+### Tests
 
-8 tests novos em `tests/unit/test_v3_4_3_wave_cleanup.py`. Suite total
-627 tests verde.
+8 new tests in `tests/unit/test_v3_4_3_wave_cleanup.py`. Total suite
+627 tests green.
 
 ---
 
-## v3.4.2 — Gate inline + tech debt drain (2026-04-29)
+## v3.4.2 — Inline gate + tech debt drain (2026-04-29)
 
 ### Why v3.4.2
 
-Bug-fix patch corrigindo loop de fim-de-stage observado em uso real
-(workspace 001-001-saas-psicologo-mvp): sessão imprimia kickoff +
-saía SEM aguardar gate humano; nova sessão detectava status pendente,
-pedia aprovação, e re-imprimia o kickoff — confuso. Plus 2 itens de
-tech debt acumulados.
+Bug-fix patch correcting an end-of-stage loop observed in real usage
+(workspace 001-001-saas-psicologo-mvp): session printed kickoff +
+exited WITHOUT waiting for human gate; new session detected pending status,
+asked for approval, and re-printed the kickoff — confusing. Plus 2 accumulated
+tech debt items.
 
-### Mudanças
+### Changes
 
-**1. Gate inline antes do kickoff em todos stages (bug fix principal):**
-- L2 templates de stages 01-07 atualizados pra split End of stage handoff
-  em duas fases dentro da MESMA sessão.
-- Fase 1 WORK_DONE: update L1 (sub_stage=NN_completed,
-  status=COMPLETED_AWAITING_HUMAN), commit atômico 1/2 (outputs + L1,
-  SEM kickoff), imprime prompt de gate, AGUARDA humano.
-- Fase 2 GATE_APPROVED (após "aprovado"): update L1
+**1. Inline gate before kickoff in all stages (main bug fix):**
+- L2 templates of stages 01-07 updated to split End of stage handoff
+  into two phases within the SAME session.
+- Phase 1 WORK_DONE: update L1 (sub_stage=NN_completed,
+  status=COMPLETED_AWAITING_HUMAN), atomic commit 1/2 (outputs + L1,
+  WITHOUT kickoff), print gate prompt, WAIT for human.
+- Phase 2 GATE_APPROVED (after "approved"): update L1
   (stage_atual=NN+1, sub_stage=NN+1_in_progress, status=IN_PROGRESS),
-  render kickoff, commit atômico 2/2, imprime KICKOFF block, SAIR.
-- Stage 04: gate só na transição última-wave→05 (mid-wave continua auto).
-- Stage 06: gate só no caso A (sem P0/P1). Loopback ao 04 é auto.
-- Stage 07: gate aprova merge-report; após aprovação, auto-transita
-  07→08 com status=COMPLETED_AWAITING_HUMAN (workspace fica vivo
-  aguardando feedback do mundo real, sem segundo gate).
-- Doc canônico: `references/session-handoff-protocol.md` (diagrama
-  atualizado seção "Anatomia de uma sessão").
+  render kickoff, atomic commit 2/2, print KICKOFF block, EXIT.
+- Stage 04: gate only on last-wave→05 transition (mid-wave continues auto).
+- Stage 06: gate only in case A (without P0/P1). Loopback to 04 is auto.
+- Stage 07: gate approves merge-report; after approval, auto-transitions
+  07→08 with status=COMPLETED_AWAITING_HUMAN (workspace remains alive
+  awaiting real-world feedback, without a second gate).
+- Canonical doc: `references/session-handoff-protocol.md` (diagram
+  updated in "Session anatomy" section).
 
-**2. Recovery Wizard: novo tipo `KICKOFF_WITHOUT_GATE`:**
-- Detecta workspaces buggy (criados antes da v3.4.2) com kickoff de
-  stage NN+1 presente enquanto L1 indica `stage_atual=NN,
+**2. Recovery Wizard: new type `KICKOFF_WITHOUT_GATE`:**
+- Detects buggy workspaces (created before v3.4.2) with stage NN+1
+  kickoff present while L1 indicates `stage_atual=NN,
   status=COMPLETED_AWAITING_HUMAN`.
-- Ação: oferece humano (a) aprovar gate retroativo (mantém kickoff,
-  transita L1) ou (b) deletar kickoff e voltar ao trabalho do stage NN.
+- Action: offers human (a) approve retroactive gate (keep kickoff,
+  transition L1) or (b) delete kickoff and return to stage NN work.
 
-**3. Tech debt: `agent-brief-render.py` regex desatualizado:**
-- Regex buscava `### Task: <slug>` (H3) + `**O QUE:**` (bold marker).
-- Schema canônico (`references/4-block-contract-template.md`) é
-  `## Task <SLUG>:` (H2) + `### O QUE` (H3).
-- Mismatch fazia leads renderizarem briefs manualmente em fase 04.
-- Fix: regex atualizado pra schema canônico H2/H3.
+**3. Tech debt: `agent-brief-render.py` outdated regex:**
+- Regex was searching for `### Task: <slug>` (H3) + `**WHAT:**` (bold marker).
+- Canonical schema (`references/4-block-contract-template.md`) is
+  `## Task <SLUG>:` (H2) + `### WHAT` (H3).
+- Mismatch caused leads to render briefs manually in stage 04.
+- Fix: regex updated to canonical H2/H3 schema.
 
-**4. Tech debt: bootstrap auto-merge `settings.local.json` no project_root:**
-- Antes: bootstrap renderizava só `.example`; humano copiava manualmente
-  pra ativar PostToolUse hook do `context-check.sh`.
-- Inconsistência: workspace scope (`workspaces/<NNN>/.claude/settings.local.json`)
-  já era auto-criado com merge idempotente, mas project_root scope não.
-- Fix: bootstrap agora faz merge idempotente em
-  `<project_root>/.claude/settings.local.json` (preserva customizações
-  do user + adiciona/atualiza apenas a entrada ICM identificável por
-  `command` contendo `context-check.sh`). Mantém `.example` por
-  documentação.
+**4. Tech debt: bootstrap auto-merge `settings.local.json` in project_root:**
+- Before: bootstrap rendered only `.example`; human copied manually
+  to activate PostToolUse hook for `context-check.sh`.
+- Inconsistency: workspace scope (`workspaces/<NNN>/.claude/settings.local.json`)
+  was already auto-created with idempotent merge, but project_root scope was not.
+- Fix: bootstrap now does idempotent merge in
+  `<project_root>/.claude/settings.local.json` (preserves user customizations
+  + adds/updates only the ICM entry identifiable by
+  `command` containing `context-check.sh`). Keeps `.example` for documentation.
 
-### Compatibilidade
+### Compatibility
 
-Workspaces v3.4.0/v3.4.1 já em curso: rodar Recovery Wizard manualmente
-quando aparecer sintoma do bug (kickoff já gerado mas gate não aprovado).
-Novos workspaces criados via v3.4.2 nascem com gate-inline.
+Workspaces v3.4.0/v3.4.1 already in progress: run Recovery Wizard manually
+when the bug symptom appears (kickoff already generated but gate not approved).
+New workspaces created via v3.4.2 start with gate-inline.
 
 ---
 
-## v3.4.1 — Backlog (migration, handoff saída A, Tier 3) (2026-04-29)
+## v3.4.1 — Backlog (migration, handoff Exit A, Tier 3) (2026-04-29)
 
 ### Why v3.4.1
 
-Patch sequência da v3.4.0 que finaliza items adiados do KICKOFF
-(deferred 4+5) e drena Tier 3 backlog herdado da v3.3.0.
+Sequence patch after v3.4.0 that finishes deferred items from the KICKOFF
+(deferred 4+5) and drains the Tier 3 backlog inherited from v3.3.0.
 
-### Mudanças
+### Changes
 
 **1. Migration script v3.3 → v3.4 (deferred 4):**
-- Novo `scripts/migrate-v3.3-to-v3.4.py`. Detecta workspaces v3.3.x via
-  `icm_skill_version` no L0, cria `.icm-main/` worktree, garante
-  `docs/decisions/.keep` na base branch, atualiza `.gitignore`, bump
-  `icm_skill_version` para 3.4.0. CLI: `--project-root <path>
+- New `scripts/migrate-v3.3-to-v3.4.py`. Detects v3.3.x workspaces via
+  `icm_skill_version` in L0, creates `.icm-main/` worktree, ensures
+  `docs/decisions/.keep` in base branch, updates `.gitignore`, bumps
+  `icm_skill_version` to 3.4.0. CLI: `--project-root <path>
   [--workspace <NNN-slug>] [--update-paths] [--dry-run]`.
-- Idempotente: rerodar não causa dano. Workspaces v3.4.x são skip.
-- 24 unit tests em `tests/unit/test_migrate_v3_3_to_v3_4.py`.
+- Idempotent: re-running causes no harm. v3.4.x workspaces are skipped.
+- 24 unit tests in `tests/unit/test_migrate_v3_3_to_v3_4.py`.
 
-**2. Handoff saída A migra CLAUDE.md root (deferred 5):**
-- `handoff.py:deactivate_project_claude_md` agora persiste o CLAUDE.md
-  idle também na base branch via `.icm-main/CLAUDE.md` + commit.
-- Sem isso, o CLAUDE.md root sumiria quando workspace branch fosse
-  deletada após arquivamento.
-- Idempotente: re-execução com mesmo conteúdo não gera commit extra.
-- Doc canônico: `references/project-root-claude-md.md` (seção "Owner
-  transition na saída A").
-- 4 unit tests em `tests/unit/test_handoff_saida_a_v3_4_1.py`.
+**2. Handoff Exit A migrates CLAUDE.md root (deferred 5):**
+- `handoff.py:deactivate_project_claude_md` now also persists the idle CLAUDE.md
+  in the base branch via `.icm-main/CLAUDE.md` + commit.
+- Without this, the root CLAUDE.md would disappear when the workspace branch
+  was deleted after archiving.
+- Idempotent: re-execution with same content generates no extra commit.
+- Canonical doc: `references/project-root-claude-md.md` (section "Owner
+  transition at Exit A").
+- 4 unit tests in `tests/unit/test_handoff_saida_a_v3_4_1.py`.
 
-**3. Tier 3 backlog drenado:**
+**3. Tier 3 backlog drained:**
 - **Deep modules + deletion test** (`references/deep-modules.md`):
-  doc canônico de architecture review para stage 02. 5-item checklist:
-  interface mínima, information hiding, single responsibility, deletion
-  test, alternativa em ADR. Adicionado a `runtime_refs` do bootstrap +
-  L2 stage 02. Smoke test em `tests/unit/test_deep_modules_doc.py`.
+  canonical architecture review doc for stage 02. 5-item checklist:
+  minimal interface, information hiding, single responsibility, deletion
+  test, alternative in ADR. Added to `runtime_refs` of bootstrap +
+  L2 stage 02. Smoke test in `tests/unit/test_deep_modules_doc.py`.
 - **Git guardrails hook** (`templates/.claude/hooks/block-dangerous-git.sh`):
-  PreToolUse hook que bloqueia push --force, reset --hard, clean -fd,
-  branch -D, checkout/restore `.`. Instalado APENAS em workspaces
-  tier=production (condicional em `bootstrap.py`).
+  PreToolUse hook that blocks push --force, reset --hard, clean -fd,
+  branch -D, checkout/restore `.`. Installed ONLY in tier=production workspaces
+  (conditional in `bootstrap.py`).
 - **PreToolUse anti-/init** (`templates/.claude/hooks/block-init-during-icm.sh`):
-  bloqueia invocação de `/init` enquanto workspace ICM ativo. Mitigação
-  G14. Instalado em todos os workspaces.
-- **Zoom-out workflow stage 00**: section structured em
-  `templates/workspace/stages/00_recon/CONTEXT.md.tpl` guiando agente
-  ao encontrar módulo desconhecido (Grep callers → caller raiz → anotar
-  glossário → não documentar agora → limite 3 níveis).
+  blocks `/init` invocation while ICM workspace is active. Mitigation
+  G14. Installed in all workspaces.
+- **Zoom-out flow stage 00**: structured section in
+  `templates/workspace/stages/00_recon/CONTEXT.md.tpl` guiding agent
+  when encountering an unknown module (Grep callers → root caller → annotate
+  glossary → do not document now → 3-level limit).
 
-**4. Tests opcionais drenados:**
-- `test_v3_3_docs_smoke.py` (12 tests): parsability + estrutura mínima
-  de `adr-format.md`, `diagnose-protocol.md`, `triage-state-machine.md`,
-  e `templates/workspace/_config/CONTEXT.md.tpl` (T1.3).
+**4. Optional tests drained:**
+- `test_v3_3_docs_smoke.py` (12 tests): parsability + minimal structure
+  of `adr-format.md`, `diagnose-protocol.md`, `triage-state-machine.md`,
+  and `templates/workspace/_config/CONTEXT.md.tpl` (T1.3).
 - `test_deep_modules_doc.py` (4 tests).
 
-### Backlog para v3.5+
+### Backlog for v3.5+
 
-- Smoke test manual end-to-end em projeto real (greenfield/brownfield/
-  multi-workspace) — checklist em `references/smoke-manual-checklist.md`,
-  exige projeto real fora do escopo de unit tests.
+- Smoke manual end-to-end test in a real project (greenfield/brownfield/
+  multi-workspace) — checklist in `references/smoke-manual-checklist.md`,
+  requires a real project outside unit test scope.
 - `tests/integration/test_pre_commit_whitelist.bats` (CI Ubuntu only).
 
 ---
@@ -808,54 +823,54 @@ Patch sequência da v3.4.0 que finaliza items adiados do KICKOFF
 
 ### Why v3.4.0
 
-Workspaces ICM v3.3.x sofriam de **path invisibility** entre branches:
-o workspace branch (`workspace/NNN-slug`) não tinha `docs/decisions/`,
-`docs/lessons.md`, `docs/tech_debt.md`, `src/`, `tests/` no working tree
-porque esses paths viviam apenas em `base_branch`. L0/L2 declaravam paths
-absolutos `<project_root>/docs/decisions/...` mas Read tool retornava
-ENOENT em sessões workspace branch.
+ICM v3.3.x workspaces suffered from **path invisibility** between branches:
+the workspace branch (`workspace/NNN-slug`) did not have `docs/decisions/`,
+`docs/lessons.md`, `docs/tech_debt.md`, `src/`, `tests/` in the working tree
+because those paths only lived in `base_branch`. L0/L2 declared absolute paths
+`<project_root>/docs/decisions/...` but Read tool returned ENOENT in
+workspace branch sessions.
 
-Workarounds frágeis (stash/checkout/commit/checkout/pop, `git show base:`,
-checkout temp em main) violavam atomicidade L1↔outputs e sujavam history.
+Fragile workarounds (stash/checkout/commit/checkout/pop, `git show base:`,
+temp checkout in main) violated L1↔outputs atomicity and polluted history.
 
-v3.4.0 introduz **worktree linkada permanente** `<project_root>/.icm-main/`
-(checada em base_branch desde o bootstrap; gitignored em todas branches).
-Sessões em qualquer estágio leem cross-branch via Read tool direto;
-escritas cross-branch (ADRs, lessons, tech_debt) commitam via
-`cd .icm-main && git commit ...` em transação única na base branch.
+v3.4.0 introduces a **permanent linked worktree** `<project_root>/.icm-main/`
+(checked out at base_branch since bootstrap; gitignored in all branches).
+Sessions at any stage read cross-branch via Read tool directly;
+cross-branch writes (ADRs, lessons, tech_debt) commit via
+`cd .icm-main && git commit ...` in a single transaction on the base branch.
 
-Doc canônico: `references/worktree-model.md`.
+Canonical doc: `references/worktree-model.md`.
 
-### Mudanças
+### Changes
 
-**Worktree model (canônico):**
-- `references/worktree-model.md` (NOVO) — fonte canônica do modelo Opção B; estrutura, comandos, regras de uso, falhas + recovery, comparação com opções A/C/D.
+**Worktree model (canonical):**
+- `references/worktree-model.md` (NEW) — canonical source of Option B model; structure, commands, usage rules, failures + recovery, comparison with options A/C/D.
 
 **Bootstrap:**
-- `scripts/bootstrap.py` — `SKILL_VERSION` 3.3.0 → 3.4.0; `GITIGNORE_LINES` ganha `.icm-main/`; novas funções `_ensure_base_branch_docs(project_root)` (cria `docs/decisions/`, `docs/lessons.md`, `docs/tech_debt.md` na base branch) e `_setup_main_worktree(project_root, base_branch)` (cria worktree linkada via `git worktree add`); fluxo principal chama as duas ANTES de criar workspace branch; `_scaffold_workspace_dirs` não cria mais `docs/*` no project root (movido para `_ensure_base_branch_docs`).
+- `scripts/bootstrap.py` — `SKILL_VERSION` 3.3.0 → 3.4.0; `GITIGNORE_LINES` gains `.icm-main/`; new functions `_ensure_base_branch_docs(project_root)` (creates `docs/decisions/`, `docs/lessons.md`, `docs/tech_debt.md` in base branch) and `_setup_main_worktree(project_root, base_branch)` (creates linked worktree via `git worktree add`); main flow calls both BEFORE creating workspace branch; `_scaffold_workspace_dirs` no longer creates `docs/*` in project root (moved to `_ensure_base_branch_docs`).
 
 **Templates L0/L2:**
-- `templates/workspace/CLAUDE.md.tpl` — paths absolutos ganham coluna "Branch real"; nova entry "Worktree base branch (`.icm-main/`)" lista ADRs/lessons/tech_debt/src/tests sob esse prefix; §3 Branches reescrito para documentar worktree paralelo; §6 ADRs ganha workflow canônico via `cd .icm-main && git commit`; §8 nova "Cross-branch reads via `.icm-main/`" (numeração superpowers vai pra §9).
-- `templates/workspace/stages/00_recon/CONTEXT.md.tpl` — paths `docs/`, `src/` migrados para `.icm-main/...`; pre-flight valida worktree existe.
-- `templates/workspace/stages/01_discovery/CONTEXT.md.tpl` — paths migrados para `.icm-main/...`.
-- `templates/workspace/stages/02_design/CONTEXT.md.tpl` — paths migrados; process step 6 "Spawn ADRs novos" reescrito com workflow `cd .icm-main && git commit`; nova seção "Worktree paralelo".
-- `templates/workspace/stages/03_wave_planner/CONTEXT.md.tpl` — paths migrados.
-- `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` — paths migrados; nova seção subagent worktree (`Agent(isolation: "worktree")`); lead sincroniza `.icm-main/` via `git pull --ff-only` após merge.
-- `templates/workspace/stages/05_verification/CONTEXT.md.tpl` — paths migrados.
-- `templates/workspace/stages/06_review/CONTEXT.md.tpl` — paths migrados; tech_debt update via `cd .icm-main`.
-- `templates/workspace/stages/07_merge/CONTEXT.md.tpl` — paths migrados.
-- `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` — paths migrados; lessons append via `cd .icm-main`.
+- `templates/workspace/CLAUDE.md.tpl` — absolute paths gain "Real branch" column; new entry "Base branch worktree (`.icm-main/`)" lists ADRs/lessons/tech_debt/src/tests under that prefix; §3 Branches rewritten to document parallel worktree; §6 ADRs gains canonical workflow via `cd .icm-main && git commit`; §8 new "Cross-branch reads via `.icm-main/`" (superpowers numbering goes to §9).
+- `templates/workspace/stages/00_recon/CONTEXT.md.tpl` — `docs/`, `src/` paths migrated to `.icm-main/...`; pre-flight validates worktree exists.
+- `templates/workspace/stages/01_discovery/CONTEXT.md.tpl` — paths migrated to `.icm-main/...`.
+- `templates/workspace/stages/02_design/CONTEXT.md.tpl` — paths migrated; process step 6 "Spawn new ADRs" rewritten with `cd .icm-main && git commit` workflow; new "Parallel worktree" section.
+- `templates/workspace/stages/03_wave_planner/CONTEXT.md.tpl` — paths migrated.
+- `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` — paths migrated; new subagent worktree section (`Agent(isolation: "worktree")`); lead syncs `.icm-main/` via `git pull --ff-only` after merge.
+- `templates/workspace/stages/05_verification/CONTEXT.md.tpl` — paths migrated.
+- `templates/workspace/stages/06_review/CONTEXT.md.tpl` — paths migrated; tech_debt update via `cd .icm-main`.
+- `templates/workspace/stages/07_merge/CONTEXT.md.tpl` — paths migrated.
+- `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` — paths migrated; lessons append via `cd .icm-main`.
 
 **Hooks:**
-- `templates/.git-hooks/pre-commit` — whitelist tightened: removidos `docs/decisions/*.md`, `docs/lessons.md`, `docs/tech_debt.md` (devem ir via `.icm-main/`); mantém `workspaces/.index.md`, `.gitignore`, `CLAUDE.md`; nova rule rejeita paths em `.icm-main/*` (worktree paths não devem ser tracked pelo workspace branch — gitignore deve cobrir).
-- `templates/.claude/hooks/icm-session-check.sh` (NOVO) — SessionStart hook valida (1) branch atual = workspace branch ativo; (2) `.icm-main/` worktree existe; (3) worktree em base_branch correta. Imprime warning visível, não bloqueia.
-- `templates/project_root/.claude/settings.local.json.example` (NOVO) — exemplo de settings local com SessionStart + PostToolUse hooks apontando pros scripts no workspace.
+- `templates/.git-hooks/pre-commit` — whitelist tightened: removed `docs/decisions/*.md`, `docs/lessons.md`, `docs/tech_debt.md` (must go via `.icm-main/`); keeps `workspaces/.index.md`, `.gitignore`, `CLAUDE.md`; new rule rejects paths in `.icm-main/*` (worktree paths must not be tracked by workspace branch — gitignore must cover).
+- `templates/.claude/hooks/icm-session-check.sh` (NEW) — SessionStart hook validates (1) current branch = active workspace branch; (2) `.icm-main/` worktree exists; (3) worktree on correct base_branch. Prints visible warning, does not block.
+- `templates/project_root/.claude/settings.local.json.example` (NEW) — example local settings with SessionStart + PostToolUse hooks pointing to scripts in workspace.
 
 **Recovery:**
-- `scripts/recovery-wizard.py` — 3 novos códigos: `WORKTREE_MISSING` (critical, sugere `git worktree add .icm-main <BASE_BRANCH>`); `WORKTREE_WRONG_BRANCH` (warning, sugere `git checkout`); `WRONG_BRANCH_CHECKOUT` (warning, branch principal != workspace branch durante workspace ativo).
+- `scripts/recovery-wizard.py` — 3 new codes: `WORKTREE_MISSING` (critical, suggests `git worktree add .icm-main <BASE_BRANCH>`); `WORKTREE_WRONG_BRANCH` (warning, suggests `git checkout`); `WRONG_BRANCH_CHECKOUT` (warning, main branch != workspace branch during active workspace).
 
 **Migration v3.3.x → v3.4.0:**
-- Workspaces existentes pré-v3.4.0 continuam funcionando, mas sessões em workspace branch falham ao tentar `Read docs/decisions/...` (paths legados). Migration manual: (1) `git worktree add .icm-main <BASE_BRANCH>` no project_root; (2) adicionar `.icm-main/` ao `.gitignore` em todas branches; (3) opcional — atualizar L0/L2 paths para usar `.icm-main/` prefix. Recovery wizard detecta e sinaliza.
+- Existing pre-v3.4.0 workspaces continue working, but sessions in workspace branch fail when trying `Read docs/decisions/...` (legacy paths). Manual migration: (1) `git worktree add .icm-main <BASE_BRANCH>` in project_root; (2) add `.icm-main/` to `.gitignore` in all branches; (3) optional — update L0/L2 paths to use `.icm-main/` prefix. Recovery wizard detects and signals.
 
 ---
 
@@ -863,119 +878,119 @@ Doc canônico: `references/worktree-model.md`.
 
 ### Why v3.3.0
 
-Análise comparativa do repo `mattpocock/skills` identificou 13 padrões aplicáveis. Esta release adota 8 deles (Tier 1 + Tier 2 + dependência), endereçando 6 gaps de UX/qualidade no skill atual. Os outros 5 ficam como future work (Tier 3).
+Comparative analysis of the `mattpocock/skills` repo identified 13 applicable patterns. This release adopts 8 of them (Tier 1 + Tier 2 + dependency), addressing 6 UX/quality gaps in the current skill. The other 5 remain as future work (Tier 3).
 
-### Mudanças
+### Changes
 
-**T1.1 — `<project_root>/CLAUDE.md` + handoff dinâmico:**
-- `templates/project_root/CLAUDE.md.tpl` (NOVO) — template com marcadores `<!-- ICM-START/END -->` delimitando região exclusiva da skill.
-- `scripts/handoff.py` — `WorkspaceBlock` dataclass; `update_project_claude_md`, `remove_workspace_block`, `deactivate_project_claude_md`, `list_active_workspace_ids`. Round-trip JSON via comentários `<!-- ICM-DATA:... -->`. Atomic write tmp+fsync+rename (G15). CLI subcommands.
-- `scripts/bootstrap.py` — `_render_project_claude_md` chamado durante bootstrap; CLAUDE.md root incluído no staging.
-- `scripts/recovery-wizard.py` — codes `CLAUDE_MD_ROOT_STALE`/`CLAUDE_MD_ROOT_MISSING` (G5); plan A regenera bloco a partir do L1.
-- `templates/.git-hooks/pre-commit` — whitelist CLAUDE.md root (G6).
-- `references/project-root-claude-md.md` (NOVO) — doc canônico cobrindo G1-G17 (brownfield, multi-workspace, /init contract, atomicidade, concorrência).
-- `references/session-handoff-protocol.md` — §verbal block simplificado (remove KICKOFF copy-paste; CLAUDE.md root cobre read order).
-- `tests/unit/test_project_root_claude_md.py` (NOVO) — 17 tests cobrindo greenfield, brownfield (com/sem marcadores), multi-workspace, idempotência, atomic write, round-trip JSON.
+**T1.1 — `<project_root>/CLAUDE.md` + dynamic handoff:**
+- `templates/project_root/CLAUDE.md.tpl` (NEW) — template with `<!-- ICM-START/END -->` markers delimiting the skill's exclusive region.
+- `scripts/handoff.py` — `WorkspaceBlock` dataclass; `update_project_claude_md`, `remove_workspace_block`, `deactivate_project_claude_md`, `list_active_workspace_ids`. Round-trip JSON via `<!-- ICM-DATA:... -->` comments. Atomic write tmp+fsync+rename (G15). CLI subcommands.
+- `scripts/bootstrap.py` — `_render_project_claude_md` called during bootstrap; root CLAUDE.md included in staging.
+- `scripts/recovery-wizard.py` — codes `CLAUDE_MD_ROOT_STALE`/`CLAUDE_MD_ROOT_MISSING` (G5); plan A regenerates block from L1.
+- `templates/.git-hooks/pre-commit` — whitelist root CLAUDE.md (G6).
+- `references/project-root-claude-md.md` (NEW) — canonical doc covering G1-G17 (brownfield, multi-workspace, /init contract, atomicity, concurrency).
+- `references/session-handoff-protocol.md` — §verbal block simplified (removes KICKOFF copy-paste; root CLAUDE.md covers read order).
+- `tests/unit/test_project_root_claude_md.py` (NEW) — 17 tests covering greenfield, brownfield (with/without markers), multi-workspace, idempotency, atomic write, round-trip JSON.
 
 **T1.2 — AGENT-BRIEF template:**
-- `references/agent-brief-template.md` (NOVO) — formato canônico (durability over precision, behavioral not procedural, complete acceptance criteria, explicit scope boundaries). Mapping pra 4-block do plan.md.
-- `scripts/agent-brief-render.py` (NOVO) — extrai task do plan.md, parse 4-block, renderiza AGENT-BRIEF. CLI; warn de anti-patterns (paths absolutos, line numbers).
-- `tests/unit/test_agent_brief_render.py` (NOVO) — 10 tests.
+- `references/agent-brief-template.md` (NEW) — canonical format (durability over precision, behavioral not procedural, complete acceptance criteria, explicit scope boundaries). Mapping to plan.md 4-block.
+- `scripts/agent-brief-render.py` (NEW) — extracts task from plan.md, parses 4-block, renders AGENT-BRIEF. CLI; warns on anti-patterns (absolute paths, line numbers).
+- `tests/unit/test_agent_brief_render.py` (NEW) — 10 tests.
 
 **T1.3 — CONTEXT.md ubiquitous language layer:**
-- `templates/workspace/_config/CONTEXT.md.tpl` (NOVO) — glossário de domínio (L3), vazio no bootstrap, populado em stage 01.
-- `references/context-format.md` (NOVO) — formato Term/Definition/Avoid/Relationships/Example dialogue/Flagged ambiguities.
-- `scripts/bootstrap.py` — render do `_config/CONTEXT.md` durante scaffold.
+- `templates/workspace/_config/CONTEXT.md.tpl` (NEW) — domain glossary (L3), empty at bootstrap, populated in stage 01.
+- `references/context-format.md` (NEW) — format Term/Definition/Avoid/Relationships/Example dialogue/Flagged ambiguities.
+- `scripts/bootstrap.py` — render of `_config/CONTEXT.md` during scaffold.
 
-**T1.4 — ADR 3-critérios gate:**
-- `references/adr-format.md` (NOVO) — gate (hard to reverse + surprising without context + real trade-off); template minimal; sections opcionais.
-- `templates/workspace/docs/decisions/_template.md` (NOVO) — template para ADR individual.
+**T1.4 — ADR 3-criteria gate:**
+- `references/adr-format.md` (NEW) — gate (hard to reverse + surprising without context + real trade-off); minimal template; optional sections.
+- `templates/workspace/docs/decisions/_template.md` (NEW) — template for individual ADR.
 
-**T2.5 — Diagnose 6-fase:**
-- `references/diagnose-protocol.md` (NOVO) — 6 fases (build feedback loop → reproduce → hypothesise → instrument → fix+regression test → cleanup+post-mortem). Hipóteses 3-5 ranked falsifiable. Tag logs `[DEBUG-xxxx]`.
-- `templates/workspace/_config/hitl-loop.template.sh` (NOVO) — template HITL bash loop pra Phase 1 item 10.
+**T2.5 — Diagnose 6-phase:**
+- `references/diagnose-protocol.md` (NEW) — 6 phases (build feedback loop → reproduce → hypothesise → instrument → fix+regression test → cleanup+post-mortem). 3-5 ranked falsifiable hypotheses. Tag logs `[DEBUG-xxxx]`.
+- `templates/workspace/_config/hitl-loop.template.sh` (NEW) — HITL bash loop template for Phase 1 item 10.
 
 **T2.6 — HITL/AFK classification:**
-- `references/task-types-hitl-afk.md` (NOVO) — definição HITL vs AFK + critérios de classificação. AFK é default. HITL exige justificativa.
+- `references/task-types-hitl-afk.md` (NEW) — HITL vs AFK definition + classification criteria. AFK is default. HITL requires justification.
 
 **T2.7 — Triage state machine:**
-- `references/triage-state-machine.md` (NOVO) — categorias (bug/enhancement) + estados (needs-triage / needs-info / ready-for-action / wontfix). Mapping → Saída A/B/C. AGENT-BRIEF gerado para B e C.
+- `references/triage-state-machine.md` (NEW) — categories (bug/enhancement) + states (needs-triage / needs-info / ready-for-action / wontfix). Mapping → Exit A/B/C. AGENT-BRIEF generated for B and C.
 
 **T2.8 — OUT-OF-SCOPE kb:**
-- `templates/workspace/_out-of-scope/README.md.tpl` (NOVO) — convenção do diretório. 1 arquivo por conceito rejeitado.
-- `references/out-of-scope-kb.md` (NOVO) — quando criar (enhancement rejeitado), quando consultar (stage 02 iter>0, stage 08 triage). Format completo.
-- `scripts/bootstrap.py` — cria `_out-of-scope/` no scaffold + render do README.
+- `templates/workspace/_out-of-scope/README.md.tpl` (NEW) — directory convention. 1 file per rejected concept.
+- `references/out-of-scope-kb.md` (NEW) — when to create (rejected enhancement), when to consult (stage 02 iter>0, stage 08 triage). Full format.
+- `scripts/bootstrap.py` — creates `_out-of-scope/` in scaffold + renders README.
 
-**Bootstrap.py geral:**
-- 8 novos refs canônicos adicionados à lista `runtime_refs` (copiados pra `<workspace>/_references/runtime/`).
+**Bootstrap.py general:**
+- 8 new canonical refs added to `runtime_refs` list (copied to `<workspace>/_references/runtime/`).
 - `SKILL_VERSION = "3.3.0"`.
 
-### Out-of-scope desta release (Tier 3 — future work)
+### Out of scope in this release (Tier 3 — future work)
 
-- Deep modules + deletion test em stage 02
-- Design It Twice (3 interfaces paralelas) em stage 02
+- Deep modules + deletion test in stage 02
+- Design It Twice (3 parallel interfaces) in stage 02
 - Git guardrails hook (production tier)
-- Zoom-out instruction explícita em stage 00
+- Explicit zoom-out instruction in stage 00
 - SKILL.md description tightening (write-a-skill format)
 
 ### Tests
 
-- 538 tests passing (+10 vs v3.2.0). Coverage mantida.
-- Novos: `test_project_root_claude_md.py` (17), `test_agent_brief_render.py` (10).
+- 538 tests passing (+10 vs v3.2.0). Coverage maintained.
+- New: `test_project_root_claude_md.py` (17), `test_agent_brief_render.py` (10).
 
 ### Refs
 
-- Plan: `<plans>/primeiro-fa-a-um-plano-sunny-glade.md` (gaps G1-G17 endereçados via adversarial review)
+- Plan: `<plans>/primeiro-fa-a-um-plano-sunny-glade.md` (gaps G1-G17 addressed via adversarial review)
 - Source patterns: github.com/mattpocock/skills (engineering/triage, engineering/diagnose, engineering/grill-with-docs, engineering/tdd, engineering/to-issues)
 
 ---
 
-## v3.2.0 — Test infrastructure: test_specs, test-recipes, TDD evidências (2026-04-28)
+## v3.2.0 — Test infrastructure: test_specs, test-recipes, TDD evidence (2026-04-28)
 
 ### Why v3.2.0
 
-Auditoria identificou 7 lacunas na infraestrutura de testes da skill: ausência de distinção por tipo de teste no plan.md, nenhum planejamento de testes no stage 02, stage 05 excluindo `tests/` completamente, profile-matrix sem `test_specs`, itens 1-3 do Akita sem evidência mandatória, sem receitas de teste por profile, e stage 01 sem captura de contexto de teste existente.
+Audit identified 7 gaps in the skill's test infrastructure: no distinction by test type in plan.md, no test planning in stage 02, stage 05 completely excluding `tests/`, profile-matrix without `test_specs`, items 1-3 of Akita without mandatory evidence, no test recipes by profile, and stage 01 without capturing existing test context.
 
-### Mudanças
+### Changes
 
-- **`scripts/profile-merge.py`:** função `_test_specs(profile, tier)` nova — deriva `test_specs` para os 10 profiles cobrindo `test_types_required`, `coverage_threshold` (calibrado por tier), `http_integration`, `db_integration`, `component_testing`, `eval_strategy`, `eval_threshold` e similares. Campo integrado em `merge_profile()` — não-overridável via `.icm-profile.local.yaml`.
-- **`templates/_config/profile-matrix.md`:** row `test_specs.coverage_threshold` na tabela de defaults (0 / 60 / 80 / 90 por tier). Nova seção "test_specs por profile" documenta valores canônicos dos 10 profiles.
-- **`templates/_references/test-recipes/` (10 NOVOS arquivos):** receitas de teste por profile — `app_web_backend`, `app_web_frontend`, `agent_ia`, `ml_project`, `cli_tool`, `framework_library`, `dashboard`, `data_analysis`, `experiment`, `technical_article`. Frameworks, padrões, anti-patterns e checklist rápido por profile.
-- **`scripts/bootstrap.py`:** copia `_references/test-recipes/<profile>.md` para workspace durante bootstrap.
-- **`templates/workspace/stages/01_discovery/CONTEXT.md.tpl`:** Input #12 test-recipe (condicional). Novo passo 9 "Levantar Test Context" — captura suite existente, framework, coverage policy, eval strategy; saída em `§Test Context` do discovery.md.
-- **`templates/workspace/stages/02_design/CONTEXT.md.tpl`:** Novo passo 8 obrigatório "Definir Test Strategy global do workspace". Transition condition: `plan.md` deve conter `§Test Strategy` + toda task de código deve declarar ≥1 arquivo de teste em `Files touched`.
-- **`references/wave-planner-algorithm.md`:** §2 "Regra de test file obrigatório" — tasks com arquivos de código (`src/`, `.py`, `.ts`, etc.) devem declarar ≥1 arquivo de teste; violação = `BLOCKED_ERROR "test file missing for task <slug>"`; exceção para `doc-only`/`config-only`.
-- **`references/4-block-contract-template.md`:** regra em `Files touched` obriga ≥1 arquivo de teste por task de código. Itens 1-3 do Akita agora exigem evidência mandatória: nome do arquivo de teste + nome do test case; cobertura ≥ threshold; execução 3× consecutiva.
-- **`templates/workspace/stages/05_verification/CONTEXT.md.tpl`:** Passo 4.5 — auditoria `coverage report` vs `test_specs.coverage_threshold` (PASS/CONDITIONAL/FAIL por tier). Passo 4.6 — sample-check 3 tasks aleatórias do wave-plan verificando tipos de teste no FS. Constraint `Não Lê` relaxada: leitura parcial de `tests/` via `git ls-files` + coverage report.
+- **`scripts/profile-merge.py`:** new function `_test_specs(profile, tier)` — derives `test_specs` for 10 profiles covering `test_types_required`, `coverage_threshold` (calibrated by tier), `http_integration`, `db_integration`, `component_testing`, `eval_strategy`, `eval_threshold` and similar. Field integrated in `merge_profile()` — not overridable via `.icm-profile.local.yaml`.
+- **`templates/_config/profile-matrix.md`:** `test_specs.coverage_threshold` row in defaults table (0 / 60 / 80 / 90 per tier). New section "test_specs per profile" documents canonical values for 10 profiles.
+- **`templates/_references/test-recipes/` (10 NEW files):** test recipes per profile — `app_web_backend`, `app_web_frontend`, `agent_ia`, `ml_project`, `cli_tool`, `framework_library`, `dashboard`, `data_analysis`, `experiment`, `technical_article`. Frameworks, patterns, anti-patterns and quick checklist per profile.
+- **`scripts/bootstrap.py`:** copies `_references/test-recipes/<profile>.md` to workspace during bootstrap.
+- **`templates/workspace/stages/01_discovery/CONTEXT.md.tpl`:** Input #12 test-recipe (conditional). New step 9 "Gather Test Context" — captures existing suite, framework, coverage policy, eval strategy; output in `§Test Context` of discovery.md.
+- **`templates/workspace/stages/02_design/CONTEXT.md.tpl`:** New mandatory step 8 "Define global Test Strategy for workspace". Transition condition: `plan.md` must contain `§Test Strategy` + every code task must declare ≥1 test file in `Files touched`.
+- **`references/wave-planner-algorithm.md`:** §2 "Mandatory test file rule" — tasks with code files (`src/`, `.py`, `.ts`, etc.) must declare ≥1 test file; violation = `BLOCKED_ERROR "test file missing for task <slug>"`; exception for `doc-only`/`config-only`.
+- **`references/4-block-contract-template.md`:** rule in `Files touched` requires ≥1 test file per code task. Items 1-3 of Akita now require mandatory evidence: test file name + test case name; coverage ≥ threshold; 3× consecutive execution.
+- **`templates/workspace/stages/05_verification/CONTEXT.md.tpl`:** Step 4.5 — audit `coverage report` vs `test_specs.coverage_threshold` (PASS/CONDITIONAL/FAIL per tier). Step 4.6 — sample-check 3 random wave-plan tasks verifying test types in FS. `Do Not Read` constraint relaxed: partial read of `tests/` via `git ls-files` + coverage report.
 
 ### Tests
 
-Suite existente mantida. Regra de test file do Wave Planner coberta por `test_wave_planner_dag.py`. `_test_specs()` é pura — testável por unit test direto.
+Existing suite maintained. Wave Planner test file rule covered by `test_wave_planner_dag.py`. `_test_specs()` is pure — directly unit-testable.
 
 ---
 
-## v3.1.0 — Agent Teams → subagentes (2026-04-27)
+## v3.1.0 — Agent Teams → subagents (2026-04-27)
 
 ### Why v3.1.0
 
-Substituição completa do modelo Agent Teams (baseado em git worktrees + mailbox custom) pelo modelo de subagentes nativos do Claude Code (Agent tool). O novo modelo elimina a complexidade de worktrees, mailbox e rebase sequencial, usando branches isoladas e merges em vez de rebases. Simplifica a orquestração da fase 04 e reduz superfície de erro.
+Complete replacement of the Agent Teams model (based on git worktrees + custom mailbox) by the native subagent model of Claude Code (Agent tool). The new model eliminates the complexity of worktrees, mailbox and sequential rebase, using isolated branches and merges instead of rebases. Simplifies stage 04 orchestration and reduces error surface.
 
-### Mudanças
+### Changes
 
-- **`references/subagent-protocol.md` (NOVO):** protocolo canônico de subagentes substitui `agent-team-protocol.md`. Usa Agent tool nativo em vez de git worktrees + mailbox. Sem sync barrier manual — o lead aguarda retorno direto de cada subagente.
-- **`references/agent-team-protocol.md` (DEPRECATED):** removido do fluxo ativo. Preservado em `references/v2.4-snapshot/` para referência histórica.
-- **`references/file-flow-diagram.md` (DEPRECATED):** removido do fluxo ativo. Diagrama original referia-se ao modelo de worktrees/mailbox.
+- **`references/subagent-protocol.md` (NEW):** canonical subagent protocol replaces `agent-team-protocol.md`. Uses native Agent tool instead of git worktrees + mailbox. No manual sync barrier — lead awaits direct return from each subagent.
+- **`references/agent-team-protocol.md` (DEPRECATED):** removed from active flow. Preserved in `references/v2.4-snapshot/` for historical reference.
+- **`references/file-flow-diagram.md` (DEPRECATED):** removed from active flow. Original diagram referred to the worktrees/mailbox model.
 
-### Terminologia atualizada em todos os references ativos
+### Terminology updated in all active references
 
-- "Agent Team" / "agent team" / "Agent Teams" → "subagente" / "subagentes" / "subagente" (conforme contexto em PT-BR)
-- "teammate" / "teammates" → "subagente" / "subagentes"
-- "worktree" / "git worktree" → "branch isolada" / "branches isoladas" (contexto de isolamento de task)
-- "mailbox" / "mailbox custom" → "saída do Agent tool" (contexto de sinalização entre lead e subagente)
-- "rebase" (sequencial de wave) → "merge" (o workflow agora usa merge em vez de rebase)
-- "agent-team-protocol.md" (referência) → "subagent-protocol.md"
+- "Agent Team" / "agent team" / "Agent Teams" → "subagent" / "subagents" / "subagent"
+- "teammate" / "teammates" → "subagent" / "subagents"
+- "worktree" / "git worktree" → "isolated branch" / "isolated branches" (task isolation context)
+- "mailbox" / "custom mailbox" → "Agent tool output" (lead-subagent signaling context)
+- "rebase" (sequential wave) → "merge" (workflow now uses merge instead of rebase)
+- "agent-team-protocol.md" (reference) → "subagent-protocol.md"
 
-### Arquivos atualizados
+### Updated files
 
 - `references/session-handoff-protocol.md`
 - `references/4-block-contract-template.md`
@@ -989,13 +1004,13 @@ Substituição completa do modelo Agent Teams (baseado em git worktrees + mailbo
 - `references/doc-reading-protocol.md`
 - `references/smoke-manual-checklist.md`
 - `references/example-run.md`
-- `references/changelog.md` (este arquivo)
+- `references/changelog.md` (this file)
 
-### Semântica preservada
+### Preserved semantics
 
-- Arquivos em `references/v2.4-snapshot/` não foram alterados (snapshot histórico imutável).
-- Entradas históricas do changelog (v2.4 e anteriores) permanecem com a terminologia original "Agent Teams" / "worktrees" — são registros históricos.
-- `using-git-worktrees` permanece como skill auxiliar no mapeamento de superpowers (a skill ainda existe no plugin superpowers, mas o protocolo ICM não a exige mais).
+- Files in `references/v2.4-snapshot/` were not altered (immutable historical snapshot).
+- Historical changelog entries (v2.4 and earlier) retain the original terminology "Agent Teams" / "worktrees" — they are historical records.
+- `using-git-worktrees` remains as an auxiliary skill in the superpowers mapping (the skill still exists in the superpowers plugin, but the ICM protocol no longer requires it).
 
 ---
 
@@ -1003,87 +1018,87 @@ Substituição completa do modelo Agent Teams (baseado em git worktrees + mailbo
 
 ### Why beta5
 
-Auditoria de git revelou 7 problemas: subagentes sem checkout explícito de branch, lead ficando em base_branch após merge, context-check.sh crashando sob Agent calls paralelos, conflito ICM prefix vs Conventional Commits, wave branches sem nenhum hook, bootstrap parcial sem recovery, e chmod silencioso no Windows.
+Git audit revealed 7 problems: subagents without explicit branch checkout, lead staying in base_branch after merge, context-check.sh crashing under parallel Agent calls, conflict between ICM prefix and Conventional Commits, wave branches with no hooks, partial bootstrap without recovery, and silent chmod on Windows.
 
-### Mudanças
+### Changes
 
-- **`references/subagent-protocol.md`:** §2.4 branch setup obrigatório no prompt do subagente (`git checkout -b` + validação). §5 merge sequencial agora faz stash pré-flight, retorna pra workspace branch após cada merge, unstash ao final.
-- **`templates/.claude/hooks/context-check.sh`:** reescrito. Removido `set -e` (causava crash em pipes vazios). Lock atômico via `mkdir` (elimina race condition com 4+ Agent calls paralelos). Cada comando de parse com `|| fallback`. jq check explícito. Guard contra git mid-operation.
-- **`references/git-hooks.md`:** R8 — commit-msg emite warning em wave branches sem Conventional Commit. Nova seção "Wave branches" documentando separação workspace prefix vs conventional.
-- **`templates/.git-hooks/commit-msg`:** R8 implementado — detecta `^wave-[0-9]+-[0-9]+/` e valida Conventional Commit types (não bloqueia, apenas avisa).
-- **`references/recovery-wizard.md`:** 6ª inconsistência `BOOTSTRAP_PARTIAL` (scaffold commitado sem hooks). Ação A: instalar hooks. Ação B: rollback + re-bootstrap. Ordem canônica atualizada.
-- **`templates/workspace/_config/xp-conventions.md.tpl`:** resolvido conflito workspace prefix vs Conventional Commits. Workspace branches = `workspace NNN: <desc>`. Wave branches = `<type>: <desc>`.
-- **`scripts/bootstrap.py`:** chmod warning em POSIX (não mais `pass` silencioso). Em Windows aceita silencioso (comportamento esperado).
+- **`references/subagent-protocol.md`:** §2.4 mandatory branch setup in subagent prompt (`git checkout -b` + validation). §5 sequential merge now does pre-flight stash, returns to workspace branch after each merge, unstashes at the end.
+- **`templates/.claude/hooks/context-check.sh`:** rewritten. Removed `set -e` (caused crash in empty pipes). Atomic lock via `mkdir` (eliminates race condition with 4+ parallel Agent calls). Each parse command with `|| fallback`. Explicit jq check. Guard against git mid-operation.
+- **`references/git-hooks.md`:** R8 — commit-msg emits warning in wave branches without Conventional Commit. New section "Wave branches" documenting separation of workspace prefix vs conventional.
+- **`templates/.git-hooks/commit-msg`:** R8 implemented — detects `^wave-[0-9]+-[0-9]+/` and validates Conventional Commit types (does not block, warns only).
+- **`references/recovery-wizard.md`:** 6th inconsistency `BOOTSTRAP_PARTIAL` (scaffold committed without hooks). Action A: install hooks. Action B: rollback + re-bootstrap. Canonical order updated.
+- **`templates/workspace/_config/xp-conventions.md.tpl`:** resolved conflict workspace prefix vs Conventional Commits. Workspace branches = `workspace NNN: <desc>`. Wave branches = `<type>: <desc>`.
+- **`scripts/bootstrap.py`:** chmod warning on POSIX (no longer silent `pass`). On Windows accepts silently (expected behavior).
 - **`SKILL.md`:** header bump beta4 → beta5.
 
 ### Tests
 
-Suite existente mantida. Novas regras de hook (R8) cobertas por `test_commit_msg_hook.bats` em CI. Bootstrap chmod testado em `test_bootstrap.py`.
+Existing suite maintained. New hook rules (R8) covered by `test_commit_msg_hook.bats` in CI. Bootstrap chmod tested in `test_bootstrap.py`.
 
 ---
 
-## v3.0.0-beta4 — 07→08 transição automática + 08 inferência de intenção (2026-04-26)
+## v3.0.0-beta4 — 07→08 automatic transition + 08 intent inference (2026-04-26)
 
 ### Why beta4
 
-User identificou bug semântico no beta3: stage 07 fechava workspace como `COMPLETED` sem transição automática pra stage 08, deixando feedback intake como ato manual desconectado do fluxo principal. Stage 08 ficava órfão; humano precisava lembrar de disparar manualmente. Decisão revisada:
+User identified a semantic bug in beta3: stage 07 closed workspace as `COMPLETED` without automatic transition to stage 08, leaving feedback intake as a manual act disconnected from the main flow. Stage 08 remained orphaned; human had to remember to trigger it manually. Decision revised:
 
-- Stage 07 **não é terminal**. Transita imediatamente pra 08 após merge confirmado.
-- Stage 08 = terminal real. Workspace fica em `COMPLETED_AWAITING_HUMAN` aguardando humano voltar com feedback livre após uso real do projeto (sem prazo).
-- Stage 08 **infere intenção** do feedback livre (sem menu A/B/C cru). Mini-confirm antes executar.
+- Stage 07 **is not terminal**. Transitions immediately to 08 after merge confirmed.
+- Stage 08 = actual terminal. Workspace stays in `COMPLETED_AWAITING_HUMAN` waiting for human to return with free-form feedback after real project use (no deadline).
+- Stage 08 **infers intent** from free-form feedback (no raw A/B/C menu). Mini-confirm before executing.
 
-### Mudanças
+### Changes
 
 - **`templates/workspace/stages/07_merge/CONTEXT.md.tpl`:**
   - `next_stage: null` → `next_stage: "08"`.
-  - Process passo 7 atualizado: transita 07_completed → imediatamente 08_in_progress + status COMPLETED_AWAITING_HUMAN.
-  - Process passo 8 NOVO: render `_kickoff.md` em `stages/08_feedback_intake/`.
-  - End-of-stage handoff substituído: KICKOFF block 07→08 sem menu A/B/C, instruções "abra nova sessão DEPOIS de uso real, cole feedback livre".
+  - Process step 7 updated: transitions 07_completed → immediately 08_in_progress + status COMPLETED_AWAITING_HUMAN.
+  - Process step 8 NEW: render `_kickoff.md` in `stages/08_feedback_intake/`.
+  - End-of-stage handoff replaced: KICKOFF block 07→08 without A/B/C menu, instructions "open new session AFTER real use, paste free-form feedback".
 
 - **`templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl`:**
-  - Pre-flight ajustado: aceita `status: COMPLETED_AWAITING_HUMAN` com `sub_stage: 08_in_progress` (transição automática vinda de 07).
-  - Process passo 4 substituído: "feedback livre do humano" em vez de "4 blocos guiados".
-  - Process passo 5 NOVO: **inferência de intenção** com heurísticas mapping → A/B/C + confidence score + clarificação se < 0.6.
-  - Process passo 6 NOVO: mini-confirm `[s/n/edit]` em vez de menu A/B/C cru.
-  - Seção "Inferência de intenção (heurísticas canônicas)" NOVA: mapping bug→stage X, sinais por saída, confidence, mini-confirm template.
+  - Pre-flight adjusted: accepts `status: COMPLETED_AWAITING_HUMAN` with `sub_stage: 08_in_progress` (automatic transition from 07).
+  - Process step 4 replaced: "human free-form feedback" instead of "4 guided blocks".
+  - Process step 5 NEW: **intent inference** with heuristics mapping → A/B/C + confidence score + clarification if < 0.6.
+  - Process step 6 NEW: mini-confirm `[y/n/edit]` instead of raw A/B/C menu.
+  - NEW section "Intent inference (canonical heuristics)": mapping bug→stage X, signals per exit, confidence, mini-confirm template.
 
-- **`references/session-handoff-protocol.md`:** seção "Stage 07 terminal" reescrita pra "Stage 07 → 08 transição automática". Nova seção "Stage 08 terminal real" cobrindo saídas A/B/C inferidas. Stage 08 disparo: nova sessão normal (sem comando especial).
+- **`references/session-handoff-protocol.md`:** section "Stage 07 terminal" rewritten as "Stage 07 → 08 automatic transition". New section "Stage 08 actual terminal" covering inferred exits A/B/C. Stage 08 trigger: normal new session (no special command).
 
-- **`SKILL.md`:** header bump beta3 → beta4. Seção "After bootstrap" atualizada: stage 07 → 08 automático; stage 08 saídas inferidas.
+- **`SKILL.md`:** header bump beta3 → beta4. Section "After bootstrap" updated: stage 07 → 08 automatic; stage 08 exits inferred.
 
 ### Tests
 
-527 passed mantido (templates não têm tests diretos; mudanças semânticas não afetam handoff.py / state machine schema).
+527 passed maintained (templates have no direct tests; semantic changes do not affect handoff.py / state machine schema).
 
-### Migração
+### Migration
 
-Workspaces beta3 já criados que estão em status COMPLETED após 07: nenhuma ação automática necessária. Se user quiser disparar feedback intake, basta editar L1 manualmente: `stage_atual=08`, `sub_stage=08_in_progress`, `status=COMPLETED_AWAITING_HUMAN`. Workspaces beta1/beta2 continuam legacy batched (decisão 4B).
+Workspaces beta3 already created that are in COMPLETED status after 07: no automatic action required. If user wants to trigger feedback intake, just edit L1 manually: `stage_atual=08`, `sub_stage=08_in_progress`, `status=COMPLETED_AWAITING_HUMAN`. Workspaces beta1/beta2 remain legacy batched (decision 4B).
 
 ---
 
-## v3.0.0-beta3 — 1-stage-1-sessão + handoff dual (2026-04-26)
+## v3.0.0-beta3 — 1-stage-1-session + dual handoff (2026-04-26)
 
 ### Why beta3
 
-Beta1/beta2 usavam sessões batched (Q3 do plan v1: design 00+01+02 numa só, closing 05+06+07 numa só). Em uso real, contexto cresceu além do alvo de 2-8k por L2. Token spend total não-linear vs número de sub_stages na batch.
+Beta1/beta2 used batched sessions (Q3 from plan v1: design 00+01+02 in one session, closing 05+06+07 in one session). In real usage, context grew beyond the 2-8k target per L2. Total token spend non-linear vs number of sub_stages in the batch.
 
-User sinalizou ganho empírico em **context fresh** > custo de cache miss. Decisão revisada: **1 stage = 1 sessão** (decisão A1, supersede Q3-A do plan v1). Cada stage paga 1 cache miss (~2-3k tokens warm-up) em troca de context enxuto + token spend total menor.
+User signaled empirical gain from **fresh context** > cache miss cost. Decision revised: **1 stage = 1 session** (decision A1, supersedes Q3-A from plan v1). Each stage pays 1 cache miss (~2-3k tokens warm-up) in exchange for lean context + lower total token spend.
 
-### Mudanças
+### Changes
 
-- **`references/session-handoff-protocol.md` (NOVO):** doc canonical do protocolo "1 stage = 1 sessão". Schema `_kickoff.md` (L4-kickoff layer), atomicidade do commit handoff, anti-patterns. Stage 04 mantém wave-aware (1 sessão lead por wave; sub-waves dentro da mesma sessão). Stage 07 terminal (não gera kickoff). Stage 08 saídas A/B/C.
-- **`templates/workspace/stages/_kickoff.md.tpl` (NOVO):** template kickoff genérico com placeholders.
-- **`scripts/handoff.py` (NOVO):** `render_kickoff`, `write_kickoff`, `extract_kickoff_metadata`, `validate_kickoff_present`. CLI mode pra debug. 25 unit tests + snapshot fixture.
-- **9 L2 templates atualizados:** cada `templates/workspace/stages/<NN>_<name>/CONTEXT.md.tpl` ganhou linha `_kickoff.md` na tabela Inputs (condicional) + nova seção "End of stage handoff" com checklist + KICKOFF block verbal pro user. Stages 04, 07, 08 com customizações específicas. +541 linhas total.
-- **`SKILL.md`:** seção "After bootstrap" reescrita com protocolo 1-stage-1-sessão. Trade-off cache miss vs context fresh documentado.
+- **`references/session-handoff-protocol.md` (NEW):** canonical doc for the "1 stage = 1 session" protocol. `_kickoff.md` schema (L4-kickoff layer), handoff commit atomicity, anti-patterns. Stage 04 keeps wave-aware (1 lead session per wave; sub-waves within same session). Stage 07 terminal (generates no kickoff). Stage 08 exits A/B/C.
+- **`templates/workspace/stages/_kickoff.md.tpl` (NEW):** generic kickoff template with placeholders.
+- **`scripts/handoff.py` (NEW):** `render_kickoff`, `write_kickoff`, `extract_kickoff_metadata`, `validate_kickoff_present`. CLI mode for debug. 25 unit tests + snapshot fixture.
+- **9 L2 templates updated:** each `templates/workspace/stages/<NN>_<name>/CONTEXT.md.tpl` gained `_kickoff.md` row in Inputs table (conditional) + new "End of stage handoff" section with checklist + verbal KICKOFF block for user. Stages 04, 07, 08 with specific customizations. +541 lines total.
+- **`SKILL.md`:** section "After bootstrap" rewritten with 1-stage-1-session protocol. Cache miss vs fresh context trade-off documented.
 
-### Migração beta1/beta2 (decisão 4B)
+### Migration beta1/beta2 (decision 4B)
 
-**Sem migração forçada.** Workspaces criados antes do beta3 continuam em batched mode (legacy). Apenas workspaces criados pós-beta3 usam 1-stage-1-sessão.
+**No forced migration.** Workspaces created before beta3 remain in batched mode (legacy). Only workspaces created after beta3 use 1-stage-1-session.
 
 ### Tests
 
-527 passed (+25 novos). Coverage 82%. Bats CI-only.
+527 passed (+25 new). Coverage 82%. Bats CI-only.
 
 ---
 
@@ -1091,12 +1106,12 @@ User sinalizou ganho empírico em **context fresh** > custo de cache miss. Decis
 
 ### Why beta2
 
-Beta1 carregava bug crítico no pre-commit hook: lia `.git/COMMIT_EDITMSG` em pre-commit stage, mas git só persiste msg DEPOIS do hook passar. Hook validava msg do commit ANTERIOR (ou empty no primeiro). Workaround temporário (instalar hook depois dos commits do bootstrap) só protegia o bootstrap; commits futuros do user permaneciam validando msg stale.
+Beta1 had a critical bug in the pre-commit hook: it read `.git/COMMIT_EDITMSG` in pre-commit stage, but git only persists the message AFTER the hook passes. Hook validated the PREVIOUS commit's message (or empty on first). Temporary workaround (install hook after bootstrap commits) only protected bootstrap; future user commits remained validating stale message.
 
-### Mudanças
+### Changes
 
-- **fix(hooks) — `0afcba7`:** split em 2 stages canônicos. `pre-commit` mantém file checks + atomicidade L1↔outputs. `commit-msg` (NOVO) recebe path em `$1` com msg atual; valida prefix + exceção ADR. Installer + bootstrap atualizados. Regression test garante msg ATUAL via `$1`.
-- **feat(skill) — `77348b7`:** SKILL.md "Intent inference" com heurísticas profile/tier (10 mappings) + menu confirm + seed inicial em `stages/01_discovery/_seed.md`. Anti-superpowers rule (inegociável) refletida no L0 (rule 8).
+- **fix(hooks) — `0afcba7`:** split into 2 canonical stages. `pre-commit` keeps file checks + L1↔outputs atomicity. `commit-msg` (NEW) receives path in `$1` with current message; validates prefix + ADR exception. Installer + bootstrap updated. Regression test guarantees CURRENT message via `$1`.
+- **feat(skill) — `77348b7`:** SKILL.md "Intent inference" with profile/tier heuristics (10 mappings) + confirm menu + initial seed in `stages/01_discovery/_seed.md`. Anti-superpowers rule (non-negotiable) reflected in L0 (rule 8).
 
 ### Tests
 
@@ -1104,229 +1119,229 @@ Beta1 carregava bug crítico no pre-commit hook: lia `.git/COMMIT_EDITMSG` em pr
 
 ---
 
-## v3.0.0-beta1 — Reescrita completa (2026-04-26)
+## v3.0.0-beta1 — Complete rewrite (2026-04-26)
 
-> Filesystem é o programa. Skill é parteira, não orquestradora.
+> The filesystem is the program. The skill is midwife, not orchestrator.
 
-### Resumo
+### Summary
 
-Reescrita end-to-end em 7 waves. Skill v2.4 (orquestradora persistente, 1 main + N subagents, 6 estágios) substituída por arquitetura ICM v3 (parteira one-shot + filesystem governa ciclo + 9 estágios + Agent Teams + Wave Planner LLM review + Recovery Wizard). v2.4 preservada em `references/v2.4-snapshot/` (snapshot histórico imutável).
+End-to-end rewrite in 7 waves. Skill v2.4 (persistent orchestrator, 1 main + N subagents, 6 stages) replaced by ICM v3 architecture (one-shot midwife + filesystem governs cycle + 9 stages + Agent Teams + Wave Planner LLM review + Recovery Wizard). v2.4 preserved in `references/v2.4-snapshot/` (immutable historical snapshot).
 
 ### Why v3
 
-**Problemas estruturais detectados em v2.4:**
+**Structural problems detected in v2.4:**
 
-- **B1**: Path absoluto vazado (orquestradora perdia CWD em fronteiras de subagent → escrevia em diretório errado).
-- **B2**: Paths relativos `../../` confundiam subagents.
-- **B3**: Stop points em subagent sem protocolo de retorno bem definido.
-- **B6**: Sync barreira frouxa em fase de implementação paralela.
-- **V3**: Skills superpowers invocadas dentro de cada estágio carregavam ~2-5k tok cada, inflando contexto.
-- **Conflito de regras**: subagent rodando `/xp-workflow` dentro de estágio 03 batia com protocolo ICM.
+- **B1**: Leaked absolute path (orchestrator lost CWD at subagent boundaries → wrote to wrong directory).
+- **B2**: Relative paths `../../` confused subagents.
+- **B3**: Stop points in subagent without well-defined return protocol.
+- **B6**: Loose sync barrier in parallel implementation phase.
+- **V3**: Superpowers skills invoked inside each stage loaded ~2-5k tok each, inflating context.
+- **Rule conflict**: subagent running `/xp-workflow` inside stage 03 collided with ICM protocol.
 
-**Decisões norteadoras:**
+**Guiding decisions:**
 
-1. Filesystem é o programa, skill é só bootstrap.
-2. Uma fase = uma sessão nova (cache prompt 5min Anthropic).
-3. Skills superpowers viram referências (sumários 200tok), não invocações.
-4. 4-block contract obrigatório por task.
-5. Profile + Tier no L0 calibram rigor (10 profiles × 4 tiers = 40 combos).
-6. Mandatory stop points + menu A/B/C padronizado em todo estágio com decisão.
-7. Dev↔QA loop formal via auto-QA Akita 15-item.
-8. Waves de paralelismo só onde for safe (DAG por file footprint).
-9. Git worktrees por teammate (race mitigation física).
-10. Reconnaissance Phase antes de tudo.
-11. Feedback intake universal fase 08 (não só production).
-12. Self-revision DROPADA — skill é parteira, não runtime evolutivo.
+1. Filesystem is the program, skill is just bootstrap.
+2. One phase = one new session (Anthropic 5min prompt cache).
+3. Superpowers skills become references (200tok summaries), not invocations.
+4. 4-block contract mandatory per task.
+5. Profile + Tier in L0 calibrate rigor (10 profiles × 4 tiers = 40 combos).
+6. Mandatory stop points + standard A/B/C menu in every stage with a decision.
+7. Formal dev↔QA loop via auto-QA Akita 15-item.
+8. Parallelism waves only where safe (DAG by file footprint).
+9. Git worktrees per teammate (physical race mitigation).
+10. Reconnaissance Phase before everything.
+11. Universal feedback intake stage 08 (not just production).
+12. Self-revision DROPPED — skill is midwife, not evolutionary runtime.
 
 ### Breaking Changes
 
-- **CLI**: `/xp-icm-workflow` agora exige `profile=` e `tier=` (com fallback interativo). Sem default `app_web_backend`+`development`.
-- **Estrutura de pastas**: 9 estágios (00 recon → 08 feedback intake) substituem os 6 da v2.4 (00 bootstrap → 06 merge). Numeração e nomes mudaram.
-- **Branches**: agora 3 tipos — `<base_branch>` (código), `workspace/NNN-slug` (state-only), `wave-NNN-N/<task-slug>` (código wave). v2.4 só tinha 1.
-- **State machine L1**: yaml frontmatter strict (PyYAML safe_load) com `sub_stage` enum específico por estágio. Schema validado em pre-flight.
-- **Pre-commit hook**: instalado por padrão. Bloqueia bypass `--no-verify` e valida atomicidade L1↔outputs + prefixos.
-- **Skills superpowers**: NÃO invocadas em runtime. Substituídas por sumários 200tok pré-copiados em `<workspace>/_references/superpowers-summary/`. Escape hatch via `Skill()` exige registro `event: skill_escape_hatch` em L1 history.
-- **ADRs**: ciclo de vida formalizado — nascem em estágio 02, vão pra `<project_root>/docs/decisions/`, edição direta proibida (use superseding ADR).
-- **Self-revision**: removida. v2.4 tinha Phase 7 (self-revision conversational); v3 dropa.
+- **CLI**: `/xp-icm-workflow` now requires `profile=` and `tier=` (with interactive fallback). No default `app_web_backend`+`development`.
+- **Folder structure**: 9 stages (00 recon → 08 feedback intake) replace the 6 from v2.4 (00 bootstrap → 06 merge). Numbering and names changed.
+- **Branches**: now 3 types — `<base_branch>` (code), `workspace/NNN-slug` (state-only), `wave-NNN-N/<task-slug>` (wave code). v2.4 had only 1.
+- **State machine L1**: strict YAML frontmatter (PyYAML safe_load) with stage-specific `sub_stage` enum. Schema validated in pre-flight.
+- **Pre-commit hook**: installed by default. Blocks `--no-verify` bypass and validates L1↔outputs atomicity + prefixes.
+- **Superpowers skills**: NOT invoked at runtime. Replaced by 200tok summaries pre-copied in `<workspace>/_references/superpowers-summary/`. Escape hatch via `Skill()` requires registering `event: skill_escape_hatch` in L1 history.
+- **ADRs**: formalized lifecycle — born in stage 02, go to `<project_root>/docs/decisions/`, direct editing prohibited (use superseding ADR).
+- **Self-revision**: removed. v2.4 had Phase 7 (conversational self-revision); v3 drops it.
 
 ### What's New (Waves 1-6)
 
-| Wave | Entregue |
+| Wave | Delivered |
 |---|---|
-| 1 — Foundations | Schema state-machine L1 com sub_stage enum por estágio; 4 scripts deterministic (profile-merge, lessons-match, wave-planner-script, validate_state); pre-commit hook bash POSIX com 6 regras; templates L0/L1; profile-matrix 10×4; pyproject.toml com workaround pytest-playwright. |
-| 2 — Bootstrap + Recovery | SKILL.md reescrita (parteira one-shot); bootstrap.sh + bootstrap.py com greenfield/existing/external_repo; recovery-wizard.py detectando 6 inconsistências R2.7+R4.5 com 3 ações A/B/C; git-hook-installer.sh idempotente. |
-| 3 — Stage Templates + L2 | 9 L2 templates (00..08) com schema canônico (frontmatter + Inputs + Não Lê + sub_stage enum + applicable_stop_points); 4 references (stage-templates, stop-points-canonical 12 itens, 4-block-contract + ciclo TDD 7 passos + Akita 15-item, feedback-intake-fase08 com 3 saídas A/B/C); workspace stop-points.md resolvido por tier. |
-| 4 — Agent Teams + Wave Planner LLM | references/wave-planner-algorithm.md (DAG + LLM review subagent R2.4); references/subagent-protocol.md (spawn via Agent tool + mid-wave reduce); scripts/wave-planner-llm-review.py com modo mock (`--mock-response`), prod (`--llm-response`) e prompt (exit 2). |
-| 5 — Superpowers summaries | 10 sumários 200tok em `templates/_references/superpowers-summary/` (brainstorming, writing-plans, dispatching-parallel-agents, TDD, subagent-DD, verification, requesting-review, receiving-review, finishing-branch, debugging); references/superpowers-mapping.md, xp-workflow-integration.md, example-run.md reescritas; bootstrap.py copia summaries + 7 runtime refs pra workspace. |
-| 6 — CI + Smoke | `.github/workflows/test-skill.yml` (Ubuntu Python 3.13 + bats); tests/run.sh com flags `--ci` e `--no-bats`; README badges; references/smoke-manual-checklist.md (10 itens canônicos pré-release). |
+| 1 — Foundations | L1 state-machine schema with per-stage sub_stage enum; 4 deterministic scripts (profile-merge, lessons-match, wave-planner-script, validate_state); POSIX bash pre-commit hook with 6 rules; L0/L1 templates; profile-matrix 10×4; pyproject.toml with pytest-playwright workaround. |
+| 2 — Bootstrap + Recovery | SKILL.md rewritten (one-shot midwife); bootstrap.sh + bootstrap.py with greenfield/existing/external_repo; recovery-wizard.py detecting 6 inconsistencies R2.7+R4.5 with 3 actions A/B/C; idempotent git-hook-installer.sh. |
+| 3 — Stage Templates + L2 | 9 L2 templates (00..08) with canonical schema (frontmatter + Inputs + Do Not Read + per-stage sub_stage enum + applicable_stop_points); 4 references (stage-templates, stop-points-canonical 12 items, 4-block-contract + 7-step TDD cycle + Akita 15-item, feedback-intake-stage08 with 3 exits A/B/C); workspace stop-points.md resolved by tier. |
+| 4 — Agent Teams + Wave Planner LLM | references/wave-planner-algorithm.md (DAG + LLM review subagent R2.4); references/subagent-protocol.md (spawn via Agent tool + mid-wave reduce); scripts/wave-planner-llm-review.py with mock mode (`--mock-response`), prod (`--llm-response`) and prompt (exit 2). |
+| 5 — Superpowers summaries | 10 200tok summaries in `templates/_references/superpowers-summary/` (brainstorming, writing-plans, dispatching-parallel-agents, TDD, subagent-DD, verification, requesting-review, receiving-review, finishing-branch, debugging); references/superpowers-mapping.md, xp-workflow-integration.md, example-run.md rewritten; bootstrap.py copies summaries + 7 runtime refs to workspace. |
+| 6 — CI + Smoke | `.github/workflows/test-skill.yml` (Ubuntu Python 3.13 + bats); tests/run.sh with `--ci` and `--no-bats` flags; README badges; references/smoke-manual-checklist.md (10 canonical items pre-release). |
 
-### Suite stats finais
+### Final suite stats
 
-- **502 tests verde** (100% Python 3.13 Windows + Linux CI).
-- **Coverage 83%** total. Scripts puros 87-96%. Bootstrap 49% (orchestration cobre via bats e2e). Recovery 73%.
+- **502 tests green** (100% Python 3.13 Windows + Linux CI).
+- **Coverage 83%** total. Pure scripts 87-96%. Bootstrap 49% (orchestration covered via bats e2e). Recovery 73%.
 - **Bats CI-only**: integration (test_git_hooks, test_bootstrap, test_worktrees) + e2e (recovery_orphan, greenfield_full, existing_repo, external_repo).
-- **Hypothesis property-based**: state-machine + wave-planner DAG (preserva deps, sub_waves respeitam cap).
-- **Mocks LLM**: 3 fixtures em `tests/mocks/llm_review_responses/` (approve_clean, propose_implicit_dep, invalid_verdict).
+- **Hypothesis property-based**: state-machine + wave-planner DAG (preserves deps, sub_waves respect cap).
+- **LLM Mocks**: 3 fixtures in `tests/mocks/llm_review_responses/` (approve_clean, propose_implicit_dep, invalid_verdict).
 
 ### Migration Guide v2.4 → v3
 
-**Workspaces v2.4 existentes**: NÃO migram automaticamente. Estratégia recomendada:
+**Existing v2.4 workspaces**: do NOT migrate automatically. Recommended strategy:
 
-1. Workspace v2.4 termina ciclo atual (chega a `STAGE: COMPLETED`).
-2. Para nova feature: bootstrappar workspace v3 do zero com `/xp-icm-workflow profile=X tier=Y`.
-3. Lessons coletadas em `docs/lessons.md` migram automaticamente (formato compatível).
-4. ADRs em `docs/decisions/` migram automaticamente (mesmo formato).
-5. v2.4 snapshot preservado em `references/v2.4-snapshot/` para arqueologia.
+1. v2.4 workspace finishes current cycle (reaches `STAGE: COMPLETED`).
+2. For new feature: bootstrap v3 workspace from scratch with `/xp-icm-workflow profile=X tier=Y`.
+3. Lessons collected in `docs/lessons.md` migrate automatically (compatible format).
+4. ADRs in `docs/decisions/` migrate automatically (same format).
+5. v2.4 snapshot preserved in `references/v2.4-snapshot/` for archaeology.
 
 **CLI mapping**:
 
 | v2.4 | v3 |
 |---|---|
-| `/xp-icm-workflow` (sem args) | `/xp-icm-workflow profile=<X> tier=<Y>` (obrigatório) |
+| `/xp-icm-workflow` (no args) | `/xp-icm-workflow profile=<X> tier=<Y>` (required) |
 | `STAGE: 03_implementation` | `stage_atual: "04"` + `sub_stage: "04_wave_<N>_in_progress"` |
-| Subagent spawn ad-hoc | Agent Team na fase 04 (lead + N teammates em git worktrees) |
-| Skills superpowers invocadas inline | Sumários 200tok pré-copiados (escape hatch via L1 history) |
+| Ad-hoc subagent spawn | Agent Team in stage 04 (lead + N teammates in git worktrees) |
+| Superpowers skills invoked inline | 200tok pre-copied summaries (escape hatch via L1 history) |
 
-**Conventions stáveis** (não mudaram entre v2.4 e v3):
+**Stable conventions** (unchanged between v2.4 and v3):
 
 - Layer Loading Protocol (L0 → L1 → L2 → L3 → L4).
-- ADR formato (Context / Decision / Consequences / Status).
+- ADR format (Context / Decision / Consequences / Status).
 - Edit-source principle.
-- Português Brasil pra conteúdo, inglês pra identificadores.
+- Brazilian Portuguese for content, English for identifiers.
 
-### Critérios de promoção v3.0.0-beta1 → v3.0.0
+### Promotion criteria v3.0.0-beta1 → v3.0.0
 
-Documentados em `references/smoke-manual-checklist.md`:
+Documented in `references/smoke-manual-checklist.md`:
 
-- ✅ Suite formal: ≥80% coverage críticos, ≥60% resto. CI verde 7 dias consecutivos.
-- ✅ ≥3 projetos reais usaram v3.0.0-beta1 sem regressão grave.
-- ✅ Comparação $: v3 ≤ 60% v2.4 em ≥3 projetos.
-- ✅ 10 itens smoke checklist PASS em ≥3 projetos.
-- ✅ Lessons coletadas em `docs/lessons.md` da própria skill (futura wave 8 manutenção).
-
----
-
-## v2.4.0 — Refactor de concisão + correções adversariais
-
-### Refactor estrutural (concisão sem perda)
-
-- **SKILL.md reduzido de 1291 → ~600 linhas** sem perder hard-gates, princípios ou contratos.
-- Templates de `CONTEXT.md` dos 6 estágios + templates de `CLAUDE.md` raiz e `CONTEXT.md` raiz movidos para `references/stage-templates.md`.
-- Seção Extensibilidade movida para `references/extending-skill.md`.
-- Histórico de versão movido para este arquivo (`references/changelog.md`).
-- Novo `references/example-run.md` com exemplo de transição entre estágios.
-- "Phase 1 — Execução por Estágios" compactada: protocolo de delegação e fix loop ficam no SKILL.md (load-bearing em runtime), detalhe de template fica em reference.
-- Stage Transition Checklist declarado 1× em seção dedicada; estágios referenciam por nome em vez de duplicar.
-- Princípio de Delegação com menção repetida somente onde o risco é real (Estágios 03/04/05).
-- ICM Design Principles no SKILL.md ficam como 5 títulos + 1 frase cada; detalhe no reference `icm-paper-summary.md`.
-- Convenção de prefixo `[L3:cfg]` / `[L4:in]` nos Inputs table — reduz prosa repetida sem perder distinção operacional restrição vs input.
-
-### Correções adversariais round 1 (review por subagent)
-
-- **Gap A (example-run)**: prompt do subagent no `example-run.md` agora inclui `decisions.md` — alinha com o Protocolo de Delegação do SKILL.md.
-- **Gap B (contradição L1 vs L3)**: `docs/decisions/` agora é L3 consistente em todo SKILL.md (seção Edit-Source corrigida).
-- **Gap C (race condition em reports paralelos)**: subagents paralelos escrevem em `output/reports/task-<slug>.md` (arquivos próprios). Orquestradora consolida depois em `implementation-report.md` — elimina race. Protocolo de Delegação, formato de output e example-run atualizados.
-- **Gap D (Phase 0 não respeitava AGENTS.md)**: adicionado Passo 0.0 "Respeitar Instruction Priority" — lê `AGENTS.md` e `CLAUDE.md` do projeto pai ANTES de criar workspace.
-- **Gap E (pasta `stages/XX/references/` nunca usada)**: removida da estrutura padrão. Agora opcional, criar apenas se houver material de referência específico do estágio.
-- **Gap F (tensão ADRs L3 mas criados no run)**: adicionada seção "Ciclo de Vida dos ADRs" — esclarece nascimento no Estágio 02, promoção imediata a L3, edição via Edit-Source.
-- **Gap G ("DELEGA, não executa" ambíguo)**: reformulado Orchestration Boundary — distingue invocação de skills (01-02) de delegação a subagents (03+), clarifica o que a orquestradora pode ler.
-
-### Correções adversariais round 2 (cross-file review completa)
-
-- **Gap S (template Estágio 03 desalinhado com correção Gap C)**: `references/stage-templates.md` atualizado — Template do Estágio 03 agora reflete a nova estrutura `reports/task-*.md` + consolidação em `implementation-report.md`. Outputs, Process passo 7 e Verify alinhados com SKILL.md.
-- **Gap T (xp-workflow-integration tinha `docs/*` como L1)**: tabela "Documentos Compartilhados" corrigida — `docs/decisions/`, `docs/tech_debt.md`, `docs/lessons.md` agora são L3 consistente com Gap B. Tabela também inclui novos artefatos `reports/task-*.md`.
-- **Gap U (superpowers-mapping regra 4 omitia reports paralelos)**: regra 4 agora lista `reports/task-*.md` individuais como artefato que orquestradora lê.
-- **Gap Z (ambiguidade STAGE após transição)**: Stage Transition Checklist item 3 agora especifica que, após marcar estágio completado no histórico, o campo `STAGE` do `CONTEXT.md` raiz é atualizado para apontar ao PRÓXIMO estágio como `IN_PROGRESS`. Último estágio marca `STAGE: COMPLETED`. Example-run alinhado.
-
-### Correções adversariais round 3 (detalhes finos cross-file)
-
-- **Gap AB/AK (numeração do passo do Bootstrap)**: `stage-templates.md` referenciava "Passo 0.5" e "Passo 0.4" mas SKILL.md combinou em "Passo 0.4-0.6". Alinhado.
-- **Gap AD (example-run descrevendo CONTEXT.md raiz errado pós-Z)**: Passo 2 do `example-run.md` agora reflete que ao entrar no Estágio 03 o campo `STAGE` já é `03_implementation, IN_PROGRESS` (não `02_design COMPLETED`).
-- **Gap AE (review gate Estágio 03 omitia reports individuais)**: SKILL.md atualizado — review gate agora menciona leitura dos `reports/task-*.md` individuais E/OU consolidado.
-- **Gap AF (superpowers-mapping listava lessons como input do subagent)**: corrigido — apenas orquestradora lê `lessons.md`; subagent recebe lições filtradas injetadas no prompt.
-- **Gap AH (contagem errada de seções)**: SKILL.md e `stage-templates.md` diziam "seis seções" mas listavam 7 (Estado, Skill, Inputs, Process, Outputs, Verify, Review Gate). Corrigido para "sete seções".
-- **Gap AJ (extending-skill item 4 omitia templates raiz)**: checklist agora inclui atualização de `CLAUDE.md` raiz e `CONTEXT.md` raiz quando a nova skill impactar identidade ou roteamento do workspace.
-- **Gap AL (lessons.md fluxo não explícito)**: SKILL.md Processo do Estágio 03 passo 5 agora explicita que orquestradora lê `lessons.md`, extrai lições aplicáveis e injeta no prompt de delegação — subagent não lê o arquivo diretamente.
-- **Gap AM (example-run anti-consistência ADR 0003)**: regras de contexto do prompt do subagent (a) agora dizem "NÃO ler ADRs 0001-0002"; ADR 0003 (stack) está resumido no `## Contexto do Workspace` do prompt — não duplicar leitura.
-
-### Correções adversariais round 4 (subagent fresco)
-
-- **Gap AN (numeração quebrada Estágio 03)**: "Processo da orquestradora" tinha passos 1-6 e depois "Após todos completarem" reiniciava em 6-8 — colisão. Agora sequencial 1-10, coerente.
-- **Gap AO (regressão Gap C — quem escreve implementation-report)**: Texto "Formato de `implementation-report.md` (subagentes escrevem, orquestradora lê)" contradizia a arquitetura pós-Gap C. Corrigido: formato descreve `output/reports/task-<slug>.md` (cada subagent escreve o seu); consolidado é agregação feita pela orquestradora ou consolidator.
-- **Gap AP (template Estágio 03 omitia reports paralelos)**: `stage-templates.md` Princípio de Delegação e Review Gate diziam "orquestradora lê SOMENTE implementation-report.md". Agora menciona reports individuais + consolidado consistente com SKILL.md e superpowers-mapping.
-- **Gap AQ (example-run histórico sem ADRs)**: Stage Transition Checklist do exemplo agora inclui ADRs criados no Estágio 02 no histórico da transição.
-- **Gap AR (typo schema→shema)**: 2 ocorrências de `0004-shema-habits.md` corrigidas para `0004-schema-habits.md`.
-- **Gap AS (árvore docs/ em linha com vírgula)**: estrutura de pastas SKILL.md Passo 0.3 agora mostra `docs/` com 3 sub-itens em árvore (decisions/, lessons.md, tech_debt.md), classificados como L3.
-
-Comportamento funcional equivalente a v2.3.0 + resolução de todas as ambiguidades, contradições e riscos estruturais detectados em 4 rounds de review adversarial (33 gaps corrigidos). Nenhum hard-gate removido.
+- ✅ Formal suite: ≥80% coverage critical paths, ≥60% rest. CI green 7 consecutive days.
+- ✅ ≥3 real projects used v3.0.0-beta1 without serious regression.
+- ✅ Cost comparison: v3 ≤ 60% of v2.4 in ≥3 projects.
+- ✅ 10 smoke checklist items PASS in ≥3 projects.
+- ✅ Lessons collected in `docs/lessons.md` of the skill itself (future wave 8 maintenance).
 
 ---
 
-## v2.3.0 — Hard Gates e Separação Rígida
+## v2.4.0 — Conciseness refactor + adversarial corrections
 
-- Stage Transition Protocol (5-item checklist hard gate entre estágios).
-- Orchestration Boundary Rule (tabela por tipo de estágio + auto-correção).
-- Fix Loop Protocol (review → delegate → review loop para P0/P1 issues).
-- Review Gates 01-06 com checklist de transição explícito.
-- Seção Estado obrigatória nos 6 templates de `CONTEXT.md`.
+### Structural refactor (conciseness without loss)
+
+- **SKILL.md reduced from 1291 → ~600 lines** without losing hard-gates, principles or contracts.
+- Templates of `CONTEXT.md` for the 6 stages + root `CLAUDE.md` and root `CONTEXT.md` templates moved to `references/stage-templates.md`.
+- Extensibility section moved to `references/extending-skill.md`.
+- Version history moved to this file (`references/changelog.md`).
+- New `references/example-run.md` with an example of stage transition.
+- "Phase 1 — Stage Execution" compacted: delegation protocol and fix loop remain in SKILL.md (load-bearing at runtime), template detail goes in reference.
+- Stage Transition Checklist declared 1× in dedicated section; stages reference by name instead of duplicating.
+- Delegation Principle with repeated mention only where risk is real (Stages 03/04/05).
+- ICM Design Principles in SKILL.md remain as 5 titles + 1 sentence each; detail in reference `icm-paper-summary.md`.
+- Convention prefix `[L3:cfg]` / `[L4:in]` in Inputs table — reduces repeated prose without losing operational distinction between constraint vs input.
+
+### Adversarial corrections round 1 (subagent review)
+
+- **Gap A (example-run)**: subagent prompt in `example-run.md` now includes `decisions.md` — aligns with Delegation Protocol in SKILL.md.
+- **Gap B (L1 vs L3 contradiction)**: `docs/decisions/` now L3 consistent throughout SKILL.md (Edit-Source section corrected).
+- **Gap C (race condition in parallel reports)**: parallel subagents write to `output/reports/task-<slug>.md` (their own files). Orchestrator consolidates later in `implementation-report.md` — eliminates race. Delegation Protocol, output format and example-run updated.
+- **Gap D (Phase 0 did not respect AGENTS.md)**: added Step 0.0 "Respect Instruction Priority" — reads `AGENTS.md` and `CLAUDE.md` from parent project BEFORE creating workspace.
+- **Gap E (`stages/XX/references/` folder never used)**: removed from default structure. Now optional, create only if there is stage-specific reference material.
+- **Gap F (tension ADRs L3 but created at run time)**: added section "ADR Lifecycle" — clarifies birth in Stage 02, immediate promotion to L3, editing via Edit-Source.
+- **Gap G ("DELEGATE, do not execute" ambiguous)**: reformulated Orchestration Boundary — distinguishes skill invocation (01-02) from subagent delegation (03+), clarifies what orchestrator may read.
+
+### Adversarial corrections round 2 (complete cross-file review)
+
+- **Gap S (Stage 03 template misaligned with Gap C correction)**: `references/stage-templates.md` updated — Stage 03 template now reflects new `reports/task-*.md` structure + consolidation in `implementation-report.md`. Outputs, Process step 7 and Verify aligned with SKILL.md.
+- **Gap T (xp-workflow-integration had `docs/*` as L1)**: "Shared Documents" table corrected — `docs/decisions/`, `docs/tech_debt.md`, `docs/lessons.md` now L3 consistent with Gap B. Table also includes new artifacts `reports/task-*.md`.
+- **Gap U (superpowers-mapping rule 4 omitted parallel reports)**: rule 4 now lists individual `reports/task-*.md` as artifacts that orchestrator reads.
+- **Gap Z (STAGE ambiguity after transition)**: Stage Transition Checklist item 3 now specifies that, after marking stage completed in history, the `STAGE` field of root `CONTEXT.md` is updated to point to the NEXT stage as `IN_PROGRESS`. Last stage marks `STAGE: COMPLETED`. Example-run aligned.
+
+### Adversarial corrections round 3 (fine cross-file details)
+
+- **Gap AB/AK (Bootstrap step numbering broken)**: `stage-templates.md` referenced "Step 0.5" and "Step 0.4" but SKILL.md combined into "Step 0.4-0.6". Aligned.
+- **Gap AD (example-run describing wrong root CONTEXT.md post-Z)**: Step 2 of `example-run.md` now reflects that upon entering Stage 03 the `STAGE` field is already `03_implementation, IN_PROGRESS` (not `02_design COMPLETED`).
+- **Gap AE (Stage 03 review gate omitted individual reports)**: SKILL.md updated — review gate now mentions reading individual `reports/task-*.md` AND/OR consolidated.
+- **Gap AF (superpowers-mapping listed lessons as subagent input)**: corrected — only orchestrator reads `lessons.md`; subagent receives filtered lessons injected in prompt.
+- **Gap AH (wrong section count)**: SKILL.md and `stage-templates.md` said "six sections" but listed 7 (State, Skill, Inputs, Process, Outputs, Verify, Review Gate). Corrected to "seven sections".
+- **Gap AJ (extending-skill item 4 omitted root templates)**: checklist now includes updating root `CLAUDE.md` and root `CONTEXT.md` when the new skill impacts workspace identity or routing.
+- **Gap AL (lessons.md flow not explicit)**: SKILL.md Stage 03 Process step 5 now makes explicit that orchestrator reads `lessons.md`, extracts applicable lessons and injects into delegation prompt — subagent does not read the file directly.
+- **Gap AM (example-run anti-consistency ADR 0003)**: subagent prompt context rules (a) now say "DO NOT read ADRs 0001-0002"; ADR 0003 (stack) is summarized in `## Workspace Context` of the prompt — do not duplicate reading.
+
+### Adversarial corrections round 4 (fresh subagent)
+
+- **Gap AN (broken Stage 03 numbering)**: "Orchestrator process" had steps 1-6 and then "After all complete" restarted at 6-8 — collision. Now sequential 1-10, coherent.
+- **Gap AO (regression Gap C — who writes implementation-report)**: Text "Format of `implementation-report.md` (subagents write, orchestrator reads)" contradicted the post-Gap C architecture. Corrected: format describes `output/reports/task-<slug>.md` (each subagent writes its own); consolidated is aggregation done by orchestrator or consolidator.
+- **Gap AP (Stage 03 template omitted parallel reports)**: `stage-templates.md` Delegation Principle and Review Gate said "orchestrator reads ONLY implementation-report.md". Now mentions individual reports + consolidated, consistent with SKILL.md and superpowers-mapping.
+- **Gap AQ (example-run history without ADRs)**: Stage Transition Checklist in example now includes ADRs created in Stage 02 in the transition history.
+- **Gap AR (schema→shema typo)**: 2 occurrences of `0004-shema-habits.md` corrected to `0004-schema-habits.md`.
+- **Gap AS (docs/ tree inline with comma)**: folder structure SKILL.md Step 0.3 now shows `docs/` with 3 sub-items in tree (decisions/, lessons.md, tech_debt.md), classified as L3.
+
+Functional behavior equivalent to v2.3.0 + resolution of all ambiguities, contradictions and structural risks detected in 4 rounds of adversarial review (33 gaps corrected). No hard-gate removed.
 
 ---
 
-## v2.2.0 — Extensibilidade
+## v2.3.0 — Hard Gates and Strict Separation
 
-- Seção Self-Improvement com checklist de 8 itens para atualizar quando nova skill é incorporada.
-- Perguntas de classificação de nova skill.
-- Formato de registro no changelog.
-
----
-
-## v2.1.0 — Princípio de Delegação
-
-- Orquestradora NUNCA lê código-fonte diretamente.
-- Estágio 03 sempre delega para subagentes (não mais opcional).
-- Templates de `CONTEXT.md` dos Estágios 03, 04 e 05 atualizados com "NÃO LER src/ ou tests/".
-- Formato de `implementation-report.md` especificado.
-- Error recovery atualizado para subagentes.
-- Referências (`superpowers-mapping`, `xp-workflow-integration`) atualizadas para refletir delegação.
+- Stage Transition Protocol (5-item hard gate checklist between stages).
+- Orchestration Boundary Rule (table by stage type + auto-correction).
+- Fix Loop Protocol (review → delegate → review loop for P0/P1 issues).
+- Review Gates 01-06 with explicit transition checklist.
+- Mandatory State section in all 6 `CONTEXT.md` templates.
 
 ---
 
-## v2.0.0 — Revisão baseada em auditoria contra o paper ICM
+## v2.2.0 — Extensibility
 
-- Layer Loading Protocol com ordem obrigatória e scoping explícito.
-- Distinção operacional Layer 3 vs Layer 4 (restrição vs input).
-- Token budget e context pollution.
-- Compilação incremental com re-execução seletiva.
-- Seção Verify nos contratos de estágio.
-- Princípio edit-source operacionalizado.
-- Retomada de sessão lê Layer 2/3 do estágio atual.
-- Context scoping para subagentes.
-- Princípio "configure the factory".
+- Self-Improvement section with 8-item checklist for updating when a new skill is incorporated.
+- New skill classification questions.
+- Changelog entry format.
+
+---
+
+## v2.1.0 — Delegation Principle
+
+- Orchestrator NEVER reads source code directly.
+- Stage 03 always delegates to subagents (no longer optional).
+- `CONTEXT.md` templates for Stages 03, 04 and 05 updated with "DO NOT READ src/ or tests/".
+- `implementation-report.md` format specified.
+- Error recovery updated for subagents.
+- References (`superpowers-mapping`, `xp-workflow-integration`) updated to reflect delegation.
+
+---
+
+## v2.0.0 — Revision based on audit against ICM paper
+
+- Layer Loading Protocol with mandatory order and explicit scoping.
+- Operational distinction Layer 3 vs Layer 4 (constraint vs input).
+- Token budget and context pollution.
+- Incremental compilation with selective re-execution.
+- Verify section in stage contracts.
+- Edit-source principle operationalized.
+- Session resume reads Layer 2/3 of current stage.
+- Context scoping for subagents.
+- "Configure the factory" principle.
 - Workspace builder.
-- 5 ICM design principles explícitos.
+- 5 explicit ICM design principles.
 
 ---
 
-## v1.2.0 — Revisão final
+## v1.2.0 — Final revision
 
-- Paths relativos padronizados.
-- Referências a `src/`, `tests/` corrigidas (não dentro de `stages/`).
-- Atualização de `CONTEXT.md` raiz em todos os estágios.
-- "Caminho absoluto" corrigido para "caminho relativo" nos subagentes.
-
----
-
-## v1.1.0 — Correções pós-auditoria
-
-- Arquivo de estado (`CONTEXT.md` raiz).
-- Retomada de sessão.
-- Propagação de ADRs formais.
-- Contrato explícito de subagentes.
-- Inputs completos nos templates.
-- Error recovery distinto por origem.
+- Standardized relative paths.
+- References to `src/`, `tests/` corrected (not inside `stages/`).
+- Update of root `CONTEXT.md` in all stages.
+- "Absolute path" corrected to "relative path" in subagents.
 
 ---
 
-## v1.0.0 — XP-ICM Workflow inicial
+## v1.1.0 — Post-audit corrections
 
-- Integração ICM + `/xp-workflow` + superpowers.
+- State file (root `CONTEXT.md`).
+- Session resume.
+- Formal ADR propagation.
+- Explicit subagent contract.
+- Complete inputs in templates.
+- Error recovery distinct by origin.
+
+---
+
+## v1.0.0 — Initial XP-ICM Workflow
+
+- ICM + `/xp-workflow` + superpowers integration.

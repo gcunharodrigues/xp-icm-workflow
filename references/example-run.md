@@ -255,7 +255,7 @@ Schema of task `auth-middleware` (partial):
 - src/auth/errors.py
 - tests/auth/test_middleware.py
 
-### ADRs aplicáveis
+### Applicable ADRs
 - docs/decisions/0001-stack-fastapi-postgres.md
 - docs/decisions/0042-jwt-refresh-strategy.md
 
@@ -360,7 +360,7 @@ history append:
 - Verifies:
   - CI global green on `main` (post-merge).
   - Coverage: `src/auth/` 94% (above minimum 90% for tier=development).
-  - Conformance to plan.md: 3/3 tasks with VALIDAÇÃO met (sample-check of tests).
+  - Conformance to plan.md: 3/3 tasks with VALIDATION met (sample-check of tests).
   - Conformance to ADRs: ADR 0042 implemented on all plan points.
 - Writes `stages/05_verification/output/verification-report.md` with verdict `PASS`.
 
@@ -437,10 +437,10 @@ Human opens new session and says: "run stage 08 for workspace 042".
 **Work:**
 - Reads last 30 days of logs (`logs_root` declared in L0).
 - Asks human (4-block):
-  - **O QUE FUNCIONOU:** middleware stable, refresh rotation with no race observed.
-  - **O QUE NÃO FUNCIONOU:** comparison `<=` on expiry (0ms edge case).
-  - **QUAL DOR PERSISTE:** none; hotfix resolved it.
-  - **QUE LIÇÃO TIRAR:** "timestamp comparisons for expiry must always use strict `<`; `<=` allows just-expired tokens".
+  - **WHAT WORKED:** middleware stable, refresh rotation with no race observed.
+  - **WHAT DIDN'T WORK:** comparison `<=` on expiry (0ms edge case).
+  - **WHAT PAIN PERSISTS:** none; hotfix resolved it.
+  - **WHAT LESSON TO TAKE:** "timestamp comparisons for expiry must always use strict `<`; `<=` allows just-expired tokens".
 - Top-N patterns: 1 pattern (boundary off-by-one in time comparison).
 - Writes `stages/08_feedback_intake/output/intake-report.md` with recommendation: **exit A (close)**.
 
@@ -522,6 +522,6 @@ The other stages (00-03, 05-08) remain identical to the walkthrough above.
 | `references/conflict-resolution-protocol.md` | Conflict mid-wave (human gate A/B/C) |
 | `references/ci-rollback-protocol.md` | CI global red (diagnose → rollback → gate) |
 | `references/4-block-contract-template.md` | Task schema in plan.md + 7-step TDD cycle + Akita 15-item |
-| `references/feedback-intake-fase08.md` | Stage 08 detailed (3 exits A/B/C) |
+| `references/feedback-intake-stage08.md` | Stage 08 detailed (3 exits A/B/C) |
 | `references/v2.4-snapshot/example-run.md` | Previous v2.4 version (isolated stage 02→03 transition) |
 | `SKILL.md` | Bootstrap CLI + Division of Responsibilities |

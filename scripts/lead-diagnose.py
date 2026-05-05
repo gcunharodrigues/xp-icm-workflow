@@ -28,7 +28,7 @@ from typing import Any
 # Constants
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.11.0"
+CURRENT_SKILL_VERSION = "3.12.0"
 
 # Convergence threshold — drift-checked against canonical doc.
 JACCARD_THRESHOLD = 0.7
@@ -222,7 +222,7 @@ def render_surgical_brief(
         if ce:
             lines.append(f"   Counterexample: {ce}")
     lines.append("\n### Acceptance delta")
-    lines.append("Original spec has ambiguous criteria. Rewrite VALIDAÇÃO with:")
+    lines.append("Original spec has ambiguous criteria. Rewrite VALIDATION with:")
     for sig, _count in top:
         c = examples[sig]
         lines.append(f"- Specific test name covering: {c.get('claim', '?')[:80]}")

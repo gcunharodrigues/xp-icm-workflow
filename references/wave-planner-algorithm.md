@@ -44,7 +44,7 @@ Each task is parsed from `plan.md` according to `references/4-block-contract-tem
 | `files_touched` | section `### Files touched` | edge by conflict; mandatory test file validation |
 | `depends_on` | section `### Depends on` (optional) | explicit edge |
 | `peer_review` | `### Requires_peer_review` | metadata (does not affect DAG) |
-| `adrs` | `### ADRs aplicáveis` | metadata |
+| `adrs` | `### Applicable ADRs` | metadata |
 | `conventions_extras` | `### Conventions extras` | metadata; `doc-only`/`config-only` exempts from test file rule |
 
 **Parsing rules:**

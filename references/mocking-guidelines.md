@@ -67,8 +67,8 @@ Signs of bad design masked by internal mock:
 
 ## Tier-aware enforcement
 
-Forensic+ Check 6 (NÃO QUERO violations) and Check 7 (ADR import drift) detect prohibited patterns automatically when:
-- The task NÃO QUERO block declares "no mock for internals"
+Forensic+ Check 6 (OUT OF SCOPE violations) and Check 7 (ADR import drift) detect prohibited patterns automatically when:
+- The task OUT OF SCOPE block declares "no mock for internals"
 - An applicable ADR prohibits a specific lib (e.g., jest.mock disabled in a critical path)
 
 Tier production: violation = HARD. Tier dev: SOFT. Tier exp/tool: ignored.
@@ -127,10 +127,10 @@ Time is a boundary. Mock OK. Expiry logic runs real.
 
 ## Integration with 4-block contract
 
-The task NÃO QUERO block may declare prohibited mocks:
+The task OUT OF SCOPE block may declare prohibited mocks:
 
 ```markdown
-### NÃO QUERO
+### OUT OF SCOPE
 - Mock de UserService nem AuditClient (use instâncias reais com DB seeded)
 - jest.mock em qualquer arquivo dentro de src/auth/
 ```
@@ -139,7 +139,7 @@ Forensic+ Check 6 detects diff that violates the declaration. HARD in tier produ
 
 ## Cross-references
 
-- 4-block contract: `references/4-block-contract-template.md` (NÃO QUERO block)
+- 4-block contract: `references/4-block-contract-template.md` (OUT OF SCOPE block)
 - Forensic+ Check 6: `references/forensic-plus-protocol.md`
 - ADR format: `references/adr-format.md`
 - Stage 04 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`

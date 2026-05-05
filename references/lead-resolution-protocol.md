@@ -31,9 +31,9 @@ Detection is deterministic in `scripts/lead-diagnose.py`. Lead **does not** deci
 1. Reads critic concerns (triplets) accumulated across rounds 1-3 of the task.
 2. Identifies the pattern: ambiguous acceptance criterion? Undeclared ADR conflict? Implicit edge case?
 3. Rewrites the task in plan.md with:
-   - More specific VALIDAÇÃO bullets (test names mandatory)
-   - Additional NÃO QUERO bullets covering observed pitfalls
-   - Prescriptive COMO bullets (required path/lib/pattern)
+   - More specific VALIDATION bullets (test names mandatory)
+   - Additional OUT OF SCOPE bullets covering observed pitfalls
+   - Prescriptive HOW bullets (required path/lib/pattern)
    - `Estimated lines` recalibrated if it was an underestimate
 4. Commits plan update on the wave branch.
 5. Spawns 1 final writer with the new brief (same model as round 3 OR upgrade to ceiling if tier allows).
@@ -199,7 +199,7 @@ Catastrophic detected → bypass cap 3, escalate to lead immediately (no surgica
 | EC1 | Wave-planner DAG invalid after B4 (voided task was depended_by) | wave-planner re-derives DAG; dependent tasks treated as `BLOCKED_HITL` awaiting human OR cascade B4 |
 | EC2 | Lead-resolution task → critic ABSTAIN | counts as REJECT, lead escalates to next bucket |
 | EC3 | B3 lead writer crash (Agent tool fail) | retry 1×; 2nd failure → escalate B4 mandatory |
-| EC4 | B1 spec rewrite reduces VALIDAÇÃO criteria | stage 05 audit detects loosen → `BLOCKED_ERROR` |
+| EC4 | B1 spec rewrite reduces VALIDATION criteria | stage 05 audit detects loosen → `BLOCKED_ERROR` |
 | EC5 | B4 without concrete rationale (rushed lead) | stage 05 audit detects vague reason → `BLOCKED_ERROR` |
 | EC6 | Concurrent lead-resolution (wave has 2+ tasks in buckets) | OK — sequential per task; wave reviewer waits for all to resolve before merge |
 | EC7 | Lead chose different bucket from recommendation but did not write lead-decision.md | wave-reviewer detects missing lead-decision.md → `BLOCKED_ERROR error_type: lead_decision_missing` |

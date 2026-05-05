@@ -35,7 +35,7 @@ from typing import Sequence
 # Constants
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.11.0"
+CURRENT_SKILL_VERSION = "3.12.0"
 FLOOR_VERSION = "3.3.0"
 
 # Supported version sequence. Migration steps are consecutive pairs.
@@ -52,6 +52,7 @@ SUPPORTED_VERSIONS: tuple[str, ...] = (
     "3.9.0",
     "3.10.0",
     "3.11.0",
+    "3.12.0",
 )
 
 
@@ -334,6 +335,60 @@ def migrate_3_10_0_to_3_11_0(workspace_root: Path, project_root: Path) -> None:
             l1.write_text(text, encoding="utf-8")
 
 
+def migrate_3_11_0_to_3_12_0(workspace_root: Path, project_root: Path) -> None:
+    """v3.11.0 -> v3.12.0: Zero pt-BR (full migration).
+
+    Rewrites plan.md 4-block headers from pt-BR to en-US in the workspace.
+    Rewrites L1 history stop_point_id `feedback_ambiguous` -> `ambiguous_feedback`
+    (en-US adj-noun word order, introduced in v3.11.0 but originally pt-BR-derived).
+    Bumps L0 icm_skill_version.
+
+    Idempotent: running on an already-migrated workspace is a no-op.
+    """
+    _bump_version_only(workspace_root, "3.12.0")
+
+    # Rewrite plan.md 4-block headers in all stages.
+    # i18n-allow: these are the pt-BR strings we are REPLACING (migration source literals)
+    _4BLOCK_REPLACEMENTS: list[tuple[str, str]] = [
+        ("### O QUE NÃO FUNCIONOU", "### WHAT DID NOT WORK"),  # i18n-allow: migration source literal
+        ("### O QUE FUNCIONOU", "### WHAT WORKED"),
+        ("### QUAL DOR PERSISTE", "### WHAT PAIN PERSISTS"),
+        ("### QUE LIÇÃO TIRAR", "### WHAT LESSON TO DRAW"),
+        ("### O QUE", "### WHAT"),
+        ("### COMO", "### HOW"),
+        ("### NÃO QUERO", "### OUT OF SCOPE"),  # i18n-allow: migration source literal
+        ("### VALIDAÇÃO", "### VALIDATION"),
+        ("### VALIDAÇAO", "### VALIDATION"),
+        ("### ADRs aplicáveis", "### Applicable ADRs"),
+    ]
+    for plan_md in workspace_root.rglob("plan.md"):
+        try:
+            text = plan_md.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            continue
+        new_text = text
+        for old, new in _4BLOCK_REPLACEMENTS:
+            new_text = new_text.replace(old, new)
+        if new_text != text:
+            plan_md.write_text(new_text, encoding="utf-8")
+
+    # Rewrite L1 history stop_point_id: feedback_ambiguous (old pt-BR-derived ID).
+    # v3.11.0 ADR listed it as "ambiguous_feedback" but some workspaces may have
+    # the old form in their history.  Rewrite for consistency.
+    l1 = workspace_root / "CONTEXT.md"
+    if l1.is_file():
+        try:
+            text = l1.read_text(encoding="utf-8")
+        except (UnicodeDecodeError, OSError):
+            return
+        new_text = text.replace(
+            "stop_point_id: feedback_ambiguous",
+            "stop_point_id: ambiguous_feedback",
+        )
+        if new_text != text:
+            l1.write_text(new_text, encoding="utf-8")
+
+
 STEP_FUNCTIONS = {
     "3.3.0->3.4.0": migrate_3_3_to_3_4,
     "3.4.0->3.5.0": migrate_3_4_to_3_5,
@@ -344,6 +399,7 @@ STEP_FUNCTIONS = {
     "3.8.0->3.9.0": migrate_3_8_0_to_3_9_0,
     "3.9.0->3.10.0": migrate_3_9_0_to_3_10_0,
     "3.10.0->3.11.0": migrate_3_10_0_to_3_11_0,
+    "3.11.0->3.12.0": migrate_3_11_0_to_3_12_0,
 }
 
 

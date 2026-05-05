@@ -106,7 +106,7 @@ KEBAB_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 # silently "no tasks found" far from the real cause.
 TASK_HEADING_DRIFT_RE = re.compile(r"^#{3,6}\s+Task\s+\S+\s*:", re.MULTILINE)
 SUBSECTION_DRIFT_RE = re.compile(
-    r"^#{4,6}\s+(O QUE|COMO|NÃO QUERO|VALIDAÇÃO|Files touched|Depends on)\b",
+    r"^#{4,6}\s+(WHAT|HOW|OUT OF SCOPE|VALIDATION|Files touched|Depends on)\b",
     re.MULTILINE,
 )
 
@@ -205,7 +205,7 @@ def _detect_heading_drift(text: str) -> None:
     if sub_drift:
         parts.append(
             f"{len(sub_drift)} subsection(s) at level >h3 "
-            f"(expected '### O QUE/COMO/NAO QUERO/VALIDACAO/Files touched/Depends on')"
+            f"(expected '### WHAT/HOW/OUT OF SCOPE/VALIDATION/Files touched/Depends on')"
         )
     raise WavePlannerError(
         "plan.md heading drift: " + "; ".join(parts) + ". "

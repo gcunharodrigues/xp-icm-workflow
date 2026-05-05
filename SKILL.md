@@ -4,7 +4,7 @@ description: One-shot bootstrap ICM (Interpretable Context Methodology) that cre
 type: rigid
 ---
 
-# xp-icm-workflow v3.11.0
+# xp-icm-workflow v3.12.0
 
 > **Skill is a midwife, not an orchestrator.** One-shot bootstrap creates the structure. Filesystem governs the cycle. **1 stage = 1 session**: each stage ends with a dual handoff (verbal + `_kickoff.md` file) and the session exits. The next session starts fresh.
 
@@ -285,10 +285,10 @@ Suggested permissions allowlist in `system-requirements.md`.
 - `references/wave-planner-algorithm.md` — DAG construction, sub-waves, LLM review subagent
 - `references/subagent-protocol.md` — spawn via Agent tool, plan approval, mid-wave reduce
 - `references/stop-points-canonical.md` — 12 stop points + thresholds by tier
-- `references/4-block-contract-template.md` — O QUE / COMO / NÃO QUERO / VALIDAÇÃO
-- `references/feedback-intake-fase08.md` — 3 exits A/B/C
+- `references/4-block-contract-template.md` — WHAT / HOW / OUT OF SCOPE / VALIDATION
+- `references/feedback-intake-stage08.md` — 3 exits A/B/C
 - `references/profile-matrix.md` — calibration by profile/tier (skipped stages, etc.) — copy in `templates/_config/profile-matrix.md`
-- `references/forensic-plus-protocol.md` — Forensic+ wave reviewer audit (7 checks v3.9.0: assertions count, files declared, scope creep, TODO, acceptance↔test, NÃO QUERO, ADR drift)
+- `references/forensic-plus-protocol.md` — Forensic+ wave reviewer audit (7 checks v3.9.0: assertions count, files declared, scope creep, TODO, acceptance↔test, OUT OF SCOPE, ADR drift)
 - `references/critic-protocol.md` — L3 LLM orthogonal critic (v3.9.0): fresh context, anti-sycophancy, triplet output, model = TIER_CEILING
 - `references/lead-resolution-protocol.md` — buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK (v3.9.0) when per-task loop exhausts cap OR convergence trip OR catastrophic
 - `references/mocking-guidelines.md` — boundaries only (HTTP/DB/time/randomness/env); never internals (v3.9.0, mattpocock alignment)

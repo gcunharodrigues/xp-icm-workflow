@@ -121,7 +121,7 @@ def test_parse_rejects_h4_task_header(tmp_path):
     """
     bad = tmp_path / "plan.md"
     bad.write_text(
-        "#### Task foo: Foo\n\n##### O QUE\n- x\n\n##### Files touched\n- a.ts\n",
+        "#### Task foo: Foo\n\n##### WHAT\n- x\n\n##### Files touched\n- a.ts\n",
         encoding="utf-8",
     )
     with pytest.raises(WavePlannerError, match="heading drift"):
@@ -129,10 +129,10 @@ def test_parse_rejects_h4_task_header(tmp_path):
 
 
 def test_parse_rejects_h5_subsection(tmp_path):
-    """Task header h2 OK mas subseções h5 — também é drift."""
+    """Task header h2 OK but subsections at h5 — also drift."""
     bad = tmp_path / "plan.md"
     bad.write_text(
-        "## Task foo: Foo\n\n##### O QUE\n- x\n\n##### Files touched\n- a.ts\n",
+        "## Task foo: Foo\n\n##### WHAT\n- x\n\n##### Files touched\n- a.ts\n",
         encoding="utf-8",
     )
     with pytest.raises(WavePlannerError, match="heading drift"):
@@ -140,9 +140,9 @@ def test_parse_rejects_h5_subsection(tmp_path):
 
 
 def test_parse_drift_message_actionable(tmp_path):
-    """Mensagem de erro deve apontar schema canônico + fix mecânico."""
+    """Error message must point to canonical schema + mechanical fix."""
     bad = tmp_path / "plan.md"
-    bad.write_text("#### Task foo: Foo\n\n##### O QUE\n- x\n", encoding="utf-8")
+    bad.write_text("#### Task foo: Foo\n\n##### WHAT\n- x\n", encoding="utf-8")
     with pytest.raises(WavePlannerError) as excinfo:
         parse_plan(bad)
     msg = str(excinfo.value)

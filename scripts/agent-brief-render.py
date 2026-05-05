@@ -71,11 +71,11 @@ def extract_task_section(plan_md: str, slug: str) -> str:
 
 
 def parse_4block(task_section: str) -> dict[str, str]:
-    """Parse 4-block (O QUE / COMO / NÃO QUERO / VALIDAÇÃO) from section.
+    """Parse 4-block (WHAT / HOW / OUT OF SCOPE / VALIDATION) from section.
 
-    Canonical schema v3.4.2: blocks as H3 (`### O QUE`, `### COMO`,
-    `### NÃO QUERO`, `### VALIDAÇÃO`), content on following lines.
-    Older schema used inline bold (`**O QUE:**`) — not supported.
+    Canonical schema v3.12.0: blocks as H3 (`### WHAT`, `### HOW`,
+    `### OUT OF SCOPE`, `### VALIDATION`), content on following lines.
+    Legacy schema used pt-BR headers (pre-v3.12.0) — not supported.
 
     Returns dict with keys: o_que, como, nao_quero, validacao, type, files_touched.
     Empty strings for absent keys.
@@ -101,10 +101,10 @@ def parse_4block(task_section: str) -> dict[str, str]:
 
     # 4-block extraction (H3 markers, content until next H3 or H2 or EOF)
     blocks = {
-        "o_que": r"^### O QUE\s*$",
-        "como": r"^### COMO\s*$",
-        "nao_quero": r"^### N[ÃA]O QUERO\s*$",
-        "validacao": r"^### VALIDA[ÇC][ÃA]O\s*$",
+        "o_que": r"^### WHAT\s*$",
+        "como": r"^### HOW\s*$",
+        "nao_quero": r"^### OUT OF SCOPE\s*$",
+        "validacao": r"^### VALIDATION\s*$",
     }
     for key, marker in blocks.items():
         m = re.search(
@@ -130,8 +130,8 @@ def render_brief(
 ) -> str:
     """Render AGENT-BRIEF markdown from parsed 4-block + applicable ADRs.
 
-    Mapping: O QUE -> Summary + Current/Desired; COMO -> Key interfaces;
-    NÃO QUERO -> Out of scope; VALIDAÇÃO -> Acceptance criteria.
+    Mapping: WHAT -> Summary + Current/Desired; HOW -> Key interfaces;
+    OUT OF SCOPE -> Out of scope; VALIDATION -> Acceptance criteria.
 
     v3.9.0: model_info dict (from pick-model.py) injects writer/critic/score
     into header when provided.

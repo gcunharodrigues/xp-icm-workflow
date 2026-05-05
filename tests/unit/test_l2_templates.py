@@ -28,7 +28,7 @@ CANONICAL_STOP_POINT_IDS = {
     "irreversible", "over_eng", "pii", "prod_migration", "adr_drift",
     "workspace_corrupt", "profile_mismatch",
     # v3.6.0 preview loop
-    "feedback_ambiguous", "design_system_cascade",
+    "ambiguous_feedback", "design_system_cascade",
     # v3.7.0 runtime cleanup (stage 08 strict universal)
     "runtime_cleanup_failed",
     # numeric IDs are also accepted (yaml frontmatter uses "13" string)

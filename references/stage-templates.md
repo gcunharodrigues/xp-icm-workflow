@@ -211,7 +211,7 @@ Formal skill: `superpowers:<name>` (escape hatch — real invocation only if com
 | 05 verification | `verification-before-completion` | `verification-before-completion-200tok.md` |
 | 06 review | `requesting-code-review` + `receiving-code-review` | `requesting-code-review-200tok.md` |
 | 07 merge | `finishing-a-development-branch` | `finishing-a-development-branch-200tok.md` |
-| 08 feedback_intake | (none direct) | uses local `references/feedback-intake-fase08.md` |
+| 08 feedback_intake | (none direct) | uses local `references/feedback-intake-stage08.md` |
 
 ### 12. Gates
 
@@ -354,7 +354,7 @@ Produces an executable architectural plan + formal ADRs. Each non-trivial decisi
 3. For each non-trivial architectural decision, build A/B/C menu with recommendation.
 4. Trigger stop point if: stack change, new modeling, new public API, new dependency, paid service, irreversible decision, over-engineering detected.
 5. Write formal ADRs in /repo/aura-luz-api/docs/decisions/NNNN-<slug>.md (source of truth).
-6. Write output/plan.md: tasks with 4-block contract (O QUE / COMO / NÃO QUERO / VALIDAÇÃO), files touched, ADRs aplicáveis, requires_peer_review.
+6. Write output/plan.md: tasks with 4-block contract (WHAT / HOW / OUT OF SCOPE / VALIDATION), files touched, Applicable ADRs, requires_peer_review.
 7. Write output/decisions.md: INDEX (title + slug + status) — does not duplicate ADR.
 8. Verify: each MVP requirement from discovery appears in ≥1 plan task OR is deferred with rationale.
 9. **End-of-stage handoff:** follow gate-inline protocol (v3.4.2) — split in two phases in the same session. Phase 1: update L1 (`sub_stage=02_completed, status=COMPLETED_AWAITING_HUMAN, last_transition.from=02_in_progress, last_transition.to=02_completed`), atomic commit 1/2 (outputs + L1, WITHOUT kickoff), print gate prompt, wait for human. Phase 2 (after approval): update L1 (`stage_atual=03, sub_stage=03_in_progress, status=IN_PROGRESS`), render `_kickoff.md` in `stages/03_wave_planner/`, atomic commit 2/2 (kickoff + L1), print KICKOFF block, EXIT. Canonical doc: `references/session-handoff-protocol.md`.

@@ -24,7 +24,7 @@ Resolution **Q5** from the plan: fixed list of 12 stops; items 5, 7, 8 calibrate
 | 10 | `adr_drift` | Stack that differs from what was declared in an existing ADR |
 | 11 | `workspace_corrupt` | ICM workspace corrupted (L1/L2 inconsistent — stops and requests recovery) |
 | 12 | `profile_mismatch` | Profile/tier inconsistent with task scope |
-| 13 | `feedback_ambiguous` | (v3.6.0 preview loop) Low-confidence human visual feedback — agent does NOT speculate and proceed |
+| 13 | `ambiguous_feedback` | (v3.6.0 preview loop) Low-confidence human visual feedback — agent does NOT speculate and proceed |
 | 14 | `design_system_cascade` | (v3.6.0 preview loop) Token change affects > `design_cascade_threshold` components |
 | 15 | `runtime_cleanup_failed` | (v3.7.0) Pre-exit stage 08 runtime cleanup failed or human cancelled — **strict universal** all tiers |
 
@@ -150,7 +150,7 @@ Profile/tier chosen at bootstrap does not match the real scope of the task in pr
   - Scope grew beyond what was declared in L0.
 - **Typical trade-offs:** change profile/tier (regenerates matrix, re-validation cost) vs spawn new workspace with correct profile vs reduce current task scope.
 
-#### 13 — `feedback_ambiguous` (v3.6.0 preview loop)
+#### 13 — `ambiguous_feedback` (v3.6.0 preview loop)
 Human visual feedback with low confidence: vague description, unannotated screenshot, contradiction between text and visual.
 
 - **Signals:**

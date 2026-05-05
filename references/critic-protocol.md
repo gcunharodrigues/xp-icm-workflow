@@ -149,8 +149,8 @@ Render via `templates/critic-prompt.md` with placeholders:
 | `{{TASK_SLUG}}` | Agent call param |
 | `{{WAVE_NUM}}` | param |
 | `{{TASK_4BLOCK}}` | parsed from plan.md |
-| `{{ACCEPTANCE_CRITERIA}}` | VALIDAÇÃO block of the task |
-| `{{ADRS_APPLICABLE}}` | metadata `ADRs aplicáveis` |
+| `{{ACCEPTANCE_CRITERIA}}` | VALIDATION block of the task |
+| `{{ADRS_APPLICABLE}}` | metadata `Applicable ADRs` |
 | `{{DIFF_COMPLETE}}` | `git diff BASE...wave-<NNN>-<N>/<slug>` |
 | `{{TEST_OUTPUT_RAW}}` | stdout from the test runner (last task run) |
 | `{{TIER}}` | L1 frontmatter |

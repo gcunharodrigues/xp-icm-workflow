@@ -7,7 +7,7 @@
 
 ## Summary (1 paragraph)
 
-Forensic+ is a deterministic, git-only audit run by the wave-reviewer for each AFK task in the wave. It runs 8 checks: (1) test file with ≥2 assertions, (2) files outside declared `files_touched`, (3) scope creep > 3× plan estimate, (4) TODO/FIXME/HACK added, (5) acceptance ↔ test mapping, (6) NÃO QUERO violations, (7) ADR import drift, (8) user-journey coverage (e2e). Each violation has tier-aware severity (HARD/SOFT). HARD blocks merge and forces re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT accumulates in `wave-summary.md`. Tasks `type: HITL` are skipped. Output via `scripts/forensic-plus.py` as structured JSON, parsed by the reviewer Agent. v3.9.0: gate is antechamber to L3 critic (`references/critic-protocol.md`); HARD violation skips L3. v3.10.0: Check 8 closes the E2E coverage gap (see `references/e2e-coverage-protocol.md`).
+Forensic+ is a deterministic, git-only audit run by the wave-reviewer for each AFK task in the wave. It runs 8 checks: (1) test file with ≥2 assertions, (2) files outside declared `files_touched`, (3) scope creep > 3× plan estimate, (4) TODO/FIXME/HACK added, (5) acceptance ↔ test mapping, (6) OUT OF SCOPE violations, (7) ADR import drift, (8) user-journey coverage (e2e). Each violation has tier-aware severity (HARD/SOFT). HARD blocks merge and forces re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT accumulates in `wave-summary.md`. Tasks `type: HITL` are skipped. Output via `scripts/forensic-plus.py` as structured JSON, parsed by the reviewer Agent. v3.9.0: gate is antechamber to L3 critic (`references/critic-protocol.md`); HARD violation skips L3. v3.10.0: Check 8 closes the E2E coverage gap (see `references/e2e-coverage-protocol.md`).
 
 ## The 8 checks
 
@@ -68,10 +68,10 @@ Severity:
 
 ### Check 5 — Acceptance ↔ test mapping (v3.9.0)
 
-Each bullet in the VALIDAÇÃO block of the task in plan.md must map to ≥1 test name present in the test file(s) declared in `files_touched`. Heuristic: regex extracts test names from the VALIDAÇÃO block (pattern `test_<name>`, `it("<desc>")`, `should <action>`, etc.) + grep test files for matches. Bullet without a matching test = violation.
+Each bullet in the VALIDATION block of the task in plan.md must map to ≥1 test name present in the test file(s) declared in `files_touched`. Heuristic: regex extracts test names from the VALIDATION block (pattern `test_<name>`, `it("<desc>")`, `should <action>`, etc.) + grep test files for matches. Bullet without a matching test = violation.
 
 Implementation:
-1. Parse the VALIDAÇÃO block of the task in plan.md.
+1. Parse the VALIDATION block of the task in plan.md.
 2. Extract test name candidates via regex (language-aware):
    - Direct pattern: `\btest_[a-z_0-9]+\b` or `\b[a-z][a-zA-Z0-9_]*Test\b`.
    - Indirect pattern: bullet starting with `Test [a-z_0-9]+:` or `it\("...\)` or `should ...`.
@@ -87,9 +87,9 @@ Severity:
 | experimental/tool | SOFT |
 | development/production | HARD |
 
-### Check 6 — NÃO QUERO violations (v3.9.0)
+### Check 6 — OUT OF SCOPE violations (v3.9.0)
 
-Bullets in the NÃO QUERO block may declare detectable prohibited patterns in the diff. Supported patterns:
+Bullets in the OUT OF SCOPE block may declare detectable prohibited patterns in the diff. Supported patterns:
 
 | Pattern syntax | Meaning | Detection |
 |----------------|---------|-----------|
@@ -99,7 +99,7 @@ Bullets in the NÃO QUERO block may declare detectable prohibited patterns in th
 
 Bullets that do not match patterns are descriptive (skip). Forensic+ does not attempt to interpret free prose — the pattern is literal.
 
-Edge case: bullet `Cachear resultados em memória` (descriptive) → skipped. Bullet `Mock interno de jose` → checked.
+Edge case: bullet `Cache results in memory` (descriptive) → skipped. Bullet `Mock interno de jose` → checked.
 
 Severity:
 
@@ -110,7 +110,7 @@ Severity:
 
 ### Check 7 — ADR import drift (v3.9.0)
 
-Each applicable ADR (field `ADRs aplicáveis`) declared for the task may list prohibited libs/patterns via a structured marker in the ADR markdown:
+Each applicable ADR (field `Applicable ADRs`) declared for the task may list prohibited libs/patterns via a structured marker in the ADR markdown:
 
 ```markdown
 ## Forbidden imports
@@ -184,7 +184,7 @@ Canonical E2E reinforcement doc: `references/e2e-coverage-protocol.md`.
 | 3. Scope creep 3× | SOFT | SOFT | SOFT | HARD |
 | 4. TODO/FIXME/HACK | SOFT | SOFT | SOFT | HARD |
 | 5. Acceptance↔test | SOFT | SOFT | HARD | HARD |
-| 6. NÃO QUERO | SOFT | HARD | HARD | HARD |
+| 6. OUT OF SCOPE | SOFT | HARD | HARD | HARD |
 | 7. ADR import drift | SOFT | HARD | HARD | HARD |
 | 8. User-journey (e2e) | SOFT | SOFT | HARD | HARD |
 
@@ -214,8 +214,8 @@ Re-spawn brief injected into subagent AGENT-BRIEF:
 | `files_outside_declared` | "You touched `<path>` not declared in files_touched. Revert or write `output/wave-<N>/task-<slug>-blocked.md` to escalate (no new stop point — use existing BLOCKED handoff)." |
 | `scope_creep` | "Diff `<X>` lines vs estimate `<Y>`. Reduce or split. If real scope is larger, escalate via stop point `over_eng`." |
 | `todo_added` | "TODOs added: `<list>`. Remove or convert to issues." |
-| `acceptance_test_unmapped` | "VALIDAÇÃO bullet `<bullet>` has no matching test. Add explicit test name OR write a test covering the criterion." |
-| `nao_quero_violation` | "Diff touches prohibited pattern `<pattern>` declared in NÃO QUERO. Revert OR escalate via stop point if requirement changed." |
+| `acceptance_test_unmapped` | "VALIDATION bullet `<bullet>` has no matching test. Add explicit test name OR write a test covering the criterion." |
+| `nao_quero_violation` | "Diff touches prohibited pattern `<pattern>` declared in OUT OF SCOPE. Revert OR escalate via stop point if requirement changed." |
 | `adr_import_drift` | "Import `<lib>` is prohibited by ADR `<adr-file>` (§Forbidden imports). Replace with the alternative documented in the ADR." |
 | `e2e_coverage_missing` | "Task declared `Requires E2E update: true` but diff does not touch `e2e/`/`cypress/`/`playwright/`/`tests/e2e/`. Add ≥1 test covering the end-to-end flow. If the refactor has no behavior change, declare `**E2E:** skip - <rationale>` in the 4-block." |
 

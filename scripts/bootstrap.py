@@ -29,7 +29,7 @@ from typing import Any
 # Constants
 # ============================================================================
 
-SKILL_VERSION = "3.11.0"  # template prepends `v`
+SKILL_VERSION = "3.12.0"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 # Bootstrap auto-prefixes NNN- to the slug. A slug that already starts with NNN-
@@ -654,7 +654,7 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "recovery-wizard.md",
         "stop-points-canonical.md",
         "4-block-contract-template.md",
-        "feedback-intake-fase08.md",
+        "feedback-intake-stage08.md",
         "session-handoff-protocol.md",
         # v3.1 (Tier 1 + Tier 2 patterns adopted from mattpocock/skills)
         "project-root-claude-md.md",     # T1.1

@@ -191,6 +191,6 @@ If human `git add -f` forces it:
   `resolve_spawn_source`, `consume_spawn_pending`,
   `SPAWN_PENDING_REQUIRED_FIELDS`)
 - Stage 08 L2: `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` §"Exit C"
-- Feedback intake: `references/feedback-intake-fase08.md` §"Exit C — Spawn new workspace"
+- Feedback intake: `references/feedback-intake-stage08.md` §"Exit C — Spawn new workspace"
 - Stage 00 L2 (target consumer): `templates/workspace/stages/00_recon/CONTEXT.md.tpl` §"Record inheritance"
 - GITIGNORE_LINES: `scripts/bootstrap.py:67` (`.icm/spawn-pending.json`)

@@ -1,6 +1,6 @@
 ## Task add-greet:
 
-### O QUE
+### WHAT
 - saudação parametrizável
 
 ### Files touched

@@ -94,19 +94,19 @@ Sample from last 30 days of `<logs_root>`. If `logs_root: null` (greenfield/text
 Session asks human in 4-block format:
 
 ```
-## O QUE FUNCIONOU
+## WHAT WORKED
 
 (what actually delivered value)
 
-## O QUE NÃO FUNCIONOU
+## WHAT DIDN'T WORK
 
 (what failed, caused friction, wasted time)
 
-## QUAL DOR PERSISTE
+## WHAT PAIN PERSISTS
 
 (what still hurts after this workspace)
 
-## QUE LIÇÃO TIRAR
+## WHAT LESSON TO TAKE
 
 (insight to capture in docs/lessons.md)
 ```
@@ -128,13 +128,13 @@ Session writes `<workspace>/stages/08_feedback_intake/output/intake-report.md`:
 (last 30 days from <logs_root>, or "n/a" if null)
 
 ## Human feedback
-### O QUE FUNCIONOU
+### WHAT WORKED
 ...
-### O QUE NÃO FUNCIONOU
+### WHAT DIDN'T WORK
 ...
-### QUAL DOR PERSISTE
+### WHAT PAIN PERSISTS
 ...
-### QUE LIÇÃO TIRAR
+### WHAT LESSON TO TAKE
 ...
 
 ## Top-N patterns
@@ -164,7 +164,7 @@ After `intake-report.md` is written, session triggers the A/B/C menu with the re
 1. Append to `history`: `event: stage_transition`, `from: 08_in_progress`, `to: 08_decided_A`, `note: "<short reason>"`, `at: <ISO>`, `commit_sha: <to be filled post-commit>`.
 2. Set `sub_stage: 08_decided_A`.
 3. Set `status: COMPLETED`.
-4. Append new lessons (extracted from the "QUE LIÇÃO TIRAR" block of intake-report) to `<project_root>/docs/lessons.md` respecting strict frontmatter (id, date, tags, severity).
+4. Append new lessons (extracted from the "WHAT LESSON TO TAKE" block of intake-report) to `<project_root>/docs/lessons.md` respecting strict frontmatter (id, date, tags, severity).
 5. Atomic commit (pre-commit hook validates atomicity L1↔outputs↔lessons).
 6. Human message: "Workspace NNN closed. M lessons added to docs/lessons.md."
 
@@ -287,7 +287,7 @@ history:
     from: "08_in_progress"
     to: "03_in_progress"
     iteration_new: 2
-    note: "restart phase 03 — DAG from wave 1 caused race in rebase, redesign"
+    note: "restart stage 03 — DAG from wave 1 caused race in rebase, redesign"
     commit_sha: "9a8b7c6d5e4f"
 ```
 

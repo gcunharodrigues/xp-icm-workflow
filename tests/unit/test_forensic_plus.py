@@ -84,7 +84,7 @@ def _make_repo_with_branch(tmp_path, base_files: dict, branch_files: dict, branc
 def _make_plan(repo, task_slug, files_touched, conventions_extras=None, estimated_lines=None):
     """Write a minimal plan.md with one task."""
     plan = repo / "plan.md"
-    body = f"## Task {task_slug}:\n\n### O QUE\n- placeholder\n\n### Files touched\n"
+    body = f"## Task {task_slug}:\n\n### WHAT\n- placeholder\n\n### Files touched\n"
     for f in files_touched:
         body += f"- {f}\n"
     if estimated_lines is not None:
@@ -859,7 +859,7 @@ def test_snapshot_fixture(fixture_name, tmp_path):
 
 
 # ============================================================================
-# v3.9.0 — Checks 5/6/7 (acceptance↔test mapping, NÃO QUERO violations, ADR import drift)
+# v3.9.0 — Checks 5/6/7 (acceptance↔test mapping, OUT OF SCOPE violations, ADR import drift)
 # ============================================================================
 
 def _make_plan_v3_9_0(
@@ -873,16 +873,16 @@ def _make_plan_v3_9_0(
     conventions_extras=None,
     estimated_lines=None,
 ):
-    """Write a plan.md with v3.9.0 blocks (NÃO QUERO, VALIDAÇÃO, ADRs aplicáveis sections)."""
+    """Write a plan.md with v3.9.0 blocks (OUT OF SCOPE, VALIDATION, Applicable ADRs sections)."""
     plan = repo / "plan.md"
-    body = f"## Task {task_slug}:\n\n### O QUE\n- placeholder\n\n"
+    body = f"## Task {task_slug}:\n\n### WHAT\n- placeholder\n\n"
     if nao_quero:
-        body += "### NÃO QUERO\n"
+        body += "### OUT OF SCOPE\n"
         for b in nao_quero:
             body += f"- {b}\n"
         body += "\n"
     if validacao:
-        body += "### VALIDAÇÃO\n"
+        body += "### VALIDATION\n"
         for b in validacao:
             body += f"- {b}\n"
         body += "\n"
@@ -890,7 +890,7 @@ def _make_plan_v3_9_0(
     for f in files_touched:
         body += f"- {f}\n"
     if adrs_aplicaveis:
-        body += "\n### ADRs aplicáveis\n"
+        body += "\n### Applicable ADRs\n"
         for a in adrs_aplicaveis:
             body += f"- {a}\n"
     if estimated_lines is not None:
@@ -903,7 +903,7 @@ def _make_plan_v3_9_0(
 
 # Check 5: acceptance ↔ test mapping
 def test_check5_acceptance_unmapped_hard_in_dev(tmp_path):
-    """VALIDAÇÃO bullet cites test_foo_bar but test file does not contain the name → HARD in dev."""
+    """VALIDATION bullet cites test_foo_bar but test file does not contain the name → HARD in dev."""
     test_content = (
         "def test_other_thing():\n"
         "    assert True\n\n"
@@ -966,9 +966,9 @@ def test_check5_acceptance_unmapped_soft_in_tool(tmp_path):
     assert violations[0]["severity"] == "SOFT"
 
 
-# Check 6: NÃO QUERO violations
+# Check 6: OUT OF SCOPE violations
 def test_check6_nao_quero_mock_violation_hard_in_dev(tmp_path):
-    """NÃO QUERO declara 'Mock interno de jose'; diff usa jest.mock("jose") → HARD."""
+    """OUT OF SCOPE declares 'Mock interno de jose'; diff uses jest.mock("jose") → HARD."""
     test_content = (
         'jest.mock("jose");\n'
         'test("foo", () => { expect(1).toBe(1); });\n'
@@ -1001,7 +1001,7 @@ def test_check6_nao_quero_mock_violation_hard_in_dev(tmp_path):
 
 
 def test_check6_nao_quero_no_violation_when_pattern_absent(tmp_path):
-    """NÃO QUERO descritivo (sem pattern detectável) → no check."""
+    """OUT OF SCOPE descriptive (no detectable pattern) → no check."""
     repo = _make_repo_with_branch(
         tmp_path,
         base_files={"src/foo.ts": "// stub\n"},
@@ -1108,7 +1108,7 @@ def _make_plan_v3_10_0(
 ):
     """Plan with v3.10.0 Requires E2E update field + optional **E2E:** skip."""
     plan = repo / "plan.md"
-    body = f"## Task {task_slug}:\n\n### O QUE\n- placeholder\n\n"
+    body = f"## Task {task_slug}:\n\n### WHAT\n- placeholder\n\n"
     if e2e_skip:
         body += f"**E2E:** skip - {e2e_skip}\n\n"
     body += "### Files touched\n"

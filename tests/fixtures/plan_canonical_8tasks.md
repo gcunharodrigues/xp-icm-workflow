@@ -29,7 +29,7 @@ Notas:
 ## Task auth-middleware: Auth Middleware
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/auth/middleware.ts
@@ -38,7 +38,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ### Depends on
 - nenhum
 
-### ADRs aplicaveis
+### Applicable ADRs
 - docs/decisions/0001-stack.md
 
 ### Licoes criticas pre-marcadas
@@ -53,7 +53,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task user-model: User Model
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/models/user.ts
@@ -62,7 +62,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ### Depends on
 - nenhum
 
-### ADRs aplicaveis
+### Applicable ADRs
 
 ### Licoes criticas pre-marcadas
 
@@ -75,14 +75,14 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task logger-setup: Logger Setup
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/utils/logger.ts
 
 ### Depends on
 
-### ADRs aplicaveis
+### Applicable ADRs
 
 ### Licoes criticas pre-marcadas
 
@@ -94,7 +94,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task auth-routes: Auth Routes
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/auth/routes.ts
@@ -104,7 +104,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 - auth-middleware
 - user-model
 
-### ADRs aplicaveis
+### Applicable ADRs
 
 ### Licoes criticas pre-marcadas
 
@@ -116,7 +116,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task user-routes: User Routes
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/users/routes.ts
@@ -125,7 +125,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ### Depends on
 - user-model
 
-### ADRs aplicaveis
+### Applicable ADRs
 
 ### Licoes criticas pre-marcadas
 
@@ -137,7 +137,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task audit-log: Audit Log
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/audit/log.ts
@@ -145,7 +145,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ### Depends on
 - logger-setup
 
-### ADRs aplicaveis
+### Applicable ADRs
 
 ### Licoes criticas pre-marcadas
 
@@ -157,7 +157,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task auth-routes-v2: Auth Routes V2
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/auth/routes.ts
@@ -165,7 +165,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ### Depends on
 - nenhum
 
-### ADRs aplicaveis
+### Applicable ADRs
 
 ### Licoes criticas pre-marcadas
 
@@ -177,7 +177,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task dashboard: Dashboard
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/dashboard/index.ts
@@ -186,7 +186,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 - auth-routes
 - audit-log
 
-### ADRs aplicaveis
+### Applicable ADRs
 
 ### Licoes criticas pre-marcadas
 

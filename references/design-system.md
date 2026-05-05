@@ -1,6 +1,6 @@
-# Design System — DESIGN.md format (v3.11.0)
+# Design System — DESIGN.md format (v3.12.0)
 
-> **Version:** v3.11.0
+> **Version:** v3.12.0
 > **Skill:** `xp-icm-workflow`
 > **Applies when:** effective profile has `design_system_required: True`
 > (currently: `app_web_frontend` and `fullstack`).
@@ -368,7 +368,7 @@ Canonical doc: `references/preview-loop-protocol.md`. Covers:
 
 DESIGN.md remains the canonical source of tokens. The preview loop is the
 execution cycle that consumes those tokens in real screens. The two docs work
-together: design-system.md = O QUÊ; preview-loop-protocol.md = COMO ITERAR.
+together: design-system.md = WHAT; preview-loop-protocol.md = HOW TO ITERATE.
 
 ## Cross-references
 

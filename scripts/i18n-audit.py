@@ -3,7 +3,12 @@
 
 Scans the skill repo (references/, scripts/, templates/, SKILL.md, README.md,
 CLAUDE.md) and reports lines containing frequent pt-BR markers. Used as a
-drift gate during and after the v3.11.0 en-US migration.
+drift gate enforcing the v3.12.0 zero-pt-BR policy.
+
+Zero-pt-BR policy (v3.12.0): the skill has a single en-US canonical source
+with NO pt-BR carry-overs. All previously preserved keywords (4-block headers
+`O QUE` / `COMO` / `NÃO QUERO` / `VALIDAÇÃO`, retrospective headers, ADR
+field `ADRs aplicáveis`, historical changelog) have been translated.
 
 Heuristic regex matches common Portuguese tokens (see ``PT_BR_PATTERNS``
 constant below for the full list — kept as compiled regex objects to avoid
@@ -20,9 +25,7 @@ Exit codes:
     0  no residual pt-BR detected (after whitelist)
     1  residual pt-BR detected — listed on stdout
 
-The complete decision rationale and the whitelist of preserved keywords
-(`O QUE`, `COMO`, `NÃO QUERO`, `VALIDAÇÃO`, etc.) live in
-`references/ubiquitous-language-adr.md`.
+The complete decision rationale lives in `references/ubiquitous-language-adr.md`.
 """
 from __future__ import annotations
 
@@ -68,23 +71,12 @@ PT_BR_PATTERNS: tuple[re.Pattern, ...] = (
     re.compile(r"\benquanto\b", re.IGNORECASE),
 )
 
-# Whitelisted phrases — preserved by the ubiquitous-language ADR.
+# Whitelisted phrases — allowed under the zero-pt-BR policy.
 # Each entry is checked as a substring; matched lines containing only these
 # tokens are not reported.
 PRESERVED_KEYWORDS: tuple[str, ...] = (
-    "O QUE",
-    "COMO",
-    "NÃO QUERO",
-    "VALIDAÇÃO",
-    "VALIDAÇAO",  # variant without cedilla
-    "feedback_ambiguous",
-    "design_system_cascade",
-    "ADRs aplicáveis",  # parser-bound 4-block field (forensic+ Check, agent-brief render)
-    # Stage-08 feedback-intake 4-block section headers (DDD ubiquitous language).
-    "O QUE FUNCIONOU",
-    "O QUE NÃO FUNCIONOU",
-    "QUAL DOR PERSISTE",
-    "QUE LIÇÃO TIRAR",
+    "ambiguous_feedback",    # stop point ID (en-US — kept literal in scripts)
+    "design_system_cascade", # stop point ID (en-US — kept literal)
     # Meta-references discussing the migration itself.
     "pt-BR",
     "Portuguese",
@@ -105,7 +97,6 @@ ALLOW_MARKER_RE = re.compile(r"(?:#|<!--)\s*i18n-allow", re.IGNORECASE)
 # Whole files exempted from scanning (historical content).
 FILE_WHITELIST: frozenset[str] = frozenset(
     {
-        "references/changelog.md",  # historical — pre-v3.11.0 entries stay pt-BR
         "scripts/migrate-v3.3-to-v3.4.py",  # historical migration with original prose
         "_KICKOFF-v3.4.0-finish.md",  # archived kickoff
         "references/v2.4-snapshot",  # legacy snapshot folder
@@ -191,12 +182,14 @@ def scan_file(path: Path, repo_root: Path) -> list[dict]:
     return findings
 
 
-def scan_repo(repo_root: Path) -> list[dict]:
+def scan_repo(repo_root: Path, extra_exclude: frozenset[str] = frozenset()) -> list[dict]:
     findings: list[dict] = []
     for path in sorted(repo_root.rglob("*")):
         if not path.is_file():
             continue
         rel = path.relative_to(repo_root).as_posix()
+        if rel in extra_exclude:
+            continue
         if not _should_scan(rel):
             continue
         findings.extend(scan_file(path, repo_root))
@@ -224,13 +217,18 @@ def main(argv: Iterable[str] | None = None) -> int:
         "--exclude-changelog",
         action="store_true",
         help=(
-            "Explicitly exclude references/changelog.md from scan "
-            "(already in FILE_WHITELIST; flag is a no-op but signals intent)."
+            "Exclude references/changelog.md from scan. "
+            "v3.12.0+ changelog is entirely en-US so this flag is no longer needed; "
+            "kept for backward compatibility with CI scripts."
         ),
     )
     args = parser.parse_args(argv)
 
-    findings = scan_repo(args.root)
+    extra_exclude: frozenset[str] = frozenset()
+    if args.exclude_changelog:
+        extra_exclude = frozenset({"references/changelog.md"})
+
+    findings = scan_repo(args.root, extra_exclude=extra_exclude)
 
     if args.format == "json":
         sys.stdout.write(json.dumps(findings, indent=2, ensure_ascii=False) + "\n")

@@ -8,7 +8,7 @@
 |---|---|---|---|---|
 | 1 | **L2 Inputs** | Workspace structure (bootstrap + sessions) | The stage's `CONTEXT.md` + files declared in the `Inputs` table | `stages/<NN>/CONTEXT.md` lists all mandatory and conditional inputs |
 | 2 | **Lead injects** | Wave lead (stage 04 coordinating agent) | Pre-marked critical lessons, task context, relevant ADRs, extra conventions | Injected into the wave's `_kickoff.md` and/or the task in `plan.md` |
-| 3 | **plan.md declares** | Designer (stage 02), refined by wave-planner (stage 03) | Per-task metadata: Files touched, ADRs aplicáveis, Critical lessons, Tech debt paydown, Requires_peer_review | Metadata section of each task in `plan.md` |
+| 3 | **plan.md declares** | Designer (stage 02), refined by wave-planner (stage 03) | Per-task metadata: Files touched, Applicable ADRs, Critical lessons, Tech debt paydown, Requires_peer_review | Metadata section of each task in `plan.md` |
 
 ## Reading rule
 
@@ -31,6 +31,6 @@
 
 ## Cross-reference with other protocols
 
-- **4-block-contract-template.md:** The task schema in `plan.md` is the vehicle for channel 3. Each task carries O QUE / COMO / NÃO QUERO / VALIDAÇÃO + metadata.
+- **4-block-contract-template.md:** The task schema in `plan.md` is the vehicle for channel 3. Each task carries WHAT / HOW / OUT OF SCOPE / VALIDATION + metadata.
 - **subagent-protocol.md:** The lead uses channels 1+2+3 to assemble each subagent's context before spawn.
 - **session-handoff-protocol.md:** The `_kickoff.md` is the channel 2 artifact between sessions (lead → next session).

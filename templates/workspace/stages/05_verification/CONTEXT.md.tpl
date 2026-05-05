@@ -68,7 +68,7 @@ Technical audit of what was delivered in stage 04. No new code. Verifies that ou
 
 5. **Sample-check ADRs:** select 3 random ADRs from `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`. For each, `grep` in directory `stages/04/output/` for a mention (ADR slug or number). ≥1 mention = ok; 0 mentions = warning in report.
 5.5 **Audit lead resolutions (v3.9.0):** read `stages/04/output/wave-*/wave-summary.md` and extract section `## Lead resolutions` (table with bucket applied per voided/resolved task). For each entry, apply deterministic meta-check:
-   - **B1 (REWRITE_SPEC):** compare plan.md task before vs after rewrite. Spec rewrite must TIGHTEN (more specific VALIDAÇÃO bullets OR more NÃO QUERO bullets). LOOSEN (removing criteria) without evidence in diagnose.md → FAIL.
+   - **B1 (REWRITE_SPEC):** compare plan.md task before vs after rewrite. Spec rewrite must TIGHTEN (more specific VALIDATION bullets OR more OUT OF SCOPE bullets). LOOSEN (removing criteria) without evidence in diagnose.md → FAIL.
    - **B3 (DIRECT_IMPL):** read critic concerns accumulated in `task-<slug>-critic-round*.json`. Lead diff in branch `-lead-resolved` must address real concerns (heuristic: BLOCKING claims in concerns must appear as files_modified OR test names in lead diff). Lead that merely silenced critic without fix → FAIL.
    - **B4 (VOID_TASK):** read block `### VOIDED` in plan.md. Rationale must cite concrete ADR conflict OR concrete upstream blocker. Vague reason ("complexity too high", "out of scope") without evidence → FAIL.
 

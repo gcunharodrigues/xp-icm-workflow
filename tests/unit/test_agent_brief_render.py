@@ -29,18 +29,18 @@ SAMPLE_PLAN = """\
 **Type:** AFK
 **Files touched:** src/auth/jwt.ts, src/auth/jwt.test.ts
 
-### O QUE
+### WHAT
 Implementar refresh tokens JWT com TTL de 7 dias.
 
-### COMO
+### HOW
 Adicionar endpoint POST /auth/refresh que aceita refresh_token e
 retorna novo access_token. Validar refresh_token via assinatura HMAC.
 
-### NÃO QUERO
+### OUT OF SCOPE
 Não invalidar refresh tokens ainda válidos. Não tocar em
 mecanismo de session existente.
 
-### VALIDAÇÃO
+### VALIDATION
 Test que envia refresh_token válido retorna 200 com novo
 access_token. Test que envia token expirado retorna 401.
 
@@ -49,16 +49,16 @@ access_token. Test que envia token expirado retorna 401.
 **Type:** HITL
 **Files touched:** docs/decisions/0007-orm.md
 
-### O QUE
+### WHAT
 Escolher ORM entre Prisma, Drizzle e raw SQL.
 
-### COMO
+### HOW
 Avaliar trade-offs de type safety, performance, lock-in.
 
-### NÃO QUERO
+### OUT OF SCOPE
 Não implementar antes do humano decidir.
 
-### VALIDAÇÃO
+### VALIDATION
 ADR criado em docs/decisions/0007-orm.md.
 """
 

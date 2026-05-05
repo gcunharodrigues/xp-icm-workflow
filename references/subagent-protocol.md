@@ -359,7 +359,7 @@ Generates AGENT-BRIEF, displays to human, updates L1
 EXIT. Next session (after human resolves) resumes.
 
 Mapping 4-block ↔ AGENT-BRIEF:
-- O QUE → Summary + Desired behavior
-- COMO → Key interfaces (no paths)
-- NÃO QUERO → Out of scope
-- VALIDAÇÃO → Acceptance criteria
+- WHAT → Summary + Desired behavior
+- HOW → Key interfaces (no paths)
+- OUT OF SCOPE → Out of scope
+- VALIDATION → Acceptance criteria

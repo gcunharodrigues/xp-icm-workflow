@@ -61,7 +61,7 @@ Tasks emitted by wave-planner with the flag gain an optional metadata field:
 ```markdown
 ## Task <slug>: <title>
 
-### O QUE / COMO / NÃO QUERO / VALIDAÇÃO
+### WHAT / HOW / OUT OF SCOPE / VALIDATION
 <see 4-block-contract-template.md>
 
 ### Files touched

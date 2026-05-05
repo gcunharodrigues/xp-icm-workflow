@@ -253,7 +253,7 @@ Exit A of last workspace:
 
 ### Forensic+ extended
 - [ ] `forensic-plus.py` Check 5 fixture (acceptance criterion without test mapping) → HARD in production.
-- [ ] `forensic-plus.py` Check 6 fixture (diff touches NÃO QUERO pattern `Mock interno de jose`) → HARD in dev/prod.
+- [ ] `forensic-plus.py` Check 6 fixture (diff touches OUT OF SCOPE pattern `Mock interno de jose`) → HARD in dev/prod.
 - [ ] `forensic-plus.py` Check 7 fixture (import lib forbidden by ADR `## Forbidden imports`) → HARD in dev/prod.
 - [ ] ADR without section `## Forbidden imports` → check 7 silently skipped (backward compat).
 
@@ -327,17 +327,17 @@ Manual smoke for the en-US migration:
    - [ ] Verify L1 (`workspaces/NNN/CONTEXT.md`) frontmatter + body in en-US.
    - [ ] Verify L2 stage templates in en-US for the active stage.
 
-2. **Open a `plan.md`** (e.g., from stage 02 output) and verify the 4-block headers remain literal pt-BR:
-   - [ ] `### O QUE`, `### COMO`, `### NÃO QUERO`, `### VALIDAÇÃO` present.
-   - [ ] `### ADRs aplicáveis` field present.
+2. **Open a `plan.md`** (e.g., from stage 02 output) and verify the 4-block headers are en-US:
+   - [ ] `### WHAT`, `### HOW`, `### OUT OF SCOPE`, `### VALIDATION` present.
+   - [ ] `### Applicable ADRs` field present.
 
 3. **Run forensic-plus on a sample task**:
    - [ ] `python3 scripts/forensic-plus.py --plan <plan.md> --task <slug>` must succeed.
-   - [ ] Parser-bound headers (pt-BR 4-block) preserved correctly.
+   - [ ] Parser-bound headers (en-US 4-block) parsed correctly.
 
 4. **Verify stop point IDs**:
    - [ ] Stop point IDs in `_config/stop-points.md` remain literal snake_case.
-   - [ ] Examples: `feedback_ambiguous`, `design_system_cascade` (no translation).
+   - [ ] Examples: `ambiguous_feedback`, `design_system_cascade` (no translation).
 
 5. **Run i18n audit**:
    - [ ] `python3 scripts/i18n-audit.py --exclude-changelog` exits 0.

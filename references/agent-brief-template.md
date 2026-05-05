@@ -58,15 +58,15 @@ cases and error conditions.
 
 ## Mapping to 4-block in plan.md
 
-The existing 4-block from plan.md (`O QUE / COMO / NÃO QUERO / VALIDAÇÃO`)
+The existing 4-block from plan.md (`WHAT / HOW / OUT OF SCOPE / VALIDATION`)
 maps to AGENT-BRIEF as follows:
 
 | 4-block | AGENT-BRIEF |
 |---|---|
-| **O QUE** | Summary + Current/Desired behavior |
-| **COMO** | Key interfaces (not procedural) |
-| **NÃO QUERO** | Out of scope |
-| **VALIDAÇÃO** | Acceptance criteria |
+| **WHAT** | Summary + Current/Desired behavior |
+| **HOW** | Key interfaces (not procedural) |
+| **OUT OF SCOPE** | Out of scope |
+| **VALIDATION** | Acceptance criteria |
 
 Stage 02 (design) writes plan.md in 4-block format. Stage 04 (lead session)
 generates the AGENT-BRIEF from the task section in plan.md via

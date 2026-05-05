@@ -36,7 +36,7 @@ Authoritative table. Mirror of the mapping in `references/stage-templates.md` §
 | 05 | `verification` | `verification-before-completion` | `verification-before-completion-200tok.md` |
 | 06 | `review` | `requesting-code-review` + `receiving-code-review` | `requesting-code-review-200tok.md`, `receiving-code-review-200tok.md` |
 | 07 | `merge` | `finishing-a-development-branch` | `finishing-a-development-branch-200tok.md` |
-| 08 | `feedback_intake` | (none direct) | uses local `references/feedback-intake-fase08.md` |
+| 08 | `feedback_intake` | (none direct) | uses local `references/feedback-intake-stage08.md` |
 | transversal | any stage with a bug | `systematic-debugging` | `systematic-debugging-200tok.md` |
 
 ### 2.1 Auxiliary skills (not mapped to a fixed stage)

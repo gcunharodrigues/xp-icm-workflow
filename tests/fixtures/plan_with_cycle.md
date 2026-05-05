@@ -6,7 +6,7 @@ Wave Planner deve abortar com WavePlannerError("cycle detected: ...").
 ## Task alpha: Alpha
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/alpha.ts
@@ -17,7 +17,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task beta: Beta
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/beta.ts
@@ -28,7 +28,7 @@ O QUE / COMO / NAO QUERO / VALIDACAO
 ## Task gamma: Gamma
 
 ### 4-block
-O QUE / COMO / NAO QUERO / VALIDACAO
+WHAT / HOW / OUT OF SCOPE / VALIDATION
 
 ### Files touched
 - src/gamma.ts

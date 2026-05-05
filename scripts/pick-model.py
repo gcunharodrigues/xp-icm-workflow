@@ -23,7 +23,7 @@ from typing import Any
 # Constants — keep aligned with plan v3.9.0 §7 + critic-protocol.md
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.11.0"
+CURRENT_SKILL_VERSION = "3.12.0"
 
 # Models ordered worst → best (used for `min()` cap on writer).
 MODEL_RANK: dict[str, int] = {
@@ -184,7 +184,7 @@ def parse_task_metadata(plan_path: Path, task_slug: str) -> dict:
 
     Heuristics for flags (security_sensitive, public_api_change, etc.):
     - security_sensitive: paths in `Files touched` matching auth|crypto|payments|secret|token + tier
-    - public_api_change: bullet contains "public API" / "exported" / "interface change" in O QUE/COMO
+    - public_api_change: bullet contains "public API" / "exported" / "interface change" in WHAT/HOW
     - algorithm_heavy: bullets contain state machine|concurrent|dag|algorithm|graph|tree
     - doc_only / config_only: declared in `Conventions extras`
     - css_only: all files_touched end .css/.scss/.sass
@@ -193,8 +193,8 @@ def parse_task_metadata(plan_path: Path, task_slug: str) -> dict:
 
     files_touched = _bullets_under(section, "Files touched")
     conventions = _bullets_under(section, "Conventions extras")
-    o_que = _bullets_under(section, "O QUE")
-    como = _bullets_under(section, "COMO")
+    o_que = _bullets_under(section, "WHAT")
+    como = _bullets_under(section, "HOW")
 
     # estimated_lines
     est_lines = None

@@ -360,7 +360,7 @@ def test_4block_template_uses_canonical_heading_levels():
     )
     assert "## Task <SLUG>:" in template, \
         "4-block-contract-template.md missing '## Task <SLUG>:' (schema h2)"
-    for section in ("### O QUE", "### COMO", "### NÃO QUERO", "### VALIDAÇÃO"):
+    for section in ("### WHAT", "### HOW", "### OUT OF SCOPE", "### VALIDATION"):
         assert section in template, \
             f"4-block-contract-template.md missing '{section}' (h3)"
     for section in ("### Files touched", "### Depends on"):
@@ -389,7 +389,7 @@ def test_parser_drift_detector_rejects_h4_task():
     Ensures the guard in parse_plan stays active.
     """
     module = _wave_planner_module()
-    bad = "#### Task foo: bar\n\n##### O QUE\n- x\n"
+    bad = "#### Task foo: bar\n\n##### WHAT\n- x\n"
     with pytest.raises(module.WavePlannerError, match="heading drift"):
         module._detect_heading_drift(bad)
 
@@ -399,7 +399,7 @@ def test_parser_drift_detector_passes_canonical_h2():
     module = _wave_planner_module()
     good = (
         "## Task foo: Foo\n\n"
-        "### O QUE\n- x\n\n"
+        "### WHAT\n- x\n\n"
         "### Files touched\n- src/foo.ts\n\n"
         "### Depends on\n\n"
     )
@@ -535,9 +535,9 @@ def test_l2_stage_04_mentions_max_forensic_retries():
 def test_forensic_plus_doc_canonical_exists():
     """Sanity: the canonical doc must exist and contain expected H1 + sections.
 
-    v3.9.0: section header renamed from "Os 4 checks" to "Os 7 checks" with
-    Checks 5/6/7 added (acceptance↔test mapping, NÃO QUERO violations,
-    ADR import drift). v3.10.0: "Os 8 checks" — Check 8 user-journey coverage.
+    v3.9.0: section header renamed from "The 4 checks" to "The 7 checks" with
+    Checks 5/6/7 added (acceptance↔test mapping, OUT OF SCOPE violations,
+    ADR import drift). v3.10.0: "The 8 checks" — Check 8 user-journey coverage.
     """
     path = REPO_ROOT / "references" / "forensic-plus-protocol.md"
     assert path.is_file(), "forensic-plus-protocol.md missing"
@@ -572,7 +572,7 @@ SKILL_MD_INDEXED_DOCS: tuple[str, ...] = (
     "subagent-protocol.md",
     "stop-points-canonical.md",
     "4-block-contract-template.md",
-    "feedback-intake-fase08.md",
+    "feedback-intake-stage08.md",
     "forensic-plus-protocol.md",
     "critic-protocol.md",            # v3.9.0
     "lead-resolution-protocol.md",   # v3.9.0

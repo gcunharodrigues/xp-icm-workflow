@@ -7,7 +7,7 @@ normally (regardless of violations). Exit 1 on script crash (git missing,
 plan malformed, etc.).
 
 v3.9.0 additions: Check 5 (acceptance ↔ test mapping), Check 6
-(NÃO QUERO violations), Check 7 (ADR import drift).
+(OUT OF SCOPE violations), Check 7 (ADR import drift).
 v3.10.0 additions: Check 8 (user-journey coverage / e2e).
 
 Spec: docs/superpowers/specs/2026-05-03-forensic-plus-wave-reviewer-design.md
@@ -122,9 +122,9 @@ def parse_plan_for_task(plan_path: Path, task_slug: str) -> dict:
     files_touched = _bullets_under("Files touched")
     conventions = _bullets_under("Conventions extras")
     type_field = _bullets_under("Type")
-    nao_quero = _bullets_under("NÃO QUERO")
-    validacao = _bullets_under("VALIDAÇÃO")
-    adrs_aplicaveis = _bullets_under("ADRs aplicáveis")
+    nao_quero = _bullets_under("OUT OF SCOPE")
+    validacao = _bullets_under("VALIDATION")
+    adrs_aplicaveis = _bullets_under("Applicable ADRs")
 
     # v3.10.0 — Requires E2E update (auto-emitted by wave-planner)
     e2e_bullets = _bullets_under("Requires E2E update")
@@ -416,7 +416,7 @@ def check_todo_added(
 # Check 5 — acceptance ↔ test mapping (v3.9.0)
 # ============================================================================
 
-# Test name patterns extracted from VALIDAÇÃO bullets.
+# Test name patterns extracted from VALIDATION bullets.
 # Order matters — try direct test_name patterns first, fallback to weaker hints.
 _TEST_NAME_PATTERNS = (
     re.compile(r"`(test_[a-zA-Z0-9_]+)`"),               # `test_foo_bar`
@@ -451,7 +451,7 @@ def check_acceptance_test_mapping(
     conventions_extras: list[str],
     tier: str,
 ) -> list[dict]:
-    """Each VALIDAÇÃO bullet should map to >=1 test name found in test files.
+    """Each VALIDATION bullet should map to >=1 test name found in test files.
 
     Skip when task is doc-only/config-only. Skip bullets matching coverage/perf
     patterns (not test mappings).
@@ -492,16 +492,16 @@ def check_acceptance_test_mapping(
             violations.append({
                 "check": "acceptance_test_unmapped",
                 "severity": sev,
-                "evidence": f"VALIDAÇÃO bullet candidates [{sample}] not found in declared test files",
+                "evidence": f"VALIDATION bullet candidates [{sample}] not found in declared test files",
             })
     return violations
 
 
 # ============================================================================
-# Check 6 — NÃO QUERO violations (v3.9.0)
+# Check 6 — OUT OF SCOPE violations (v3.9.0)
 # ============================================================================
 
-# Pattern: detect imports/mocks/literal keywords from NÃO QUERO bullets.
+# Pattern: detect imports/mocks/literal keywords from OUT OF SCOPE bullets.
 _MOCK_BULLET_RE = re.compile(
     r"^\s*Mock\s+interno\s+de\s+`?([\w./\-@]+)`?",
     re.IGNORECASE,
@@ -529,7 +529,7 @@ def check_nao_quero_violations(
     nao_quero: list[str],
     tier: str,
 ) -> list[dict]:
-    """Bullets in NÃO QUERO declaring detectable patterns are checked.
+    """Bullets in OUT OF SCOPE declaring detectable patterns are checked.
 
     Supported:
     - "Mock interno de <module>" → grep diff for jest.mock("<module>") /
@@ -562,7 +562,7 @@ def check_nao_quero_violations(
                     violations.append({
                         "check": "nao_quero_violation",
                         "severity": sev,
-                        "evidence": f"NÃO QUERO violated: mock interno de {module} (pattern: {pat[:40]}...)",
+                        "evidence": f"OUT OF SCOPE violated: mock interno de {module} (pattern: {pat[:40]}...)",
                     })
                     break
             continue
@@ -580,7 +580,7 @@ def check_nao_quero_violations(
                     violations.append({
                         "check": "nao_quero_violation",
                         "severity": sev,
-                        "evidence": f"NÃO QUERO violated: import de {lib} detected in diff",
+                        "evidence": f"OUT OF SCOPE violated: import de {lib} detected in diff",
                     })
                     break
             continue
@@ -592,7 +592,7 @@ def check_nao_quero_violations(
                 violations.append({
                     "check": "nao_quero_violation",
                     "severity": sev,
-                    "evidence": f"NÃO QUERO violated: keyword `{kw}` present in added lines",
+                    "evidence": f"OUT OF SCOPE violated: keyword `{kw}` present in added lines",
                 })
 
     return violations
