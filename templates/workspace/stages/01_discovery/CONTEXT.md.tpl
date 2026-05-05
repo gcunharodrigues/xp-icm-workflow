@@ -36,7 +36,7 @@ Guided brainstorming with the human. Refines scope through iterative clarificati
 | 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional: canonical catalogue of IDs, complementary to _config/stop-points.md for thresholds |
 | 12 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/test-recipes/{{PROFILE}}.md | L3 | conditional: exists if profile ∈ {app_web_backend, app_web_frontend, agent_ia, ml_project, cli_tool, framework_library, dashboard}. Read to inform §Test Context in discovery.md |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/ — discovery does NOT inspect source code. If code context is necessary, cite the dependency in recon-report and revisit 00.
 - {{PROJECT_ROOT}}/.icm-main/tests/ — exception: if a legacy project exists, the recon-report (stage 00) should have indexed the existing suite; discovery reads only the index from the recon-report, not the directory.

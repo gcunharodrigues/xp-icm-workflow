@@ -37,7 +37,7 @@ Initial reconnaissance of the project. Detects workspace type (greenfield, exist
 | 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional: canonical catalogue of IDs, complementary to _config/stop-points.md for thresholds |
 | 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/state-machine-schema.md | L3 | conditional: referenced in pre-flight §R2.7 |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/ and {{PROJECT_ROOT}}/.icm-main/tests/ — stage 00 does NOT inspect source code; only repository metadata.
 - Individual content of ADRs in {{PROJECT_ROOT}}/.icm-main/docs/decisions/*.md — only the index (filenames). Detailed reading happens in stage 02.

@@ -38,7 +38,7 @@ Code review across 7 dimensions (correctness, security, performance, complexity,
 | 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | conditional: required for the stage's final handoff |
 | 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional: canonical catalogue of IDs, complementary to _config/stop-points.md for thresholds |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/ in full — review focused on files in `Files touched` declared for each task in plan.md.
 - Outputs of stages 00, 01, 03, 04, 07, 08 — not relevant for review (verification-report already consolidates what matters from 04+05).

@@ -32,7 +32,7 @@ Finalizes the implementation cycle: integrates the `workspace_branch` rebased in
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | conditional: required for the stage's final handoff |
 | 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional: canonical catalogue of IDs, complementary to _config/stop-points.md for thresholds |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/ — merge does not inspect code (review and verification already validated it).
 - Outputs of stages 00–05 — review-report already consolidates what matters for the merge decision.

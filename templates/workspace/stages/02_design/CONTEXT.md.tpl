@@ -47,7 +47,7 @@ Detailed technical design from the scope refined in discovery. Produces `plan.md
 | 18 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/design-system.md | L3 | conditional: effective profile has `design_system_required: True` (currently: `app_web_frontend`, `fullstack`) |
 | 19 | {{PROJECT_ROOT}}/.icm-main/DESIGN.md | L3 | conditional: profile with `design_system_required: True` AND brownfield (file already exists). Read via worktree `.icm-main/`. |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/ and {{PROJECT_ROOT}}/.icm-main/tests/ — design is output-driven from discovery + ADRs; does not inspect existing code. If code context is critical, declare the dependency in plan.md (task with reading ADR) and revisit 01.
 - ADRs not listed by recon-report — only reads those indexed in 00 or created in this session.

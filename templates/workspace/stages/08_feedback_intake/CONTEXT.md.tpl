@@ -41,7 +41,7 @@ Universal iteration gate of the ICM cycle. Workspace transitions here automatica
 
 **Note on `{{LOGS_ROOT}}`:** placeholder resolved by bootstrap from the `logs_root` field of L0. If `logs_root: null` (greenfield, text, skill), bootstrap substitutes with an inert marker and the input is skipped in pre-flight. If `logs_root` is a real path, session samples the last 30 days.
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/ — stage 08 does not revisit code.
 - Other workspaces in {{PROJECT_ROOT}}/workspaces/<other>/ — output C (spawn) consults the old workspace's CONTEXT.md via `spawn_from`, but that is the responsibility of the NEW workspace; the current workspace does not read others.

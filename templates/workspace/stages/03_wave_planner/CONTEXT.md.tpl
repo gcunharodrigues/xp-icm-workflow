@@ -29,7 +29,7 @@ Runs the deterministic wave-planner on top of the `plan.md` from stage 02 design
 | 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | conditional: required for the stage's final handoff |
 | 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional: canonical catalogue of IDs, complementary to _config/stop-points.md for thresholds |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/
 - {{PROJECT_ROOT}}/.icm-main/docs/decisions/ (ADRs already read by stage 02; wave-planner only reads metadata in plan.md)

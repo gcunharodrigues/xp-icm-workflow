@@ -103,7 +103,7 @@ Going forward, v3.11.0+ entries are authored in en-US natively. The changelog be
 
 ## Drift detection
 
-A new test (`tests/unit/test_no_drift.py:test_no_pt_br_in_canonical`) scans canonical files (`references/*.md` excluding `changelog.md`, `scripts/*.py`, `templates/**/*`, `SKILL.md`, `README.md`, `CLAUDE.md`) using a heuristic regex (matches frequent pt-BR markers like `não`, `são`, `ção`, `ões`) and fails the build if matches are found outside the whitelist of preserved keywords.
+A new test (`tests/unit/test_no_drift.py:test_no_pt_br_in_canonical`) scans canonical files (`references/*.md` excluding `changelog.md`, `scripts/*.py`, `templates/**/*`, `SKILL.md`, `README.md`, `CLAUDE.md`) using a heuristic regex (matches frequent pt-BR markers like `não`, `são`, `ção`, `ões`) and fails the build if matches are found outside the whitelist of preserved keywords. <!-- i18n-allow: exemplifying the detection patterns -->
 
 The whitelist:
 

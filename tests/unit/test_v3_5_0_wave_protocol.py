@@ -59,8 +59,9 @@ def test_l2_force_decision_matrix(l2_text):
            "auto_qa_passed: true" in l2_text, \
            "L2 deve ter decision matrix --force"
     assert "JAMAIS usar `-D`" in l2_text or \
+           "NEVER use `-D`" in l2_text or \
            "do not use `-D`" in l2_text, \
-           "L2 deve proibir -D em branch delete"
+           "L2 must prohibit -D in branch delete"
 
 
 def test_l2_wave_reviewer_isolation_spec(l2_text):

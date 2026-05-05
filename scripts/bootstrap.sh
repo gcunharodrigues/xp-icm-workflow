@@ -125,8 +125,8 @@ except Exception:
     if [ -n "$extends_in_override" ]; then
         ext="${extends_in_override%|*}"
         tier_from_yaml="${extends_in_override##*|}"
-        echo "Detectado .icm-profile.local.yaml: extends=$ext tier=$tier_from_yaml"
-        printf "Usar este profile/tier? [s/n/edit]: "
+        echo "Detected .icm-profile.local.yaml: extends=$ext tier=$tier_from_yaml"
+        printf "Use this profile/tier? [y/n/edit]: "
         read -r answer || answer="n"
         case "$answer" in
             s|S|sim|y|Y)

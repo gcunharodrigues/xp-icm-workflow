@@ -62,7 +62,7 @@ Parallel execution in waves. Lead session orchestrates subagents via Agent tool 
 | 20 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/mocking-guidelines.md | L3 | yes — boundaries only (v3.9.0) |
 | 21 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/e2e-coverage-protocol.md | L3 | yes — Check 8 + L4 wave gate e2e (v3.10.0) |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/workspaces/ (other workspaces — workspace isolation)
 - ADRs in {{PROJECT_ROOT}}/.icm-main/docs/decisions/ NOT listed in "ADRs aplicáveis" of the current task
@@ -178,7 +178,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
    - `git worktree remove <path>` fails if working tree is not clean → lead reads task report `output/wave-<N>/task-<slug>.md`:
      - L2 + L3 PASS in frontmatter (`forensic_passed: true` AND `critic_decision: APPROVE`) → safe to use `git worktree remove --force <path>` (orphan lock file is the only remaining cause).
      - Otherwise → do NOT force. Set `status: BLOCKED_ERROR`, record in `wave-summary.md`, human inspects manually.
-   - `git branch -d` refuses if not merged → JAMAIS usar `-D`. Non-merged branch after merge step indicates a bug in sequential merge; investigate first.
+   - `git branch -d` refuses if not merged → NEVER use `-D`. Non-merged branch after merge step indicates a bug in sequential merge; investigate first.
    - Non-fatal cleanup failure (after valid force): record warning in `wave-summary.md` (next step).
 
 13. **Lead writes:** `output/wave-<N>/wave-summary.md` (completed tasks, conflicts, decisions made, **cleanup warnings** if any, **§ L2/L3 summary** with SOFT violations + critic MINOR concerns, **§ Lead resolutions** with bucket table applied if any).

@@ -34,7 +34,7 @@ Technical audit of what was delivered in stage 04. No new code. Verifies that ou
 | 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/lead-resolution-protocol.md | L3 | yes — meta-check of bucket audit (v3.9.0) |
 | 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/e2e-coverage-protocol.md | L3 | yes — audit E2E suite freshness (v3.10.0) |
 
-## Não Lê (negative constraint)
+## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/ (source code; CI already compiled/linted/type-checked)
 - {{PROJECT_ROOT}}/.icm-main/tests/ — exception: coverage report and list of existing test files are verified in steps 4.5 and 4.6 below via `git ls-files` + CI coverage, without reading test content

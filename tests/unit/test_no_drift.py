@@ -50,7 +50,7 @@ VERSION_WHITELIST = {
     "tests/unit/test_stop_points_render.py",
     "docs/plans",
     "references/v2.4-snapshot",
-    "references/example-run.md",  # menciona v3.0.0-beta5 + v2.4 (histórico)
+    "references/example-run.md",  # mentions v3.0.0-beta5 + v2.4 (historical)
 }
 
 # Files that MUST mention the canonical version.
@@ -77,7 +77,7 @@ def _canonical_version() -> str:
 
 
 def test_version_consistency_canonical_files():
-    """Arquivos canônicos devem refletir SKILL_VERSION."""
+    """Canonical files must reflect SKILL_VERSION."""
     canonical = _canonical_version()
     for rel_path, pattern in VERSION_MUST_MATCH:
         path = REPO_ROOT / rel_path
@@ -108,19 +108,19 @@ def test_changelog_has_entry_for_canonical_version():
 # B. Profile count consistency
 # ============================================================
 
-# Regex captura claims canônicos sobre profile count total. Ignora menções
-# context-specific tipo "os 3 profiles X/Y/Z" (subset).
+# Captures canonical claims about total profile count. Ignores context-specific
+# mentions like "the 3 profiles X/Y/Z" (subset).
 # Match patterns: "N profiles × 4 tiers", "N profiles canônicos", "N profiles
 # canonicos x 4 tiers", "N profiles (e.g.,", "Demais N profiles"
 PROFILE_COUNT_RE = re.compile(
     r"(\d+)\s+profiles\b\s*(?:×|x\s+\d|canôn|canon|\(e\.g|\(incl)",
     re.IGNORECASE,
 )
-# Pattern adicional: "Demais N profiles" (= total - listed)
+# Additional pattern: "Demais N profiles" (= total - listed)
 PROFILE_REMAINDER_RE = re.compile(r"Demais\s+(\d+)\s+profiles\b")
 
-# Hardened (v3.7.0): pega formatos missados pelo PROFILE_COUNT_RE original.
-# Cobre:
+# Hardened (v3.7.0): catches formats missed by the original PROFILE_COUNT_RE.
+# Covers:
 #   - "Profiles canônicos (N):" / "Profiles canonicos (N)"
 #   - "(N × 4 = M combos)" / "(N x 4 = M combos)"
 PROFILE_COUNT_PARENS_RE = re.compile(
@@ -155,7 +155,7 @@ CANONICAL_TIERS_COUNT = 4  # CANONICAL_TIERS em profile-merge.py
 
 
 def _check_profile_count_in_file(path: Path, canonical: int) -> list:
-    """Retorna lista de violações no arquivo."""
+    """Return list of violations in the file."""
     rel = path.relative_to(REPO_ROOT).as_posix()
     if _is_whitelisted(rel, PROFILE_COUNT_WHITELIST):
         return []
@@ -165,13 +165,13 @@ def _check_profile_count_in_file(path: Path, canonical: int) -> list:
         n = int(match.group(1))
         if n != canonical:
             violations.append(f"{rel}: '{match.group(0)}' (canonical {canonical})")
-    # "Demais N profiles" — remainder, espera-se total - explicit listed na mesma table
-    # Heurística simples: se aparecer, deve ser pelo menos 1 a menos que canonical
+    # "Demais N profiles" — remainder; expected to be total - explicit listed in same table.
+    # Simple heuristic: if it appears, must be at least 1 less than canonical.
     for match in PROFILE_REMAINDER_RE.finditer(text):
         n = int(match.group(1))
         if n >= canonical:
             violations.append(
-                f"{rel}: '{match.group(0)}' >= canonical {canonical} (impossível)"
+                f"{rel}: '{match.group(0)}' >= canonical {canonical} (impossible)"
             )
     # Hardened v3.7.0: "Profiles canônicos (N):" format
     for match in PROFILE_COUNT_PARENS_RE.finditer(text):
@@ -229,54 +229,54 @@ EXPECTED_STATUSES = {
 
 
 def _validator_statuses() -> set:
-    """Importa ALLOWED_STATUSES do validate_state.py (single source)."""
+    """Import ALLOWED_STATUSES from validate_state.py (single source)."""
     vs = _load_module("validate_state", REPO_ROOT / "scripts" / "validate_state.py")
     return set(vs.ALLOWED_STATUSES)
 
 
 def _schema_statuses() -> set:
-    """Extrai status canônicos de state-machine-schema.md table rows."""
+    """Extract canonical statuses from state-machine-schema.md table rows."""
     text = (REPO_ROOT / "references" / "state-machine-schema.md").read_text(encoding="utf-8")
-    # Pattern: linhas tipo `| \`STATUS_NAME\` | ...`
+    # Pattern: lines like `| \`STATUS_NAME\` | ...`
     return set(re.findall(r"^\|\s*`([A-Z_]+)`\s*\|", text, flags=re.MULTILINE))
 
 
 def test_validator_has_expected_statuses():
-    """validate_state.py ALLOWED_STATUSES cobre todos statuses canônicos."""
+    """validate_state.py ALLOWED_STATUSES must cover all canonical statuses."""
     validator = _validator_statuses()
     missing = EXPECTED_STATUSES - validator
-    assert not missing, f"validate_state.py falta: {missing}"
+    assert not missing, f"validate_state.py missing: {missing}"
 
 
 def test_schema_doc_has_expected_statuses():
-    """state-machine-schema.md table cobre todos statuses canônicos."""
+    """state-machine-schema.md table must cover all canonical statuses."""
     schema = _schema_statuses()
     missing = EXPECTED_STATUSES - schema
-    assert not missing, f"state-machine-schema.md falta rows: {missing}"
+    assert not missing, f"state-machine-schema.md missing rows: {missing}"
 
 
 def test_validator_schema_in_sync():
-    """Validator ↔ schema: todo status no validator está no schema."""
+    """Validator ↔ schema: every status in the validator must be in the schema."""
     validator = _validator_statuses()
     schema = _schema_statuses()
     only_validator = validator - schema
     assert not only_validator, \
-        f"validator tem statuses ausentes no schema: {only_validator}"
+        f"validator has statuses absent from schema: {only_validator}"
 
 
 # ============================================================
-# D. Markdown cross-ref resolves em references/
+# D. Markdown cross-refs resolve in references/
 # ============================================================
 
 MD_LINK_RE = re.compile(r"\[([^\]]+)\]\(([^)]+)\)")
 
 
 # ============================================================
-# F. Shell templates sem CRLF
+# F. Shell templates without CRLF
 # ============================================================
 
-# Templates whitelist (CRLF aceitável) — vazio por padrão. Adicionar entry
-# APENAS se o arquivo NÃO é executado via shebang (ex: doc/example).
+# Templates whitelist (CRLF acceptable) — empty by default. Add entry ONLY
+# if the file is NOT executed via shebang (e.g. doc/example).
 SHELL_CRLF_WHITELIST: set[str] = set()
 
 
@@ -300,7 +300,7 @@ def test_shell_templates_no_crlf():
         if b"\r\n" in raw:
             violations.append(rel)
     assert not violations, (
-        "Templates .sh com CRLF (use LF; rode `python -c \"import "
+        "Templates .sh with CRLF (use LF; run `python -c \"import "
         "pathlib; [p.write_bytes(p.read_bytes().replace(b'\\r\\n',b'\\n')) "
         "for p in pathlib.Path('templates').rglob('*.sh')]\"`):\n  "
         + "\n  ".join(violations)
@@ -308,7 +308,7 @@ def test_shell_templates_no_crlf():
 
 
 def test_git_hook_templates_no_crlf():
-    """Templates .git-hooks/ — git executa via shebang exec mesma classe."""
+    """Templates .git-hooks/ — git executes via shebang exec same class."""
     hooks_root = REPO_ROOT / "templates" / ".git-hooks"
     if not hooks_root.exists():
         pytest.skip("templates/.git-hooks/ does not exist")
@@ -320,7 +320,7 @@ def test_git_hook_templates_no_crlf():
         if b"\r\n" in raw:
             violations.append(hook.relative_to(REPO_ROOT).as_posix())
     assert not violations, (
-        "Git hook templates com CRLF:\n  " + "\n  ".join(violations)
+        "Git hook templates with CRLF:\n  " + "\n  ".join(violations)
     )
 
 
@@ -335,9 +335,9 @@ def test_git_hook_templates_no_crlf():
 # (or vice-versa). These tests freeze the contract.
 
 def _wave_planner_module():
-    """Importa wave-planner-script.py com registro em sys.modules ANTES
-    de exec_module — exigência do @dataclass do Task pra resolver type
-    annotations via lookup em sys.modules[cls.__module__].
+    """Import wave-planner-script.py with registration in sys.modules BEFORE
+    exec_module — required by @dataclass on Task to resolve type annotations
+    via lookup in sys.modules[cls.__module__].
     """
     import sys
     name = "wave_planner_script_drift"
@@ -359,19 +359,19 @@ def test_4block_template_uses_canonical_heading_levels():
         encoding="utf-8"
     )
     assert "## Task <SLUG>:" in template, \
-        "4-block-contract-template.md falta '## Task <SLUG>:' (schema h2)"
+        "4-block-contract-template.md missing '## Task <SLUG>:' (schema h2)"
     for section in ("### O QUE", "### COMO", "### NÃO QUERO", "### VALIDAÇÃO"):
         assert section in template, \
-            f"4-block-contract-template.md falta '{section}' (h3)"
+            f"4-block-contract-template.md missing '{section}' (h3)"
     for section in ("### Files touched", "### Depends on"):
         assert section in template, \
-            f"4-block-contract-template.md falta '{section}' (h3)"
+            f"4-block-contract-template.md missing '{section}' (h3)"
 
 
 def test_parser_regex_matches_template_canonical_example():
-    """SLUG_RE do parser deve casar header de exemplo concreto §6.1
-    (`## Task auth-middleware: JWT validation middleware`). Drift entre
-    parser e schema canônico = LLM segue template, parser rejeita.
+    """SLUG_RE must match the concrete example header in §6.1
+    (`## Task auth-middleware: JWT validation middleware`). Drift between
+    parser and canonical schema means LLM follows template but parser rejects it.
     """
     module = _wave_planner_module()
     template = (REPO_ROOT / "references" / "4-block-contract-template.md").read_text(
@@ -380,13 +380,13 @@ def test_parser_regex_matches_template_canonical_example():
     matches = module.SLUG_RE.findall(template)
     assert "auth-middleware" in matches, (
         f"parser SLUG_RE does not match template example (got {matches}). "
-        "Schema canônico em references/4-block-contract-template.md §6.1."
+        "Canonical schema in references/4-block-contract-template.md §6.1."
     )
 
 
 def test_parser_drift_detector_rejects_h4_task():
-    """`_detect_heading_drift` deve abortar em '#### Task ...' (h4).
-    Garante guard em parse_plan permanece ativo.
+    """`_detect_heading_drift` must abort on '#### Task ...' (h4).
+    Ensures the guard in parse_plan stays active.
     """
     module = _wave_planner_module()
     bad = "#### Task foo: bar\n\n##### O QUE\n- x\n"
@@ -468,7 +468,7 @@ def test_scripts_skill_version_sync():
 
 
 def test_markdown_cross_refs_resolve_in_references():
-    """Links markdown relativos em references/ devem resolver."""
+    """Relative markdown links in references/ must resolve."""
     violations = []
     root = REPO_ROOT / "references"
     if not root.exists():
@@ -494,7 +494,7 @@ def test_markdown_cross_refs_resolve_in_references():
                     f"{md.relative_to(REPO_ROOT).as_posix()}: broken link → {target}"
                 )
     assert not violations, \
-        "Broken cross-refs em references/:\n  " + "\n  ".join(violations)
+        "Broken cross-refs in references/:\n  " + "\n  ".join(violations)
 
 
 def test_state_machine_schema_documents_v3_8_0_error_types():
@@ -752,3 +752,41 @@ def test_wave_planner_has_user_facing_paths_constant():
     text = path.read_text(encoding="utf-8")
     assert "USER_FACING_PATHS_BY_PROFILE" in text
     assert "_task_requires_e2e" in text
+
+
+# ============================================================================
+# v3.11.0 — en-US migration drift detector
+# ============================================================================
+
+def test_no_pt_br_in_canonical():
+    """Canonical en-US files contain no residual pt-BR markers (post-v3.11.0).
+
+    Invokes scripts/i18n-audit.py programmatically against canonical files
+    (references/, scripts/, templates/, SKILL.md, README.md, CLAUDE.md),
+    excluding changelog historical entries (--exclude-changelog).
+    Fails if any residual pt-BR is detected outside the preserved-keywords
+    whitelist documented in references/ubiquitous-language-adr.md.
+    """
+    import json
+    import subprocess
+    result = subprocess.run(
+        [
+            "python",
+            str(REPO_ROOT / "scripts" / "i18n-audit.py"),
+            "--root", str(REPO_ROOT),
+            "--exclude-changelog",
+            "--format", "json",
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        try:
+            hits = json.loads(result.stdout)
+            formatted = "\n".join(
+                f"  {h['file']}:{h['line']}: {h['text']}"
+                for h in hits
+            )
+        except (json.JSONDecodeError, KeyError, TypeError):
+            formatted = result.stdout or result.stderr
+        pytest.fail(f"Residual pt-BR detected in canonical files:\n{formatted}")

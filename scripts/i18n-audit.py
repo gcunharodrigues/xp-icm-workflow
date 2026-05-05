@@ -80,6 +80,11 @@ PRESERVED_KEYWORDS: tuple[str, ...] = (
     "feedback_ambiguous",
     "design_system_cascade",
     "ADRs aplicáveis",  # parser-bound 4-block field (forensic+ Check, agent-brief render)
+    # Stage-08 feedback-intake 4-block section headers (DDD ubiquitous language).
+    "O QUE FUNCIONOU",
+    "O QUE NÃO FUNCIONOU",
+    "QUAL DOR PERSISTE",
+    "QUE LIÇÃO TIRAR",
     # Meta-references discussing the migration itself.
     "pt-BR",
     "Portuguese",
@@ -87,8 +92,10 @@ PRESERVED_KEYWORDS: tuple[str, ...] = (
     "ubiquitous-language-adr",
 )
 
-# Inline allow marker — comment-style, suppresses report on the same line.
-ALLOW_MARKER_RE = re.compile(r"#\s*i18n-allow", re.IGNORECASE)
+# Inline allow marker — suppresses report on the same line.
+# Accepts both Python/shell comment style (`# i18n-allow`) and HTML comment
+# style (`<!-- i18n-allow:`) so the marker works in both .py/.sh and .md files.
+ALLOW_MARKER_RE = re.compile(r"(?:#|<!--)\s*i18n-allow", re.IGNORECASE)
 
 
 # ============================================================================
@@ -102,6 +109,7 @@ FILE_WHITELIST: frozenset[str] = frozenset(
         "scripts/migrate-v3.3-to-v3.4.py",  # historical migration with original prose
         "_KICKOFF-v3.4.0-finish.md",  # archived kickoff
         "references/v2.4-snapshot",  # legacy snapshot folder
+        "scripts/i18n-audit.py",  # self-referential — PRESERVED_KEYWORDS literals trigger patterns
     }
 )
 
@@ -151,9 +159,11 @@ def _line_is_whitelisted(line: str) -> bool:
     has_keyword = any(kw in line for kw in PRESERVED_KEYWORDS)
     if not has_keyword:
         return False
-    # Strip preserved keywords and re-check.
+    # Strip preserved keywords and re-check. Sort longest-first so compound
+    # phrases (e.g. "O QUE NÃO FUNCIONOU") are removed before their substrings
+    # (e.g. "O QUE"), avoiding false positives from partial strips.
     stripped = line
-    for kw in PRESERVED_KEYWORDS:
+    for kw in sorted(PRESERVED_KEYWORDS, key=len, reverse=True):
         stripped = stripped.replace(kw, "")
     return not any(p.search(stripped) for p in PT_BR_PATTERNS)
 
@@ -209,6 +219,14 @@ def main(argv: Iterable[str] | None = None) -> int:
         "--format",
         choices=("text", "json"),
         default="text",
+    )
+    parser.add_argument(
+        "--exclude-changelog",
+        action="store_true",
+        help=(
+            "Explicitly exclude references/changelog.md from scan "
+            "(already in FILE_WHITELIST; flag is a no-op but signals intent)."
+        ),
     )
     args = parser.parse_args(argv)
 

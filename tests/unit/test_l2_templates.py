@@ -5,7 +5,7 @@ Validates canonical schema defined in `references/stage-templates.md`:
   - sub_stage_enum matches state-machine-schema.md
   - applicable_stop_points subset of canonical IDs
   - Inputs table present with minimum L0/L1/L2
-  - Não Lê section present
+  - Does Not Read section present
   - output_files frontmatter == paths cited in Outputs
   - valid next_stage
   - only allowed placeholders
@@ -196,7 +196,7 @@ def test_l2_inputs_table_has_l0_l1_l2(stage: str):
 @pytest.mark.parametrize("stage", list(STAGE_SLUGS.keys()))
 def test_l2_nao_le_section_present(stage: str):
     _, body = parse_l2_template(template_path(stage))
-    assert "## Não Lê" in body, f"stage {stage}: 'Não Lê' section missing"
+    assert "## Does Not Read" in body, f"stage {stage}: 'Does Not Read' section missing"
 
 
 @pytest.mark.parametrize("stage", list(STAGE_SLUGS.keys()))
