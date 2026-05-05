@@ -346,7 +346,7 @@ Items identified in previous sessions but not yet addressed. Ordered by priority
 Checklist updated in `references/smoke-manual-checklist.md` but execution on a real project not run in this session. Covers:
 
 - Greenfield bootstrap (verifies all new files created)
-- Brownfield WITH markers (preserves content outside byte-by-byte)
+- Brownfield WITH markers (content outside markers preserved byte-for-byte)
 - Brownfield WITHOUT markers (inserts after `^# `)
 - Multi-workspace (2 blocks in CLAUDE.md root)
 - Handoff transitions update the owning workspace block
