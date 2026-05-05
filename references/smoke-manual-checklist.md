@@ -317,3 +317,32 @@ Exit A of last workspace:
 
 ### E2E (meta-test of reinforcement)
 - [ ] Workspace lifecycle: create plan with 2 tasks (1 user-facing forensic-flagged, 1 not); confirm wave-plan.md shows E2E annotation; designer adds `Requires E2E update: true`; subagent A forgets e2e file → Check 8 HARD; subagent B adds e2e/checkout.spec.ts → PASS; L4 wave gate runs suite; Stage 05 4.7 audits freshness green.
+
+## v3.11.0 — i18n verification
+
+Manual smoke for the en-US migration:
+
+1. **Bootstrap a new workspace** (any profile, any tier):
+   - [ ] Verify L0 (`workspaces/NNN/CLAUDE.md`) renders in en-US.
+   - [ ] Verify L1 (`workspaces/NNN/CONTEXT.md`) frontmatter + body in en-US.
+   - [ ] Verify L2 stage templates in en-US for the active stage.
+
+2. **Open a `plan.md`** (e.g., from stage 02 output) and verify the 4-block headers remain literal pt-BR:
+   - [ ] `### O QUE`, `### COMO`, `### NÃO QUERO`, `### VALIDAÇÃO` present.
+   - [ ] `### ADRs aplicáveis` field present.
+
+3. **Run forensic-plus on a sample task**:
+   - [ ] `python3 scripts/forensic-plus.py --plan <plan.md> --task <slug>` must succeed.
+   - [ ] Parser-bound headers (pt-BR 4-block) preserved correctly.
+
+4. **Verify stop point IDs**:
+   - [ ] Stop point IDs in `_config/stop-points.md` remain literal snake_case.
+   - [ ] Examples: `feedback_ambiguous`, `design_system_cascade` (no translation).
+
+5. **Run i18n audit**:
+   - [ ] `python3 scripts/i18n-audit.py --exclude-changelog` exits 0.
+   - [ ] No residual pt-BR in canonical files.
+
+6. **Migration test** (v3.10.0 → v3.11.0):
+   - [ ] Bootstrap a workspace at v3.10.0.
+   - [ ] Run `python3 scripts/migrate-workspace.py <workspace>` — verify L1 bumps to v3.11.0 idempotently.
