@@ -4,7 +4,7 @@ description: Bootstrap one-shot ICM (Interpretable Context Methodology) que cria
 type: rigid
 ---
 
-# xp-icm-workflow v3.9.0
+# xp-icm-workflow v3.10.0
 
 > **Skill é parteira, não orquestradora.** Bootstrap one-shot cria a estrutura. Filesystem governa o ciclo. **1 stage = 1 sessão**: cada estágio termina com handoff dual (verbal + arquivo `_kickoff.md`) e a sessão sai. Próxima sessão começa fresh.
 
@@ -292,6 +292,7 @@ Permissions allowlist sugerida em `system-requirements.md`.
 - `references/critic-protocol.md` — L3 LLM critic ortogonal (v3.9.0): fresh context, anti-sycophancy, triplet output, model = TIER_CEILING
 - `references/lead-resolution-protocol.md` — buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK (v3.9.0) quando per-task loop esgota cap OR convergence trip OR catastrophic
 - `references/mocking-guidelines.md` — boundaries only (HTTP/DB/time/randomness/env); nunca internals (v3.9.0, mattpocock alignment)
+- `references/e2e-coverage-protocol.md` — E2E reinforcement (v3.10.0): wave-planner auto-flag user-facing tasks, forensic+ Check 8, L4 wave gate universal tier dev/prod, Stage 05 audit suite freshness
 
 **Referências de testes:**
 

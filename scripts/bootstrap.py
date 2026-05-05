@@ -29,7 +29,7 @@ from typing import Any
 # Constantes
 # ============================================================================
 
-SKILL_VERSION = "3.9.0"  # template prepends `v`
+SKILL_VERSION = "3.10.0"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 # Bootstrap auto-prefixa NNN- ao slug. Slug que JÁ comece com NNN- gera ID
@@ -673,6 +673,7 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "critic-protocol.md",            # v3.9.0 — L3 critic ortogonal
         "lead-resolution-protocol.md",   # v3.9.0 — buckets B1/B3/B4
         "mocking-guidelines.md",         # v3.9.0 — boundaries only
+        "e2e-coverage-protocol.md",      # v3.10.0 — E2E reinforcement
     )
     refs_src = skill_root / "references"
     for fname in runtime_refs:

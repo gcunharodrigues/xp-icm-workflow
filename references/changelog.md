@@ -4,6 +4,30 @@ Histórico de versões da skill. A versão atual vive no frontmatter do `SKILL.m
 
 ---
 
+## v3.10.0 — E2E coverage reinforcement (2026-05-04)
+
+### Mudanças
+
+- **NEW:** `references/e2e-coverage-protocol.md` — doc canônico do reforço E2E. 4 frentes: (1) wave-planner detecta user-facing paths e auto-emite annotation, (2) forensic+ Check 8 valida task com `Requires E2E update: true` tem ≥1 file em e2e/cypress/playwright, (3) L4 wave gate roda E2E suite universal tier dev/prod (independe profile), (4) Stage 05 audit suite freshness < 7 dias.
+- **EXTENDED:** `scripts/forensic-plus.py` +Check 8 user-journey coverage (HARD dev/prod, SOFT exp/tool). Plan parser extrai `Requires E2E update` field + detect `**E2E:** skip - <rationale>` override. JSON schema bump `e2e_coverage_missing` (backward-compat).
+- **EXTENDED:** `scripts/wave-planner-script.py` +`USER_FACING_PATHS_BY_PROFILE` constant (defaults 11 profiles) + helper `_task_requires_e2e()`. render_wave_plan inclui coluna `E2E required?` na task table + annotation `> **E2E coverage required**` quando ≥1 task flagged.
+- **EXTENDED:** `scripts/recovery-wizard.py` +`CODE_E2E_SUITE_STALE` em CANONICAL_ORDER (alerta quando suite > 7 dias sem update + tasks user-facing entregues).
+- **EXTENDED:** `scripts/migrate-workspace.py` +entry `migrate_3_9_0_to_3_10_0` (bump-only, backward-compat). SUPPORTED_VERSIONS += "3.10.0".
+- **EXTENDED:** `references/forensic-plus-protocol.md` Check 8 spec + tier×severity matrix expandida 8 checks. v3.9.0 → v3.10.0.
+- **EXTENDED:** `references/4-block-contract-template.md` schema +`### Requires E2E update` field opcional (auto-emit por wave-planner; subagente DEVE adicionar e2e files; override `**E2E:** skip - <rationale>`).
+- **EXTENDED:** `references/state-machine-schema.md` error_types adicionais: `e2e_suite_failed`, `e2e_suite_missing`, `e2e_suite_stale`, `e2e_skip_unjustified`.
+- **EXTENDED:** `templates/.../04_implementation_waves/CONTEXT.md.tpl` step 11 expandido em 11a/11b/11c (CI universal / E2E suite tier dev/prod / cross-task coherence). Inputs +e2e-coverage-protocol.md.
+- **EXTENDED:** `templates/.../05_verification/CONTEXT.md.tpl` step 4.7 NEW (audit E2E suite existe + freshness + skip rationale). BLOCKED_ERROR causa list +e2e_suite_*. Inputs +e2e-coverage-protocol.md.
+- **BUMP:** SKILL_VERSION 3.9.0 → 3.10.0 (`scripts/bootstrap.py`); 5 canonical files synced (SKILL.md, README.md badge + section, design-system.md, preview-loop-protocol.md, bootstrap.py runtime_refs +e2e-coverage-protocol.md).
+
+### Notas
+
+E2E coverage gap docs em ICM v3.9.0: tracer-first cobre task isolada (não regressão); wave gate L4 e2e profile-conditional (só frontend/fullstack); Stage 05 confiava em CI projeto sem audit. v3.10.0 fecha gaps via 4 frentes complementares — wave-planner advisory (annotation), forensic+ enforcement (Check 8 HARD), wave gate universal (step 11b), stage 05 audit (4.7).
+
+Nível 3 (mutation testing oracle, preview-loop suite completa wave-end) deferido pra v3.11.0+.
+
+---
+
 ## v3.9.0 — Layered dev↔QA loop + lead-resolution tier (2026-05-04)
 
 ### Mudanças

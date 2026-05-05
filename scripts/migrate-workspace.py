@@ -35,7 +35,7 @@ from typing import Sequence
 # Constantes
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.9.0"
+CURRENT_SKILL_VERSION = "3.10.0"
 FLOOR_VERSION = "3.3.0"
 
 # Sequência de versões suportadas. Migration steps são pares consecutivos.
@@ -50,6 +50,7 @@ SUPPORTED_VERSIONS: tuple[str, ...] = (
     "3.7.2",
     "3.8.0",
     "3.9.0",
+    "3.10.0",
 )
 
 
@@ -292,6 +293,23 @@ def migrate_3_8_0_to_3_9_0(workspace_root: Path, project_root: Path) -> None:
     _bump_version_only(workspace_root, "3.9.0")
 
 
+def migrate_3_9_0_to_3_10_0(workspace_root: Path, project_root: Path) -> None:
+    """v3.9.0 → v3.10.0: E2E coverage reinforcement.
+
+    Bump-only. Sem schema change destrutivo em L0/L1:
+    - 4-block schema +Requires E2E update field opcional; tasks legacy sem
+      o field são tratadas como False (Check 8 skip).
+    - Forensic+ Check 8 só ativa em waves novas; não re-audita tasks pre-bump.
+    - L4 wave gate e2e (step 11b) só ativa em waves novas tier dev/prod;
+      workspaces mid-stage 04 mantêm flow v3.9.0 até concluir wave atual.
+    - Stage 05 audit 4.7 só ativa em verification runs novas; relatórios
+      legacy não são re-auditados.
+    - profile-effective.yaml ganha section e2e (opcional); workspaces
+      existentes seguem com defaults hardcoded em wave-planner-script.
+    """
+    _bump_version_only(workspace_root, "3.10.0")
+
+
 STEP_FUNCTIONS = {
     "3.3.0->3.4.0": migrate_3_3_to_3_4,
     "3.4.0->3.5.0": migrate_3_4_to_3_5,
@@ -300,6 +318,7 @@ STEP_FUNCTIONS = {
     "3.7.0->3.7.2": migrate_3_7_0_to_3_7_2,
     "3.7.2->3.8.0": migrate_3_7_2_to_3_8_0,
     "3.8.0->3.9.0": migrate_3_8_0_to_3_9_0,
+    "3.9.0->3.10.0": migrate_3_9_0_to_3_10_0,
 }
 
 
