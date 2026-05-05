@@ -1,27 +1,27 @@
-"""Runtime status — checklist cross-platform de side-effects ativos (v3.7.0).
+"""Runtime status — cross-platform checklist of active side-effects (v3.7.0).
 
-Consumido por L2 stage 08 entry hook (saída A/B/C step 0). Verifica 6
-categorias de side-effects que humano DEVE confirmar antes de transição:
+Consumed by L2 stage 08 entry hook (exit A/B/C step 0). Checks 6 categories
+of side-effects that the human MUST confirm before transitioning:
 
   1. dev_servers      — runtime-registry kind=dev_server alive
   2. background_tasks — kind=background_task alive
   3. docker           — containers + volumes label icm-workspace=NNN
-  4. wave_branches    — git branches `wave-NNN-N/<task>` órfãs
-  5. working_tree     — git status --short na workspace branch
+  4. wave_branches    — git branches `wave-NNN-N/<task>` orphaned
+  5. working_tree     — git status --short on workspace branch
   6. untracked        — `.icm-main/` dirty + git ls-files --others
 
-Cada check retorna `{clean: bool, items: list[dict], summary: str}`.
-`check_all` agrega todas categorias num dict pra ICM agent consumir.
+Each check returns `{clean: bool, items: list[dict], summary: str}`.
+`check_all` aggregates all categories into a dict for the ICM agent to consume.
 
-Doc canônico: `references/runtime-cleanup-protocol.md`.
+Canonical doc: `references/runtime-cleanup-protocol.md`.
 
 CLI:
     python runtime-status.py --workspace-root <ws> --project-root <pr> \\
         [--check dev_servers] [--format json|text] [--exit-code]
 
 Exit code:
-    0 = todas categorias clean (ou --exit-code não passado)
-    1 = pelo menos 1 categoria dirty (apenas com --exit-code)
+    0 = all categories clean (or --exit-code not passed)
+    1 = at least 1 dirty category (only with --exit-code)
 """
 from __future__ import annotations
 
@@ -35,7 +35,7 @@ from typing import Any, Sequence
 
 
 # ============================================================================
-# Constantes
+# Constants
 # ============================================================================
 
 CATEGORIES = (
@@ -49,17 +49,17 @@ CATEGORIES = (
 
 
 # ============================================================================
-# Helpers cross-platform
+# Cross-platform helpers
 # ============================================================================
 
 def _pid_alive(pid: int) -> bool:
-    """Reusa lógica de runtime-registry (lazy import via importlib)."""
+    """Reuses logic from runtime-registry (lazy import via importlib)."""
     rr = _load_runtime_registry()
     return rr._is_pid_alive(int(pid))
 
 
 def _load_runtime_registry():
-    """Lazy import runtime-registry.py (filename com hyphen)."""
+    """Lazy import runtime-registry.py (filename with hyphen)."""
     if "runtime_registry" in sys.modules:
         return sys.modules["runtime_registry"]
     path = Path(__file__).resolve().parent / "runtime-registry.py"
@@ -130,10 +130,10 @@ def check_background_tasks(workspace_root: Path) -> dict[str, Any]:
 
 
 def check_docker(workspace_root: Path) -> dict[str, Any]:
-    """Docker containers com label icm-workspace=<NNN>.
+    """Docker containers with label icm-workspace=<NNN>.
 
-    Returns clean=True se docker daemon não disponível (humano sabe se
-    usa docker; sem evidência, presume clean).
+    Returns clean=True if docker daemon is unavailable (human knows if
+    they use docker; without evidence, assume clean).
     """
     workspace_id = workspace_root.name
     label = f"icm-workspace={workspace_id}"
@@ -144,7 +144,7 @@ def check_docker(workspace_root: Path) -> dict[str, Any]:
             capture_output=True, text=True, check=False, timeout=10,
         )
         if proc.returncode != 0:
-            # Daemon down ou docker ausente: assume clean
+            # Daemon down or docker absent: assume clean
             return {"clean": True, "items": [],
                     "summary": "docker unavailable (assumed clean)"}
         lines = [ln for ln in proc.stdout.strip().splitlines() if ln]
@@ -172,10 +172,10 @@ def check_docker(workspace_root: Path) -> dict[str, Any]:
 
 def check_wave_branches(workspace_root: Path,
                         project_root: Path) -> dict[str, Any]:
-    """Lista branches wave-<workspace_num>-N/<task-slug> existentes.
+    """List existing wave-<workspace_num>-N/<task-slug> branches.
 
-    Wave branches devem ser deletadas pelo lead após merge wave-end. Se
-    sobraram, candidatas a cleanup pré-saída fase 08.
+    Wave branches should be deleted by the lead after wave-end merge. If any
+    remain, they are candidates for pre-exit cleanup in stage 08.
     """
     # Extract workspace number from "001-test-mvp" → "001"
     workspace_id = workspace_root.name
@@ -194,13 +194,13 @@ def check_wave_branches(workspace_root: Path,
         "items": [{"branch": b} for b in branches],
         "summary": (
             f"no wave-{workspace_num}-* branches" if not branches
-            else f"{len(branches)} wave branch(es) órfã(s)"
+            else f"{len(branches)} orphaned wave branch(es)"
         ),
     }
 
 
 def check_working_tree(project_root: Path) -> dict[str, Any]:
-    """git status --short do project_root (workspace branch)."""
+    """git status --short of project_root (workspace branch)."""
     rc, out, _ = _git(["status", "--short"], project_root)
     if rc != 0:
         return {"clean": True, "items": [],
@@ -256,10 +256,10 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--workspace-root", type=Path, required=True)
     p.add_argument("--project-root", type=Path, required=True)
     p.add_argument("--check", choices=CATEGORIES, default=None,
-                   help="categoria específica (default: todas)")
+                   help="specific category (default: all)")
     p.add_argument("--format", choices=("json", "text"), default="text")
     p.add_argument("--exit-code", action="store_true",
-                   help="sai com 1 se alguma categoria dirty (gating)")
+                   help="exit with 1 if any category is dirty (gating)")
     return p
 
 

@@ -1,26 +1,26 @@
-"""ICM cleanup pós saída A/C último workspace ativo (v3.7.2).
+"""ICM cleanup after exit A/C of the last active workspace (v3.7.2).
 
-Reverte estrutura ICM-effemeral pra estado natural pós-projeto:
-  - `git checkout <BASE_BRANCH>` no project_root (raiz volta a refletir
-    código produto, não workspace branch state).
-  - `git worktree remove .icm-main` (worktree paralelo redundante).
-  - `git branch -D workspace/<NNN>-<slug>` (workspace branch fechada).
-  - `git worktree prune` (remove subagent worktrees órfãs stage 04).
+Reverts the ICM-ephemeral structure to the natural post-project state:
+  - `git checkout <BASE_BRANCH>` in project_root (root reflects product code
+    again, not workspace branch state).
+  - `git worktree remove .icm-main` (redundant parallel worktree).
+  - `git branch -D workspace/<NNN>-<slug>` (closed workspace branch).
+  - `git worktree prune` (removes orphaned stage 04 subagent worktrees).
 
-Doc canônico: `references/icm-cleanup-protocol.md`.
+Canonical doc: `references/icm-cleanup-protocol.md`.
 
 CLI:
     python scripts/icm-cleanup.py \
         --project-root <path> \
         --workspace <NNN-slug> \
         --base-branch main \
-        [--dry-run]              # imprime comandos sem executar
-        [--force]                # aceita uncommitted changes (perigoso)
+        [--dry-run]              # prints commands without executing
+        [--force]                # accepts uncommitted changes (dangerous)
 
 Exit codes:
-    0 = sucesso
-    1 = aborto por pre-check (uncommitted changes / branch divergente)
-    2 = erro de execução (git command falhou)
+    0 = success
+    1 = aborted by pre-check (uncommitted changes / diverged branch)
+    2 = execution error (git command failed)
 """
 from __future__ import annotations
 
@@ -34,7 +34,7 @@ from typing import Iterable
 
 @dataclass
 class CleanupReport:
-    """Resultado da operação de cleanup. Stub-friendly pra testes."""
+    """Result of the cleanup operation. Stub-friendly for tests."""
     aborted: bool = False
     abort_reason: str = ""
     actions_taken: list[str] = field(default_factory=list)
@@ -74,14 +74,14 @@ def _run_git(
     )
     if check and result.returncode != 0:
         raise RuntimeError(
-            f"git falhou ({result.returncode}): {cmd_str}\n"
+            f"git failed ({result.returncode}): {cmd_str}\n"
             f"stderr: {result.stderr.strip()}"
         )
     return result
 
 
 def _git_status_clean(cwd: Path) -> tuple[bool, str]:
-    """Retorna (clean, status_output)."""
+    """Returns (clean, status_output)."""
     result = subprocess.run(
         ["git", "status", "--porcelain"],
         cwd=str(cwd), capture_output=True, text=True, check=False,
@@ -92,8 +92,8 @@ def _git_status_clean(cwd: Path) -> tuple[bool, str]:
 
 
 def _list_subagent_worktrees(project_root: Path) -> list[Path]:
-    """Lista worktrees registradas em `.git/worktrees/<task-slug>` que NÃO são
-    project_root nem `.icm-main`. Esses são subagent worktrees órfãs do stage 04.
+    """List worktrees registered under `.git/worktrees/<task-slug>` that are NOT
+    project_root or `.icm-main`. These are orphaned subagent worktrees from stage 04.
     """
     result = subprocess.run(
         ["git", "worktree", "list", "--porcelain"],
@@ -140,49 +140,49 @@ def cleanup_after_close(
     dry_run: bool = False,
     force: bool = False,
 ) -> CleanupReport:
-    """Executa cleanup pós saída A/C último workspace ativo.
+    """Run cleanup after exit A/C of the last active workspace.
 
-    Pre-checks (abort se falham):
-    - project_root é git repo.
-    - workspace branch existe (`workspace/<workspace>`).
-    - workspace branch tree limpa (sem uncommitted) salvo `--force`.
-    - `.icm-main/` worktree (se presente) limpa salvo `--force`.
+    Pre-checks (abort if they fail):
+    - project_root is a git repo.
+    - workspace branch exists (`workspace/<workspace>`).
+    - workspace branch tree is clean (no uncommitted changes) unless `--force`.
+    - `.icm-main/` worktree (if present) is clean unless `--force`.
 
-    Sequência (todas idempotentes):
-    1. Subagent worktrees órfãs → `git worktree remove --force` cada uma.
-    2. Remove `.icm-main/` worktree (libera base_branch que tava lá).
-    3. `git checkout <base_branch>` no project_root — agora possível porque
-       worktree concorrente em base_branch foi removida no step 2.
-    4. `git branch -D workspace/<workspace>` (deleta branch fechada).
+    Sequence (all idempotent):
+    1. Orphaned subagent worktrees → `git worktree remove --force` each.
+    2. Remove `.icm-main/` worktree (releases base_branch held there).
+    3. `git checkout <base_branch>` in project_root — now possible because
+       the concurrent worktree on base_branch was removed in step 2.
+    4. `git branch -D workspace/<workspace>` (deletes closed branch).
     5. `git worktree prune` final.
 
-    Ordem importa: `.icm-main/` precisa sair ANTES do checkout no project_root,
-    senão git rejeita "branch already checked out in another worktree".
+    Order matters: `.icm-main/` must be removed BEFORE checkout in project_root,
+    otherwise git rejects "branch already checked out in another worktree".
 
-    Returns: `CleanupReport` com lista de ações tomadas/skipadas/warnings.
-    Caller (template stage 08) usa report pra log + decisão de continuar.
+    Returns: `CleanupReport` with list of actions taken/skipped/warnings.
+    Caller (template stage 08) uses report for logging + continue decision.
     """
     report = CleanupReport(dry_run=dry_run)
 
     if not (project_root / ".git").exists():
-        report.abort(f"project_root {project_root} não é git repo")
+        report.abort(f"project_root {project_root} is not a git repo")
         return report
 
     workspace_branch = f"workspace/{workspace}"
     if not _branch_exists(project_root, workspace_branch):
         report.add_warning(
-            f"branch {workspace_branch} não existe (já deletada?) — segue cleanup"
+            f"branch {workspace_branch} does not exist (already deleted?) — continuing cleanup"
         )
 
-    # Pre-check workspace branch tree limpa (se ainda checked out)
+    # Pre-check workspace branch tree is clean (if still checked out)
     current = _detect_current_branch(project_root)
     if current == workspace_branch and not force:
         clean, status_out = _git_status_clean(project_root)
         if not clean:
             report.abort(
-                f"workspace branch ({workspace_branch}) tem uncommitted changes:\n"
+                f"workspace branch ({workspace_branch}) has uncommitted changes:\n"
                 f"{status_out}\n"
-                f"Commit ou stash antes do cleanup, ou rode --force (perigoso)."
+                f"Commit or stash before cleanup, or run --force (dangerous)."
             )
             return report
 
@@ -193,12 +193,12 @@ def cleanup_after_close(
         clean, status_out = _git_status_clean(icm_main)
         if not clean:
             report.abort(
-                f".icm-main/ tem uncommitted changes:\n{status_out}\n"
-                f"Commit ou stash antes do cleanup, ou rode --force (perigoso)."
+                f".icm-main/ has uncommitted changes:\n{status_out}\n"
+                f"Commit or stash before cleanup, or run --force (dangerous)."
             )
             return report
 
-    # 1. Subagent worktrees órfãs
+    # 1. Orphaned subagent worktrees
     subagent_wts = _list_subagent_worktrees(project_root)
     for wt in subagent_wts:
         try:
@@ -208,12 +208,12 @@ def cleanup_after_close(
             )
             report.add_action(f"removed subagent worktree: {wt}")
         except RuntimeError as exc:
-            report.add_warning(f"falha ao remover subagent worktree {wt}: {exc}")
+            report.add_warning(f"failed to remove subagent worktree {wt}: {exc}")
 
     if not subagent_wts:
-        report.add_skip("nenhuma subagent worktree órfã detectada")
+        report.add_skip("no orphaned subagent worktrees detected")
 
-    # 2. Remove .icm-main worktree ANTES de checkout (libera base_branch)
+    # 2. Remove .icm-main worktree BEFORE checkout (releases base_branch)
     if icm_main_present:
         result = _run_git(
             ["worktree", "remove", ".icm-main"],
@@ -226,16 +226,16 @@ def cleanup_after_close(
             )
             if not dry_run and result2.returncode != 0:
                 report.add_warning(
-                    f"git worktree remove .icm-main falhou: {result2.stderr.strip()}"
+                    f"git worktree remove .icm-main failed: {result2.stderr.strip()}"
                 )
             else:
                 report.add_action("removed .icm-main worktree (--force)")
         else:
             report.add_action("removed .icm-main worktree")
     else:
-        report.add_skip(".icm-main/ ausente — nada a remover")
+        report.add_skip(".icm-main/ absent — nothing to remove")
 
-    # 3. checkout base_branch no project_root (agora possível pos step 2)
+    # 3. checkout base_branch in project_root (now possible after step 2)
     if current != base_branch:
         result = _run_git(
             ["checkout", base_branch],
@@ -248,9 +248,9 @@ def cleanup_after_close(
             return report
         report.add_action(f"checkout {base_branch} em project_root")
     else:
-        report.add_skip(f"project_root já em {base_branch}")
+        report.add_skip(f"project_root already on {base_branch}")
 
-    # 4. Deletar workspace branch (saímos dela no step 3)
+    # 4. Delete workspace branch (we left it in step 3)
     if _branch_exists(project_root, workspace_branch):
         result = _run_git(
             ["branch", "-D", workspace_branch],
@@ -258,7 +258,7 @@ def cleanup_after_close(
         )
         if not dry_run and result.returncode != 0:
             report.add_warning(
-                f"git branch -D {workspace_branch} falhou: {result.stderr.strip()}"
+                f"git branch -D {workspace_branch} failed: {result.stderr.strip()}"
             )
         else:
             report.add_action(f"deleted branch {workspace_branch}")
@@ -278,17 +278,17 @@ def cleanup_after_close(
 def _format_report(report: CleanupReport) -> str:
     lines: list[str] = []
     if report.dry_run:
-        lines.append("=== DRY RUN — nenhuma ação executada ===")
+        lines.append("=== DRY RUN — no actions executed ===")
     if report.aborted:
-        lines.append(f"❌ ABORTADO: {report.abort_reason}")
+        lines.append(f"❌ ABORTED: {report.abort_reason}")
         return "\n".join(lines)
-    lines.append("✅ ICM cleanup completo.")
+    lines.append("✅ ICM cleanup complete.")
     if report.actions_taken:
-        lines.append("\nAções:")
+        lines.append("\nActions:")
         for a in report.actions_taken:
             lines.append(f"  • {a}")
     if report.actions_skipped:
-        lines.append("\nSkipados (idempotentes):")
+        lines.append("\nSkipped (idempotent):")
         for s in report.actions_skipped:
             lines.append(f"  • {s}")
     if report.warnings:
@@ -300,7 +300,7 @@ def _format_report(report: CleanupReport) -> str:
 
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="ICM cleanup pós saída A/C último workspace ativo (v3.7.2)"
+        description="ICM cleanup after exit A/C of last active workspace (v3.7.2)"
     )
     parser.add_argument("--project-root", type=Path, required=True)
     parser.add_argument("--workspace", required=True, help="NNN-slug")
@@ -308,7 +308,7 @@ def main(argv: Iterable[str] | None = None) -> int:
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "--force", action="store_true",
-        help="ignora uncommitted changes (perigoso — pode perder trabalho)",
+        help="ignore uncommitted changes (dangerous — may lose work)",
     )
     args = parser.parse_args(list(argv) if argv is not None else None)
 

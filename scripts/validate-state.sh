@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Wrapper POSIX para validate_state.py.
+# POSIX wrapper for validate_state.py.
 #
-# Uso:
+# Usage:
 #   scripts/validate-state.sh --workspace <path>
 #
-# Permite override do interpretador Python via env var:
+# Allows override of the Python interpreter via env var:
 #   PYTHON=python3.13 scripts/validate-state.sh --workspace ./ws
 #
 # Exit codes:
-#   0 — estado valido
-#   1 — estado invalido (mensagem em stderr)
+#   0 — valid state
+#   1 — invalid state (message on stderr)
 
 set -euo pipefail
 

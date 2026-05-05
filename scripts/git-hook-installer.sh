@@ -1,24 +1,24 @@
 #!/usr/bin/env bash
 #
-# git-hook-installer.sh — instala hooks ICM (pre-commit + commit-msg).
+# git-hook-installer.sh — install ICM hooks (pre-commit + commit-msg).
 #
-# Idempotente por hook:
-#   - Se ja existe e diff = 0 vs template, skip (no-op).
-#   - Se existe e diff != 0, faz backup .bak.<timestamp> e overwrite.
-#   - Se ausente, copia template direto.
+# Idempotent per hook:
+#   - If already exists and diff = 0 vs template, skip (no-op).
+#   - If exists and diff != 0, backup as .bak.<timestamp> and overwrite.
+#   - If absent, copy template directly.
 #
-# Por que 2 hooks: stages canonicos do git separam file checks
-# (pre-commit) de msg validation (commit-msg). Pre-commit nao ve a
-# msg do commit atual — ler COMMIT_EDITMSG retorna msg do anterior.
-# Detalhes em references/git-hooks.md.
+# Why 2 hooks: canonical git stages separate file checks
+# (pre-commit) from msg validation (commit-msg). pre-commit cannot see the
+# current commit message — reading COMMIT_EDITMSG returns the previous one.
+# Details in references/git-hooks.md.
 #
-# Uso:
+# Usage:
 #   bash scripts/git-hook-installer.sh <project_root>
 
 set -euo pipefail
 
 if [ "$#" -lt 1 ]; then
-  echo "ERROR: uso: bash scripts/git-hook-installer.sh <project_root>" >&2
+  echo "ERROR: usage: bash scripts/git-hook-installer.sh <project_root>" >&2
   exit 1
 fi
 
@@ -28,14 +28,14 @@ skill_root="$(dirname "$script_dir")"
 templates_dir="$skill_root/templates/.git-hooks"
 
 if [ ! -d "$project_root" ]; then
-  echo "ERROR: project_root nao existe: $project_root" >&2
+  echo "ERROR: project_root does not exist: $project_root" >&2
   exit 1
 fi
 
 git_dir="$(git -C "$project_root" rev-parse --git-dir 2>/dev/null || true)"
 
 if [ -z "$git_dir" ]; then
-  echo "ERROR: project_root nao eh repo git: $project_root" >&2
+  echo "ERROR: project_root is not a git repo: $project_root" >&2
   exit 1
 fi
 
@@ -47,7 +47,7 @@ esac
 hooks_dir="$git_dir_abs/hooks"
 mkdir -p "$hooks_dir"
 
-# Lista canonica de hooks gerenciados pela skill
+# Canonical list of hooks managed by the skill
 HOOKS="pre-commit commit-msg"
 
 ts="$(date -u +%Y%m%dT%H%M%SZ)"
@@ -58,26 +58,26 @@ for hook in $HOOKS; do
   target="$hooks_dir/$hook"
 
   if [ ! -f "$template" ]; then
-    echo "ERROR: template nao encontrado: $template" >&2
+    echo "ERROR: template not found: $template" >&2
     status_overall=1
     continue
   fi
 
   if [ -f "$target" ]; then
     if cmp -s "$template" "$target"; then
-      echo "OK    $hook ja instalado e atualizado (no-op)"
+      echo "OK    $hook already installed and up to date (no-op)"
       continue
     fi
     backup="${target}.bak.${ts}"
     cp "$target" "$backup"
-    echo "WARN  $hook existente difere do template. Backup: $backup"
+    echo "WARN  $hook exists but differs from template. Backup: $backup"
   fi
 
   cp "$template" "$target"
   chmod +x "$target"
 
   if [ ! -x "$target" ]; then
-    echo "WARN  chmod +x nao aplicou em $hook (filesystem nao suporta?). Hook copiado mas pode nao executar." >&2
+    echo "WARN  chmod +x did not apply to $hook (filesystem unsupported?). Hook copied but may not execute." >&2
   fi
 
   echo "OK    $hook instalado em $target"

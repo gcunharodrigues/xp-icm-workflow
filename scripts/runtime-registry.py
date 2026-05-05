@@ -1,11 +1,11 @@
-"""Runtime registry — tracking de side-effects ativos por workspace (v3.7.0).
+"""Runtime registry — tracking of active side-effects per workspace (v3.7.0).
 
-Registra processos, containers e tasks que precisam ser limpos antes da
-transição de saída fase 08 (A close, B restart, C spawn). Substitui o PID
-file ad-hoc `.icm-main/.dev-server.pid` da v3.6.0 por um JSON estruturado
-em `<workspace>/_state/runtime-registry.json` (gitignored).
+Registers processes, containers and tasks that must be cleaned up before
+the stage 08 exit transition (A close, B restart, C spawn). Replaces the
+ad-hoc PID file `.icm-main/.dev-server.pid` from v3.6.0 with a structured
+JSON at `<workspace>/_state/runtime-registry.json` (gitignored).
 
-Doc canônico: `references/runtime-cleanup-protocol.md`.
+Canonical doc: `references/runtime-cleanup-protocol.md`.
 
 Schema:
     {
@@ -45,7 +45,7 @@ from typing import Any, Sequence
 
 
 # ============================================================================
-# Constantes
+# Constants
 # ============================================================================
 
 REGISTRY_VERSION = 1
@@ -60,19 +60,19 @@ VALID_KINDS = frozenset({
 REGISTRY_FILENAME = "runtime-registry.json"
 STATE_DIRNAME = "_state"
 
-# Legacy PID file da v3.6.0 (preview loop)
+# Legacy PID file from v3.6.0 (preview loop)
 LEGACY_DEV_SERVER_PID = ".icm-main/.dev-server.pid"
 
 
 # ============================================================================
-# Helpers cross-platform (espelham recovery-wizard.py)
+# Cross-platform helpers (mirror recovery-wizard.py)
 # ============================================================================
 
 def _is_pid_alive(pid: int) -> bool:
     """Cross-platform liveness check.
 
-    POSIX: `os.kill(pid, 0)` — não envia sinal mas valida permissão.
-    Windows: ctypes.OpenProcess. Sem deps externas.
+    POSIX: `os.kill(pid, 0)` — sends no signal but validates permission.
+    Windows: ctypes.OpenProcess. No external deps.
     """
     if pid <= 0:
         return False
@@ -88,7 +88,7 @@ def _is_pid_alive_posix(pid: int) -> bool:
     except ProcessLookupError:
         return False
     except PermissionError:
-        # processo existe mas é de outro user; ainda é "alive"
+        # process exists but belongs to another user; still "alive"
         return True
     except OSError:
         return False
@@ -142,10 +142,10 @@ def _atomic_write_json(path: Path, payload: dict) -> None:
 
 
 def load(workspace_root: Path) -> dict[str, Any]:
-    """Lê registry. Se ausente, retorna estrutura vazia (não escreve disco).
+    """Read registry. If absent, returns empty structure (does not write to disk).
 
-    Se chamado pela primeira vez, cria `_state/` dir mas NÃO escreve JSON
-    até primeiro register/purge.
+    If called for the first time, creates `_state/` dir but does NOT write JSON
+    until first register/purge.
     """
     workspace = workspace_root.name
     _ensure_state_dir(workspace_root)
@@ -159,7 +159,7 @@ def load(workspace_root: Path) -> dict[str, Any]:
     text = path.read_text(encoding="utf-8")
     data = json.loads(text)
     if not isinstance(data, dict):
-        raise ValueError(f"registry corrupto: {path} (esperado dict)")
+        raise ValueError(f"corrupted registry: {path} (expected dict)")
     return data
 
 
@@ -181,10 +181,10 @@ def register(
     cmd: str | None = None,
     metadata: dict | None = None,
 ) -> str:
-    """Adiciona entry. Retorna ID gerado (uuid4 hex)."""
+    """Add entry. Returns generated ID (uuid4 hex)."""
     if kind not in VALID_KINDS:
         raise ValueError(
-            f"kind inválido: {kind!r} (esperado: {sorted(VALID_KINDS)})"
+            f"invalid kind: {kind!r} (expected: {sorted(VALID_KINDS)})"
         )
     reg = load(workspace_root)
     entry_id = uuid.uuid4().hex
@@ -219,7 +219,7 @@ def list_entries(
 
 
 def unregister(workspace_root: Path, *, entry_id: str) -> bool:
-    """Remove entry por id. Retorna True se removida, False se não existia."""
+    """Remove entry by id. Returns True if removed, False if not found."""
     reg = load(workspace_root)
     before = len(reg["entries"])
     reg["entries"] = [e for e in reg["entries"] if e.get("id") != entry_id]
@@ -230,7 +230,7 @@ def unregister(workspace_root: Path, *, entry_id: str) -> bool:
 
 
 def purge_dead(workspace_root: Path) -> list[dict]:
-    """Remove entries com PID morto. Retorna entries removidas."""
+    """Remove entries with dead PID. Returns removed entries."""
     reg = load(workspace_root)
     alive: list[dict] = []
     dead: list[dict] = []
@@ -247,14 +247,14 @@ def purge_dead(workspace_root: Path) -> list[dict]:
 
 
 # ============================================================================
-# Legacy migration (.icm-main/.dev-server.pid → registry)
+# Legacy migration (.icm-main/.dev-server.pid -> registry)
 # ============================================================================
 
 def detect_legacy_pid_files(project_root: Path) -> list[dict]:
-    """Detecta `.icm-main/.dev-server.pid` (v3.6.0). Retorna entries
-    sintéticas pra UI/cleanup proposal.
+    """Detect `.icm-main/.dev-server.pid` (v3.6.0). Returns synthetic entries
+    for UI/cleanup proposal.
 
-    Não remove o arquivo legacy automaticamente — humano confirma migration.
+    Does not remove the legacy file automatically — human confirms migration.
     """
     legacy = project_root / LEGACY_DEV_SERVER_PID
     if not legacy.is_file():
@@ -279,31 +279,31 @@ def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="runtime-registry.py")
     sub = parser.add_subparsers(dest="cmd", required=True)
 
-    reg = sub.add_parser("register", help="Adiciona entry no registry")
+    reg = sub.add_parser("register", help="Add entry to registry")
     reg.add_argument("--workspace-root", type=Path, required=True)
     reg.add_argument("--kind", required=True, choices=sorted(VALID_KINDS))
     reg.add_argument("--pid", type=int, default=None)
     reg.add_argument("--port", type=int, default=None)
     reg.add_argument("--command", dest="command", default=None,
-                     help="comando que iniciou o processo (ex: 'npm run dev')")
+                     help="command that started the process (e.g. 'npm run dev')")
     reg.add_argument("--metadata", default=None,
-                     help="JSON string (opcional)")
+                     help="JSON string (optional)")
 
-    lst = sub.add_parser("list", help="Lista entries (opcionalmente por kind)")
+    lst = sub.add_parser("list", help="List entries (optionally by kind)")
     lst.add_argument("--workspace-root", type=Path, required=True)
     lst.add_argument("--kind", default=None, choices=sorted(VALID_KINDS))
     lst.add_argument("--format", choices=("json", "text"), default="text")
 
-    unr = sub.add_parser("unregister", help="Remove entry por id")
+    unr = sub.add_parser("unregister", help="Remove entry by id")
     unr.add_argument("--workspace-root", type=Path, required=True)
     unr.add_argument("--id", required=True, dest="entry_id")
 
     purge = sub.add_parser("purge-dead",
-                           help="Remove entries com PID morto")
+                           help="Remove entries with dead PID")
     purge.add_argument("--workspace-root", type=Path, required=True)
 
     legacy = sub.add_parser("detect-legacy",
-                            help="Detecta .icm-main/.dev-server.pid v3.6.0")
+                            help="Detect .icm-main/.dev-server.pid v3.6.0")
     legacy.add_argument("--project-root", type=Path, required=True)
 
     return parser

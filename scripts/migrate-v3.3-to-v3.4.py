@@ -1,20 +1,20 @@
 """Migration script v3.3.x -> v3.4.x (cross-branch worktree model).
 
-Detecta workspaces criados pela skill v3.3.x e aplica migracao idempotente:
+Detects workspaces created by skill v3.3.x and applies idempotent migration:
 
-  1. Cria `.icm-main/` worktree linkada apontando pra `base_branch`.
-  2. Adiciona `.icm-main/` ao `.gitignore` do project_root.
-  3. Garante `docs/decisions/.keep`, `docs/lessons.md`, `docs/tech_debt.md`
-     na base branch (commit se ausente).
-  4. Atualiza `icm_skill_version: v3.3.x -> v3.4.1` no L0 do workspace.
-  5. (Opcional --update-paths) Substring replace
-     `{{PROJECT_ROOT}}/docs/` -> `{{PROJECT_ROOT}}/.icm-main/docs/` em L0/L2
+  1. Creates `.icm-main/` linked worktree pointing to `base_branch`.
+  2. Adds `.icm-main/` to `.gitignore` in project_root.
+  3. Ensures `docs/decisions/.keep`, `docs/lessons.md`, `docs/tech_debt.md`
+     exist on base branch (commits if absent).
+  4. Updates `icm_skill_version: v3.3.x -> v3.4.1` in workspace L0.
+  5. (Optional --update-paths) Substring replace
+     `{{PROJECT_ROOT}}/docs/` -> `{{PROJECT_ROOT}}/.icm-main/docs/` in L0/L2
      CONTEXT.md.
 
 CLI:
   python scripts/migrate-v3.3-to-v3.4.py --project-root <path> [--workspace <NNN-slug>] [--update-paths] [--dry-run]
 
-Idempotente: rerodar nao causa dano. Workspaces ja em v3.4.x sao skip.
+Idempotent: re-running causes no harm. Workspaces already on v3.4.x are skipped.
 
 Doc: references/worktree-model.md.
 """
@@ -45,7 +45,7 @@ def _run_git(args: list[str], cwd: Path, *, check: bool = True) -> subprocess.Co
 
 
 def detect_workspace_version(claude_md_path: Path) -> str | None:
-    """Le L0 frontmatter, retorna icm_skill_version ou None se ausente."""
+    """Read L0 frontmatter, return icm_skill_version or None if absent."""
     if not claude_md_path.is_file():
         return None
     text = claude_md_path.read_text(encoding="utf-8")
@@ -54,16 +54,16 @@ def detect_workspace_version(claude_md_path: Path) -> str | None:
 
 
 def is_v3_3_x(version: str | None) -> bool:
-    """True se versao bate v3.3.x (ou ausente — provavelmente pre-3.3)."""
+    """True if version matches v3.3.x (or absent — likely pre-3.3)."""
     if version is None:
-        return True  # workspaces antigos sem o campo
+        return True  # old workspaces without the field
     v = version.lstrip("v")
     parts = v.split(".")
     return len(parts) >= 2 and parts[0] == "3" and parts[1] == "3"
 
 
 def discover_workspaces(project_root: Path) -> list[Path]:
-    """Lista workspaces em project_root/workspaces/NNN-slug/ que tem CLAUDE.md."""
+    """List workspaces under project_root/workspaces/NNN-slug/ that have CLAUDE.md."""
     ws_root = project_root / "workspaces"
     if not ws_root.is_dir():
         return []
@@ -76,7 +76,7 @@ def discover_workspaces(project_root: Path) -> list[Path]:
 
 
 def update_gitignore(project_root: Path, dry_run: bool) -> bool:
-    """Adiciona '.icm-main/' ao .gitignore se ausente. Retorna True se mudou."""
+    """Add '.icm-main/' to .gitignore if absent. Returns True if changed."""
     gi = project_root / ".gitignore"
     target = ".icm-main/"
     existing = gi.read_text(encoding="utf-8") if gi.exists() else ""
@@ -94,10 +94,10 @@ def update_gitignore(project_root: Path, dry_run: bool) -> bool:
 
 
 def ensure_base_branch_docs(project_root: Path, base_branch: str, dry_run: bool) -> bool:
-    """Se base_branch checkado: cria docs/ scaffold + commit se algo mudou.
+    """If base_branch is checked out: create docs/ scaffold + commit if something changed.
 
-    Caller deve ter switchado para base_branch antes de chamar OU ja estar la.
-    Retorna True se algum arquivo criado.
+    Caller must have switched to base_branch before calling OR already be on it.
+    Returns True if any file was created.
     """
     docs = project_root / "docs"
     decisions = docs / "decisions"
@@ -139,10 +139,10 @@ def ensure_base_branch_docs(project_root: Path, base_branch: str, dry_run: bool)
 
 
 def setup_worktree(project_root: Path, base_branch: str, dry_run: bool) -> bool:
-    """Cria `.icm-main/` worktree se ausente. Retorna True se criou."""
+    """Create `.icm-main/` worktree if absent. Returns True if created."""
     wt = project_root / ".icm-main"
     if wt.exists():
-        # Validar que eh worktree linkada genuina
+        # Validate it is a genuine linked worktree
         try:
             res = _run_git(
                 ["rev-parse", "--show-toplevel"],
@@ -156,8 +156,8 @@ def setup_worktree(project_root: Path, base_branch: str, dry_run: bool) -> bool:
         except Exception:
             pass
         raise MigrationError(
-            f".icm-main/ existe em {project_root} mas nao eh worktree linkada. "
-            "Remova manualmente ou rode `git worktree repair`."
+            f".icm-main/ exists at {project_root} but is not a linked worktree. "
+            "Remove manually or run `git worktree repair`."
         )
     if dry_run:
         return True
@@ -166,7 +166,7 @@ def setup_worktree(project_root: Path, base_branch: str, dry_run: bool) -> bool:
 
 
 def update_l0_version(claude_md: Path, dry_run: bool) -> bool:
-    """Substitui icm_skill_version no L0 frontmatter. True se mudou."""
+    """Replace icm_skill_version in L0 frontmatter. Returns True if changed."""
     text = claude_md.read_text(encoding="utf-8")
     new_text, n = VERSION_RE.subn(
         f'icm_skill_version: "{SKILL_VERSION_TARGET}"',
@@ -183,8 +183,8 @@ def update_l0_version(claude_md: Path, dry_run: bool) -> bool:
 def update_paths_in_file(path: Path, project_root: Path, dry_run: bool) -> bool:
     """Substring replace `<project_root>/docs/` -> `<project_root>/.icm-main/docs/`.
 
-    Aplicado em CLAUDE.md (L0) e stages/*/CONTEXT.md (L2). Idempotente: se o
-    novo path ja aparece, no-op. Retorna True se algo mudou.
+    Applied to CLAUDE.md (L0) and stages/*/CONTEXT.md (L2). Idempotent: if the
+    new path already appears, no-op. Returns True if anything changed.
     """
     if not path.is_file():
         return False
@@ -207,7 +207,7 @@ def migrate_workspace(
     update_paths: bool,
     dry_run: bool,
 ) -> dict[str, bool]:
-    """Executa migracao em UM workspace. Retorna dict de mudancas detectadas."""
+    """Run migration on ONE workspace. Returns dict of detected changes."""
     claude_md = workspace_dir / "CLAUDE.md"
     version = detect_workspace_version(claude_md)
     if not is_v3_3_x(version):
@@ -236,20 +236,20 @@ def migrate_project(
     update_paths: bool = False,
     dry_run: bool = False,
 ) -> dict[str, dict]:
-    """Migra TODOS workspaces v3.3.x do project_root. Idempotente."""
+    """Migrate ALL v3.3.x workspaces in project_root. Idempotent."""
     if not (project_root / ".git").exists():
-        raise MigrationError(f"project_root sem .git: {project_root}")
+        raise MigrationError(f"project_root has no .git: {project_root}")
 
     workspaces = discover_workspaces(project_root)
     if workspace_filter:
         workspaces = [w for w in workspaces if w.name == workspace_filter]
         if not workspaces:
-            raise MigrationError(f"workspace nao encontrado: {workspace_filter}")
+            raise MigrationError(f"workspace not found: {workspace_filter}")
 
     if not workspaces:
         return {"_global": {"workspaces_found": 0}}
 
-    # Detectar base_branch (assume primeiro workspace o representa via L0).
+    # Detect base_branch (assumes first workspace represents it via L0).
     first_l0 = (workspaces[0] / "CLAUDE.md").read_text(encoding="utf-8")
     base_match = re.search(r'^base_branch:\s*"?([^"\s]+)"?', first_l0, re.MULTILINE)
     base_branch = base_match.group(1) if base_match else "main"
@@ -258,17 +258,17 @@ def migrate_project(
 
     summary: dict[str, dict] = {"_global": {}}
 
-    # 1. Garantir docs/ scaffolding na base_branch (precisa estar em base)
+    # 1. Ensure docs/ scaffolding on base_branch (must be on base)
     needs_switch = current_branch != base_branch
     if needs_switch and not dry_run:
         _run_git(["checkout", base_branch], cwd=project_root)
     docs_changed = ensure_base_branch_docs(project_root, base_branch, dry_run)
     summary["_global"]["docs_scaffolded"] = docs_changed
 
-    # 2. Setup worktree (independe de branch — git worktree add funciona de qq branch)
+    # 2. Setup worktree (branch-independent — git worktree add works from any branch)
     if needs_switch and not dry_run:
-        # Switch back para current branch antes de criar worktree (worktree linkada
-        # so funciona se base_branch nao esta checked out)
+        # Switch back to current branch before creating worktree (linked worktree
+        # only works if base_branch is not already checked out)
         _run_git(["checkout", current_branch], cwd=project_root)
     worktree_changed = setup_worktree(project_root, base_branch, dry_run)
     summary["_global"]["worktree_setup"] = worktree_changed
@@ -290,11 +290,11 @@ def migrate_project(
 
 def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description="Migrate ICM workspaces v3.3.x -> v3.4.x.")
-    p.add_argument("--project-root", required=True, help="Path do projeto com workspaces/")
-    p.add_argument("--workspace", default=None, help="Filtrar 1 workspace (NNN-slug). Default: todos.")
+    p.add_argument("--project-root", required=True, help="Path to project with workspaces/")
+    p.add_argument("--workspace", default=None, help="Filter to 1 workspace (NNN-slug). Default: all.")
     p.add_argument("--update-paths", action="store_true",
-                   help="Substring replace <project_root>/docs/ -> <project_root>/.icm-main/docs/ em L0/L2.")
-    p.add_argument("--dry-run", action="store_true", help="Apenas detecta, nao modifica.")
+                   help="Substring replace <project_root>/docs/ -> <project_root>/.icm-main/docs/ in L0/L2.")
+    p.add_argument("--dry-run", action="store_true", help="Detect only, do not modify.")
     return p
 
 
@@ -309,7 +309,7 @@ def main(argv: list[str] | None = None) -> int:
             dry_run=args.dry_run,
         )
     except MigrationError as exc:
-        print(f"erro: {exc}", file=sys.stderr)
+        print(f"error: {exc}", file=sys.stderr)
         return 1
 
     import json

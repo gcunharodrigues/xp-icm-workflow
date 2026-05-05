@@ -21,11 +21,11 @@ check "git 2.30+"      "git --version | grep -Eq 'git version 2\.(3[0-9]|[4-9][0
 check "bash POSIX"     "bash -c 'set -euo pipefail; echo OK'"
 
 if ! command -v bats >/dev/null 2>&1; then
-  echo "WARN  bats não instalado (CI-only ok)"
+  echo "WARN  bats not installed (CI-only ok)"
 fi
 
 if [ "$errors" -gt 0 ]; then
   echo ""
-  echo "Runtime check FAILED ($errors issues). Veja system-requirements.md pra setup."
+  echo "Runtime check FAILED ($errors issues). See system-requirements.md for setup."
   exit 1
 fi

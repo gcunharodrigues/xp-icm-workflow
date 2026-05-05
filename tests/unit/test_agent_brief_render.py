@@ -130,7 +130,7 @@ def test_warn_if_brittle_detects_absolute_paths():
         "Modify /home/user/project/src/foo.ts to fix the bug.\n"
     )
     warnings = agent_brief_render.warn_if_brittle(bad_brief)
-    assert any("Paths absolutos" in w for w in warnings)
+    assert any("Absolute paths" in w for w in warnings)
 
 
 def test_warn_if_brittle_detects_line_numbers():

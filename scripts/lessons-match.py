@@ -1,17 +1,17 @@
 #!/usr/bin/env python
-"""Match algorithm para lessons.md (xp-icm-workflow v3.0.0).
+"""Match algorithm for lessons.md (xp-icm-workflow v3.0.0).
 
-Lê um lessons.md (sequência de lessons separadas por `---`, cada uma com
-YAML frontmatter + corpo Markdown) e seleciona as N mais relevantes para
-um contexto de tarefa (profile/tier/tags/files).
+Reads a lessons.md (sequence of lessons separated by `---`, each with
+YAML frontmatter + Markdown body) and selects the N most relevant for
+a task context (profile/tier/tags/files).
 
-Princípios:
-- G1 (strict no append, tolerant no read): lições malformadas são puladas
-  com warning em stderr; nunca abortamos no meio do parse.
-- G2 (canal critical separado): lessons `severity: critical` saem em
-  `result["critical"]`, NÃO competem por slot nas top_n normais.
-- Q10 (ordenação determinística com tie-breaks claros).
-- G3 (aging detection): função `find_aging_candidates` para curadoria.
+Principles:
+- G1 (strict on append, tolerant on read): malformed lessons are skipped
+  with a warning on stderr; we never abort mid-parse.
+- G2 (separate critical channel): lessons with `severity: critical` go into
+  `result["critical"]`, and do NOT compete for slots in top_n normals.
+- Q10 (deterministic ordering with clear tie-breaks).
+- G3 (aging detection): function `find_aging_candidates` for curation.
 
 CLI:
   python scripts/lessons-match.py --lessons lessons.md \
@@ -31,7 +31,7 @@ from typing import Any
 
 import yaml
 
-# --- Constantes --------------------------------------------------------------
+# --- Constants ---------------------------------------------------------------
 
 SEPARATOR = "---"
 SEVERITY_RANK: dict[str, int] = {"low": 0, "medium": 1, "high": 2, "critical": 3}
@@ -45,16 +45,16 @@ WEIGHT_TIER = 0.2
 WEIGHT_FILES = 0.2
 
 
-# --- Tipos -------------------------------------------------------------------
+# --- Types -------------------------------------------------------------------
 
 
 class LessonsMatchError(Exception):
-    """Erro fatal de parse ou de I/O do lessons-match."""
+    """Fatal parse or I/O error from lessons-match."""
 
 
 @dataclasses.dataclass(frozen=True)
 class Lesson:
-    """Uma lesson parseada do arquivo lessons.md."""
+    """A lesson parsed from lessons.md."""
 
     id: int
     date: date
@@ -69,7 +69,7 @@ class Lesson:
 
 @dataclasses.dataclass(frozen=True)
 class MatchContext:
-    """Contexto da task a ser matched contra lessons."""
+    """Task context to be matched against lessons."""
 
     profile: str
     tier: str
@@ -81,7 +81,7 @@ class MatchContext:
 
 
 def _split_blocks(raw: str) -> list[tuple[int, str]]:
-    """Divide o arquivo em blocos lesson, retornando (offset_da_linha, bloco)."""
+    """Split the file into lesson blocks, returning (line_offset, block)."""
     if not raw.strip():
         return []
     lines = raw.splitlines()
@@ -93,18 +93,18 @@ def _split_blocks(raw: str) -> list[tuple[int, str]]:
     for idx, line in enumerate(lines):
         if line.strip() == SEPARATOR:
             if not has_started:
-                # `---` de abertura do primeiro frontmatter.
+                # Opening `---` of the first frontmatter.
                 has_started = True
                 in_frontmatter = True
                 current_start = idx
                 current = [line]
                 continue
             if in_frontmatter:
-                # `---` fechando o frontmatter atual; ainda parte do mesmo bloco.
+                # `---` closing the current frontmatter; still part of the same block.
                 in_frontmatter = False
                 current.append(line)
                 continue
-            # `---` separador entre lessons: emite o bloco atual e abre novo.
+            # `---` separator between lessons: emit current block and open new one.
             blocks.append((current_start, "\n".join(current)))
             in_frontmatter = True
             current_start = idx
@@ -118,30 +118,30 @@ def _split_blocks(raw: str) -> list[tuple[int, str]]:
 
 
 def _parse_block(block: str) -> tuple[dict[str, Any], str]:
-    """Separa frontmatter YAML do corpo de um bloco lesson."""
+    """Separate YAML frontmatter from the body of a lesson block."""
     lines = block.splitlines()
     if not lines or lines[0].strip() != SEPARATOR:
-        raise ValueError("bloco não começa com '---'")
+        raise ValueError("block does not start with '---'")
     fm_end = None
     for idx in range(1, len(lines)):
         if lines[idx].strip() == SEPARATOR:
             fm_end = idx
             break
     if fm_end is None:
-        raise ValueError("frontmatter não fechado")
+        raise ValueError("frontmatter not closed")
     fm_text = "\n".join(lines[1:fm_end])
     body = "\n".join(lines[fm_end + 1:]).strip()
     try:
         data = yaml.safe_load(fm_text) or {}
     except yaml.YAMLError as exc:
-        raise ValueError(f"YAML inválido: {exc}")
+        raise ValueError(f"invalid YAML: {exc}")
     if not isinstance(data, dict):
-        raise ValueError("frontmatter não é um mapping YAML")
+        raise ValueError("frontmatter is not a YAML mapping")
     return data, body
 
 
 def _extract_title(body: str) -> str:
-    """Extrai o título a partir da primeira linha `# Lesson NN — <title>`."""
+    """Extract the title from the first `# Lesson NN — <title>` line."""
     for line in body.splitlines():
         stripped = line.strip()
         if stripped.startswith("#"):
@@ -154,23 +154,23 @@ def _extract_title(body: str) -> str:
 
 
 def _coerce_lesson(data: dict[str, Any], body: str) -> Lesson:
-    """Valida campos obrigatórios e devolve um Lesson imutável."""
+    """Validate required fields and return an immutable Lesson."""
     lesson_id = data.get("id")
     if not isinstance(lesson_id, int) or isinstance(lesson_id, bool):
-        raise ValueError("campo 'id' ausente ou não é int")
+        raise ValueError("field 'id' missing or not an int")
     raw_date = data.get("date")
     if not isinstance(raw_date, str):
-        raise ValueError("campo 'date' ausente ou não é string ISO")
+        raise ValueError("field 'date' missing or not an ISO string")
     try:
         parsed_date = date.fromisoformat(raw_date)
     except ValueError as exc:
-        raise ValueError(f"date inválida: {exc}")
+        raise ValueError(f"invalid date: {exc}")
     tags = data.get("tags")
     if not isinstance(tags, list) or not tags:
-        raise ValueError("campo 'tags' ausente ou vazio")
+        raise ValueError("field 'tags' missing or empty")
     severity = data.get("severity")
     if severity not in VALID_SEVERITIES:
-        raise ValueError(f"severity inválida: {severity!r}")
+        raise ValueError(f"invalid severity: {severity!r}")
     return Lesson(
         id=lesson_id,
         date=parsed_date,
@@ -188,18 +188,18 @@ def _optional_tuple(value: Any) -> tuple[str, ...] | None:
     if value is None:
         return None
     if not isinstance(value, list):
-        raise ValueError(f"campo lista esperado, recebi {type(value).__name__}")
+        raise ValueError(f"expected list field, got {type(value).__name__}")
     return tuple(str(x) for x in value)
 
 
 def parse_lessons(path: Path) -> tuple[list[Lesson], int]:
-    """Parseia lessons.md tolerando malformadas (G1).
+    """Parse lessons.md tolerating malformed entries (G1).
 
-    Retorna (lessons_válidas, num_skipped). Emite warning em stderr para cada
-    malformada encontrada, no formato: `WARN: lesson at offset N malformed: <razão>`.
+    Returns (valid_lessons, num_skipped). Emits warning on stderr for each
+    malformed entry found, in format: `WARN: lesson at offset N malformed: <reason>`.
     """
     if not path.exists():
-        raise LessonsMatchError(f"arquivo não encontrado: {path}")
+        raise LessonsMatchError(f"file not found: {path}")
     raw = path.read_text(encoding="utf-8")
     lessons: list[Lesson] = []
     skipped = 0
@@ -216,7 +216,7 @@ def parse_lessons(path: Path) -> tuple[list[Lesson], int]:
     return lessons, skipped
 
 
-# --- Score -------------------------------------------------------------------
+# --- Scoring -----------------------------------------------------------------
 
 
 def _tag_overlap_ratio(lesson_tags: tuple[str, ...], task_tags: list[str]) -> float:
@@ -228,9 +228,9 @@ def _tag_overlap_ratio(lesson_tags: tuple[str, ...], task_tags: list[str]) -> fl
 
 
 def _files_glob_hit(lesson_globs: tuple[str, ...] | None, task_files: list[str]) -> float:
-    """1.0 se ao menos um par (glob, file) bate; 0.0 caso contrário.
+    """1.0 if at least one (glob, file) pair matches; 0.0 otherwise.
 
-    Convenção `None` (não restringe) é tratada fora desta função pelo caller.
+    Convention `None` (no restriction) is handled outside this function by the caller.
     """
     if not lesson_globs or not task_files:
         return 0.0
@@ -242,7 +242,7 @@ def _files_glob_hit(lesson_globs: tuple[str, ...] | None, task_files: list[str])
 
 
 def score_lesson(lesson: Lesson, ctx: MatchContext) -> float:
-    """Score [0, 1] da lesson para o contexto. Determinístico."""
+    """Score [0, 1] of the lesson for the context. Deterministic."""
     tag_score = _tag_overlap_ratio(lesson.tags, ctx.tags)
     profile_score = (
         1.0 if lesson.profile_match is None else (1.0 if ctx.profile in lesson.profile_match else 0.0)
@@ -265,9 +265,9 @@ def score_lesson(lesson: Lesson, ctx: MatchContext) -> float:
 
 
 def _sort_key(scored: tuple[Lesson, float], ctx: MatchContext) -> tuple:
-    """Ordena por score desc, severity desc, date desc, tag overlap desc.
+    """Sort by score desc, severity desc, date desc, tag overlap desc.
 
-    Tuple ascending → negamos os campos "desc".
+    Ascending tuple → negate the "desc" fields.
     """
     lesson, score = scored
     overlap = sum(1 for t in ctx.tags if t in set(lesson.tags))
@@ -290,11 +290,10 @@ def _to_payload(lesson: Lesson, score: float) -> dict[str, Any]:
 
 
 def match(path: Path, ctx: MatchContext, top_n: int = 3) -> dict[str, Any]:
-    """Match completo: top_n normais + critical separadas.
+    """Full match: top_n normals + critical separated.
 
-    Critical (severity=critical) vão para canal próprio, capped em 3, e
-    NÃO entram nas top_n normais (G2). Score>0 obrigatório para entrar
-    em qualquer canal.
+    Critical (severity=critical) go to their own channel, capped at 3, and
+    do NOT enter top_n normals (G2). Score>0 required to enter any channel.
     """
     lessons, skipped = parse_lessons(path)
     scored = [(lesson, score_lesson(lesson, ctx)) for lesson in lessons]
@@ -314,9 +313,9 @@ def match(path: Path, ctx: MatchContext, top_n: int = 3) -> dict[str, Any]:
 
 
 def find_aging_candidates(lessons: list[Lesson], today: date) -> list[dict[str, Any]]:
-    """Lessons antigas (>180 dias) com poucos matches recentes (<5).
+    """Old lessons (>180 days) with few recent matches (<5).
 
-    Retorna candidatos para curadoria humana — não arquiva automaticamente.
+    Returns candidates for human curation — does not archive automatically.
     """
     candidates: list[dict[str, Any]] = []
     for lesson in lessons:
@@ -345,14 +344,14 @@ def _parse_csv(value: str) -> list[str]:
 
 
 def _build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Match lessons.md contra contexto de task.")
-    parser.add_argument("--lessons", required=True, help="Caminho para lessons.md")
+    parser = argparse.ArgumentParser(description="Match lessons.md against task context.")
+    parser.add_argument("--lessons", required=True, help="Path to lessons.md")
     parser.add_argument("--profile", required=True)
     parser.add_argument("--tier", required=True)
-    parser.add_argument("--tags", required=True, help="CSV de tags da task")
-    parser.add_argument("--files", required=True, help="CSV de arquivos tocados")
+    parser.add_argument("--tags", required=True, help="CSV of task tags")
+    parser.add_argument("--files", required=True, help="CSV of touched files")
     parser.add_argument("--top-n", type=int, default=3)
-    parser.add_argument("--aging", action="store_true", help="Modo curadoria: lista lessons aging.")
+    parser.add_argument("--aging", action="store_true", help="Curation mode: list aging lessons.")
     return parser
 
 

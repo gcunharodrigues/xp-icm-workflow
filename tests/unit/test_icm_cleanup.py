@@ -89,7 +89,7 @@ def test_aborts_if_not_git_repo(tmp_path: Path):
     fake.mkdir()
     report = cleanup_after_close(fake, "042-feat-auth")
     assert report.aborted is True
-    assert "não é git repo" in report.abort_reason
+    assert "is not a git repo" in report.abort_reason
 
 
 def test_aborts_if_workspace_branch_uncommitted(tmp_path: Path):
@@ -205,7 +205,7 @@ def test_cleanup_no_icm_main_still_works(tmp_path: Path):
         cwd=str(repo), capture_output=True, text=True,
     ).stdout
     assert "workspace/042-feat-auth" not in branches
-    assert any(".icm-main/ ausente" in s for s in report.actions_skipped)
+    assert any(".icm-main/ absent" in s for s in report.actions_skipped)
 
 
 # ============================================================
@@ -237,4 +237,4 @@ def test_cleanup_no_workspace_branch_warns_but_continues(tmp_path: Path):
 
     report = cleanup_after_close(repo, "042-feat-auth")
     assert report.aborted is False
-    assert any("não existe" in w for w in report.warnings)
+    assert any("does not exist" in w for w in report.warnings)
