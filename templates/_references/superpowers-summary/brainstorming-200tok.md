@@ -2,29 +2,29 @@
 name: brainstorming-200tok
 source_skill: superpowers:brainstorming
 source_version: "5.0.0"
-purpose: Transformar ideia crua em design aprovado antes de qualquer implementacao.
+purpose: Transform raw idea into approved design before any implementation.
 ---
 
-# Brainstorming — sumario 200tok
+# Brainstorming — 200tok summary
 
-## Quando aplicar
-- Antes de criar feature, componente ou mudar comportamento — sempre, mesmo em projeto "simples".
-- Quando spec ainda nao existe ou requisitos estao vagos.
-- Hard-gate: NAO escrever codigo nem invocar skill de implementacao ate design aprovado.
+## When to apply
+- Before creating feature, component, or changing behavior — always, even in "simple" projects.
+- When spec doesn't exist yet or requirements are vague.
+- Hard-gate: Do NOT write code or invoke implementation skill until design is approved.
 
-## Como aplicar
-1. Explorar contexto do projeto (arquivos, docs, commits recentes).
-2. Se escopo cobre subsistemas independentes, decompor antes de detalhar.
-3. Fazer perguntas de clarificacao **uma por vez**, multiple-choice quando possivel. Foco: proposito, restricoes, criterios de sucesso.
-4. Propor 2-3 abordagens com trade-offs e recomendacao explicita.
-5. Apresentar design em secoes (arquitetura, componentes, fluxo de dados, erros, testes), aprovacao incremental por secao.
-6. Salvar spec em `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` e commitar.
-7. Transicionar **apenas** para `writing-plans` (nunca direto para implementacao).
+## How to apply
+1. Explore project context (files, docs, recent commits).
+2. If scope covers independent subsystems, decompose before detailing.
+3. Ask clarification questions **one at a time**, multiple-choice when possible. Focus: purpose, constraints, success criteria.
+4. Propose 2–3 approaches with trade-offs and explicit recommendation.
+5. Present design in sections (architecture, components, data flow, error handling, tests); incremental approval per section.
+6. Save spec to `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` and commit.
+7. Transition **only** to `writing-plans` (never directly to implementation).
 
-## Sinais de sucesso
-- Design escrito tem unidades com fronteiras claras e interfaces bem definidas.
-- Usuario aprovou cada secao; YAGNI aplicado (nada de feature especulativa).
-- Spec commitado antes de qualquer linha de codigo.
+## Success signals
+- Design document has units with clear boundaries and well-defined interfaces.
+- User approved each section; YAGNI applied (no speculative features).
+- Spec committed before any line of code.
 
 ## Escape hatch
-Se design exige mockups visuais, multiplos subsistemas ou loop de revisao formal → invocar `superpowers:brainstorming` completo.
+If design requires visual mockups, multiple subsystems, or formal review loop → invoke full `superpowers:brainstorming`.

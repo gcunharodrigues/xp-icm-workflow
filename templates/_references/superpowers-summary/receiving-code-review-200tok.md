@@ -2,35 +2,35 @@
 name: receiving-code-review-200tok
 source_skill: superpowers:receiving-code-review
 source_version: "5.0.0"
-purpose: Subagente recebe feedback do reviewer com rigor tecnico, nao concordancia performativa.
+purpose: Subagent receives reviewer feedback with technical rigor, not performative agreement.
 ---
 
-# Receiving Code Review — sumario 200tok
+# Receiving Code Review — 200tok summary
 
-## Quando aplicar
-- Quando fix loop dispara: P0/P1 no `review-report.md` exige volta ao estagio 04.
-- Ao receber qualquer review, especialmente se feedback parece confuso ou tecnicamente questionavel.
-- Antes de implementar sugestao — verificar antes de mudar.
+## When to apply
+- When fix loop triggers: P0/P1 in `review-report.md` requires return to stage 04.
+- When receiving any review, especially if feedback seems confusing or technically questionable.
+- Before implementing suggestion — verify before changing.
 
-## Como aplicar
-1. **LER** feedback inteiro sem reagir.
-2. **ENTENDER** restate cada item em palavras proprias; se nao consegue, pedir clarificacao **antes** de implementar qualquer item (itens podem ser relacionados).
-3. **VERIFICAR** contra realidade do codebase: o suggestion quebra algo? ha razao para impl atual? funciona em todas as plataformas?
-4. **AVALIAR** YAGNI: grep por uso real antes de "implementar direito".
-5. **RESPONDER** com reasoning tecnico ou pushback fundamentado — nunca "Voce esta absolutamente certo!", "Otimo ponto!", "Obrigado por pegar isso!".
-6. **IMPLEMENTAR** um item por vez, testar cada, sem regressao.
-7. Anotar fixes no proprio `review-report.md` (sub-secao "fixes aplicados") e re-rodar verification antes de devolver ao reviewer.
+## How to apply
+1. **READ** entire feedback without reacting.
+2. **UNDERSTAND** restate each item in your own words; if you can't, ask for clarification **before** implementing any item (items may be related).
+3. **VERIFY** against codebase reality: does the suggestion break something? is there a reason for current implementation? works on all platforms?
+4. **EVALUATE** YAGNI: grep for real usage before "implement properly".
+5. **RESPOND** with technical reasoning or grounded pushback — never "You're absolutely right!", "Great point!", "Thanks for catching that!".
+6. **IMPLEMENT** one item at a time, test each, no regressions.
+7. Note fixes in the same `review-report.md` (subsection "fixes applied") and re-run verification before returning to reviewer.
 
-## Sinais de sucesso
-- Cada item P0/P1 tem fix com commit SHA referenciado.
-- Pushback (quando aplicavel) cita codigo/test que prova posicao.
-- Zero linguagem performativa; codigo fala pelo trabalho.
+## Success signals
+- Each P0/P1 item has fix with commit SHA referenced.
+- Pushback (when applicable) cites code/test proving your position.
+- Zero performative language; code speaks for the work.
 
-## Red flags — PARAR
-- "Voce esta certo!" ou qualquer gratidao antes de verificar.
-- Implementar em batch sem testar entre items.
-- Aceitar sugestao que quebra funcionalidade existente sem questionar.
-- Conflito com decisao previa do Guilherme → pausar e perguntar.
+## Red flags — STOP
+- "You're right!" or any gratitude before verifying.
+- Implement in batch without testing between items.
+- Accept suggestion that breaks existing functionality without questioning.
+- Conflict with Guilherme's previous decision → pause and ask.
 
 ## Escape hatch
-Se nao consegue verificar (ex: precisa env especifico) → declarar limitacao no report, pedir direcao. Nunca implementar as cegas.
+If you can't verify (e.g., needs specific environment) → declare limitation in report, ask for direction. Never implement blind.
