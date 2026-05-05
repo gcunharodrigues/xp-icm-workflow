@@ -1,25 +1,25 @@
-# Wave Planner Algorithm — Spec Canônico
+# Wave Planner Algorithm — Canonical Spec
 
-> **Versão:** v3.0.0-beta5
+> **Version:** v3.0.0-beta5
 > **Skill:** `xp-icm-workflow`
-> **Estágio:** `03 wave_planner`
-> **Path resolution:** caminhos `scripts/` neste documento referem-se a `<SKILL_DIR>/scripts/`, onde `SKILL_DIR` está definido em L0 (`CLAUDE.md`).
-> **Propósito:** documento canônico do algoritmo Wave Planner. Formaliza o pipeline determinístico baseline (Sessão 2 do estágio 03, já implementado em `<SKILL_DIR>/scripts/wave-planner-script.py`) **+** o LLM review subagent (R2.4) que valida o DAG antes do gate humano.
+> **Stage:** `03 wave_planner`
+> **Path resolution:** paths `scripts/` in this document refer to `<SKILL_DIR>/scripts/`, where `SKILL_DIR` is defined in L0 (`CLAUDE.md`).
+> **Purpose:** canonical document of the Wave Planner algorithm. Formalizes the deterministic baseline pipeline (Session 2 of stage 03, already implemented in `<SKILL_DIR>/scripts/wave-planner-script.py`) **+** the LLM review subagent (R2.4) that validates the DAG before the human gate.
 
-> **Decisões de origem:** Q7 (DAG por footprint + branches isoladas), Q17 (cap por tier/profile), Q18 (LLM review SEMPRE), E3 (sub-waves), F2 (skip wave-reviewer 1-task), R2.4 (LLM review subagent via Task tool).
+> **Origin decisions:** Q7 (DAG by footprint + isolated branches), Q17 (cap by tier/profile), Q18 (LLM review ALWAYS), E3 (sub-waves), F2 (skip wave-reviewer 1-task), R2.4 (LLM review subagent via Task tool).
 
-> **Status:** o pipeline determinístico está validado por `tests/unit/test_wave_planner_dag.py` (33 tests verde). LLM review subagent é wave 4 da reescrita; tests com mocks em `tests/mocks/llm_review_responses/`.
+> **Status:** the deterministic pipeline is validated by `tests/unit/test_wave_planner_dag.py` (33 tests green). LLM review subagent is wave 4 of the rewrite; tests with mocks in `tests/mocks/llm_review_responses/`.
 
 ---
 
-## 1. Inputs e outputs
+## 1. Inputs and outputs
 
-| Camada | Entrada | Saída |
+| Layer | Input | Output |
 |---|---|---|
-| Determinístico | `stages/02_design/output/plan.md` + `tier` + `profile` + `workspace_id` | `stages/03_wave_planner/output/wave-plan.md` (draft) + `ambiguities-resolved.md` |
-| LLM review | wave-plan.md draft + plan.md + ambiguidades | wave-plan.md final + `llm_review_findings.md` |
+| Deterministic | `stages/02_design/output/plan.md` + `tier` + `profile` + `workspace_id` | `stages/03_wave_planner/output/wave-plan.md` (draft) + `ambiguities-resolved.md` |
+| LLM review | wave-plan.md draft + plan.md + ambiguities | wave-plan.md final + `llm_review_findings.md` |
 
-CLI determinístico:
+Deterministic CLI:
 
 ```bash
 python <SKILL_DIR>/scripts/wave-planner-script.py \
@@ -30,63 +30,63 @@ python <SKILL_DIR>/scripts/wave-planner-script.py \
   --output stages/03_wave_planner/output/wave-plan.md
 ```
 
-Stdout: `total_tasks=N total_waves=M total_sub_waves=K ambiguities=A`. Exit 0 ok; exit 1 erro (ciclo, schema, slug duplicado).
+Stdout: `total_tasks=N total_waves=M total_sub_waves=K ambiguities=A`. Exit 0 ok; exit 1 error (cycle, schema, duplicate slug).
 
 ---
 
-## 2. Schema task no plan.md
+## 2. Task schema in plan.md
 
-Cada task é parseada do `plan.md` conforme `references/4-block-contract-template.md`. Extrai:
+Each task is parsed from `plan.md` according to `references/4-block-contract-template.md`. Extracts:
 
-| Campo | Origem no plan.md | Uso no Wave Planner |
+| Field | Source in plan.md | Use in Wave Planner |
 |---|---|---|
-| `slug` | header `## Task <slug>:` (kebab-case) | nó do DAG |
-| `files_touched` | seção `### Files touched` | aresta por conflito; validação de test file obrigatório |
-| `depends_on` | seção `### Depends on` (opcional) | aresta explícita |
-| `peer_review` | `### Requires_peer_review` | metadata (não afeta DAG) |
+| `slug` | header `## Task <slug>:` (kebab-case) | DAG node |
+| `files_touched` | section `### Files touched` | edge by conflict; mandatory test file validation |
+| `depends_on` | section `### Depends on` (optional) | explicit edge |
+| `peer_review` | `### Requires_peer_review` | metadata (does not affect DAG) |
 | `adrs` | `### ADRs aplicáveis` | metadata |
-| `conventions_extras` | `### Conventions extras` | metadata; `doc-only`/`config-only` isenta da regra de test file |
+| `conventions_extras` | `### Conventions extras` | metadata; `doc-only`/`config-only` exempts from test file rule |
 
-**Regras de parsing:**
-- Slug duplicado → erro.
-- Slug fora de kebab-case → erro.
-- Dep apontando para slug inexistente → erro.
-- **Regra de test file obrigatório:** toda task cujo `files_touched` contém arquivos em padrões de código (`src/`, `app/`, `lib/`, `pkg/`, extensões `.py`, `.ts`, `.js`, `.go`, `.rb`, `.rs`, `.java`, `.kt`, `.cs`) **deve** declarar ≥1 arquivo de teste correspondente (padrões reconhecidos: `tests/`, `test_*.py`, `*_test.py`, `*.test.ts`, `*.spec.ts`, `*.test.js`, `*.spec.js`, `spec/`, `__tests__/`). Violação → `BLOCKED_ERROR` com mensagem `test file missing for task <slug>`. Exceção: `Conventions extras` contém `doc-only` ou `config-only` → isenção automática.
+**Parsing rules:**
+- Duplicate slug → error.
+- Slug outside kebab-case → error.
+- Dep pointing to nonexistent slug → error.
+- **Mandatory test file rule:** every task whose `files_touched` contains files matching code patterns (`src/`, `app/`, `lib/`, `pkg/`, extensions `.py`, `.ts`, `.js`, `.go`, `.rb`, `.rs`, `.java`, `.kt`, `.cs`) **must** declare ≥1 corresponding test file (recognized patterns: `tests/`, `test_*.py`, `*_test.py`, `*.test.ts`, `*.spec.ts`, `*.test.js`, `*.spec.js`, `spec/`, `__tests__/`). Violation → `BLOCKED_ERROR` with message `test file missing for task <slug>`. Exception: `Conventions extras` contains `doc-only` or `config-only` → automatic exemption.
 
 ---
 
-## 3. Construção do DAG
+## 3. DAG construction
 
 Plan §4.3:
 
-- **Nó:** uma task.
-- **Aresta dirigida `(t1, t2)`** se:
-  - `t2.depends_on` cita `t1` (dep explícita), **OU**
-  - `files_touched(t1) ∩ files_touched(t2) ≠ ∅` E t1 aparece antes de t2 no `plan.md` (conflito serializa por ordem de aparição).
+- **Node:** a task.
+- **Directed edge `(t1, t2)`** if:
+  - `t2.depends_on` cites `t1` (explicit dep), **OR**
+  - `files_touched(t1) ∩ files_touched(t2) ≠ ∅` AND t1 appears before t2 in `plan.md` (conflict serializes by order of appearance).
 
-Conflito de footprint força tasks para waves diferentes — não viola ordem do humano.
-
----
-
-## 4. Detecção de ciclos
-
-DFS 3-cores (white/gray/black). Ao tocar nó GRAY na pilha → ciclo.
-
-Mensagem: `cycle detected: t1 -> t2 -> t3 -> t1`. Exit 1.
+Footprint conflict forces tasks into different waves — does not override human order.
 
 ---
 
-## 5. Topological sort em waves (Kahn por níveis)
+## 4. Cycle detection
 
-Nível N = nós com in-degree zero no grafo restante. Após emitir wave-N, remove arestas e recalcula. Empate dentro do nível resolve por ordem de aparição no `plan.md` (determinístico).
+DFS 3-colors (white/gray/black). On touching a GRAY node in the stack → cycle.
+
+Message: `cycle detected: t1 -> t2 -> t3 -> t1`. Exit 1.
 
 ---
 
-## 6. Cap por tier/profile
+## 5. Topological sort into waves (Kahn by levels)
 
-Cap efetivo = `min(TIER_CAP[tier], PROFILE_CAP_OVERRIDE[profile])`.
+Level N = nodes with in-degree zero in the remaining graph. After emitting wave-N, removes edges and recalculates. Ties within the level resolved by order of appearance in `plan.md` (deterministic).
 
-| Tier | Cap base |
+---
+
+## 6. Cap by tier/profile
+
+Effective cap = `min(TIER_CAP[tier], PROFILE_CAP_OVERRIDE[profile])`.
+
+| Tier | Base cap |
 |---|---|
 | `experimental` | 2 |
 | `tool` | 3 |
@@ -101,76 +101,76 @@ Profile overrides:
 | `ml_project` | 3 |
 | `technical_article` | 5 |
 
-Exemplo: `tier=production` + `profile=ml_project` → cap = `min(5, 3) = 3`.
+Example: `tier=production` + `profile=ml_project` → cap = `min(5, 3) = 3`.
 
 ---
 
-## 7. Subdivisão em sub-waves (E3)
+## 7. Sub-wave subdivision (E3)
 
-Quando `len(wave-N) > cap`, subdivide em `wave-N.a, wave-N.b, ...`, cada uma com até `cap` tasks. Sub-wave `(k+1)` só inicia depois que `(k)` está merged em `base_branch` + CI green.
+When `len(wave-N) > cap`, subdivides into `wave-N.a, wave-N.b, ...`, each with up to `cap` tasks. Sub-wave `(k+1)` only starts after `(k)` is merged into `base_branch` + CI green.
 
-Schema `wave-plan.md` ganha campo `sub_wave_id` (letras a-z; fallback `x<idx>` se >26).
+Schema `wave-plan.md` gains field `sub_wave_id` (letters a-z; fallback `x<idx>` if >26).
 
 Branch naming: `wave-<workspace>-N.a/<task-slug>`, `wave-<workspace>-N.b/<task-slug>`, etc.
 
 ---
 
-## 8. Detecção de ambiguidades de footprint
+## 8. Footprint ambiguity detection
 
-Heurística: pares de tasks que tocam o **mesmo diretório** mas **não compartilham arquivo exato** (dir-overlap sem file-overlap).
+Heuristic: pairs of tasks that touch the **same directory** but do **not share an exact file** (dir-overlap without file-overlap).
 
-Exemplo: `task-a` toca `src/auth/middleware.ts`, `task-b` toca `src/auth/`. O determinístico **não** cria aresta (sem interseção exata) **mas** registra ambiguidade em `ambiguities-resolved.md` para o LLM review confirmar separação.
+Example: `task-a` touches `src/auth/middleware.ts`, `task-b` touches `src/auth/`. The deterministic algorithm does **not** create an edge (no exact intersection) **but** records the ambiguity in `ambiguities-resolved.md` for LLM review to confirm separation.
 
-Determinístico aplica regra de fallback: serializa por ordem de aparição (mesma regra de file conflict). LLM review pode confirmar/contestar.
+Deterministic applies fallback rule: serializes by order of appearance (same rule as file conflict). LLM review may confirm/contest.
 
 ---
 
 ## 9. LLM review subagent (R2.4)
 
-Após gerar `wave-plan.md` draft + `ambiguities-resolved.md`, o Wave Planner spawna subagent dedicado via Task tool com prompt fixo:
+After generating `wave-plan.md` draft + `ambiguities-resolved.md`, the Wave Planner spawns a dedicated subagent via Task tool with a fixed prompt:
 
 ```
-Você é um wave-planner-reviewer. Recebe o DAG draft + plan.md + ambiguities.
+You are a wave-planner-reviewer. You receive the DAG draft + plan.md + ambiguities.
 
-Tarefa: ler tasks + grafo + ambiguidades. Verificar se há:
-1. Footprints ambíguos não resolvidos pelo determinístico
-2. Deps implícitas não declaradas (ex: task B precisa do schema migrado por task A
-   mas não declara dep)
-3. Sub-waves que poderiam re-paralelizar (cap reduzido por engano)
+Task: read tasks + graph + ambiguities. Verify if there are:
+1. Ambiguous footprints unresolved by the deterministic algorithm
+2. Undeclared implicit deps (e.g.: task B needs the schema migrated by task A
+   but does not declare the dep)
+3. Sub-waves that could re-parallelize (cap reduced by mistake)
 
-Output JSON estruturado:
+Structured JSON output:
 {
   "verdict": "APPROVE" | "PROPOSE_CHANGES",
   "issues": [
     {"type": "implicit_dep", "from": "task-a", "to": "task-b", "reason": "..."},
     {"type": "ambiguous_footprint", "tasks": ["task-x", "task-y"], "suggestion": "..."}
   ],
-  "proposed_dag_changes": [...]   // só se PROPOSE_CHANGES
+  "proposed_dag_changes": [...]   // only if PROPOSE_CHANGES
 }
 ```
 
-Wave Planner aplica o JSON:
+Wave Planner applies the JSON:
 
-- **APPROVE** → frontmatter `llm_review: APPROVE`, segue para gate humano.
-- **PROPOSE_CHANGES** → aplica diff → re-roda determinístico → loop até `APPROVE` ou cap 2 ciclos (E2). 3ª iteração diverge → escala humano com diffs (`llm_review_iterations: 2 (max reached, human decided)`).
+- **APPROVE** → frontmatter `llm_review: APPROVE`, proceeds to human gate.
+- **PROPOSE_CHANGES** → applies diff → re-runs deterministic → loop until `APPROVE` or cap 2 cycles (E2). 3rd iteration diverges → escalates to human with diffs (`llm_review_iterations: 2 (max reached, human decided)`).
 
-**Skip threshold:** waves com ≤2 tasks pulam LLM review (custo > benefício). Script `wave-planner-llm-review.py` incrementa counter `llm_review_skipped_count` em L1 quando skip ocorre (flag `--workspace-context <L1-CONTEXT.md>`).
+**Skip threshold:** waves with ≤2 tasks skip LLM review (cost > benefit). Script `wave-planner-llm-review.py` increments counter `llm_review_skipped_count` in L1 when skip occurs (flag `--workspace-context <L1-CONTEXT.md>`).
 
-**Mockable:** pytest mocka Task tool com fixtures JSON em `tests/mocks/llm_review_responses/` — CI roda sem custo de tokens.
+**Mockable:** pytest mocks Task tool with JSON fixtures in `tests/mocks/llm_review_responses/` — CI runs without token cost.
 
 ---
 
 ## 10. Wave-reviewer skip exception (F2 — renamed v3.8.0)
 
-Wave com **1 task** pula o wave-reviewer **cross-task** audit (sem coherence check possível). Forensic+ (step 8a) ainda roda, e CI global cobre o escape.
+A wave with **1 task** skips the wave-reviewer **cross-task** audit (no coherence check possible). Forensic+ (step 8a) still runs, and global CI covers the escape.
 
-Schema `wave-plan.md` marca `skip_cross_task_audit: true` na wave aplicável. Lead da fase 04 lê esse flag e ajusta o protocolo (skip step 8b cross-task, mas mantém 8a Forensic+ + 8c forensic git log).
+Schema `wave-plan.md` marks `skip_cross_task_audit: true` on the applicable wave. Stage 04 lead reads this flag and adjusts the protocol (skip step 8b cross-task, but keep 8a Forensic+ + 8c forensic git log).
 
-> **Backward compat (v3.7.x → v3.8.0):** o nome legado `skip_wave_reviewer` é reconhecido como alias pelo wave-planner-script.py durante v3.8.0. Wave-plans novos sempre emitem `skip_cross_task_audit`. v3.9.0 remove o alias.
+> **Backward compat (v3.7.x → v3.8.0):** the legacy name `skip_wave_reviewer` is recognized as an alias by wave-planner-script.py during v3.8.0. New wave-plans always emit `skip_cross_task_audit`. v3.9.0 removes the alias.
 
 ---
 
-## 11. Schema do wave-plan.md de saída
+## 11. Output wave-plan.md schema
 
 ```yaml
 ---
@@ -190,14 +190,14 @@ llm_review_iterations: 1
 
 # Wave Plan
 
-## Wave 1 (sub-wave 1.a) — 2 tasks paralelas
+## Wave 1 (sub-wave 1.a) — 2 parallel tasks
 
 | Task slug | Files touched | Depends on | Branch |
 |---|---|---|---|
 | add-user-model | src/models/user.ts, tests/models/user.test.ts | - | wave-042-feat-auth-1/add-user-model |
 | add-config-schema | src/config/schema.ts, tests/config.test.ts | - | wave-042-feat-auth-1/add-config-schema |
 
-## Wave 2 (sub-wave 2.a) — 2 tasks paralelas
+## Wave 2 (sub-wave 2.a) — 2 parallel tasks
 
 | Task slug | Files touched | Depends on | Branch |
 |---|---|---|---|
@@ -206,46 +206,46 @@ llm_review_iterations: 1
 
 ## Audit
 
-- Tasks com files conflict serializadas: nenhuma
-- Nenhuma ambiguidade registrada.
+- Tasks with file conflict serialized: none
+- No ambiguity recorded.
 ```
 
 ---
 
 ## 12. Mid-wave cap reduce (D'')
 
-Lead da fase 04 pode reduzir o cap **mid-wave** se observar drift:
+Stage 04 lead may reduce the cap **mid-wave** if drift is observed:
 
-- 3 ciclos travados sem convergência de algum subagente;
-- idle waiting prolongado (saída do Agent tool sem progresso);
-- orçamento de tokens crescendo desproporcional.
+- 3 stuck cycles without convergence from some subagent;
+- prolonged idle waiting (Agent tool output with no progress);
+- token budget growing disproportionately.
 
-Ação: encerra wave parcial com `BLOCKED_ERROR` + snapshot pra humano. Detalhamento em `references/subagent-protocol.md` (sibling).
-
----
-
-## 13. Validação automatizada
-
-`tests/unit/test_wave_planner_dag.py` (33 tests verde):
-
-- Cycle detection (cobre auto-loop, ciclo de 2/3/N nós).
-- Topo sort correto (preserva ordem do plan.md em empates).
-- Sub-wave split respeita cap.
-- File conflict gera aresta na ordem certa.
-- Detect ambiguities cobre dir-overlap sem file-overlap.
-- Property-based via Hypothesis: todas as deps preservadas, nenhum cap excedido.
-
-Wave 4 (LLM review) adiciona:
-
-- `tests/unit/test_wave_planner_llm_review.py`: mocks Task tool com fixtures.
-- `tests/integration/test_wave_planner_e2e.py`: pipeline determinístico + LLM review mocked → wave-plan.md final.
-- Snapshot tests: `wave-plan.md` esperado vs gerado em `tests/fixtures/wave-plan-expected/`.
+Action: ends partial wave with `BLOCKED_ERROR` + snapshot for human. Detail in `references/subagent-protocol.md` (sibling).
 
 ---
 
-## 14. Exemplo concreto: 4-task plan.md fictício
+## 13. Automated validation
 
-Input `plan.md` resumido:
+`tests/unit/test_wave_planner_dag.py` (33 tests green):
+
+- Cycle detection (covers self-loop, 2/3/N node cycle).
+- Correct topo sort (preserves plan.md order on ties).
+- Sub-wave split respects cap.
+- File conflict generates edge in correct order.
+- Detect ambiguities covers dir-overlap without file-overlap.
+- Property-based via Hypothesis: all deps preserved, no cap exceeded.
+
+Wave 4 (LLM review) adds:
+
+- `tests/unit/test_wave_planner_llm_review.py`: mocks Task tool with fixtures.
+- `tests/integration/test_wave_planner_e2e.py`: deterministic pipeline + LLM review mocked → wave-plan.md final.
+- Snapshot tests: expected `wave-plan.md` vs generated in `tests/fixtures/wave-plan-expected/`.
+
+---
+
+## 14. Concrete example: fictional 4-task plan.md
+
+Input `plan.md` summarized:
 
 ```markdown
 ## Task add-user-model
@@ -273,30 +273,30 @@ Input `plan.md` resumido:
 Pipeline (`tier=development`, `profile=app_web_backend`, cap=5):
 
 1. **Parse:** 4 tasks.
-2. **DAG:** arestas `(add-user-model, add-login-endpoint)`, `(add-user-model, add-logout-endpoint)`. Nenhum file conflict.
+2. **DAG:** edges `(add-user-model, add-login-endpoint)`, `(add-user-model, add-logout-endpoint)`. No file conflict.
 3. **Topo:** Wave 1 = `[add-user-model, add-config-schema]`. Wave 2 = `[add-login-endpoint, add-logout-endpoint]`.
-4. **Sub-waves:** ambas waves ≤ cap → `1.a` e `2.a` (sem split).
-5. **Ambiguidades:** nenhuma (dirs distintos).
-6. **LLM review:** subagent retorna `APPROVE` (deps explícitas batem com semântica).
-7. **Output:** wave-plan.md conforme §11.
+4. **Sub-waves:** both waves ≤ cap → `1.a` and `2.a` (no split).
+5. **Ambiguities:** none (distinct dirs).
+6. **LLM review:** subagent returns `APPROVE` (explicit deps match semantics).
+7. **Output:** wave-plan.md as per §11.
 
-Saída de stdout: `total_tasks=4 total_waves=2 total_sub_waves=2 ambiguities=0`.
+Stdout: `total_tasks=4 total_waves=2 total_sub_waves=2 ambiguities=0`.
 
 ---
 
 ## v3.3.0 — HITL/AFK rule
 
-Wave planner respeita campo `**Type:**` em cada task do plan.md.
+Wave planner respects the `**Type:**` field in each task of plan.md.
 
-- **AFK tasks** (default): agrupadas em sub-waves topológicas até cap por
+- **AFK tasks** (default): grouped in topological sub-waves up to cap per
   tier (experimental: 2, tool: 3, development: 5, production: 5).
-- **HITL tasks**: cada uma vira sub-wave **isolada cap=1**. Lead session
-  NÃO spawna subagent — gera AGENT-BRIEF, exibe ao humano, status
-  `COMPLETED_AWAITING_HUMAN, sub_stage=04_wave_N_hitl_pending`, SAIR.
+- **HITL tasks**: each becomes an **isolated sub-wave cap=1**. Lead session
+  does NOT spawn subagent — generates AGENT-BRIEF, displays to human, status
+  `COMPLETED_AWAITING_HUMAN, sub_stage=04_wave_N_hitl_pending`, EXIT.
 
-Função `subdivide_waves(waves, cap, task_types)`. Se `task_types` é None
-ou vazio, todas tasks tratadas como AFK (compat backward).
+Function `subdivide_waves(waves, cap, task_types)`. If `task_types` is None
+or empty, all tasks treated as AFK (backward compat).
 
-Output `wave-plan.md` adiciona coluna `Type` na tabela por sub-wave.
+Output `wave-plan.md` adds column `Type` to the table per sub-wave.
 
-Doc canônico: `references/task-types-hitl-afk.md`.
+Canonical doc: `references/task-types-hitl-afk.md`.

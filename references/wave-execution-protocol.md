@@ -1,75 +1,75 @@
 # Wave Execution Protocol — Stage 04 (Canonical)
 
-> Doc canônico do ciclo wave em stage 04. Consolida protocol disperso entre L2 template e references. Source of truth — outros docs apontam pra cá.
+> Canonical doc for the wave cycle in stage 04. Consolidates protocol scattered between the L2 template and references. Source of truth — other docs point here.
 
-## Resumo (1 parágrafo)
+## Summary (1 paragraph)
 
-Stage 04 = N waves sequenciais. Cada wave = 1 lead session. Lead spawna subagentes via `Agent(isolation: "worktree")`, um por task da wave (até cap por tier 2/3/5/5). Subagente trabalha em worktree efêmera isolada na branch `wave-<NNN>-<N>/<task-slug>`. Após COMPLETE de todos: wave-reviewer audita, lead merge sequencial em `BASE_BRANCH` (ordem do plan), CI global, cleanup, handoff. Mid-wave handoff automático; última wave gate humano.
+Stage 04 = N sequential waves. Each wave = 1 lead session. Lead spawns subagents via `Agent(isolation: "worktree")`, one per task in the wave (up to cap per tier 2/3/5/5). Subagent works in an ephemeral isolated worktree on branch `wave-<NNN>-<N>/<task-slug>`. After all COMPLETE: wave-reviewer audits, lead merges sequentially into `BASE_BRANCH` (plan order), global CI, cleanup, handoff. Mid-wave handoff is automatic; last wave requires human gate.
 
-## Atores
+## Actors
 
-| Ator | Sessão | CWD | Branch | Função |
+| Actor | Session | CWD | Branch | Role |
 |------|--------|-----|--------|--------|
-| Lead | 1 (toda a wave) | `{{PROJECT_ROOT}}` | `workspace/{{WORKSPACE}}` | Orquestra, gerencia state L1, faz merge |
-| Subagente N | Spawnado pelo lead via Agent | Worktree efêmera | `wave-<NNN>-<N>/<task-slug>` | TDD 7 passos, escreve task report |
-| Wave-reviewer | Spawnado pelo lead via Agent (sem worktree) | Lead CWD | `workspace/{{WORKSPACE}}` | Audita Auto-QA, files touched, acceptance |
-| Humano | Async (gate inline) | — | — | Aprova última wave, resolve conflicts, responde stop points |
+| Lead | 1 (entire wave) | `{{PROJECT_ROOT}}` | `workspace/{{WORKSPACE}}` | Orchestrates, manages L1 state, performs merges |
+| Subagent N | Spawned by lead via Agent | Ephemeral worktree | `wave-<NNN>-<N>/<task-slug>` | TDD 7 steps, writes task report |
+| Wave-reviewer | Spawned by lead via Agent (no worktree) | Lead CWD | `workspace/{{WORKSPACE}}` | Audits Auto-QA, files touched, acceptance |
+| Human | Async (inline gate) | — | — | Approves last wave, resolves conflicts, answers stop points |
 
-## Branches durante wave
+## Branches during wave
 
 ```
-main (= BASE_BRANCH)         ← estável, lead faz merge aqui
-  └─ workspace/<NNN-slug>     ← lead trabalha (state files L1/L2, outputs)
-       └─ wave-<NNN>-<N>/<slug-1>  ← subagente 1 (worktree efêmera)
-       └─ wave-<NNN>-<N>/<slug-2>  ← subagente 2
+main (= BASE_BRANCH)         ← stable, lead merges here
+  └─ workspace/<NNN-slug>     ← lead works here (state files L1/L2, outputs)
+       └─ wave-<NNN>-<N>/<slug-1>  ← subagent 1 (ephemeral worktree)
+       └─ wave-<NNN>-<N>/<slug-2>  ← subagent 2
        └─ ...
 ```
 
-## Pipeline (12 passos)
+## Pipeline (12 steps)
 
-1. **Pre-flight** — lead lê wave-plan.md, identifica wave atual, grava `pre_wave_sha` em L1 history.
-2. **Spawn** — lead cria branches + invoca `Agent(isolation: "worktree")` paralelo (multi tool-use).
-3. **Canal 2** — lead injeta ADR subset + lessons + design subset (se frontend) no prompt do Agent.
-4. **TDD 7 passos** — subagente em worktree: RED → GREEN → CI 1ª → REFACTOR → CI 2ª → Auto-QA → COMPLETE.
-5. **Stop points** — subagente detecta `new_dep`/`irreversible`/`over_eng`/`prod_migration`/`adr_drift` → menu A/B/C.
-6. **Cap 3 voltas auto-QA** — `qa_loops_used` no task report; reviewer audita.
-7. **Lead recebe** — Agent results bufferizados em `{task_slug: result}`; sort por plan order.
-8. **Wave-reviewer** — Agent sem worktree. Expandido em 8a/8b/8c/8d (v3.8.0):
-   - **8a Forensic+** — `scripts/forensic-plus.py` por task AFK (4 checks: test asserções, files fora declared, scope creep, TODO/FIXME). Doc canônico: `references/forensic-plus-protocol.md`.
-   - **8b Audit existente** — Auto-QA Akita declarado, files touched, acceptance.
-   - **8c Forensic git log** — `qa_loops_used` vs commits reais.
+1. **Pre-flight** — lead reads wave-plan.md, identifies current wave, records `pre_wave_sha` in L1 history.
+2. **Spawn** — lead creates branches + invokes `Agent(isolation: "worktree")` in parallel (multi tool-use).
+3. **Channel 2** — lead injects ADR subset + lessons + design subset (if frontend) into the Agent prompt.
+4. **TDD 7 steps** — subagent in worktree: RED → GREEN → CI 1st → REFACTOR → CI 2nd → Auto-QA → COMPLETE.
+5. **Stop points** — subagent detects `new_dep`/`irreversible`/`over_eng`/`prod_migration`/`adr_drift` → menu A/B/C.
+6. **Cap 3 auto-QA loops** — `qa_loops_used` in task report; reviewer audits.
+7. **Lead receives** — Agent results buffered in `{task_slug: result}`; sorted by plan order.
+8. **Wave-reviewer** — Agent without worktree. Expanded into 8a/8b/8c/8d (v3.8.0):
+   - **8a Forensic+** — `scripts/forensic-plus.py` per AFK task (4 checks: test assertions, files outside declared, scope creep, TODO/FIXME). Canonical doc: `references/forensic-plus-protocol.md`.
+   - **8b Existing audit** — Auto-QA declared, files touched, acceptance.
+   - **8c Forensic git log** — `qa_loops_used` vs actual commits.
    - **8d Decision** — HARD → `approved_pending_ci: false` + re-spawn (cap `MAX_FORENSIC_RETRIES = 2`); SOFT → warnings; NONE → approve.
-9. **Merge sequencial** — `git merge --no-ff` em `BASE_BRANCH`, ordem do plan; conflict → `conflict-resolution-protocol.md`.
-10. **CI global** — verde → 11; vermelho → `ci-rollback-protocol.md`.
-11. **Cleanup** — `git worktree remove` (decision matrix `--force`) + `git branch -d` (jamais `-D`); sync `.icm-main` condicional.
-12. **Handoff** — mid-wave automático ou última wave gate humano (ver L2 § End of stage handoff).
+9. **Sequential merge** — `git merge --no-ff` into `BASE_BRANCH`, plan order; conflict → `conflict-resolution-protocol.md`.
+10. **Global CI** — green → 11; red → `ci-rollback-protocol.md`.
+11. **Cleanup** — `git worktree remove` (decision matrix `--force`) + `git branch -d` (never `-D`); conditional `.icm-main` sync.
+12. **Handoff** — mid-wave automatic or last wave human gate (see L2 § End of stage handoff).
 
-## Status canônicos
+## Canonical statuses
 
 - `IN_PROGRESS`
-- `COMPLETED_AWAITING_HUMAN` (última wave)
+- `COMPLETED_AWAITING_HUMAN` (last wave)
 - `BLOCKED_STOP_POINT`
-- `BLOCKED_ERROR` (merge conflict, CI red, cap 3 voltas, cleanup unsafe)
-- `BLOCKED_HITL` (wave mista, task HITL pendente)
+- `BLOCKED_ERROR` (merge conflict, CI red, cap 3 loops, cleanup unsafe)
+- `BLOCKED_HITL` (mixed wave, HITL task pending)
 
 ## Cross-references
 
-- Conflict de merge: `references/conflict-resolution-protocol.md`
-- CI global vermelho: `references/ci-rollback-protocol.md`
+- Merge conflict: `references/conflict-resolution-protocol.md`
+- Global CI red: `references/ci-rollback-protocol.md`
 - AGENT-BRIEF render: `references/agent-brief-template.md` + `scripts/agent-brief-render.py`
 - Stop points: `references/stop-points-canonical.md`
 - Diagnose: `references/diagnose-protocol.md`
 - Handoff: `references/session-handoff-protocol.md`
 - HITL: `references/task-types-hitl-afk.md`
-- L2 stage 04 (instruções runtime): `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`
+- L2 stage 04 (runtime instructions): `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`
 - Forensic+ audit: `references/forensic-plus-protocol.md`
 
-## Invariantes globais
+## Global invariants
 
-- Lead sempre em `workspace/<NNN-slug>` durante wave inteira.
-- Subagentes nunca leem outros workspaces.
-- Branches wave nascem de `BASE_BRANCH`, NÃO de workspace branch.
-- Merge sequencial usa ordem do plan, não ordem de retorno do Agent.
-- `pre_wave_sha` capturado em L1 history pra rollback.
-- Wave branches deletadas SÓ após merge bem-sucedido + CI verde + cleanup.
-- Cleanup `--force` SÓ com `auto_qa_passed: true` no task report.
+- Lead always on `workspace/<NNN-slug>` for the entire wave.
+- Subagents never read other workspaces.
+- Wave branches are created from `BASE_BRANCH`, NOT from the workspace branch.
+- Sequential merge follows plan order, not Agent return order.
+- `pre_wave_sha` captured in L1 history for rollback.
+- Wave branches deleted ONLY after successful merge + CI green + cleanup.
+- Cleanup `--force` ONLY with `auto_qa_passed: true` in task report.
