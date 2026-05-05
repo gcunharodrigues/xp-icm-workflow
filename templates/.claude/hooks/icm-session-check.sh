@@ -1,36 +1,36 @@
 #!/usr/bin/env bash
 # icm-session-check.sh — SessionStart hook (v3.4.0).
 #
-# Roda 1× quando Claude Code abre sessão no project_root. Valida:
-#   1. branch atual = workspace branch ativo (se houver workspace IN_PROGRESS).
-#   2. `.icm-main/` worktree existe.
-#   3. `.icm-main/` checada em base_branch.
+# Runs once when Claude Code opens a session in the project_root. Validates:
+#   1. current branch = active workspace branch (if there is a workspace IN_PROGRESS).
+#   2. `.icm-main/` worktree exists.
+#   3. `.icm-main/` is checked out at base_branch.
 #
-# Imprime warning na stdout (visível no chat) se algo errado. Não bloqueia
-# session start — só sinaliza humano.
+# Prints a warning to stdout (visible in chat) if something is wrong. Does not block
+# session start — only signals the human.
 #
 # Doc: references/worktree-model.md + references/git-hooks.md.
 #
-# Uso:
-#   `.claude/settings.local.json` aponta hook SessionStart para este script.
-#   Path absoluto resolvido via $PROJECT_ROOT (o Claude Code passa cwd).
+# Usage:
+#   `.claude/settings.local.json` points the SessionStart hook to this script.
+#   Absolute path resolved via $PROJECT_ROOT (Claude Code passes cwd).
 
 set -uo pipefail
 
 project_root="$(pwd)"
 
-# Detectar workspace ativo via L1 (`workspaces/<NNN>/CONTEXT.md` frontmatter).
-# v3.7.1: prefere L1 ao invés de `.index.md` — L1 é canônico, index é cache
-# que pode ficar stale (bug pré-v3.7.1: saída A/C atualizava L1 mas não index).
-# Itera dirs em workspaces/, lê status do frontmatter, primeiro NÃO-COMPLETED ativo.
+# Detect active workspace via L1 (`workspaces/<NNN>/CONTEXT.md` frontmatter).
+# v3.7.1: prefers L1 over `.index.md` — L1 is canonical, index is a cache
+# that can go stale (pre-v3.7.1 bug: exits A/C updated L1 but not index).
+# Iterates dirs in workspaces/, reads status from frontmatter, first NON-COMPLETED is active.
 ws_dir="$project_root/workspaces"
 active_workspace=""
 if [ -d "$ws_dir" ]; then
-    # Ordena por nome (NNN-slug ascending) pra determinismo.
+    # Sort by name (NNN-slug ascending) for determinism.
     for ctx in "$ws_dir"/*/CONTEXT.md; do
         [ -f "$ctx" ] || continue
-        # Frontmatter status: extrai linha `status: <VALUE>` no bloco YAML inicial
-        # (entre primeiras 2 ocorrências de `^---$`).
+        # Frontmatter status: extract the `status: <VALUE>` line from the initial YAML block
+        # (between the first 2 occurrences of `^---$`).
         status=$(awk '
             BEGIN { in_fm=0; count=0 }
             /^---$/ { count++; if (count==1) { in_fm=1; next } else { exit } }
@@ -44,12 +44,12 @@ if [ -d "$ws_dir" ]; then
     done
 fi
 
-# Sem workspace ativo → não há nada a checar
+# No active workspace → nothing to check
 if [ -z "$active_workspace" ]; then
     exit 0
 fi
 
-# Detectar branch atual no project_root
+# Detect current branch in project_root
 current_branch=$(git -C "$project_root" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
 expected_ws_branch="workspace/${active_workspace}"
 
@@ -57,15 +57,15 @@ warnings=()
 
 if [ "$current_branch" != "$expected_ws_branch" ]; then
     warnings+=(
-        "⚠️  Branch atual em $project_root é '$current_branch', esperado '$expected_ws_branch' (workspace ativo)."
-        "    Para retomar workspace ICM, rode: git -C \"$project_root\" checkout $expected_ws_branch"
+        "⚠️  Current branch in $project_root is '$current_branch', expected '$expected_ws_branch' (active workspace)."
+        "    To resume the ICM workspace, run: git -C \"$project_root\" checkout $expected_ws_branch"
     )
 fi
 
-# Validar .icm-main/ worktree
+# Validate .icm-main/ worktree
 worktree="$project_root/.icm-main"
 if [ ! -d "$worktree" ]; then
-    # Detectar base_branch do L1
+    # Detect base_branch from L1
     l1="$project_root/workspaces/$active_workspace/CONTEXT.md"
     base_branch=""
     if [ -f "$l1" ]; then
@@ -73,9 +73,9 @@ if [ ! -d "$worktree" ]; then
     fi
     base_branch="${base_branch:-main}"
     warnings+=(
-        "⚠️  '.icm-main/' worktree ausente em $project_root."
-        "    Modelo cross-branch v3.4.0 exige worktree linkada da base branch."
-        "    Para criar: git -C \"$project_root\" worktree add .icm-main $base_branch"
+        "⚠️  '.icm-main/' worktree missing in $project_root."
+        "    Cross-branch model v3.4.0 requires a worktree linked to the base branch."
+        "    To create: git -C \"$project_root\" worktree add .icm-main $base_branch"
     )
 else
     wt_branch=$(git -C "$worktree" rev-parse --abbrev-ref HEAD 2>/dev/null || echo "")
@@ -87,8 +87,8 @@ else
     base_branch="${base_branch:-main}"
     if [ -n "$wt_branch" ] && [ "$wt_branch" != "$base_branch" ]; then
         warnings+=(
-            "⚠️  '.icm-main/' worktree está em '$wt_branch', esperado '$base_branch'."
-            "    Para corrigir: cd $worktree && git checkout $base_branch"
+            "⚠️  '.icm-main/' worktree is on '$wt_branch', expected '$base_branch'."
+            "    To fix: cd $worktree && git checkout $base_branch"
         )
     fi
 fi

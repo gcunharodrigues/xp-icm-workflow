@@ -4,6 +4,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working in this
 
 {{ICM_REGION}}
 
-<!-- A região abaixo é livre. Pode ser preenchida pelo `/init` do Claude Code -->
-<!-- ou manualmente pelo usuário com codebase context (commands, architecture,   -->
-<!-- conventions, etc). A skill `xp-icm-workflow` NUNCA toca esta região.        -->
+<!-- The region below is free-form. It can be populated by `/init` from Claude Code -->
+<!-- or manually by the user with codebase context (commands, architecture,          -->
+<!-- conventions, etc). The `xp-icm-workflow` skill NEVER touches this region.      -->

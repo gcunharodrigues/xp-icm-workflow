@@ -1,30 +1,30 @@
 #!/usr/bin/env bash
-# context-check.sh — PostToolUse hook que detecta contexto >= 70%
-# e dispara handoff antecipado obrigatório (ICM protocol).
+# context-check.sh — PostToolUse hook that detects context >= 70%
+# and triggers a mandatory early handoff (ICM protocol).
 #
-# Lê transcript diretamente (independente de statusline.sh).
-# Cooldown de 60s entre alertas (1 por minuto, não por tool call).
-# Threshold: 70% — margem para completar handoff antes do compact real (~90%).
+# Reads transcript directly (independent of statusline.sh).
+# Cooldown of 60s between alerts (1 per minute, not per tool call).
+# Threshold: 70% — margin to complete handoff before real compact (~90%).
 #
-# Instalação: .claude/settings.local.json → hooks.PostToolUse → "bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh"
-# Bootstrap: ICM stage 00 (infraestrutura de governança).
+# Installation: .claude/settings.local.json → hooks.PostToolUse → "bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh"
+# Bootstrap: ICM stage 00 (governance infrastructure).
 #
-# Race-safe: usa mkdir atômico como lock. Instâncias concorrentes
-# (ex: 4 Agent calls em paralelo) skip automaticamente.
+# Race-safe: uses atomic mkdir as lock. Concurrent instances
+# (e.g.: 4 Agent calls in parallel) skip automatically.
 
-# SEM set -e — pipefail sozinho + exits manuais. set -e quebra
-# pipes que legitimamente retornam vazio (find sem resultados).
+# NO set -e — pipefail alone + manual exits. set -e breaks
+# pipes that legitimately return empty (find with no results).
 set -uo pipefail
 
 THRESHOLD=70
 COOLDOWN_SEC=60
 
-# 1. Lock concorrente via mkdir (atômico em POSIX e Windows Git Bash).
-# Se outra instância está rodando (ex: durante spawn de subagentes),
-# skip imediatamente sem bloquear.
+# 1. Concurrent lock via mkdir (atomic on POSIX and Windows Git Bash).
+# If another instance is running (e.g.: during subagent spawn),
+# skip immediately without blocking.
 LOCKDIR="/tmp/claude-ctx-check-$(basename "$(pwd)")"
 if ! mkdir "$LOCKDIR" 2>/dev/null; then
-    # Outra instância rodando. Verificar se é stale (>120s).
+    # Another instance running. Check if it is stale (>120s).
     lock_age=999
     if stat -c %Y "$LOCKDIR" >/dev/null 2>&1; then
         lock_mtime=$(stat -c %Y "$LOCKDIR" 2>/dev/null || echo 0)
@@ -35,17 +35,17 @@ if ! mkdir "$LOCKDIR" 2>/dev/null; then
     fi
     now=$(date +%s)
     lock_age=$(( now - lock_mtime ))
-    # Stale lock — remover e seguir.
+    # Stale lock — remove and continue.
     if (( lock_age > 120 )); then
         rmdir "$LOCKDIR" 2>/dev/null || exit 0
     else
         exit 0
     fi
 fi
-# Garantir cleanup do lock ao sair.
+# Ensure lock cleanup on exit.
 trap 'rmdir "$LOCKDIR" 2>/dev/null' EXIT
 
-# 2. Proteção contra interrupção de operação git em andamento.
+# 2. Guard against interrupting an in-progress git operation.
 git_dir="$(git rev-parse --git-dir 2>/dev/null || echo .git)"
 if [ -d "${git_dir}/rebase-merge" ] || [ -d "${git_dir}/rebase-apply" ]; then
     exit 0
@@ -57,14 +57,14 @@ if [ -f "${git_dir}/index.lock" ]; then
     exit 0
 fi
 
-# 3. Encontra transcript mais recente modificado nos últimos 5 min.
-# Pipe sem pipefail aqui — find vazio não é erro, apenas "nada a fazer".
+# 3. Find the most recently modified transcript within the last 5 min.
+# Pipe without pipefail here — empty find is not an error, just "nothing to do".
 transcript=""
 # shellcheck disable=SC2155
 transcript=$(find "$HOME/.claude/projects" -name "*.jsonl" -mmin -5 2>/dev/null | head -1) || true
-# Se find retornou múltiplos, pegar o mais recente
+# If find returned multiple files, pick the most recent one
 if [ -n "$transcript" ] && command -v ls >/dev/null 2>&1; then
-    # Pegar o arquivo mais recente entre os encontrados
+    # Pick the most recent file among the ones found
     most_recent=$(find "$HOME/.claude/projects" -name "*.jsonl" -mmin -5 2>/dev/null | xargs ls -t 2>/dev/null | head -1) || true
     if [ -n "$most_recent" ]; then
         transcript="$most_recent"
@@ -73,12 +73,12 @@ fi
 [ -z "$transcript" ] && exit 0
 [ ! -f "$transcript" ] && exit 0
 
-# 4. Extrai última entrada de usage do transcript.
+# 4. Extract the last usage entry from the transcript.
 last_usage=""
 last_usage=$(tail -n 300 "$transcript" 2>/dev/null | grep '"usage"' | tail -n 1) || true
 [ -z "$last_usage" ] && exit 0
 
-# 5. Parse tokens (jq obrigatório — dependência documentada).
+# 5. Parse tokens (jq required — documented dependency).
 if ! command -v jq >/dev/null 2>&1; then
     exit 0
 fi
@@ -88,7 +88,7 @@ cc=$(echo "$last_usage"  | jq -r '.message.usage.cache_creation_input_tokens // 
 cr=$(echo "$last_usage"  | jq -r '.message.usage.cache_read_input_tokens // 0' 2>/dev/null) || cr=0
 ctx_used=$(( inp + cc + cr ))
 
-# 6. Detecta janela de contexto (1M para modelos [1m], 200k padrão).
+# 6. Detect context window (1M for [1m] models, 200k default).
 model_id=$(echo "$last_usage" | jq -r '.model // ""' 2>/dev/null) || model_id=""
 if echo "$model_id" | grep -qi '\[1m\]\|1M'; then
     ctx_window=1000000
@@ -99,7 +99,7 @@ fi
 ctx_pct=$(( ctx_used * 100 / ctx_window ))
 (( ctx_pct < THRESHOLD )) && exit 0
 
-# 7. Cooldown: 1 alert por minuto.
+# 7. Cooldown: 1 alert per minute.
 ALERT_LOCK="/tmp/claude-ctx-alert-$(basename "$(pwd)")"
 now=$(date +%s)
 if [ -f "$ALERT_LOCK" ]; then
@@ -111,29 +111,29 @@ touch "$ALERT_LOCK"
 
 cat <<EOF
 ================================================================================
-⚠ CONTEXTO EM ${ctx_pct}% — HANDOFF ANTECIPADO OBRIGATÓRIO
+⚠ CONTEXT AT ${ctx_pct}% — MANDATORY EARLY HANDOFF
 ================================================================================
 
-PARE tudo. Contexto degradado = protocolo ICM violado.
+STOP everything. Degraded context = ICM protocol violated.
 
-Execute handoff antecipado agora:
+Execute early handoff now:
 
-1. Atualizar _kickoff.md com progresso cumulativo
-   - Adicionar prev_outputs da task completada
-   - Remover tasks completadas de pending_for_this_stage
+1. Update _kickoff.md with cumulative progress
+   - Add prev_outputs from the completed task
+   - Remove completed tasks from pending_for_this_stage
 
-2. Atualizar L1 (CONTEXT.md) com sub_stage atual
+2. Update L1 (CONTEXT.md) with current sub_stage
 
-3. Commit intermediário (outputs + L1 + _kickoff.md)
+3. Intermediate commit (outputs + L1 + _kickoff.md)
    git add workspaces/<NNN>/stages/04_implementation_waves/output/ \
            workspaces/<NNN>/CONTEXT.md \
            workspaces/<NNN>/stages/04_implementation_waves/_kickoff.md
-   git commit -m "workspace <NNN>: context checkpoint + handoff antecipado"
+   git commit -m "workspace <NNN>: context checkpoint + early handoff"
 
-4. Imprimir KICKOFF block verbal pro user
+4. Print KICKOFF block verbally to the user
 
-5. SAIR da sessão — user abre nova com prompt KICKOFF
+5. EXIT the session — user opens a new one with the KICKOFF prompt
 
-NÃO continue trabalhando. Handoff primeiro.
+DO NOT keep working. Handoff first.
 ================================================================================
 EOF

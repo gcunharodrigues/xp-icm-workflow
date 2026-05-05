@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # ICM v3.6.0 — preview loop helper.
-# Lança Chrome com remote-debugging-port=9222 + user-data-dir isolado.
+# Launches Chrome with remote-debugging-port=9222 + isolated user-data-dir.
 # Doc: references/preview-loop-protocol.md
-# Uso: scripts/launch-chrome-cdp.sh [URL]
+# Usage: scripts/launch-chrome-cdp.sh [URL]
 
 set -euo pipefail
 
@@ -30,13 +30,13 @@ if [ -z "$CHROME" ]; then
 fi
 
 if [ -z "$CHROME" ]; then
-  echo "Chrome/Chromium não encontrado. Defina CHROME=<path> manualmente." >&2
+  echo "Chrome/Chromium not found. Set CHROME=<path> manually." >&2
   exit 1
 fi
 
 mkdir -p "$PROFILE_DIR"
 
-echo "Lançando Chrome com CDP em :9222"
+echo "Launching Chrome with CDP on :9222"
 echo "  profile: $PROFILE_DIR"
 echo "  url:     $TARGET_URL"
 
