@@ -279,3 +279,41 @@ Saída A do último workspace:
 - [ ] Lead resolve via B3 (escreve direto, passa L2+L3).
 - [ ] Stage 05 audit aprova lead resolution.
 - [ ] Handoff stage 04 → 05 verde.
+
+## v3.10.0 — E2E coverage reinforcement checks
+
+### Bootstrap
+- [ ] Workspace tier=production profile=app_web_backend: novo CONTEXT.md.tpl com step 11b E2E suite gate.
+- [ ] Bootstrap copia `e2e-coverage-protocol.md` pra `_references/runtime/`.
+
+### Wave-planner detection
+- [ ] Plan com task tocando `src/routes/checkout.ts` profile=app_web_backend → wave-plan.md mostra `yes (auto)` na coluna E2E required + annotation `> **E2E coverage required**`.
+- [ ] Plan com task tocando `notebooks/eda.ipynb` profile=data_analysis → coluna E2E required = `no`, sem annotation.
+- [ ] Profile fullstack pega paths frontend AND backend.
+
+### Forensic+ Check 8
+- [ ] Task com `Requires E2E update: true` no plan.md SEM file em `e2e/`/`cypress/`/`playwright/`/`tests/e2e/` no diff → HARD em tier dev/prod, SOFT em tier exp/tool.
+- [ ] Task com `Requires E2E update: true` + e2e file presente → no violation.
+- [ ] Task com `**E2E:** skip - rationale` → Check 8 silent skip.
+- [ ] Task sem field `Requires E2E update` → Check 8 silent skip.
+
+### Stage 04 wave gate L4
+- [ ] tier production profile=backend + e2e_command declarado → step 11b roda E2E suite. Vermelho → BLOCKED_ERROR error_type=e2e_suite_failed → diagnose protocol.
+- [ ] tier exp profile=backend sem e2e_command → step 11b skip silently (warning).
+- [ ] profile=data_analysis (user_facing_paths vazio) → step 11b skip integral.
+
+### Stage 05 audit (4.7)
+- [ ] Suite e2e ausente em workspace tier dev/prod com user_facing_paths não-vazio → BLOCKED_ERROR error_type=e2e_suite_missing.
+- [ ] Suite e2e > 7 dias com tasks user-facing entregues → BLOCKED_ERROR error_type=e2e_suite_stale.
+- [ ] Task com `**E2E:** skip` sem rationale → BLOCKED_ERROR error_type=e2e_skip_unjustified.
+- [ ] CI report e2e vermelho → FAIL.
+
+### Recovery wizard
+- [ ] Detector E2E_SUITE_STALE alerta workspace com suite > 7 dias + tasks user-facing recentes em wave-summary.
+
+### Migration
+- [ ] migrate-workspace v3.9.0→v3.10.0 idempotente em smoke fixture.
+- [ ] L0 frontmatter de workspace existente ganha `icm_skill_version: "3.10.0"` sem quebrar parse.
+
+### E2E (meta-test do reforço)
+- [ ] Workspace lifecycle: criar plan com 2 tasks (1 user-facing forencic-flagged, 1 não); confirmar wave-plan.md mostra E2E annotation; designer adiciona `Requires E2E update: true`; subagente A esquece e2e file → Check 8 HARD; subagente B adiciona e2e/checkout.spec.ts → PASS; L4 wave gate roda suite; Stage 05 4.7 audita freshness verde.
