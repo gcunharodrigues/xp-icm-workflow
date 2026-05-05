@@ -27,6 +27,7 @@ from handoff import (  # type: ignore[import-not-found]  # noqa: E402
     HandoffError,
     PrevOutput,
     STAGE_DIR_BY_ID,
+    _parse_prev_outputs_arg,
     extract_kickoff_metadata,
     render_kickoff,
     stage_target_dir,
@@ -127,8 +128,8 @@ class TestRenderKickoff:
     def test_substitutes_all_placeholders(self) -> None:
         data = _canonical_data()
         out = render_kickoff(TEMPLATE_PATH, data)
-        # nenhum {{X}} nao-resolvido sobra
-        assert "{{" not in out, f"placeholders nao resolvidos: {out}"
+        # no unresolved {{X}} placeholders remain
+        assert "{{" not in out, f"unresolved placeholders: {out}"
         assert "}}" not in out
 
     def test_includes_workspace_and_stage_target(self) -> None:
@@ -300,3 +301,47 @@ class TestValidateKickoffPresent:
         ws.mkdir(parents=True)
         with pytest.raises(HandoffError):
             validate_kickoff_present(ws, "99")
+
+
+# ============================================================================
+# _parse_prev_outputs_arg
+# ============================================================================
+
+
+class TestParsePrevOutputsArg:
+    def test_empty_and_none(self) -> None:
+        assert _parse_prev_outputs_arg(None) == ()
+        assert _parse_prev_outputs_arg("") == ()
+
+    def test_single_entry(self) -> None:
+        result = _parse_prev_outputs_arg("stages/02_design/output/plan.md:Plan with 8 tasks")
+        assert len(result) == 1
+        assert result[0].path == "stages/02_design/output/plan.md"
+        assert result[0].summary == "Plan with 8 tasks"
+
+    def test_multiple_entries(self) -> None:
+        result = _parse_prev_outputs_arg(
+            "stages/02_design/output/plan.md:Plan with 8 tasks,"
+            "stages/02_design/output/decisions.md:ADR index"
+        )
+        assert len(result) == 2
+        assert result[0].path == "stages/02_design/output/plan.md"
+        assert result[1].path == "stages/02_design/output/decisions.md"
+
+    def test_summary_containing_commas(self) -> None:
+        """Commas inside summaries should not break the parse."""
+        result = _parse_prev_outputs_arg(
+            "stages/03_wave_planner/output/wave-plan.md:Wave plan with 10 tasks, "
+            "3 waves, 5 sub-waves, cap=3,"
+            "stages/03_wave_planner/output/ambiguities-resolved.md:4 dir-sharing "
+            "ambiguities all resolved as no actual file conflicts"
+        )
+        assert len(result) == 2
+        assert result[0].path == "stages/03_wave_planner/output/wave-plan.md"
+        assert "10 tasks" in result[0].summary
+        assert "3 waves" in result[0].summary
+        assert result[1].path == "stages/03_wave_planner/output/ambiguities-resolved.md"
+
+    def test_missing_colon_raises(self) -> None:
+        with pytest.raises(HandoffError, match="missing ':'"):
+            _parse_prev_outputs_arg("bare-path-without-colon")

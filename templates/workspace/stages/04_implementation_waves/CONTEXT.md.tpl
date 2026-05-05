@@ -35,6 +35,7 @@ Parallel execution in waves. Lead session orchestrates subagents via Agent tool 
 - `references/forensic-plus-protocol.md` — 7 checks (extended v3.9.0)
 - `references/4-block-contract-template.md` — vertical TDD + tracer-first (v3.9.0)
 - `references/mocking-guidelines.md` — boundaries only (v3.9.0)
+- `references/script-cli-reference.md` — exact CLI format for all scripts (v3.12.1)
 
 ## Inputs (reads ONLY these, in order)
 

@@ -163,6 +163,7 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
 6. **Render `_kickoff.md`** in the next stage:
    - Path: `<workspace>/stages/02_design/_kickoff.md`
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render` or function `render_kickoff` from `{{SKILL_DIR}}/scripts/handoff.py`
+   - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
    - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`
    - Body: prev_outputs + prev_decisions + pending for next stage
 

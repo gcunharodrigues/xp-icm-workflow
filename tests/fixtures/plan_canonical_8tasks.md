@@ -16,7 +16,7 @@ Topologia esperada:
 
   total_tasks=8 total_waves=3 total_sub_waves=3 ambiguities>=1
 
-Cap=5 com no maximo 3 tasks por wave -> nenhuma sub-wave dividida.
+Cap=5 with max 3 tasks per wave -> no sub-wave division.
 
 Notas:
   - Ambiguidades sao detectadas (pares de tasks no mesmo dir sem intersecao
@@ -36,7 +36,7 @@ WHAT / HOW / OUT OF SCOPE / VALIDATION
 - tests/auth/middleware.test.ts
 
 ### Depends on
-- nenhum
+- none
 
 ### Applicable ADRs
 - docs/decisions/0001-stack.md
@@ -45,7 +45,7 @@ WHAT / HOW / OUT OF SCOPE / VALIDATION
 - 0033
 
 ### Tech debt paydown
-- nenhum
+- none
 
 ### Requires_peer_review
 - false
@@ -60,14 +60,14 @@ WHAT / HOW / OUT OF SCOPE / VALIDATION
 - tests/models/user.test.ts
 
 ### Depends on
-- nenhum
+- none
 
 ### Applicable ADRs
 
 ### Licoes criticas pre-marcadas
 
 ### Tech debt paydown
-- nenhum
+- none
 
 ### Requires_peer_review
 - false
@@ -163,7 +163,7 @@ WHAT / HOW / OUT OF SCOPE / VALIDATION
 - src/auth/routes.ts
 
 ### Depends on
-- nenhum
+- none
 
 ### Applicable ADRs
 

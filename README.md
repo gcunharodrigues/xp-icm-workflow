@@ -5,7 +5,7 @@
 [![tests](https://img.shields.io/badge/tests-855%20passed-brightgreen)](tests/)
 [![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)](pyproject.toml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](system-requirements.md)
-[![version](https://img.shields.io/badge/version-v3.12.0-blue)](references/changelog.md)
+[![version](https://img.shields.io/badge/version-v3.12.1-blue)](references/changelog.md)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -239,7 +239,11 @@ Flow details, code standards, and drift rules in [CONTRIBUTING.md](CONTRIBUTING.
 
 ## Current version
 
-**v3.12.0** — Zero pt-BR (full migration). All previously preserved pt-BR keywords (4-block headers, stop point IDs, retrospective headers, exit markers, historical changelog) have been translated to en-US. Single en-US canonical source with zero exceptions. See [`references/changelog.md`](references/changelog.md) for full entry.
+**v3.12.1** — Script CLI contract hardening + residual pt-BR cleanup. Fixed wave-planner "none" sentinel (accepts both `none` and legacy `nenhum`), comma-safe `--prev-outputs` parsing, parenthetical stripping in deps. New `references/script-cli-reference.md` documents exact CLI format for all 18 scripts. Stage templates cross-ref the new doc. See [`references/changelog.md`](references/changelog.md) for full entry.
+
+## v3.12.1 — Script CLI contract hardening + residual pt-BR cleanup
+
+Fixed 3 parser bugs and created canonical CLI reference doc. See [`references/changelog.md`](references/changelog.md).
 
 ## v3.12.0 — Zero pt-BR (full migration)
 
@@ -257,6 +261,7 @@ Canonical version: [`scripts/bootstrap.py:SKILL_VERSION`](scripts/bootstrap.py).
 
 ### Highlights by version
 
+- **v3.12.1** (2026-05-05) — Script CLI contract hardening + residual pt-BR cleanup. Fixed wave-planner "none" sentinel, comma-safe `--prev-outputs` parsing, parenthetical stripping. New `script-cli-reference.md`.
 - **v3.12.0** (2026-05-05) — Zero pt-BR (full migration). All preserved pt-BR keywords translated; parser regex updated to en-US headers; migration step `migrate_3_11_0_to_3_12_0`; ADR amended; changelog fully en-US.
 - **v3.10.0** (2026-05-04) — E2E coverage reinforcement. Wave-planner auto-detects user-facing tasks; forensic+ Check 8 enforces ≥1 e2e file in diff (HARD dev/prod); L4 wave gate universal tier dev/prod; Stage 05 audits suite freshness. Doc: `e2e-coverage-protocol.md`.
 - **v3.9.0** (2026-05-04) — Layered dev↔QA loop + lead-resolution tier. L2 forensic+ extended (7 checks) + L3 orthogonal critic (intra-Claude Sonnet/Opus mix, anti-sycophancy) + buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK. Vertical TDD + tracer-first. Drop Akita 15-item checklist. Pick-model heuristic (writer/critic split by complexity score + tier ceiling). Docs: `critic-protocol.md`, `lead-resolution-protocol.md`, `mocking-guidelines.md`.

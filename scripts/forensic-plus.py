@@ -770,6 +770,18 @@ def main(argv: list[str] | None = None) -> int:
 
     cwd = Path.cwd()
     branch = f"wave-{args.workspace_num}-{args.wave}/{args.task_slug}"
+
+    # Pre-flight: verify task branch exists before running git diffs
+    try:
+        _git_run(cwd, "rev-parse", "--verify", branch)
+    except GitError:
+        sys.stderr.write(
+            f"forensic-plus: branch {branch!r} not found — "
+            "the task subagent must commit at least once before forensic review. "
+            "Ensure the subagent completed its work and pushed the branch.\n"
+        )
+        return 1
+
     plan_path = Path(args.plan)
 
     try:

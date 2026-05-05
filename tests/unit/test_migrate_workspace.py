@@ -132,6 +132,7 @@ def test_plan_migration_from_3_3_0_to_canonical(mw):
         "3.9.0->3.10.0",
         "3.10.0->3.11.0",
         "3.11.0->3.12.0",
+        "3.12.0->3.12.1",
     ]
 
 
@@ -494,9 +495,9 @@ def test_step_functions_includes_v3_12_0(mw):
     assert mw.STEP_FUNCTIONS["3.11.0->3.12.0"] is mw.migrate_3_11_0_to_3_12_0
 
 
-def test_supported_versions_ends_with_3_12_0(mw):
-    """Tuple must include 3.12.0 as the last entry."""
-    assert mw.SUPPORTED_VERSIONS[-1] == "3.12.0"
+def test_supported_versions_ends_with_3_12_1(mw):
+    """Tuple must include 3.12.1 as the last entry."""
+    assert mw.SUPPORTED_VERSIONS[-1] == "3.12.1"
 
 
 def test_migrate_3_11_0_to_3_12_0_smoke(mw, tmp_path: Path):
@@ -577,3 +578,40 @@ def test_migrate_3_11_0_to_3_12_0_rewrites_l1_history_stop_point_id(mw, tmp_path
     ctx = (ws / "CONTEXT.md").read_text(encoding="utf-8")
     assert "stop_point_id: ambiguous_feedback" in ctx
     assert "stop_point_id: feedback_ambiguous" not in ctx
+
+
+# ============================================================
+# v3.12.1 — Script CLI contract hardening (bump-only)
+# ============================================================
+
+
+def test_step_functions_includes_v3_12_1(mw):
+    """Dispatcher must register the v3.12.1 step with the canonical 'from->to' string key."""
+    assert "3.12.0->3.12.1" in mw.STEP_FUNCTIONS
+    assert mw.STEP_FUNCTIONS["3.12.0->3.12.1"] is mw.migrate_3_12_0_to_3_12_1
+
+
+def test_migrate_3_12_0_to_3_12_1_smoke(mw, tmp_path: Path):
+    """Smoke: bump-only migration produces L0 with new version."""
+    ws = tmp_path / "001-test-3121"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.12.0"\n---\n# Workspace 001\n',
+        encoding="utf-8",
+    )
+    mw.migrate_3_12_0_to_3_12_1(ws, project_root=tmp_path)
+    text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
+    assert 'icm_skill_version: "3.12.1"' in text
+
+
+def test_migrate_3_12_0_to_3_12_1_idempotent(mw, tmp_path: Path):
+    """Applying migrate to workspace already at 3.12.1 must not break or alter version."""
+    ws = tmp_path / "002-idempotent-3121"
+    ws.mkdir()
+    (ws / "CLAUDE.md").write_text(
+        '---\nicm_skill_version: "3.12.1"\n---\n# Workspace 002\n',
+        encoding="utf-8",
+    )
+    mw.migrate_3_12_0_to_3_12_1(ws, project_root=tmp_path)
+    text = (ws / "CLAUDE.md").read_text(encoding="utf-8")
+    assert 'icm_skill_version: "3.12.1"' in text

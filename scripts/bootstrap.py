@@ -29,7 +29,7 @@ from typing import Any
 # Constants
 # ============================================================================
 
-SKILL_VERSION = "3.12.0"  # template prepends `v`
+SKILL_VERSION = "3.12.1"  # template prepends `v`
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 # Bootstrap auto-prefixes NNN- to the slug. A slug that already starts with NNN-

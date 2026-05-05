@@ -23,7 +23,7 @@ from typing import Any
 # Constants — keep aligned with plan v3.9.0 §7 + critic-protocol.md
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.12.0"
+CURRENT_SKILL_VERSION = "3.12.1"
 
 # Models ordered worst → best (used for `min()` cap on writer).
 MODEL_RANK: dict[str, int] = {

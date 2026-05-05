@@ -28,7 +28,7 @@ from typing import Any
 # Constants
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.12.0"
+CURRENT_SKILL_VERSION = "3.12.1"
 
 # Convergence threshold — drift-checked against canonical doc.
 JACCARD_THRESHOLD = 0.7

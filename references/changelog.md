@@ -6,6 +6,17 @@ Version history for the skill. The current version lives in the `SKILL.md` front
 
 ---
 
+## v3.12.1 — Script CLI contract hardening + residual pt-BR cleanup (2026-05-05)
+
+### Changes
+
+- **wave-planner-script.py:** `_extract_section` now filters both `none` (English) and `nenhum` (legacy Portuguese) as empty-dependency sentinels. Parenthetical notes in dependency values automatically stripped (e.g. `config-module (needs api_key)` → `config-module`).
+- **handoff.py:** `_parse_prev_outputs_arg` uses regex split `,(?=\s*stages/\d+)` — commas inside summaries no longer break parsing. Error message improved with expected format.
+- **`references/script-cli-reference.md`** (new): Canonical CLI reference for all 18 scripts with exact format contracts for `--prev-outputs`, `--pending`, plan.md dependency sentinels, and 4-block headers.
+- **Stage templates:** Cross-ref to `script-cli-reference.md` added in stages 00, 01, 02, 03, 05, 08 handoff steps.
+- **Residual pt-BR cleanup:** All remaining `nenhum`/`nenhuma` in test fixtures, test code, and e2e bats files translated to English. v3.12.0 claimed zero pt-BR but missed `scripts/wave-planner-script.py:175` and test files.
+- **Tests:** +8 new tests (none filtering, nenhum backward compat, parenthetical stripping, comma-in-summary parsing, missing colon error).
+
 ## v3.12.0 — Zero pt-BR (2026-05-05)
 
 ### Changes

@@ -233,7 +233,7 @@ def test_score_zero_when_nothing_matches(lm, tmp_path):
         tags=["nope"],
         files=["other/path.go"],
     )
-    # Lesson 42 com profile/tier/files restritos: nenhum bate.
+    # Lesson 42 with restricted profile/tier/files: none match.
     score = lm.score_lesson(by_id[42], ctx)
     assert score == 0.0
 

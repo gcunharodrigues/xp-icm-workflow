@@ -17,7 +17,7 @@ WHAT / HOW / OUT OF SCOPE / VALIDATION
 - src/payments/charge.ts
 
 ### Depends on
-- nenhum
+- none
 
 ## Task payments-refund: Payments Refund
 
@@ -28,4 +28,4 @@ WHAT / HOW / OUT OF SCOPE / VALIDATION
 - src/payments/refund.ts
 
 ### Depends on
-- nenhum
+- none

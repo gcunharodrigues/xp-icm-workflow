@@ -306,6 +306,7 @@ Detail per output:
    - `prev_outputs` inherits from `intake-report.md` (summary of lessons + 4 feedback blocks)
    - `pending_for_this_stage`: points from feedback that motivated the restart
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render`
+   - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
 5. Atomic commit (prefix `intake:` or `feedback:`):
    ```
    intake: workspace <NNN> restart stage <XX> (output B, iteration <N+1>) + kickoff

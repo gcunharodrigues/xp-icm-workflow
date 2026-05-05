@@ -887,13 +887,21 @@ def list_active_workspace_ids(project_root: Path) -> list[str]:
 # ============================================================================
 
 def _parse_prev_outputs_arg(raw: str | None) -> tuple[PrevOutput, ...]:
-    """Parse `path1:summary1,path2:summary2` -> tuple[PrevOutput]."""
+    """Parse `path1:summary1,path2:summary2` -> tuple[PrevOutput].
+
+    Splits on commas that precede path entries (stages/NN_name/...),
+    so commas inside summaries do not break the parse.
+    """
     if not raw:
         return ()
     items: list[PrevOutput] = []
-    for chunk in raw.split(","):
+    # Split only on commas that precede path-like entries
+    for chunk in re.split(r',(?=\s*stages/\d+)', raw):
+        chunk = chunk.strip()
         if ":" not in chunk:
-            raise HandoffError(f"prev-outputs chunk missing ':' -> {chunk!r}")
+            raise HandoffError(
+                f"prev-outputs entry missing ':' — expected 'path:summary', got {chunk!r}"
+            )
         path, summary = chunk.split(":", 1)
         items.append(PrevOutput(path=path.strip(), summary=summary.strip()))
     return tuple(items)
@@ -918,8 +926,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     render.add_argument("--stage-target-name", required=True)
     render.add_argument("--commit-sha", required=True)
     render.add_argument("--prev-outputs", default=None,
-                        help="path1:summary1,path2:summary2")
-    render.add_argument("--pending", default=None, help="p1|p2|p3")
+                        help="path1:summary1,path2:summary2 (commas in summaries OK)")
+    render.add_argument("--pending", default=None, help="item1|item2|item3")
     render.add_argument("--decisions-summary", default="")
     render.add_argument("--prev-state-prose", default="")
     render.add_argument("--next-tasks-prose", default="")

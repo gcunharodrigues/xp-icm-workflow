@@ -77,10 +77,46 @@ def test_parse_extracts_depends_on():
     by_slug = {t.slug: t for t in tasks}
     assert by_slug["auth-routes"].depends_on == ["auth-middleware", "user-model"]
     assert by_slug["dashboard"].depends_on == ["auth-routes", "audit-log"]
-    # "nenhum" e blocos vazios devem virar lista vazia
+    # "none" and empty blocks should be empty lists
     assert by_slug["auth-middleware"].depends_on == []
     assert by_slug["user-model"].depends_on == []
     assert by_slug["logger-setup"].depends_on == []
+
+
+def test_parse_filters_none_as_empty(tmp_path):
+    """Dependency value 'none' should be treated as empty (no deps)."""
+    plan = tmp_path / "plan.md"
+    plan.write_text(
+        "## Task t1:\n\n### Depends on\n- none\n\n### Files touched\n- src/a.py\n",
+        encoding="utf-8",
+    )
+    tasks = parse_plan(plan)
+    assert len(tasks) == 1
+    assert tasks[0].depends_on == []
+
+
+def test_parse_backward_compat_nenhum(tmp_path):
+    """Legacy Portuguese 'nenhum' should still work as empty deps."""
+    plan = tmp_path / "plan.md"
+    plan.write_text(
+        "## Task t1:\n\n### Depends on\n- nenhum\n\n### Files touched\n- src/a.py\n",
+        encoding="utf-8",
+    )
+    tasks = parse_plan(plan)
+    assert len(tasks) == 1
+    assert tasks[0].depends_on == []
+
+
+def test_parse_strips_parenthetical_from_dep(tmp_path):
+    """Dependency with parenthetical note should have note stripped."""
+    plan = tmp_path / "plan.md"
+    plan.write_text(
+        "## Task t1:\n\n### Depends on\n- config-module (needs api_key for integration)\n\n### Files touched\n- src/a.py\n",
+        encoding="utf-8",
+    )
+    tasks = parse_plan(plan)
+    assert len(tasks) == 1
+    assert tasks[0].depends_on == ["config-module"]
 
 
 def test_parse_duplicate_slugs_raises(tmp_path):
@@ -731,12 +767,12 @@ def test_parse_plan_extracts_type_field(tmp_path):
         "### Files touched\n\n"
         "- src/a.ts\n\n"
         "### Depends on\n\n"
-        "- nenhum\n\n"
+        "- none\n\n"
         "## Task task-b:\n\n"
         "### Files touched\n\n"
         "- src/b.ts\n\n"
         "### Depends on\n\n"
-        "- nenhum\n",
+        "- none\n",
         encoding="utf-8",
     )
     tasks = parse_plan(plan)

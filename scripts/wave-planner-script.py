@@ -172,7 +172,10 @@ def _extract_section(block: str, section_title: str) -> list[str]:
             continue
         if line.startswith("- "):
             value = line[2:].strip()
-            if value and value.lower() != "nenhum":
+            if value:
+                # Strip parenthetical notes (e.g. "config-module (needs api_key)" → "config-module")
+                value = re.sub(r'\s*\([^)]*\)', '', value).strip()
+            if value and value.lower() not in ("none", "nenhum"):
                 items.append(value)
     return items
 

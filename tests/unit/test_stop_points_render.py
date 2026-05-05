@@ -2,12 +2,12 @@
 
 Cobre:
 - `derive_stop_point_placeholders` — extracao de TIER_PAID_MODE/etc do
-  profile efetivo, por tier.
-- `render_custom_stop_points_block` — renderizacao do bloco markdown de
-  custom stop points (lista vazia, lista com 1+ items, threshold por tier).
-- Render integrado do template `templates/_config/stop-points.md` via
-  `render_template`, com property: nenhum `{{X}}` remanescente no output
-  para cada tier canonico.
+  effective profile, by tier.
+- `render_custom_stop_points_block` — rendering of the custom stop points
+  markdown block (empty list, list with 1+ items, threshold by tier).
+- Integrated render of `templates/_config/stop-points.md` via
+  `render_template`, with property: no `{{X}}` remaining in output
+  for each canonical tier.
 """
 from __future__ import annotations
 
@@ -163,11 +163,11 @@ class TestDeriveStopPointPlaceholders:
 # ============================================================================
 
 class TestRenderCustomStopPointsBlock:
-    def test_empty_list_returns_nenhum(self) -> None:
+    def test_empty_list_returns_none(self) -> None:
         out = render_custom_stop_points_block([], tier="development")
         assert "no custom stop points" in out
 
-    def test_none_returns_nenhum(self) -> None:
+    def test_none_returns_none(self) -> None:
         out = render_custom_stop_points_block(None, tier="development")
         assert "no custom stop points" in out
 
@@ -278,7 +278,7 @@ class TestRenderStopPointsTemplate:
         assert "alpha desc" in out
         assert "beta desc" in out
 
-    def test_render_stop_points_no_custom_writes_nenhum(self) -> None:
+    def test_render_stop_points_no_custom_writes_none(self) -> None:
         custom = render_custom_stop_points_block(None, tier="tool")
         out = render_template(TEMPLATE_PATH, _full_render_vars("tool", custom))
         assert "no custom stop points" in out

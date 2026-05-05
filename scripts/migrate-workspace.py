@@ -35,7 +35,7 @@ from typing import Sequence
 # Constants
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.12.0"
+CURRENT_SKILL_VERSION = "3.12.1"
 FLOOR_VERSION = "3.3.0"
 
 # Supported version sequence. Migration steps are consecutive pairs.
@@ -53,6 +53,7 @@ SUPPORTED_VERSIONS: tuple[str, ...] = (
     "3.10.0",
     "3.11.0",
     "3.12.0",
+    "3.12.1",
 )
 
 
@@ -335,6 +336,17 @@ def migrate_3_10_0_to_3_11_0(workspace_root: Path, project_root: Path) -> None:
             l1.write_text(text, encoding="utf-8")
 
 
+def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
+    """v3.12.0 -> v3.12.1: Bump-only (no workspace changes needed).
+
+    Fixes in v3.12.1 are backward-compatible: wave-planner now accepts both
+    "none" and "nenhum" as empty-dependency sentinels; handoff parser is
+    comma-safe; parenthetical notes in deps are stripped. No workspace
+    file format changed.
+    """
+    _bump_version_only(workspace_root, "3.12.1")
+
+
 def migrate_3_11_0_to_3_12_0(workspace_root: Path, project_root: Path) -> None:
     """v3.11.0 -> v3.12.0: Zero pt-BR (full migration).
 
@@ -400,6 +412,7 @@ STEP_FUNCTIONS = {
     "3.9.0->3.10.0": migrate_3_9_0_to_3_10_0,
     "3.10.0->3.11.0": migrate_3_10_0_to_3_11_0,
     "3.11.0->3.12.0": migrate_3_11_0_to_3_12_0,
+    "3.12.0->3.12.1": migrate_3_12_0_to_3_12_1,
 }
 
 

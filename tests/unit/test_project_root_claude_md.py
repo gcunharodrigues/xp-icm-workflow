@@ -217,7 +217,7 @@ def test_remove_workspace_block(tmp_path: Path):
 
 
 def test_remove_last_workspace_activates_idle(tmp_path: Path):
-    """Remover último workspace ativa mensagem 'nenhum ativo'."""
+    """Removing last workspace activates 'none active' message."""
     b1 = _make_block(workspace="001-only")
     update_project_claude_md(tmp_path, b1, SKILL_DIR_FIXTURE)
 

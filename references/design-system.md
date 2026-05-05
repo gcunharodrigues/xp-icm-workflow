@@ -1,6 +1,6 @@
-# Design System — DESIGN.md format (v3.12.0)
+# Design System — DESIGN.md format (v3.12.1)
 
-> **Version:** v3.12.0
+> **Version:** v3.12.1
 > **Skill:** `xp-icm-workflow`
 > **Applies when:** effective profile has `design_system_required: True`
 > (currently: `app_web_frontend` and `fullstack`).

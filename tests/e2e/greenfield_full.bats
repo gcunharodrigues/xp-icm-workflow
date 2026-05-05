@@ -117,33 +117,33 @@ commit_workspace() {
 # Plan
 
 ## Task task-foo
-### O QUE
-- entregar foo
+### WHAT
+- deliver foo
 
-### COMO
+### HOW
 - src/foo.py
 
-### NÃO QUERO
+### OUT OF SCOPE
 - bar
 
-### VALIDAÇÃO
-- tests/test_foo.py passa
+### VALIDATION
+- tests/test_foo.py passes
 
 ### Files touched
 - src/foo.py
 - tests/test_foo.py
 
-### ADRs aplicáveis
-- (nenhum)
+### Applicable ADRs
+- (none)
 
-### Lições críticas pré-marcadas
-- (nenhuma)
+### Critical pre-tagged lessons
+- (none)
 
-### Conventions extras
+### Extra conventions
 - (default)
 
 ### Tech debt paydown
-- nenhum
+- none
 
 ### Requires_peer_review
 - false
