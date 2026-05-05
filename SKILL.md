@@ -1,96 +1,96 @@
 ---
 name: xp-icm-workflow
-description: Bootstrap one-shot ICM (Interpretable Context Methodology) que cria estrutura L0/L1/L2/L3 + branch git + hooks num projeto e sai; sessões subsequentes leem L1+L2 do stage corrente. Suporta 9 estágios (00 recon → 08 feedback intake), 11 profiles × 4 tiers (incl. fullstack), subagents via Agent Tool fase 04, Wave Planner determinístico, Recovery Wizard, AGENT-BRIEF protocol, ubiquitous language layer, ADR 3-criteria gate, diagnose protocol, triage state machine, OUT-OF-SCOPE knowledge base, DESIGN.md format pra frontend/fullstack. Use when starting workspace ICM novo, projeto multi-estágio com revisão humana entre passos, feature complexa que requer discovery+design+implementação+review+merge, ou implementação que precisa paralelismo via subagents. Skip when tarefa trivial (1 arquivo), bug fix simples, refinamento cosmético, ou continuar workspace existente (sessão fresh lê L1+L2 sozinha — não re-invocar).
+description: One-shot bootstrap ICM (Interpretable Context Methodology) that creates the L0/L1/L2/L3 structure + git branch + hooks in a project and exits; subsequent sessions read L1+L2 from the current stage. Supports 9 stages (00 recon → 08 feedback intake), 11 profiles × 4 tiers (incl. fullstack), subagents via Agent Tool phase 04, deterministic Wave Planner, Recovery Wizard, AGENT-BRIEF protocol, ubiquitous language layer, ADR 3-criteria gate, diagnose protocol, triage state machine, OUT-OF-SCOPE knowledge base, DESIGN.md format for frontend/fullstack. Use when starting a new ICM workspace, multi-stage project with human review between steps, complex feature requiring discovery+design+implementation+review+merge, or implementation that benefits from parallelism via subagents. Skip when task is trivial (1 file), simple bug fix, cosmetic refinement, or continuing an existing workspace (fresh session reads L1+L2 on its own — do not re-invoke).
 type: rigid
 ---
 
 # xp-icm-workflow v3.10.0
 
-> **Skill é parteira, não orquestradora.** Bootstrap one-shot cria a estrutura. Filesystem governa o ciclo. **1 stage = 1 sessão**: cada estágio termina com handoff dual (verbal + arquivo `_kickoff.md`) e a sessão sai. Próxima sessão começa fresh.
+> **Skill is a midwife, not an orchestrator.** One-shot bootstrap creates the structure. Filesystem governs the cycle. **1 stage = 1 session**: each stage ends with a dual handoff (verbal + `_kickoff.md` file) and the session exits. The next session starts fresh.
 
-> **Base teórica:** Interpretable Context Methodology (VanClief & McDermott, 2025) — substitui orquestração por framework por estrutura de sistema de arquivos. Pastas numeradas representam estágios; arquivos markdown carregam prompts e contexto. Ver `references/icm-paper-summary.md`.
+> **Theoretical basis:** Interpretable Context Methodology (VanClief & McDermott, 2025) — replaces framework orchestration with filesystem structure. Numbered folders represent stages; markdown files carry prompts and context. See `references/icm-paper-summary.md`.
 
 ---
 
 ## Instruction Priority
 
-1. **User explicit instructions** (CLAUDE.md do projeto, AGENTS.md, mensagens diretas) — sempre vencem.
-2. **L0/L1/L2 do workspace** — instruções específicas do projeto/estágio em curso.
-3. **Esta skill (`/xp-icm-workflow`)** — só ativa no bootstrap one-shot.
-4. **Skills especializadas (superpowers:*)** — sumarizadas em L3 do workspace; invocação real só por escape hatch.
-5. **Default system prompt** — perde para 1-4.
+1. **User explicit instructions** (project CLAUDE.md, AGENTS.md, direct messages) — always win.
+2. **L0/L1/L2 of the workspace** — project/stage-specific instructions in progress.
+3. **This skill (`/xp-icm-workflow`)** — only active during one-shot bootstrap.
+4. **Specialized skills (superpowers:*)** — summarized in workspace L3; real invocation only via escape hatch.
+5. **Default system prompt** — loses to 1-4.
 
 ---
 
 ## When to Use
 
-Invoque `/xp-icm-workflow` para **iniciar** um workspace novo. Casos típicos:
+Invoke `/xp-icm-workflow` to **start** a new workspace. Typical cases:
 
-- Projeto novo (greenfield ou existente) com múltiplos estágios + revisão humana entre passos.
-- Feature complexa (discovery → design → implementação → review → merge).
-- Implementação que se beneficia de paralelismo (subagentes via Agent Tool na fase 04).
-- Quer ver, editar e aprovar artefatos intermediários (L4 outputs por estágio).
-- Decisões arquiteturais não-triviais que precisam de menu A/B/C.
+- New project (greenfield or existing) with multiple stages + human review between steps.
+- Complex feature (discovery → design → implementation → review → merge).
+- Implementation that benefits from parallelism (subagents via Agent Tool in phase 04).
+- Want to see, edit, and approve intermediate artifacts (L4 outputs per stage).
+- Non-trivial architectural decisions that require an A/B/C menu.
 
 ## When NOT to Use
 
-- Tarefa trivial de código (1 arquivo, sem decisões, sem testes novos) — use `/xp-workflow` direto.
-- Bug fix simples — use `/xp-workflow` direto.
-- Refinamento cosmético.
-- Continuar workspace existente — abra sessão nova; ela lê L1+L2 e procede sozinha. NÃO re-invoque a skill.
+- Trivial code task (1 file, no decisions, no new tests) — use `/xp-workflow` directly.
+- Simple bug fix — use `/xp-workflow` directly.
+- Cosmetic refinement.
+- Continuing an existing workspace — open a new session; it reads L1+L2 and proceeds on its own. Do NOT re-invoke the skill.
 
 ---
 
 ## What this skill does (one-shot bootstrap)
 
 ```
-INPUT  →  Skill invocada com profile + tier + project_root
-OUTPUT →  Workspace pronto: estrutura de pastas + L0/L1 preenchidos +
-          templates de L2 dos 9 estágios + sumários superpowers + git
-          branch criada + pre-commit hook instalado + commit inicial
-EXIT   →  Skill SAI. Sessão nova retoma via L1+L2.
+INPUT  →  Skill invoked with profile + tier + project_root
+OUTPUT →  Workspace ready: folder structure + L0/L1 filled +
+          L2 templates for the 9 stages + superpowers summaries + git
+          branch created + pre-commit hook installed + initial commit
+EXIT   →  Skill EXITS. New session resumes via L1+L2.
 ```
 
-A skill **não persiste** durante o ciclo. Não é orquestradora. Não invoca outras skills no runtime do projeto. É um *project starter* curto.
+The skill **does not persist** during the cycle. It is not an orchestrator. It does not invoke other skills at project runtime. It is a short *project starter*.
 
-**Anti-superpowers (regra inegociável):** durante o bootstrap, NUNCA invoque `Skill` tool com `superpowers:*` (brainstorming, executing-plans, writing-plans, test-driven-development, debugging, requesting-code-review, etc.). Discovery/brainstorm pertencem ao `stages/00_recon/` → `stages/01_discovery/` do workspace. TDD/debug viram instruções inline em cada L2. Sumários (200tok cada) ficam em `workspaces/NNN-slug/_references/superpowers-summary/` como referência. Escape hatch: invocação real só com aprovação humana explícita por turno.
+**Anti-superpowers (non-negotiable rule):** during bootstrap, NEVER invoke `Skill` tool with `superpowers:*` (brainstorming, executing-plans, writing-plans, test-driven-development, debugging, requesting-code-review, etc.). Discovery/brainstorm belong to `stages/00_recon/` → `stages/01_discovery/` of the workspace. TDD/debug become inline instructions in each L2. Summaries (200tok each) live in `workspaces/NNN-slug/_references/superpowers-summary/` as reference. Escape hatch: real invocation only with explicit human approval per turn.
 
 ---
 
-## Intent inference (prompt sem args)
+## Intent inference (prompt without args)
 
-User pode invocar `/xp-icm-workflow` com **descrição livre** em vez de args (ex: "criar skill que extrai design system de URL"). Protocolo:
+User can invoke `/xp-icm-workflow` with **free-form description** instead of args (e.g. "create skill that extracts design system from URL"). Protocol:
 
-1. **NÃO disparar `superpowers:*`** (vide regra acima). Discovery vive no workspace.
-2. **Inferir profile/tier do prompt** (heurísticas):
+1. **Do NOT trigger `superpowers:*`** (see rule above). Discovery lives in the workspace.
+2. **Infer profile/tier from prompt** (heuristics):
 
-   | Sinal no prompt | Profile inferido |
+   | Signal in prompt | Inferred profile |
    |---|---|
-   | "skill", "agente", "subagent", "LLM tool" | `agent_ia` |
+   | "skill", "agent", "subagent", "LLM tool" | `agent_ia` |
    | "lib", "SDK", "framework", "package" | `framework_library` |
-   | "CLI", "comando", "ferramenta linha de comando" | `cli_tool` |
-   | "página web", "componente React/Vue", "UI" | `app_web_frontend` |
+   | "CLI", "command", "command-line tool" | `cli_tool` |
+   | "web page", "React/Vue component", "UI" | `app_web_frontend` |
    | "API", "backend", "endpoint", "microservice" | `app_web_backend` |
    | "dashboard", "BI", "analytics" | `dashboard` |
-   | "EDA", "notebook", "análise de dados" | `data_analysis` |
-   | "treinar modelo", "ML pipeline", "fine-tune" | `ml_project` |
-   | "artigo", "paper", "post técnico" | `technical_article` |
-   | "POC", "spike", "experimento descartável" | `experiment` |
+   | "EDA", "notebook", "data analysis" | `data_analysis` |
+   | "train model", "ML pipeline", "fine-tune" | `ml_project` |
+   | "article", "paper", "technical post" | `technical_article` |
+   | "POC", "spike", "throwaway experiment" | `experiment` |
 
-   **Tier default:** `development`. Ajustar pra `experimental` se for POC/spike, `production` se app já em produção, `tool` se uso interno desktop.
+   **Default tier:** `development`. Adjust to `experimental` for POC/spike, `production` for an app already in production, `tool` for internal desktop use.
 
-3. **Confirmar com humano** menu curto:
+3. **Confirm with human** short menu:
 
    ```
-   Inferido: profile=<X> tier=<Y> workspace-name=<slug>
-   [a] confirma   [b] corrige   [c] cancela
+   Inferred: profile=<X> tier=<Y> workspace-name=<slug>
+   [a] confirm   [b] correct   [c] cancel
    ```
 
-   Aceita OU corrige. Pendências de discovery (Qs abertas) devem ficar pra próxima sessão; **NÃO** entre em diálogo Q&A pré-bootstrap (isso é território do `01_discovery`).
+   Accepts OR corrects. Open discovery questions should be deferred to the next session; do **NOT** enter Q&A dialogue pre-bootstrap (that is the territory of `01_discovery`).
 
-4. **Executar bootstrap** com args confirmados (`bash scripts/bootstrap.sh --profile X --tier Y --workspace-name slug`).
+4. **Execute bootstrap** with confirmed args (`bash scripts/bootstrap.sh --profile X --tier Y --workspace-name slug`).
 
-5. **Escrever seed inicial** pra próxima sessão em `workspaces/NNN-slug/stages/00_recon/_seed.md`:
+5. **Write initial seed** for the next session in `workspaces/NNN-slug/stages/00_recon/_seed.md`:
 
    ```markdown
    ---
@@ -100,46 +100,46 @@ User pode invocar `/xp-icm-workflow` com **descrição livre** em vez de args (e
    created_at: <ISO8601>
    ---
 
-   # Seed — input pré-recon
+   # Seed — pre-recon input
 
-   ## Intenção do user (literal)
-   <prompt original do user, citado>
+   ## User intent (literal)
+   <original user prompt, quoted>
 
-   ## Inferência feita no bootstrap
-   - Profile: <X>  Why: <heurística>
-   - Tier: <Y>  Why: <heurística>
+   ## Inference made at bootstrap
+   - Profile: <X>  Why: <heuristic>
+   - Tier: <Y>  Why: <heuristic>
 
-   ## Decisões/contexto já capturados (se houver)
-   - <Q1, Q2, ... feitas no diálogo de bootstrap, com escolhas e tradeoffs>
+   ## Decisions/context already captured (if any)
+   - <Q1, Q2, ... raised during bootstrap dialogue, with choices and tradeoffs>
 
-   ## Recursos externos referenciados
-   - <repos, URLs, papers citados pelo user, com summary curto se já fetchados>
+   ## External resources referenced
+   - <repos, URLs, papers cited by user, with short summary if already fetched>
 
-   ## Pendências pra 00_recon
-   - <Qs ainda sem resposta — ex: output format, dependências>
+   ## Open items for 00_recon
+   - <Qs still unanswered — e.g. output format, dependencies>
    ```
 
-   Esse arquivo é input declarado no `Inputs` do `stages/00_recon/CONTEXT.md` (L2). Próxima sessão lê e parte dele em vez de zero.
+   This file is a declared input in the `Inputs` section of `stages/00_recon/CONTEXT.md` (L2). The next session reads it and starts from it rather than from scratch.
 
-6. **Commit do seed** atomicamente com bootstrap (pre-commit hook valida prefixo `workspace NNN: bootstrap seed`).
+6. **Commit the seed** atomically with bootstrap (pre-commit hook validates prefix `workspace NNN: bootstrap seed`).
 
-7. **SAIR.** Resumo final inclui: workspace path, branch, próximos passos, e linha **"Seed pré-recon em stages/00_recon/_seed.md"**.
+7. **EXIT.** Final summary includes: workspace path, branch, next steps, and the line **"Pre-recon seed at stages/00_recon/_seed.md"**.
 
-**Quando NÃO inferir:** se o prompt é ambíguo ou o user quer escolher manualmente (sinais: "ajuda escolher", "quais opções", "explica diferenças"), pular passo 2 e ir direto pro menu interativo do `bootstrap.sh` (passo 3 com tabela completa).
+**When NOT to infer:** if the prompt is ambiguous or the user wants to choose manually (signals: "help me choose", "what are the options", "explain the differences"), skip step 2 and go directly to the interactive menu of `bootstrap.sh` (step 3 with full table).
 
 ---
 
 ## Division of Responsibilities
 
-| Quem | Decide / Faz |
+| Who | Decides / Does |
 |---|---|
-| **Humano** | Negócio, escopo, profile/tier inicial, aprovação entre estágios, edição de outputs intermediários, recovery decisions |
-| **Skill `/xp-icm-workflow`** | One-shot: cria estrutura ICM + git branch + hook + commit inicial. Sai. |
-| **L0** (`workspaces/NNN/CLAUDE.md`) | Identidade imutável: paths absolutos, profile/tier, regras inegociáveis |
-| **L1** (`workspaces/NNN/CONTEXT.md`) | State machine única: stage_atual, sub_stage, status, history append-only |
-| **L2** (`workspaces/NNN/stages/<NN>/CONTEXT.md`) | Instruções do estágio: read order, outputs esperados, gates |
-| **L3** (estável) | Conventions, profile-matrix, stop-points canônicos, sumários superpowers |
-| **L4** (outputs nascentes) | discovery.md, plan.md, ADRs, wave-plan.md, reports |
+| **Human** | Business scope, profile/tier, stage approval, editing intermediate outputs, recovery decisions |
+| **Skill `/xp-icm-workflow`** | One-shot: creates ICM structure + git branch + hook + initial commit. Exits. |
+| **L0** (`workspaces/NNN/CLAUDE.md`) | Immutable identity: absolute paths, profile/tier, non-negotiable rules |
+| **L1** (`workspaces/NNN/CONTEXT.md`) | Single state machine: stage_atual, sub_stage, status, history append-only |
+| **L2** (`workspaces/NNN/stages/<NN>/CONTEXT.md`) | Stage instructions: read order, expected outputs, gates |
+| **L3** (stable) | Conventions, profile-matrix, canonical stop-points, superpowers summaries |
+| **L4** (nascent outputs) | discovery.md, plan.md, ADRs, wave-plan.md, reports |
 
 ---
 
@@ -151,15 +151,15 @@ User pode invocar `/xp-icm-workflow` com **descrição livre** em vez de args (e
 
 **Args resolution (Q9 + L1):**
 
-1. **CLI args** vencem tudo (Q9-A''').
-2. **`.icm-profile.local.yaml`** detectado em project_root: prompt humano "usar este?".
-3. **Pergunta interativa** menu PT (Q9-A') se faltar.
+1. **CLI args** win everything (Q9-A''').
+2. **`.icm-profile.local.yaml`** detected in project_root: human prompt "use this?".
+3. **Interactive menu** if missing (Q9-A').
 
-**Profiles canônicos (11):** `app_web_backend`, `app_web_frontend`, `fullstack`, `dashboard`, `data_analysis`, `ml_project`, `agent_ia`, `cli_tool`, `framework_library`, `technical_article`, `experiment`.
+**Canonical profiles (11):** `app_web_backend`, `app_web_frontend`, `fullstack`, `dashboard`, `data_analysis`, `ml_project`, `agent_ia`, `cli_tool`, `framework_library`, `technical_article`, `experiment`.
 
 **Tiers (4):** `experimental`, `tool`, `development`, `production`.
 
-Detalhes da matriz em `templates/_config/profile-matrix.md` (11 × 4 = 44 combos).
+Details of the matrix in `templates/_config/profile-matrix.md` (11 × 4 = 44 combos).
 
 ---
 
@@ -169,15 +169,15 @@ Detalhes da matriz em `templates/_config/profile-matrix.md` (11 × 4 = 44 combos
 <project_root>/
 ├── .git/
 │   └── hooks/
-│       └── pre-commit              [hook instalado, R2.3+R3.3+R3.10+R5.4]
+│       └── pre-commit              [hook installed, R2.3+R3.3+R3.10+R5.4]
 ├── .gitignore                      [updated: .icm-profile.local.yaml]
 ├── workspaces/
-│   ├── .index.md                   [registry de workspaces ativos/completados]
+│   ├── .index.md                   [registry of active/completed workspaces]
 │   └── NNN-slug/                   [workspace root]
-│       ├── CLAUDE.md               [L0 — identidade imutável]
-│       ├── CONTEXT.md              [L1 — state machine única]
+│       ├── CLAUDE.md               [L0 — immutable identity]
+│       ├── CONTEXT.md              [L1 — single state machine]
 │       ├── stages/
-│       │   ├── 00_recon/           [L2 templates — Wave 3 da skill popula]
+│       │   ├── 00_recon/           [L2 templates — Wave 3 of skill populates]
 │       │   ├── 01_discovery/
 │       │   ├── 02_design/
 │       │   ├── 03_wave_planner/
@@ -188,115 +188,115 @@ Detalhes da matriz em `templates/_config/profile-matrix.md` (11 × 4 = 44 combos
 │       │   └── 08_feedback_intake/
 │       ├── _config/
 │       │   ├── profile-effective.yaml  [profile base + override + hash]
-│       │   └── profile-matrix.md       [referência humana 10×4]
+│       │   └── profile-matrix.md       [human reference 10×4]
 │       └── _references/
-│           ├── runtime/                [protocolos: subagent, wave-planner, recovery, etc.]
-│           └── superpowers-summary/    [10 sumários 200tok cada]
+│           ├── runtime/                [protocols: subagent, wave-planner, recovery, etc.]
+│           └── superpowers-summary/    [10 summaries 200tok each]
 ```
 
-**Branches criadas:**
+**Branches created:**
 
-- `<base_branch>` — código real do projeto (geralmente `main`).
-- `workspace/NNN-slug` — APENAS state files (`workspaces/NNN-slug/*` + `docs/decisions/*` via exceção). NUNCA toca `src/`.
-- `wave-NNN-N/<task-slug>` — código + tests da task. Criada de `<base_branch>`. Lead faz merge em `<base_branch>` ao fim da wave.
+- `<base_branch>` — real project code (usually `main`).
+- `workspace/NNN-slug` — ONLY state files (`workspaces/NNN-slug/*` + `docs/decisions/*` via exception). NEVER touches `src/`.
+- `wave-NNN-N/<task-slug>` — code + tests for the task. Created from `<base_branch>`. Lead merges into `<base_branch>` at the end of the wave.
 
 ---
 
-## After bootstrap — 1 stage = 1 sessão (canonical)
+## After bootstrap — 1 stage = 1 session (canonical)
 
-A skill **sai**. Próximos passos seguem protocolo **1-stage-1-sessão** (supersede Q3 batched do plan v1; vide `references/session-handoff-protocol.md`):
+The skill **exits**. Next steps follow the **1-stage-1-session** protocol (supersedes Q3 batched from plan v1; see `references/session-handoff-protocol.md`):
 
-1. **User abre sessão nova** Claude no project_root.
-2. Sessão lê automaticamente:
-   - `workspaces/NNN-slug/CLAUDE.md` (L0, identidade)
+1. **User opens a new** Claude session in project_root.
+2. Session automatically reads:
+   - `workspaces/NNN-slug/CLAUDE.md` (L0, identity)
    - `workspaces/NNN-slug/CONTEXT.md` (L1, state machine)
-   - `workspaces/NNN-slug/stages/<stage_atual>/CONTEXT.md` (L2, instruções do estágio)
-   - `workspaces/NNN-slug/stages/<stage_atual>/_kickoff.md` se gerado pela sessão anterior
-3. Sessão executa o estágio conforme L2.
-4. **Fim do stage:** sessão atualiza L1, gera `_kickoff.md` no próximo stage, commita atomicamente, imprime KICKOFF block verbal pro user, **SAI**.
-5. User abre nova sessão, cola prompt do KICKOFF, repete o ciclo.
+   - `workspaces/NNN-slug/stages/<stage_atual>/CONTEXT.md` (L2, stage instructions)
+   - `workspaces/NNN-slug/stages/<stage_atual>/_kickoff.md` if generated by the previous session
+3. Session executes the stage per L2.
+4. **End of stage:** session updates L1, generates `_kickoff.md` in the next stage, commits atomically, prints verbal KICKOFF block to user, **EXITS**.
+5. User opens new session, pastes the KICKOFF prompt, repeats the cycle.
 
-**Trade-off aceito:** cada stage paga 1 cache miss (~2-3k tokens warm-up) em troca de context fresh + token spend total não-linear menor. Empírico: batched B+D do beta1/beta2 cresceu contexto além do alvo de 2-8k por L2; 1-stage-1-sessão fica dentro.
+**Accepted trade-off:** each stage pays 1 cache miss (~2-3k tokens warm-up) in exchange for fresh context + total non-linear token spend that is lower overall. Empirical: batched B+D from beta1/beta2 grew context beyond the 2-8k per L2 target; 1-stage-1-session stays within it.
 
-**Stage 04 exceção (decisão 2a):** cada wave = 1 sessão lead (sub-waves dentro da mesma sessão). Lead gera kickoff entre waves no mesmo stage 04 ou pra stage 05 ao final.
+**Stage 04 exception (decision 2a):** each wave = 1 lead session (sub-waves within the same session). Lead generates kickoff between waves within stage 04 or to stage 05 at the end.
 
-**Stage 07 → 08 transição automática:** após merge confirmado, sessão transita imediatamente pra stage 08 com `status: COMPLETED_AWAITING_HUMAN`. Workspace fica vivo aguardando humano voltar com feedback livre após uso real (sem prazo). Gera kickoff pra 08.
+**Stage 07 → 08 automatic transition:** after confirmed merge, session immediately transitions to stage 08 with `status: COMPLETED_AWAITING_HUMAN`. Workspace stays alive waiting for the human to return with free-form feedback after real use (no deadline). Generates kickoff for 08.
 
-**Stage 08 terminal real (saídas inferidas pela intenção do feedback):** humano cola feedback livre na sessão 08 (sem menu A/B/C cru); sessão **infere** A/B/C autonomamente via heurísticas e mini-confirma antes executar.
-- **A close** → workspace `COMPLETED` + lições em `docs/lessons.md` (sinais: "tudo ok", silêncio).
-- **B restart fase X** → `iteration++`, kickoff pro stage X (mapping: bug em testes → 05, código → 04, design → 02, etc.).
-- **C spawn** → workspace fecha + instrução pro user invocar `/xp-icm-workflow spawn_from=<NNN>` em sessão nova (sinais: "pivotar", "novo projeto").
+**Stage 08 real terminal (exits inferred from feedback intent):** human pastes free-form feedback in session 08 (no raw A/B/C menu); session **infers** A/B/C autonomously via heuristics and mini-confirms before executing.
+- **A close** → workspace `COMPLETED` + lessons in `docs/lessons.md` (signals: "all good", silence).
+- **B restart phase X** → `iteration++`, kickoff to stage X (mapping: bug in tests → 05, code → 04, design → 02, etc.).
+- **C spawn** → workspace closes + instruction for user to invoke `/xp-icm-workflow spawn_from=<NNN>` in a new session (signals: "pivot", "new project").
 
-**Migração beta1/beta2 (decisão 4B):** workspaces existentes em batched mode continuam batched; sem conversão forçada. Apenas workspaces criados via `/xp-icm-workflow` pós-beta3 usam 1-stage-1-sessão.
+**Beta1/beta2 migration (decision 4B):** existing workspaces in batched mode continue batched; no forced conversion. Only workspaces created via `/xp-icm-workflow` post-beta3 use 1-stage-1-session.
 
-**Recovery:** se sessão crashar mid-estágio → próxima sessão dispara `scripts/recovery-wizard.py` automaticamente via pre-flight check do L2. Detecta 6 tipos de inconsistência (R2.7) e propõe ações.
+**Recovery:** if a session crashes mid-stage → next session triggers `scripts/recovery-wizard.py` automatically via L2 pre-flight check. Detects 6 types of inconsistency (R2.7) and proposes actions.
 
-**Stop points:** 12 stop points canônicos em `_config/stop-points.md` calibrados por tier. Disparo: agente pausa, escreve menu A/B/C, atualiza L1 `status: BLOCKED_STOP_POINT`. Humano responde, sessão retoma.
+**Stop points:** 12 canonical stop points in `_config/stop-points.md` calibrated by tier. Triggered: agent pauses, writes A/B/C menu, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes.
 
-**Subagentes (fase 04):** waves de paralelismo via Agent tool. Cap por tier (2/3/5/5). Wave Planner determinístico + LLM review subagent. Detalhes em `_references/runtime/subagent-protocol.md`.
+**Subagents (phase 04):** parallelism waves via Agent tool. Cap by tier (2/3/5/5). Deterministic Wave Planner + LLM review subagent. Details in `_references/runtime/subagent-protocol.md`.
 
-**Feedback intake (fase 08):** disparada manualmente pelo humano após uso real. 3 saídas: A) close workspace; B) restart fase X (iteration++); C) spawn novo workspace herdando lessons+ADRs.
+**Feedback intake (phase 08):** triggered manually by the human after real use. 3 exits: A) close workspace; B) restart phase X (iteration++); C) spawn new workspace inheriting lessons+ADRs.
 
 ---
 
 ## Pre-flight runtime check
 
-Bootstrap roda `scripts/check-runtime.sh` antes de qualquer ação. Aborta limpo se runtime falha:
+Bootstrap runs `scripts/check-runtime.sh` before any action. Aborts cleanly if runtime fails:
 
-- Python 3.11+ (testado em 3.13)
+- Python 3.11+ (tested on 3.13)
 - PyYAML
-- pytest (pra rodar testes da skill localmente)
+- pytest (to run skill tests locally)
 - git 2.30+
-- bash POSIX (Linux/macOS nativo; Windows via Git Bash)
-- bats (opcional local; CI rodará via apt no Ubuntu runner)
+- bash POSIX (Linux/macOS native; Windows via Git Bash)
+- bats (optional locally; CI runs via apt on Ubuntu runner)
 
-Permissions allowlist sugerida em `system-requirements.md`.
+Suggested permissions allowlist in `system-requirements.md`.
 
 ---
 
-## Anti-patterns (não use)
+## Anti-patterns (do not use)
 
-- `git commit --no-verify` no workspace — pre-commit hook valida atomicidade L1↔outputs e prefixos. Bypass quebra audit. Investigue e corrija conteúdo, NÃO bypass o hook.
-- Re-invocar `/xp-icm-workflow` em workspace existente — só pra criar novos. Para retomar, abra sessão nova; ela lê L1.
-- Editar L1 (`CONTEXT.md`) manualmente sem entender o schema — use `scripts/recovery-wizard.py` se precisar reconstruir.
-- Editar L4 outputs commitados (decisions.md, ADRs) sem nova versão ou superseding — vide `_config/xp-conventions.md`.
-- **Invocar `superpowers:*` skills durante bootstrap** (brainstorming, writing-plans, executing-plans, test-driven-development, debugging, etc.). Brainstorm vive em `stages/01_discovery/`. TDD/debug viram instruções dentro de cada L2. Sumários em `_references/superpowers-summary/` (200tok cada) servem como referência. Bypass via Skill tool quebra atomicidade L1↔outputs.
-- **Diálogo Q&A pré-bootstrap em vez de bootstrappar.** Quando user invoca a skill com descrição livre, infira profile/tier (vide "Intent inference"), confirme com menu curto, bootstrappe, e mande pendências pro `_seed.md` do `00_recon`. NÃO conduzir discovery completa antes de criar workspace.
+- `git commit --no-verify` in the workspace — pre-commit hook validates L1↔outputs atomicity and prefixes. Bypass breaks audit. Investigate and fix content, do NOT bypass the hook.
+- Re-invoking `/xp-icm-workflow` in an existing workspace — only for creating new ones. To resume, open a new session; it reads L1.
+- Editing L1 (`CONTEXT.md`) manually without understanding the schema — use `scripts/recovery-wizard.py` if you need to rebuild.
+- Editing committed L4 outputs (decisions.md, ADRs) without a new version or superseding — see `_config/xp-conventions.md`.
+- **Invoking `superpowers:*` skills during bootstrap** (brainstorming, writing-plans, executing-plans, test-driven-development, debugging, etc.). Brainstorm lives in `stages/01_discovery/`. TDD/debug become instructions inside each L2. Summaries in `_references/superpowers-summary/` (200tok each) serve as reference. Bypassing via Skill tool breaks L1↔outputs atomicity.
+- **Q&A dialogue pre-bootstrap instead of bootstrapping.** When user invokes the skill with a free-form description, infer profile/tier (see "Intent inference"), confirm with short menu, bootstrap, and send open items to `_seed.md` of `00_recon`. Do NOT conduct full discovery before creating the workspace.
 
 ---
 
 ## References
 
-| Doc | Conteúdo |
+| Doc | Content |
 |---|---|
-| `references/state-machine-schema.md` | Schema completo L1 (yaml frontmatter + history append-only) |
-| `references/session-handoff-protocol.md` | **1 stage = 1 sessão**: handoff dual, schema `_kickoff.md`, anti-patterns |
-| `references/git-hooks.md` | Pre-commit + commit-msg hooks: regras, padrões regex, anti-bypass |
-| `references/recovery-wizard.md` | 6 inconsistências detectadas + ações A/B/C |
-| `references/changelog.md` | Versões da skill |
-| `references/v2.4-snapshot/` | Snapshot da v2.4 anterior (pra referência histórica) |
+| `references/state-machine-schema.md` | Full L1 schema (yaml frontmatter + history append-only) |
+| `references/session-handoff-protocol.md` | **1 stage = 1 session**: dual handoff, `_kickoff.md` schema, anti-patterns |
+| `references/git-hooks.md` | Pre-commit + commit-msg hooks: rules, regex patterns, anti-bypass |
+| `references/recovery-wizard.md` | 6 inconsistencies detected + A/B/C actions |
+| `references/changelog.md` | Skill versions |
+| `references/v2.4-snapshot/` | Snapshot of prior v2.4 (for historical reference) |
 | `system-requirements.md` | Runtime + permissions allowlist |
-| `templates/_config/profile-matrix.md` | Matriz canônica 11 profiles × 4 tiers |
-| `templates/workspace/CLAUDE.md.tpl` | Template L0 com placeholders |
-| `templates/workspace/CONTEXT.md.tpl` | Template L1 com placeholders |
+| `templates/_config/profile-matrix.md` | Canonical matrix 11 profiles × 4 tiers |
+| `templates/workspace/CLAUDE.md.tpl` | L0 template with placeholders |
+| `templates/workspace/CONTEXT.md.tpl` | L1 template with placeholders |
 
-**Referências de algoritmo:**
+**Algorithm references:**
 
 - `references/wave-planner-algorithm.md` — DAG construction, sub-waves, LLM review subagent
 - `references/subagent-protocol.md` — spawn via Agent tool, plan approval, mid-wave reduce
-- `references/stop-points-canonical.md` — 12 stop points + thresholds por tier
+- `references/stop-points-canonical.md` — 12 stop points + thresholds by tier
 - `references/4-block-contract-template.md` — O QUE / COMO / NÃO QUERO / VALIDAÇÃO
-- `references/feedback-intake-fase08.md` — 3 saídas A/B/C
-- `references/profile-matrix.md` — calibração por profile/tier (estágios pulados, etc.) — cópia em `templates/_config/profile-matrix.md`
+- `references/feedback-intake-fase08.md` — 3 exits A/B/C
+- `references/profile-matrix.md` — calibration by profile/tier (skipped stages, etc.) — copy in `templates/_config/profile-matrix.md`
 - `references/forensic-plus-protocol.md` — Forensic+ wave reviewer audit (7 checks v3.9.0: assertions count, files declared, scope creep, TODO, acceptance↔test, NÃO QUERO, ADR drift)
-- `references/critic-protocol.md` — L3 LLM critic ortogonal (v3.9.0): fresh context, anti-sycophancy, triplet output, model = TIER_CEILING
-- `references/lead-resolution-protocol.md` — buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK (v3.9.0) quando per-task loop esgota cap OR convergence trip OR catastrophic
-- `references/mocking-guidelines.md` — boundaries only (HTTP/DB/time/randomness/env); nunca internals (v3.9.0, mattpocock alignment)
+- `references/critic-protocol.md` — L3 LLM orthogonal critic (v3.9.0): fresh context, anti-sycophancy, triplet output, model = TIER_CEILING
+- `references/lead-resolution-protocol.md` — buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK (v3.9.0) when per-task loop exhausts cap OR convergence trip OR catastrophic
+- `references/mocking-guidelines.md` — boundaries only (HTTP/DB/time/randomness/env); never internals (v3.9.0, mattpocock alignment)
 - `references/e2e-coverage-protocol.md` — E2E reinforcement (v3.10.0): wave-planner auto-flag user-facing tasks, forensic+ Check 8, L4 wave gate universal tier dev/prod, Stage 05 audit suite freshness
 
-**Referências de testes:**
+**Test references:**
 
-- `tests/run.sh` — orquestrador (pytest + bats)
+- `tests/run.sh` — orchestrator (pytest + bats)
 - `tests/unit/` — unit + property-based via Hypothesis
 - `tests/integration/` — bats integration (CI-only)
 - `tests/e2e/` — bats e2e (CI-only)
