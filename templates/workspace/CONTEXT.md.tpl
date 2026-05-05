@@ -16,7 +16,7 @@ logs_root: {{LOGS_ROOT}}
 llm_review_skipped_count: 0
 last_action: "workspace bootstrapped"
 last_action_at: "{{CREATED_AT}}"
-next_action: "rodar reconnaissance estágio 00"
+next_action: "run reconnaissance stage 00"
 last_transition:
   from: "bootstrap"
   to: "00_in_progress"
@@ -31,38 +31,38 @@ history:
 
 # Workspace {{WORKSPACE}} — L1 (state machine)
 
-## Estado atual
+## Current state
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
-| Estágio | `00` (Reconnaissance) |
+| Stage | `00` (Reconnaissance) |
 | Sub-stage | `00_in_progress` |
 | Status | `IN_PROGRESS` |
 | Iteration | `0` |
 | Stages skipped | `{{STAGES_SKIPPED}}` |
-| Última ação | workspace bootstrapped em {{CREATED_AT}} |
-| Próxima ação | rodar reconnaissance |
+| Last action | workspace bootstrapped at {{CREATED_AT}} |
+| Next action | run reconnaissance |
 
-## Como esta máquina funciona
+## How this state machine works
 
-Toda sessão:
+Every session:
 
-1. Lê este arquivo + L0 + L2 do `stage_atual`.
-2. Lê `stages/<stage_atual>/_kickoff.md` (se existir — handoff da sessão anterior).
-3. Trabalha conforme L2 instrui.
-4. Ao transicionar (sub-stage ou stage): atualiza frontmatter + append em `history` + commit atômico.
-5. Pre-commit hook valida atomicidade outputs ↔ frontmatter.
+1. Reads this file + L0 + L2 of `stage_atual`.
+2. Reads `stages/<stage_atual>/_kickoff.md` (if it exists — handoff from previous session).
+3. Works as L2 instructs.
+4. On transition (sub-stage or stage): updates frontmatter + appends to `history` + atomic commit.
+5. Pre-commit hook validates atomicity outputs ↔ frontmatter.
 
-## Status canônicos
+## Canonical statuses
 
-- `IN_PROGRESS` — sessão ativa.
-- `COMPLETED_AWAITING_HUMAN` — aguarda gate humano.
-- `BLOCKED_STOP_POINT` — menu A/B/C aguardando resposta.
-- `BLOCKED_ERROR` — erro runtime; humano resolve.
-- `COMPLETED` — workspace fechado.
+- `IN_PROGRESS` — active session.
+- `COMPLETED_AWAITING_HUMAN` — waiting for human gate.
+- `BLOCKED_STOP_POINT` — A/B/C menu awaiting response.
+- `BLOCKED_ERROR` — runtime error; human resolves.
+- `COMPLETED` — workspace closed.
 
-Detalhes em `references/state-machine-schema.md` da skill.
+Details in `references/state-machine-schema.md` of the skill.
 
 ## History
 
-History é append-only. Sessões NUNCA editam itens existentes. Recovery Wizard pode prepend evento `recovery_applied` documentando reconstrução.
+History is append-only. Sessions NEVER edit existing items. Recovery Wizard may prepend a `recovery_applied` event documenting reconstruction.
