@@ -12,104 +12,104 @@ created_at: "{{CREATED_AT}}"
 icm_skill_version: "{{SKILL_VERSION}}"
 ---
 
-# Workspace {{WORKSPACE}} — L0 (identidade)
+# Workspace {{WORKSPACE}} — L0 (identity)
 
-## Propósito
+## Purpose
 
-L0 é a constituição imutável deste workspace. Todo agente em qualquer estágio lê este arquivo PRIMEIRO. Define identidade, paths absolutos e regras inegociáveis.
+L0 is the immutable constitution of this workspace. Every agent in every stage reads this file FIRST. It defines identity, absolute paths, and non-negotiable rules.
 
-## Identidade
+## Identity
 
-| Campo | Valor |
+| Field | Value |
 |---|---|
 | Workspace | `{{WORKSPACE}}` |
 | Profile | `{{PROFILE}}` |
 | Tier | `{{TIER}}` |
-| Project root | `{{PROJECT_ROOT}}` (path absoluto) |
+| Project root | `{{PROJECT_ROOT}}` (absolute path) |
 | Base branch | `{{BASE_BRANCH}}` |
 | Workspace branch | `workspace/{{WORKSPACE}}` |
 | Logs root | `{{LOGS_ROOT}}` |
 | Profile hash | `{{PROFILE_EFFECTIVE_HASH}}` |
 
-## Paths absolutos (fonte de verdade)
+## Absolute paths (source of truth)
 
-| Recurso | Path | Branch real |
+| Resource | Path | Real branch |
 |---|---|---|
 | Workspace root | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/` | workspace |
 | L1 state | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md` | workspace |
-| Estágios | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<NN>_*/` | workspace |
+| Stages | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<NN>_*/` | workspace |
 | Config | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/` | workspace |
 | Conventions | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md` | workspace |
 | Ubiquitous Language (L3) | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/CONTEXT.md` | workspace |
 | OUT-OF-SCOPE kb | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_out-of-scope/` | workspace |
 | Runtime refs | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/` | workspace |
-| Sumários superpowers | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/` | workspace |
-| Skill dir | `{{SKILL_DIR}}` | (filesystem global) |
-| Project CLAUDE.md | `{{PROJECT_ROOT}}/CLAUDE.md` (dashboard externo do estado; mantido por `handoff.py`) | workspace (migra pra base na saída A) |
+| Superpowers summaries | `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/` | workspace |
+| Skill dir | `{{SKILL_DIR}}` | (global filesystem) |
+| Project CLAUDE.md | `{{PROJECT_ROOT}}/CLAUDE.md` (external state dashboard; maintained by `handoff.py`) | workspace (migrates to base on exit A) |
 | **Worktree base branch (`.icm-main/`)** | `{{PROJECT_ROOT}}/.icm-main/` | base (`{{BASE_BRANCH}}`) |
-| ADRs do projeto | `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` | base |
-| Lessons do projeto | `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` | base |
+| Project ADRs | `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` | base |
+| Project lessons | `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` | base |
 | Tech debt | `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` | base |
 | Design System (profiles `app_web_frontend`, `fullstack`) | `{{PROJECT_ROOT}}/.icm-main/DESIGN.md` | base |
-| Código existente (read-only de leitura cross-branch) | `{{PROJECT_ROOT}}/.icm-main/src/`, `{{PROJECT_ROOT}}/.icm-main/tests/` etc. | base |
+| Existing code (read-only cross-branch) | `{{PROJECT_ROOT}}/.icm-main/src/`, `{{PROJECT_ROOT}}/.icm-main/tests/` etc. | base |
 
-**Regra:** TODA referência a docs resolve absoluta a partir de `{{PROJECT_ROOT}}`. Scripts da skill resolvem absoluta a partir de `{{SKILL_DIR}}/scripts/`. NUNCA use `scripts/` relativo (assumir CWD errado). NUNCA use `../../` relativo. Vazamento de path = bug B2 do diagnóstico.
+**Rule:** ALL doc references resolve absolutely from `{{PROJECT_ROOT}}`. Skill scripts resolve absolutely from `{{SKILL_DIR}}/scripts/`. NEVER use relative `scripts/` (assumes wrong CWD). NEVER use relative `../../`. Path leakage = diagnose bug B2.
 
-**Modelo worktree paralelo (v3.4.0):** quando branch checada em `{{PROJECT_ROOT}}` é `workspace/{{WORKSPACE}}`, paths como `{{PROJECT_ROOT}}/docs/decisions/` NÃO existem no working tree (workspace branch não tem `docs/`). Para ler/escrever esses paths, use o worktree linkado em `{{PROJECT_ROOT}}/.icm-main/` (sempre checado em `{{BASE_BRANCH}}`). Doc canônico: `_references/runtime/worktree-model.md`.
+**Parallel worktree model (v3.4.0):** when the branch checked out at `{{PROJECT_ROOT}}` is `workspace/{{WORKSPACE}}`, paths like `{{PROJECT_ROOT}}/docs/decisions/` do NOT exist in the working tree (workspace branch has no `docs/`). To read/write those paths, use the linked worktree at `{{PROJECT_ROOT}}/.icm-main/` (always checked out at `{{BASE_BRANCH}}`). Canonical doc: `_references/runtime/worktree-model.md`.
 
-## Regras inegociáveis
+## Non-negotiable rules
 
 ### 1. Anti-bypass (B1)
 
-NUNCA use `git commit --no-verify` neste workspace. O pre-commit hook valida atomicidade `outputs ↔ L1` e prefixos de commit. Se o hook bloqueia: investigue e corrija o conteúdo, não bypass o hook.
+NEVER use `git commit --no-verify` in this workspace. The pre-commit hook validates `outputs ↔ L1` atomicity and commit prefixes. If the hook blocks: investigate and fix the content, do not bypass the hook.
 
-### 2. CWD do agente
+### 2. Agent CWD
 
-Cada sessão começa lendo seu L2 (`stages/<NN>/CONTEXT.md`). O L2 declara o CWD esperado:
+Each session starts by reading its L2 (`stages/<NN>/CONTEXT.md`). The L2 declares the expected CWD:
 
-- Sessões 00–03, 05–08: CWD = `{{PROJECT_ROOT}}` (workspace branch checkout).
-- Sessão 04 (lead): CWD = `{{PROJECT_ROOT}}` (workspace branch).
-- Subagente em wave: CWD = `{{PROJECT_ROOT}}` (branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`).
+- Sessions 00–03, 05–08: CWD = `{{PROJECT_ROOT}}` (workspace branch checkout).
+- Session 04 (lead): CWD = `{{PROJECT_ROOT}}` (workspace branch).
+- Subagent in wave: CWD = `{{PROJECT_ROOT}}` (branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`).
 
-### 3. Branches + worktree paralelo
+### 3. Branches + parallel worktree
 
-Três tipos de branch ICM convivem via git worktree:
+Three types of ICM branches coexist via git worktree:
 
-- `{{BASE_BRANCH}}` — código real do projeto + ADRs + lessons + tech_debt + dashboard `CLAUDE.md` em estado idle.
-- `workspace/{{WORKSPACE}}` — só state files (`workspaces/{{WORKSPACE}}/*`) + dashboard `CLAUDE.md` ativo. NUNCA toca `src/`, `tests/`, `docs/decisions/`, `docs/lessons.md`, `docs/tech_debt.md`.
-- `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` — código + tests da task. Criada de `{{BASE_BRANCH}}`. Lead merge em `{{BASE_BRANCH}}` ao fim da wave.
+- `{{BASE_BRANCH}}` — real project code + ADRs + lessons + tech_debt + `CLAUDE.md` dashboard in idle state.
+- `workspace/{{WORKSPACE}}` — only state files (`workspaces/{{WORKSPACE}}/*`) + active `CLAUDE.md` dashboard. NEVER touches `src/`, `tests/`, `docs/decisions/`, `docs/lessons.md`, `docs/tech_debt.md`.
+- `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` — task code + tests. Created from `{{BASE_BRANCH}}`. Lead merges into `{{BASE_BRANCH}}` at end of wave.
 
 Worktree:
 
-- `{{PROJECT_ROOT}}/` (worktree principal) — durante ciclo ICM, normalmente checada em `workspace/{{WORKSPACE}}`.
-- `{{PROJECT_ROOT}}/.icm-main/` (worktree linkada) — sempre checada em `{{BASE_BRANCH}}`. Cria pelo bootstrap (`git worktree add .icm-main {{BASE_BRANCH}}`). Listada em `.gitignore` de todas as branches. Cleanup só em saída A do último workspace.
-- Subagentes em fase 04 usam `Agent(isolation: "worktree")` — tool cria worktree efêmera por subagente em `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
+- `{{PROJECT_ROOT}}/` (main worktree) — during ICM cycle, normally checked out at `workspace/{{WORKSPACE}}`.
+- `{{PROJECT_ROOT}}/.icm-main/` (linked worktree) — always checked out at `{{BASE_BRANCH}}`. Created by bootstrap (`git worktree add .icm-main {{BASE_BRANCH}}`). Listed in `.gitignore` of all branches. Cleanup only on exit A of the last workspace.
+- Subagents in stage 04 use `Agent(isolation: "worktree")` — tool creates an ephemeral worktree per subagent at `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
 
-Pre-commit hook do `{{PROJECT_ROOT}}/` rejeita commit em `workspace/*` que toca paths fora de `workspaces/*`, `workspaces/.index.md`, `.gitignore`, `CLAUDE.md` (dashboard). ADRs / lessons / tech_debt **não** estão no whitelist do hook — devem ser commitados via `cd .icm-main && git commit ...` (que opera na base branch automaticamente).
+The pre-commit hook at `{{PROJECT_ROOT}}/` rejects commits on `workspace/*` that touch paths outside `workspaces/*`, `workspaces/.index.md`, `.gitignore`, `CLAUDE.md` (dashboard). ADRs / lessons / tech_debt are **not** in the hook whitelist — they must be committed via `cd .icm-main && git commit ...` (which operates on the base branch automatically).
 
-Doc canônico do modelo: `_references/runtime/worktree-model.md`.
+Canonical model doc: `_references/runtime/worktree-model.md`.
 
-### 4. Profile + Tier calibram rigor
+### 4. Profile + Tier calibrate rigor
 
-Profile = `{{PROFILE}}`. Tier = `{{TIER}}`. Calibração canônica em `_config/profile-matrix.md`. Define:
+Profile = `{{PROFILE}}`. Tier = `{{TIER}}`. Canonical calibration in `_config/profile-matrix.md`. Defines:
 
-- Estágios pulados.
-- Cap de subagentes por wave (2/3/5/5 por tier).
-- TDD obrigatório vs opcional.
+- Skipped stages.
+- Subagent cap per wave (2/3/5/5 by tier).
+- TDD required vs optional.
 - Security gate on/off.
-- Stop points calibrados (5 serviço pago, 7 over-engineering, 8 PII).
+- Calibrated stop points (5 paid service, 7 over-engineering, 8 PII).
 
-Override local em `.icm-profile.local.yaml` (no `{{PROJECT_ROOT}}`). Hash recomputado em pre-flight.
+Local override in `.icm-profile.local.yaml` (at `{{PROJECT_ROOT}}`). Hash recomputed on pre-flight.
 
 ### 5. Stop Points
 
-12 stop points canônicos em `_config/stop-points.md`. Disparo: agente pausa, escreve menu A/B/C, atualiza L1 `status: BLOCKED_STOP_POINT`. Humano responde, sessão retoma.
+12 canonical stop points in `_config/stop-points.md`. Trigger: agent pauses, writes A/B/C menu, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes.
 
 ### 6. ADRs
 
-ADRs criados em fase 02 são L4 nascente; após commit em `{{BASE_BRANCH}}` viram L3 imutável. Edição de ADR existente = nova versão (`0001-stack-v2.md`) ou superseding (`0042-supersedes-0001.md`). Edição direta proibida em pre-commit hook.
+ADRs created in stage 02 are nascent L4; after commit to `{{BASE_BRANCH}}` they become immutable L3. Editing an existing ADR = new version (`0001-stack-v2.md`) or superseding (`0042-supersedes-0001.md`). Direct edits prohibited by pre-commit hook.
 
-Workflow canônico fase 02 (v3.4.0):
+Canonical stage 02 workflow (v3.4.0):
 
 ```
 1. Write {{PROJECT_ROOT}}/.icm-main/docs/decisions/NNNN-<slug>.md
@@ -117,69 +117,69 @@ Workflow canônico fase 02 (v3.4.0):
 3. git add docs/decisions/NNNN-*.md
 4. git commit -m "docs(decisions): <slug> (workspace {{WORKSPACE}})"
 5. cd {{PROJECT_ROOT}}
-6. plan.md cita filename relativo a `.icm-main/docs/decisions/`
+6. plan.md references filename relative to `.icm-main/docs/decisions/`
 ```
 
-NUNCA tente `git add docs/decisions/...` direto da worktree principal em workspace branch — pre-commit hook rejeita.
+NEVER attempt `git add docs/decisions/...` directly from the main worktree on a workspace branch — pre-commit hook will reject it.
 
-### 7. Linguagem
+### 7. Language
 
-Conteúdo em português. Identificadores de código, paths, comandos em inglês.
+Content in English. Code identifiers, paths, and commands in English.
 
 ### 8. Cross-branch reads via `.icm-main/`
 
-Sessões em qualquer estágio que precisem ler conteúdo da base branch
-(ADRs vigentes, lessons herdadas, tech_debt acumulado, código existente
-para diagnose) DEVEM ler de `{{PROJECT_ROOT}}/.icm-main/<path>`. Read tool
-funciona direto — zero `git show base:<path>` necessário.
+Sessions in any stage that need to read content from the base branch
+(active ADRs, inherited lessons, accumulated tech_debt, existing code
+for diagnose) MUST read from `{{PROJECT_ROOT}}/.icm-main/<path>`. The Read tool
+works directly — no `git show base:<path>` required.
 
-Antes da 1ª leitura cross-branch da sessão:
+Before the first cross-branch read of the session:
 
-- Verificar `.icm-main/` existe em `{{PROJECT_ROOT}}` (presente desde
-  bootstrap; ausente = recovery wizard).
-- Sincronização opcional: se base branch avançou desde a última sessão,
-  rodar `cd {{PROJECT_ROOT}}/.icm-main && git fetch && git pull --ff-only`
-  (manualmente quando relevante; fase 07 lead executa após cada merge).
+- Verify `.icm-main/` exists at `{{PROJECT_ROOT}}` (present since
+  bootstrap; absent = recovery wizard).
+- Optional sync: if the base branch has advanced since the last session,
+  run `cd {{PROJECT_ROOT}}/.icm-main && git fetch && git pull --ff-only`
+  (manually when relevant; stage 07 lead runs this after each merge).
 
-### 9. Superpowers via summary, não Skill tool
+### 9. Superpowers via summary, not Skill tool
 
-Skills `superpowers:*` (brainstorming, executing-plans, test-driven-development, debugging, etc.) NÃO devem ser invocadas via `Skill` tool durante o ciclo ICM.
+Skills `superpowers:*` (brainstorming, executing-plans, test-driven-development, debugging, etc.) MUST NOT be invoked via the `Skill` tool during the ICM cycle.
 
-- **Usar:** sumários em `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/` (200tok cada). Aplicar princípios inline.
-- **Escape hatch:** invocação real só com aprovação humana explícita por turno (humano escreve "ok, dispara superpowers:X").
-- **Por quê:** brainstorm/discovery vive em `stages/01_discovery/`. TDD/debug viram instruções dentro de cada L2. ICM governa o ciclo via filesystem; superpowers como skill paralela quebra atomicidade L1↔outputs e bypassa governance.
-- **Bootstrap pendente sem args:** perguntar OU inferir profile/tier. NUNCA pular pra fluxo livre superpowers.
+- **Use:** summaries in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/` (200tok each). Apply principles inline.
+- **Escape hatch:** real invocation only with explicit human approval per turn (human writes "ok, invoke superpowers:X").
+- **Why:** brainstorm/discovery lives in `stages/01_discovery/`. TDD/debug become instructions inside each L2. ICM governs the cycle via filesystem; superpowers as a parallel skill breaks L1↔outputs atomicity and bypasses governance.
+- **Bootstrap pending with no args:** ask OR infer profile/tier. NEVER jump to free-flow superpowers.
 
-### 10. Runtime side-effects = responsabilidade humana (v3.7.0)
+### 10. Runtime side-effects = human responsibility (v3.7.0)
 
-Side-effects de runtime (dev servers, background tasks, docker containers, wave branches órfãs, working tree dirt, untracked artifacts) são **responsabilidade do humano**, não da skill ICM. A skill:
+Runtime side-effects (dev servers, background tasks, docker containers, orphan wave branches, working tree dirt, untracked artifacts) are the **human's responsibility**, not the ICM skill's. The skill:
 
-- **Detecta** via `scripts/runtime-status.py` rodado entry hook fase 08 (saída A/B/C step 0 obrigatório).
-- **Imprime** checklist 6 categorias com itens detectados.
-- **Aguarda** confirmação humana per categoria antes de transitar (strict universal — todos tiers).
-- **NUNCA mata processo, deleta branch ou força cleanup automaticamente.** Ações destrutivas requerem decisão humana explícita.
+- **Detects** via `scripts/runtime-status.py` run at stage 08 entry hook (exit A/B/C step 0 mandatory).
+- **Prints** a 6-category checklist with detected items.
+- **Waits** for human confirmation per category before transitioning (strict universal — all tiers).
+- **NEVER kills a process, deletes a branch, or forces cleanup automatically.** Destructive actions require explicit human decision.
 
-Se humano cancela checklist mid-confirmação ou comando cleanup falha:
-- Status fica `BLOCKED_STOP_POINT` com stop point `runtime_cleanup_failed` (#13).
-- Sessão pausa, escreve menu A/B/C; humano resolve fora de ICM e retoma.
+If human cancels checklist mid-confirmation or cleanup command fails:
+- Status stays `BLOCKED_STOP_POINT` with stop point `runtime_cleanup_failed` (#13).
+- Session pauses, writes A/B/C menu; human resolves outside ICM and resumes.
 
-Doc canônico: `_references/runtime/runtime-cleanup-protocol.md`.
+Canonical doc: `_references/runtime/runtime-cleanup-protocol.md`.
 Helpers: `runtime-registry.py` (CRUD), `runtime-status.py` (checklist).
 
-## Read order para qualquer agente
+## Read order for any agent
 
-1. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md` (este arquivo, L0)
+1. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md` (this file, L0)
 2. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md` (L1, state machine)
-3. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<stage_atual>/CONTEXT.md` (L2, instruções do estágio)
-4. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<stage_atual>/_kickoff.md` (L4-kickoff, handoff da sessão anterior — condicional, pode não existir em workspaces legados ou primeira sessão de stage)
-5. Paths declarados na tabela `Inputs` do L2 (L3 + L4 específicos)
+3. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<stage_atual>/CONTEXT.md` (L2, stage instructions)
+4. `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/<stage_atual>/_kickoff.md` (L4-kickoff, handoff from previous session — conditional, may not exist in legacy workspaces or first session of a stage)
+5. Paths declared in the L2 `Inputs` table (L3 + specific L4)
 
-Layer Loading Protocol literal: a tabela `Inputs` do L2 é a fonte canônica do que ler. O `Read Order` é guia prático de sequência — pode agrupar itens relacionados ou reordenar para eficiência, mas cada item do Read Order deve mapear para um item em Inputs. Recusa ler qualquer path não listado em Inputs.
+Layer Loading Protocol literal: the L2 `Inputs` table is the canonical source of what to read. The `Read Order` is a practical sequencing guide — items may be grouped or reordered for efficiency, but every Read Order item must map to an Inputs item. Refuse to read any path not listed in Inputs.
 
 ## Session header
 
-Toda sessão imprime na primeira mensagem (R4.4):
+Every session prints in its first message (R4.4):
 
 ```
-Workspace {{WORKSPACE}} | Stage <NN> | Status <YY> | Profile {{PROFILE}}/{{TIER}} | Próximo: <next_action>
+Workspace {{WORKSPACE}} | Stage <NN> | Status <YY> | Profile {{PROFILE}}/{{TIER}} | Next: <next_action>
 ```

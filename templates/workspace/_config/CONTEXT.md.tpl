@@ -9,36 +9,36 @@ created_at: "{{CREATED_AT}}"
 
 # Ubiquitous Language — workspace {{WORKSPACE}}
 
-> Glossário do **domínio do projeto**, não de programação geral. Termos canônicos
-> com definição tight, lista de aliases a evitar, relacionamentos e exemplo de
-> diálogo. Mantido inline durante stage 01 (discovery) e referenciado em todos
-> os stages subsequentes.
+> Glossary of the **project domain**, not general programming. Canonical terms
+> with a tight definition, a list of aliases to avoid, relationships, and a
+> sample dialogue. Maintained inline during stage 01 (discovery) and referenced
+> in all subsequent stages.
 >
-> Formato canônico: `<SKILL_DIR>/references/context-format.md` (também copiado
-> para `_references/runtime/context-format.md`).
+> Canonical format: `<SKILL_DIR>/references/context-format.md` (also copied
+> to `_references/runtime/context-format.md`).
 
 ## Language
 
-> Termos vazios no bootstrap. Stage 01 (discovery) preenche durante grilling;
-> stages 02+ consomem.
+> Terms empty at bootstrap. Stage 01 (discovery) fills them in during grilling;
+> stages 02+ consume them.
 
-(Sem termos resolvidos ainda.)
+(No resolved terms yet.)
 
 ## Relationships
 
-> Relações entre termos canônicos. Cardinalidade quando óbvia.
+> Relations between canonical terms. Cardinality when obvious.
 
-(Sem relações resolvidas ainda.)
+(No resolved relationships yet.)
 
 ## Example dialogue
 
-> Diálogo curto entre dev e domain expert que exercita os termos resolvidos
-> e clarifica fronteiras entre conceitos relacionados.
+> Short dialogue between dev and domain expert exercising the resolved terms
+> and clarifying boundaries between related concepts.
 
-(Sem exemplo ainda.)
+(No example yet.)
 
 ## Flagged ambiguities
 
-> Termos usados ambiguamente. Cada item: descrição + resolução canônica.
+> Terms used ambiguously. Each item: description + canonical resolution.
 
-(Sem ambiguidades sinalizadas ainda.)
+(No flagged ambiguities yet.)
