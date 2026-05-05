@@ -526,7 +526,8 @@ def render_wave_plan(result: dict, *, plan_source: str, workspace: str) -> str:
                 t = tasks_by_slug[slug]
                 files_str = ", ".join(t.files_touched) if t.files_touched else "-"
                 deps_str = ", ".join(t.depends_on) if t.depends_on else "-"
-                branch = f"wave-{workspace}-{w_idx}/{slug}"
+                workspace_num = workspace.split("-", 1)[0]
+                branch = f"wave-{workspace_num}-{w_idx}/{slug}"
                 e2e_required = _task_requires_e2e(t.files_touched, result["profile"])
                 e2e_cell = "yes (auto)" if e2e_required else "no"
                 lines.append(f"| {slug} | {files_str} | {deps_str} | {e2e_cell} | {branch} |")

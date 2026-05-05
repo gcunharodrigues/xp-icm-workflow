@@ -33,7 +33,8 @@ Agent(
     description="L3 orthogonal critic task <slug>",
     subagent_type="general-purpose",
     model="<critic_model_from_pick_model_py>",
-    isolation="worktree",  # optional; may reuse writer worktree for read-only
+    # NO isolation — critic is READ-ONLY (git show / git diff only).
+    # Worktree wastes resources; critic never writes code.
     prompt=render_critic_prompt(task_slug, wave_num),
 )
 ```

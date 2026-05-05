@@ -26,7 +26,7 @@ next_stage: "05"
 
 # Stage 04 — implementation_waves (L2)
 
-Parallel execution in waves. Lead session orchestrates subagents via Agent tool respecting the cap per tier (2/3/5/5). Each subagent works on a task in isolated branch `wave-{{WORKSPACE}}-<N>/<task-slug>` (from `{{BASE_BRANCH}}`), follows vertical TDD cycle (tracer-first + RED→GREEN→CI scope→REFACTOR loop). Per-task loop has cap 3 attempts, validated by L2 forensic+ extended (7 deterministic checks) + L3 orthogonal critic (Agent fresh context, anti-sycophancy, model = tier ceiling). When cap is exhausted OR convergence trip OR catastrophic detected → lead-resolution tier (3 buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK). Lead does sequential merge into `{{BASE_BRANCH}}` after approve. One sub_stage per wave: `04_wave_<N>_in_progress` → `04_wave_<N>_completed`. Repeats until `wave-plan.md` is exhausted.
+Parallel execution in waves. Lead session orchestrates subagents via Agent tool respecting the cap per tier (2/3/5/5). Each subagent works on a task in isolated branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` (from `{{BASE_BRANCH}}`), follows vertical TDD cycle (tracer-first + RED→GREEN→CI scope→REFACTOR loop). Per-task loop has cap 3 attempts, validated by L2 forensic+ extended (7 deterministic checks) + L3 orthogonal critic (Agent fresh context, anti-sycophancy, model = tier ceiling). When cap is exhausted OR convergence trip OR catastrophic detected → lead-resolution tier (3 buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK). Lead does sequential merge into `{{BASE_BRANCH}}` after approve. One sub_stage per wave: `04_wave_<N>_in_progress` → `04_wave_<N>_completed`. Repeats until `wave-plan.md` is exhausted.
 
 **Consolidated canonical docs:**
 - `references/wave-execution-protocol.md` — 12-step pipeline
@@ -385,7 +385,7 @@ After last wave completed, human gate is MANDATORY before transitioning to 05. B
 
 ---
 
-## v3.3.0 references applicable to this stage
+## References applicable to this stage (v3.3.0+, consolidated through v3.12.1)
 
 - **AGENT-BRIEF (`_references/runtime/agent-brief-template.md` +
   `<skill_root>/scripts/agent-brief-render.py`):** lead session generates

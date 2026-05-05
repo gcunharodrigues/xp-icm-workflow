@@ -63,8 +63,8 @@ Code and process conventions for this workspace. Derived from profile `{{PROFILE
 ## Git
 
 - Commits on workspace branch: mandatory prefix `workspace {{WORKSPACE_NUM}}:` (enforced by commit-msg hook). Format: `workspace {{WORKSPACE_NUM}}: <description>` or `workspace {{WORKSPACE_NUM}}: <type>: <description>` (type = feat/fix/refactor/test/docs/chore/perf/ci, optional but recommended).
-- Commits on wave branches (`wave-{{WORKSPACE}}-<N>/<task>`): standard Conventional Commits without ICM prefix. Format: `<type>: <description>`. Examples: `feat: add JWT validation`, `test: unit tests for auth middleware`.
-- Branches: `workspace/{{WORKSPACE}}` for state files, `wave-{{WORKSPACE}}-<N>/<task>` for code
+- Commits on wave branches (`wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`): standard Conventional Commits without ICM prefix. Format: `<type>: <description>`. Examples: `feat: add JWT validation`, `test: unit tests for auth middleware`.
+- Branches: `workspace/{{WORKSPACE}}` for state files, `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` for code
 - Never `--no-verify` on workspace branch
 
 ## Testing (calibrated by tier)

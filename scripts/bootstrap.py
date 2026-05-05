@@ -672,6 +672,8 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "critic-protocol.md",            # v3.9.0 — L3 critic ortogonal
         "lead-resolution-protocol.md",   # v3.9.0 — buckets B1/B3/B4
         "mocking-guidelines.md",         # v3.9.0 — boundaries only
+        "preview-loop-protocol.md",      # v3.6.0 — build-iterate visual (frontend/fullstack)
+        "runtime-cleanup-protocol.md",   # v3.7.0 — dev server + CDP cleanup
         "e2e-coverage-protocol.md",      # v3.10.0 — E2E reinforcement
     )
     refs_src = skill_root / "references"

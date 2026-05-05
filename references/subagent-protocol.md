@@ -1,6 +1,6 @@
 # Subagent Protocol
 
-> **Version:** v3.1.0 (updated v3.5.0)
+> **Version:** v3.1.0 (updated v3.12.1 — worktree model rewrite)
 > **Skill:** `xp-icm-workflow`
 > **Purpose:** Canonical doc of the subagent protocol used in stage 04 `implementation_waves`. Lead session orchestrates N subagents via Claude Code Agent tool, each executing one task of the wave in parallel. From v3.4.0: subagents spawned with `Agent(isolation: "worktree")` — harness creates an ephemeral worktree per task. Wave-reviewer (v3.5.0) spawned WITHOUT `isolation` — reads via `git show`/`git diff`.
 
@@ -62,28 +62,32 @@ Lead injects into the Agent tool prompt:
 
 Subagent does **NOT** read raw `lessons.md` — lead pre-processes it (§4.11 plan).
 
-### 2.4 Branch setup (mandatory in prompt)
+### 2.4 Branch verification (mandatory on startup)
 
-Lead MUST include in the subagent prompt explicit branch instructions:
+The branch was already created by the lead. The harness already created the worktree. The subagent MUST verify, not create:
 
 ```
-BRANCH SETUP (execute FIRST, before any edit):
-1. git checkout {{BASE_BRANCH}}
-2. git checkout -b wave-{{WORKSPACE_NUM}}-{{WAVE_N}}/{{TASK_SLUG}}
-3. Confirm with: git branch --show-current
+BRANCH VERIFICATION (execute FIRST, before any edit):
+1. git branch --show-current
    Must show: wave-{{WORKSPACE_NUM}}-{{WAVE_N}}/{{TASK_SLUG}}
-4. If it does NOT show the correct branch, STOP and report error.
+2. If it does NOT show the correct branch, STOP and report error.
+   Do NOT run git checkout or git checkout -b — branch already exists.
+3. git status --short → confirm clean working tree (no stray files from harness)
 ```
 
-Subagent MUST execute branch setup before any `Write`, `Edit`, or `Bash` that modifies files. If checkout fails, subagent STOPS and reports the error in the task output with `Status: BLOCKED`.
+Subagent MUST verify the branch before any `Write`, `Edit`, or `Bash` that modifies files. If verification fails, subagent STOPS and reports `Status: BLOCKED` in the task output.
 
-Lead does NOT assume Agent tool inherits the correct branch — subagent runs in isolated context and must establish its own branch.
+The lead pre-creates the branch (step 2.1) and the harness handles worktree setup. The subagent never runs `git checkout` or `git checkout -b` itself.
 
-### 2.2 Isolation
+### 2.2 Isolation (v3.4+ worktree model)
 
-Each subagent runs in isolated context (Agent tool). The subagent works on the same workspace branch (`workspace/{{WORKSPACE}}`). If there is potential conflict between subagents on different files, the lead may group conflicting tasks in the same wave or sequentially.
+Subagents run in **ephemeral worktrees** created by the harness via `Agent(isolation: "worktree")`. The subagent's CWD is the worktree directory (not `{{PROJECT_ROOT}}`). The worktree is checked out on the task branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
 
-For tasks that modify the same files, the lead **MUST** place them in different waves (see wave-planner-algorithm.md §5 dependency detection).
+**CRITICAL — do NOT bleed into main worktree:** the subagent MUST NOT write to `{{PROJECT_ROOT}}` via absolute paths. All edits happen within the worktree. The worktree boundary provides git isolation but does not prevent the subagent from using absolute paths — this is a behavioral rule, not a technical guarantee. Violating it corrupts state files (L0/L1/L2) on the workspace branch.
+
+**Branch is pre-created by the lead** before Agent spawn (§2.1 step 1). The harness does `git worktree add` pointing to the already-existing branch. The subagent does NOT create its own branch and does NOT run `git checkout`. The subagent verifies its branch with `git branch --show-current` on startup — it must show `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. If the branch is wrong, the subagent STOPS and reports `Status: BLOCKED`.
+
+For tasks that modify the same files, the lead **MUST** place them in different waves (see wave-planner-algorithm.md §5 dependency detection). The worktree model prevents file-level conflicts between parallel subagents.
 
 ### 2.3 Branches
 

@@ -204,9 +204,41 @@ dashboard. Canonical doc: `references/project-root-claude-md.md`
 
 ## Stage 04 (waves) — exception
 
-Stage 04 = **1 lead session per wave**. Wave 1 ends, lead hands off to the next wave 2 session (same stage 04). Sub_stage goes from `04_wave_1_completed` to `04_wave_2_in_progress`.
+Stage 04 = **1 lead session per wave**. Each wave ends with a handoff to the next wave session. Two cases:
 
-After the last wave: normal handoff to stage 05.
+### Case A — Mid-wave handoff (wave N → wave N+1, automatic, no human gate)
+
+Applies when more waves remain after the current wave completes.
+
+1. All subagents in wave N delivered COMPLETE.
+2. Wave-reviewer approved (L2 forensic+ + L3 critic).
+3. Sequential merge into `{{BASE_BRANCH}}` + global CI green.
+4. Write `output/wave-<N>/wave-summary.md`.
+5. Update L1: `sub_stage = 04_wave_N_completed → 04_wave_N+1_in_progress`. Status stays `IN_PROGRESS`.
+6. Render `_kickoff.md` in the same stage 04 directory (`stages/04_implementation_waves/_kickoff.md`) with updated `prev_outputs`, `pending` (next wave tasks), `prev_state_prose`.
+7. Atomic commit: `workspace <NNN>: wave <N> completed, kickoff for wave <N+1>`.
+8. **EXIT the session.** Wave N+1 starts in a FRESH session with clean context and new pre-flight.
+
+**Anti-pattern:** running wave N+1 in the same session as wave N. Context accumulates, errors compound. The handoff forces a checkpoint (CI verified, summary written, L1 updated) before the next wave begins.
+
+### Case B — Last-wave handoff (wave N → stage 05, WITH human gate)
+
+Applies after the LAST wave completes (no more waves in wave-plan.md).
+
+1. Same steps 1-4 as Case A (subagents complete, reviewer approves, merge, CI green, wave-summary).
+2. Update L1: `sub_stage = 04_wave_N_completed`, `status = COMPLETED_AWAITING_HUMAN`.
+3. **Gate inline.** Lead pauses and presents to human:
+   - Wave-summary.md summary
+   - Pending items (if any)
+   - Next stage (05_verification)
+4. Human approves → Phase 2 GATE_APPROVED:
+   - Render `_kickoff.md` in `stages/05_verification/_kickoff.md`.
+   - Update L1: `stage_atual = 05`, `sub_stage = 05_in_progress`, `status = IN_PROGRESS`.
+   - Atomic commit.
+   - Print KICKOFF block.
+5. EXIT the session. Stage 05 starts in a fresh session.
+
+Cross-ref: stage 04 L2 template `## End of stage handoff` section has the wave-aware details (Cases A/B with exact commands).
 
 ## Stage 07 (merge) → 08 — automatic transition
 
