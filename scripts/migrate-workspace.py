@@ -414,8 +414,8 @@ def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
     # ---- 2. L0 CLAUDE.md — text corrections ----
     _apply(workspace_root / "CLAUDE.md", [
         ("12 canonical stop points", "15 canonical stop points"),
-        ("via scripts/runtime-status.py", f"via {skill_dir}/scripts/runtime-status.py"),
-        ("runtime_cleanup_failed (#13)", "runtime_cleanup_failed (#15)"),
+        ("scripts/runtime-status.py", f"{skill_dir}/scripts/runtime-status.py"),
+        ("(#13)", "(#15)"),
         ("_references/runtime/worktree-model.md",
          f"{{PROJECT_ROOT}}/workspaces/{workspace_root.name}/_references/runtime/worktree-model.md"),
     ], "L0 CLAUDE.md: 4 text corrections")
@@ -561,7 +561,7 @@ def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
     print("     Surgical fix applied, but detail sections for #13 ambiguous_feedback")
     print("     and #14 design_system_cascade are MISSING. Add them manually:")
     print(f"     Source: {skill_dir}/references/stop-points-canonical.md")
-    print("     Template: {skill_dir}/templates/_config/stop-points.md")
+    print(f"     Template: {skill_dir}/templates/_config/stop-points.md")
     print("     Sections needed: ### 13. ambiguous_feedback, ### 14. design_system_cascade")
     print("")
     print("  2. stages/04_implementation_waves/CONTEXT.md:")
