@@ -78,6 +78,7 @@ PRESERVED_KEYWORDS: tuple[str, ...] = (
     "VALIDAÇAO",  # variant without cedilla
     "feedback_ambiguous",
     "design_system_cascade",
+    "ADRs aplicáveis",  # parser-bound 4-block field (forensic+ Check, agent-brief render)
     # Meta-references discussing the migration itself.
     "pt-BR",
     "Portuguese",

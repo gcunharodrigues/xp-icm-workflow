@@ -7,7 +7,7 @@
 
 ## Decision
 
-The skill is migrated to en-US as the canonical source language. **Five categories of terms are preserved in pt-BR** as ubiquitous-language anchors (DDD-style):
+The skill is migrated to en-US as the canonical source language. **Six categories of terms are preserved in pt-BR** as ubiquitous-language anchors (DDD-style):
 
 1. **4-block headers** in `plan.md` task schema:
    - `O QUE` (instead of "WHAT")
@@ -15,16 +15,19 @@ The skill is migrated to en-US as the canonical source language. **Five categori
    - `NÃO QUERO` (instead of "NOT WANTED" / "OUT OF SCOPE")
    - `VALIDAÇÃO` (instead of "VALIDATION")
 
-2. **Stop point IDs** with pt-BR semantics in their snake_case identifier:
+2. **4-block metadata field** parsed from plan.md tasks:
+   - `ADRs aplicáveis` (instead of "Applicable ADRs")
+
+3. **Stop point IDs** with pt-BR semantics in their snake_case identifier:
    - `feedback_ambiguous`
    - `design_system_cascade`
    - (others follow snake_case en-US already; no exception needed)
 
-3. **Status enum values** — already en-US (`COMPLETED_AWAITING_HUMAN`, `BLOCKED_HITL`, `LEAD_RESOLUTION_IN_PROGRESS`, etc). No exception.
+4. **Status enum values** — already en-US (`COMPLETED_AWAITING_HUMAN`, `BLOCKED_HITL`, `LEAD_RESOLUTION_IN_PROGRESS`, etc). No exception.
 
-4. **Stage names** — already en-US (`recon`, `discovery`, `design`, `wave_planner`, `implementation_waves`, `verification`, `review`, `merge`, `feedback_intake`). No exception.
+5. **Stage names** — already en-US (`recon`, `discovery`, `design`, `wave_planner`, `implementation_waves`, `verification`, `review`, `merge`, `feedback_intake`). No exception.
 
-5. **Historical changelog entries** (pre-v3.11.0) — preserved as written. v3.11.0+ entries in en-US.
+6. **Historical changelog entries** (pre-v3.11.0) — preserved as written. v3.11.0+ entries in en-US.
 
 ## Rationale
 
@@ -105,6 +108,7 @@ A new test (`tests/unit/test_no_drift.py:test_no_pt_br_in_canonical`) scans cano
 The whitelist:
 
 - `O QUE`, `COMO`, `NÃO QUERO`, `VALIDAÇÃO` — 4-block headers (in prose explaining the schema).
+- `ADRs aplicáveis` — 4-block metadata field (parser-bound; `forensic-plus.py:_bullets_under("ADRs aplicáveis")` and `agent-brief-render.py` `ADRS_APPLICABLE` mapping).
 - `pt-BR`, `Portuguese`, `Brazilian` — meta-references to the source language.
 - `feedback_ambiguous`, `design_system_cascade` — stop point IDs.
 
