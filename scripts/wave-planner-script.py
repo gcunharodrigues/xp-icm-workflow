@@ -1,10 +1,11 @@
 #!/usr/bin/env python3
-"""Wave Planner deterministico (Sessao 2 - fase sem LLM).
+"""Deterministic Wave Planner (Stage 03 — no LLM).
 
-Le um plan.md, constroi DAG de tasks (deps explicitas + file conflicts),
-detecta ciclos, faz topological sort em waves, subdivide em sub-waves
-quando excedem o cap por tier/profile, marca ambiguidades e renderiza
-wave-plan.md (Markdown com YAML frontmatter) + ambiguities-resolved.md.
+Reads plan.md, builds a DAG of tasks (explicit deps + file conflicts),
+detects cycles, performs topological sort into waves, subdivides into
+sub-waves when they exceed the cap for the tier/profile, flags
+ambiguities, and renders wave-plan.md (Markdown with YAML frontmatter)
++ ambiguities-resolved.md.
 
 CLI:
   python scripts/wave-planner-script.py
@@ -16,11 +17,11 @@ CLI:
       [--ambiguities-output stages/03_wave_planner/output/ambiguities-resolved.md]
 
 Stdout: total_tasks=N total_waves=M total_sub_waves=K ambiguities=A
-Exit 0 = sucesso. Exit 1 = erro (ciclo, schema invalido, etc).
+Exit 0 = success. Exit 1 = error (cycle, invalid schema, etc).
 
-Algoritmos:
-  - Kahn (topological sort por niveis) -> evita stack overflow.
-  - DFS (3 cores) -> deteccao de ciclo determinista.
+Algorithms:
+  - Kahn (level-based topological sort) -> avoids stack overflow.
+  - DFS (3-color) -> deterministic cycle detection.
 """
 from __future__ import annotations
 
@@ -35,7 +36,7 @@ from typing import Iterable
 import yaml
 
 # ----------------------------------------------------------------------------
-# Constantes (sincronas com profile-merge)
+# Constants (kept in sync with profile-merge)
 # ----------------------------------------------------------------------------
 TIER_CAP: dict[str, int] = {
     "experimental": 2,
@@ -80,7 +81,7 @@ USER_FACING_PATHS_BY_PROFILE: dict[str, tuple[str, ...]] = {
     "agent_ia": ("prompts/", "agents/", "tools/"),
     "framework_library": ("api/", "exports/"),
     "dashboard": ("pages/", "views/", "dashboards/"),
-    "data_analysis": (),  # notebook-based, e2e não-aplicável
+    "data_analysis": (),  # notebook-based, e2e not applicable
     "ml_project": ("pipelines/", "inference/"),
     "technical_article": (),  # doc-only
     "experiment": (),  # POC, e2e opt-in
@@ -98,11 +99,11 @@ SLUG_RE = re.compile(r"^## Task ([a-z0-9][a-z0-9-]*):", re.MULTILINE)
 TASK_HEADER_RE = re.compile(r"^## Task (\S+):", re.MULTILINE)
 KEBAB_RE = re.compile(r"^[a-z0-9][a-z0-9-]*$")
 
-# Heading drift detection — schema canônico em
-# references/4-block-contract-template.md exige task header em h2 e
-# subseções 4-block + metadados em h3. LLM ocasionalmente gera plan.md
-# com offset (h4/h5/h6). Sem este pre-flight o parser retornaria
-# silenciosamente "no tasks found" longe da causa real.
+# Heading drift detection — canonical schema in
+# references/4-block-contract-template.md requires task headers at h2 and
+# 4-block subsections + metadata at h3. LLM occasionally generates plan.md
+# with offset (h4/h5/h6). Without this pre-flight the parser would return
+# silently "no tasks found" far from the real cause.
 TASK_HEADING_DRIFT_RE = re.compile(r"^#{3,6}\s+Task\s+\S+\s*:", re.MULTILINE)
 SUBSECTION_DRIFT_RE = re.compile(
     r"^#{4,6}\s+(O QUE|COMO|NÃO QUERO|VALIDAÇÃO|Files touched|Depends on)\b",
@@ -114,17 +115,17 @@ SUBSECTION_DRIFT_RE = re.compile(
 # Errors + dataclass
 # ----------------------------------------------------------------------------
 class WavePlannerError(Exception):
-    """Erro de parse, validacao ou planejamento de waves."""
+    """Parse, validation, or wave-planning error."""
 
 
 @dataclass
 class Task:
-    """Task parseada do plan.md."""
+    """Task parsed from plan.md."""
 
     slug: str
     files_touched: list[str] = field(default_factory=list)
     depends_on: list[str] = field(default_factory=list)
-    type: str = "AFK"  # T2.6: HITL | AFK. Default AFK; HITL ativa wave isolada cap=1.
+    type: str = "AFK"  # T2.6: HITL | AFK. Default AFK; HITL activates isolated wave cap=1.
 
 
 # ----------------------------------------------------------------------------
@@ -132,7 +133,7 @@ class Task:
 # ----------------------------------------------------------------------------
 
 def _split_into_task_blocks(text: str) -> list[tuple[str, str]]:
-    """Quebra o plan.md em (slug, conteudo_do_bloco) preservando ordem."""
+    """Splits plan.md into (slug, block_content) pairs preserving order."""
     matches = list(TASK_HEADER_RE.finditer(text))
     if not matches:
         return []
@@ -151,7 +152,7 @@ def _split_into_task_blocks(text: str) -> list[tuple[str, str]]:
 
 
 def _extract_section(block: str, section_title: str) -> list[str]:
-    """Extrai bullets de uma secao `### <title>` ate proxima `### ` ou `## `."""
+    """Extracts bullets from a `### <title>` section up to the next `### ` or `## `."""
     pattern = re.compile(
         rf"^###\s+{re.escape(section_title)}\s*$",
         re.MULTILINE | re.IGNORECASE,
@@ -160,7 +161,7 @@ def _extract_section(block: str, section_title: str) -> list[str]:
     if not match:
         return []
     tail = block[match.end():]
-    # Para na proxima secao
+    # Stop at the next section
     next_section = re.search(r"^(##\s|###\s)", tail, re.MULTILINE)
     body = tail[: next_section.start()] if next_section else tail
 
@@ -177,10 +178,10 @@ def _extract_section(block: str, section_title: str) -> list[str]:
 
 
 def _extract_type_field(block: str) -> str:
-    """Extrai `**Type:**` field do bloco da task. Default AFK se ausente.
+    """Extracts the `**Type:**` field from the task block. Defaults to AFK if absent.
 
-    Formato esperado: `**Type:** HITL` ou `**Type:** AFK`.
-    Doc canônico: references/task-types-hitl-afk.md.
+    Expected format: `**Type:** HITL` or `**Type:** AFK`.
+    Canonical doc: references/task-types-hitl-afk.md.
     """
     match = re.search(r"\*\*Type:\*\*\s*(HITL|AFK)\b", block, re.IGNORECASE)
     if not match:
@@ -189,8 +190,8 @@ def _extract_type_field(block: str) -> str:
 
 
 def _detect_heading_drift(text: str) -> None:
-    """Pre-flight: aborta se plan.md tem task headers em h4-h6 ou
-    subseções 4-block em h5-h6. Schema canônico exige h2/h3."""
+    """Pre-flight: aborts if plan.md has task headers at h4-h6 or
+    4-block subsections at h5-h6. Canonical schema requires h2/h3."""
     task_drift = TASK_HEADING_DRIFT_RE.findall(text)
     sub_drift = SUBSECTION_DRIFT_RE.findall(text)
     if not task_drift and not sub_drift:
@@ -198,23 +199,23 @@ def _detect_heading_drift(text: str) -> None:
     parts: list[str] = []
     if task_drift:
         parts.append(
-            f"{len(task_drift)} task header(s) em nivel >h2 "
-            f"(esperado '## Task <slug>: <titulo>')"
+            f"{len(task_drift)} task header(s) at level >h2 "
+            f"(expected '## Task <slug>: <title>')"
         )
     if sub_drift:
         parts.append(
-            f"{len(sub_drift)} subsecao(oes) em nivel >h3 "
-            f"(esperado '### O QUE/COMO/NAO QUERO/VALIDACAO/Files touched/Depends on')"
+            f"{len(sub_drift)} subsection(s) at level >h3 "
+            f"(expected '### O QUE/COMO/NAO QUERO/VALIDACAO/Files touched/Depends on')"
         )
     raise WavePlannerError(
         "plan.md heading drift: " + "; ".join(parts) + ". "
-        "Schema canonico em references/4-block-contract-template.md. "
-        "Fix mecanico: ^#### Task -> ## Task; ^##### <subsec> -> ### <subsec>."
+        "Canonical schema in references/4-block-contract-template.md. "
+        "Mechanical fix: ^#### Task -> ## Task; ^##### <subsec> -> ### <subsec>."
     )
 
 
 def parse_plan(path: Path) -> list[Task]:
-    """Le plan.md e devolve lista ordenada de Task. Aborta em slug duplicado."""
+    """Reads plan.md and returns an ordered list of Tasks. Aborts on duplicate slug."""
     if not path.exists():
         raise WavePlannerError(f"plan file not found: {path}")
     text = path.read_text(encoding="utf-8")
@@ -243,7 +244,7 @@ def parse_plan(path: Path) -> list[Task]:
 # ----------------------------------------------------------------------------
 
 def resolve_cap(*, tier: str, profile: str) -> int:
-    """Retorna cap efetivo: min(tier_cap, profile_override)."""
+    """Returns effective cap: min(tier_cap, profile_override)."""
     if tier not in VALID_TIERS:
         raise WavePlannerError(f"invalid tier: {tier!r}")
     if profile not in VALID_PROFILES:
@@ -260,22 +261,22 @@ def resolve_cap(*, tier: str, profile: str) -> int:
 # ----------------------------------------------------------------------------
 
 def build_graph(tasks: list[Task]) -> set[tuple[str, str]]:
-    """Constroi arestas dirigidas:
-    - dep explicita: t1 in t2.depends_on => aresta (t1, t2).
-    - file conflict: files_touched(t1) & files_touched(t2) != {} e t1 antes
-      de t2 no plan.md => aresta (t1, t2).
+    """Builds directed edges:
+    - explicit dep: t1 in t2.depends_on => edge (t1, t2).
+    - file conflict: files_touched(t1) & files_touched(t2) != {} and t1 before
+      t2 in plan.md => edge (t1, t2).
     """
     by_slug = {t.slug: t for t in tasks}
     edges: set[tuple[str, str]] = set()
 
-    # Dep explicitas
+    # Explicit deps
     for t in tasks:
         for dep in t.depends_on:
             if dep not in by_slug:
                 raise WavePlannerError(f"unknown dependency: {dep} (in task {t.slug})")
             edges.add((dep, t.slug))
 
-    # File conflicts (ordem do plan.md serializa)
+    # File conflicts (plan.md order serializes)
     for i, t1 in enumerate(tasks):
         files1 = set(t1.files_touched)
         if not files1:
@@ -288,7 +289,7 @@ def build_graph(tasks: list[Task]) -> set[tuple[str, str]]:
 
 
 def detect_cycle(nodes: list[str], edges: Iterable[tuple[str, str]]) -> None:
-    """DFS 3-color. Levanta WavePlannerError se detectar ciclo."""
+    """DFS 3-color. Raises WavePlannerError if a cycle is detected."""
     adj: dict[str, list[str]] = {n: [] for n in nodes}
     for u, v in edges:
         if u in adj:
@@ -317,7 +318,7 @@ def detect_cycle(nodes: list[str], edges: Iterable[tuple[str, str]]) -> None:
 
 
 def topological_waves(tasks: list[Task], *, edges: set[tuple[str, str]]) -> list[list[str]]:
-    """Kahn por niveis. Cada wave = todos os nos sem in-edges restantes."""
+    """Kahn level-by-level. Each wave = all nodes with no remaining in-edges."""
     nodes = [t.slug for t in tasks]
     detect_cycle(nodes, edges)
 
@@ -327,7 +328,7 @@ def topological_waves(tasks: list[Task], *, edges: set[tuple[str, str]]) -> list
         in_degree[v] = in_degree.get(v, 0) + 1
         adj[u].append(v)
 
-    # Preserva ordem do plan.md ao popular cada wave
+    # Preserves plan.md order when populating each wave
     order = {slug: idx for idx, slug in enumerate(nodes)}
     waves: list[list[str]] = []
     remaining = set(nodes)
@@ -338,7 +339,7 @@ def topological_waves(tasks: list[Task], *, edges: set[tuple[str, str]]) -> list
             key=lambda s: order[s],
         )
         if not ready:
-            # Salvaguarda: detect_cycle ja deveria ter pego, mas guard.
+            # Safeguard: detect_cycle should have caught this, but guard anyway.
             raise WavePlannerError("cycle detected (no ready nodes remaining)")
         waves.append(ready)
         for n in ready:
@@ -355,16 +356,16 @@ def subdivide_waves(
     cap: int,
     task_types: dict[str, str] | None = None,
 ) -> list[list[list[str]]]:
-    """Quebra cada wave em sub-waves de tamanho <= cap.
+    """Breaks each wave into sub-waves of size <= cap.
 
-    T2.6: tasks com `type=HITL` ficam em sub-waves isoladas (cap=1) — lead
-    session NÃO spawna subagent, gera AGENT-BRIEF e aguarda humano. AFK
-    tasks agrupadas normalmente até `cap`.
+    T2.6: tasks with `type=HITL` go into isolated sub-waves (cap=1) — lead
+    session does NOT spawn a subagent, generates AGENT-BRIEF and awaits human. AFK
+    tasks grouped normally up to `cap`.
 
     Args:
-        waves: list[list[str]] de raw waves (Kahn output).
-        cap: cap efetivo (tier × profile).
-        task_types: dict slug → "HITL"|"AFK". Se None ou ausente, default AFK.
+        waves: list[list[str]] of raw waves (Kahn output).
+        cap: effective cap (tier x profile).
+        task_types: dict slug -> "HITL"|"AFK". If None or absent, defaults to AFK.
     """
     if cap <= 0:
         raise WavePlannerError(f"invalid cap: {cap}")
@@ -374,13 +375,13 @@ def subdivide_waves(
         if not wave:
             result.append([[]])
             continue
-        # Separar HITL vs AFK preservando ordem do plan.md
+        # Separate HITL vs AFK preserving plan.md order
         hitl_subs: list[list[str]] = [[s] for s in wave if types.get(s, "AFK") == "HITL"]
         afk_slugs: list[str] = [s for s in wave if types.get(s, "AFK") != "HITL"]
         afk_subs: list[list[str]] = [
             afk_slugs[i:i + cap] for i in range(0, len(afk_slugs), cap)
         ]
-        # AFK primeiro, HITL depois (humano resolve em ordem após AFK done)
+        # AFK first, HITL after (human resolves in order after AFK done)
         sub_waves = afk_subs + hitl_subs or [[]]
         result.append(sub_waves)
     return result
@@ -391,9 +392,9 @@ def subdivide_waves(
 # ----------------------------------------------------------------------------
 
 def detect_ambiguities(tasks: list[Task]) -> list[str]:
-    """Pares de tasks que tocam mesmo diretorio sem intersecao exata.
+    """Task pairs that touch the same directory without an exact intersection.
 
-    Marca para revisao do LLM (nao serializa, apenas registra).
+    Flagged for LLM review (not serialized, just recorded).
     """
     notes: list[str] = []
     seen_pairs: set[tuple[str, str]] = set()
@@ -407,7 +408,7 @@ def detect_ambiguities(tasks: list[Task]) -> list[str]:
         for t2 in tasks[i + 1:]:
             files2 = set(t2.files_touched)
             if files1 & files2:
-                continue  # ja vira aresta (file conflict)
+                continue  # already becomes an edge (file conflict)
             common_dirs = dirs1 & dirs_of(t2)
             if not common_dirs:
                 continue
@@ -418,8 +419,8 @@ def detect_ambiguities(tasks: list[Task]) -> list[str]:
             seen_pairs.add(pair_key)
             for d in sorted(common_dirs):
                 notes.append(
-                    f"Task {t1.slug} e {t2.slug} tocam mesmo dir {d}; "
-                    "LLM review deve confirmar separacao."
+                    f"Task {t1.slug} and {t2.slug} touch same dir {d}; "
+                    "LLM review should confirm separation."
                 )
     return notes
 
@@ -429,10 +430,10 @@ def detect_ambiguities(tasks: list[Task]) -> list[str]:
 # ----------------------------------------------------------------------------
 
 def plan_waves(*, plan_path: Path, tier: str, profile: str) -> dict:
-    """Pipeline completo: parse -> graph -> waves -> subdivide -> ambiguidades.
+    """Full pipeline: parse -> graph -> waves -> subdivide -> ambiguities.
 
-    Retorna dict com:
-      - tasks: lista de Task
+    Returns dict with:
+      - tasks: list of Task
       - cap_subagents_per_wave
       - waves: list[list[list[str]]]   waves -> sub_waves -> slugs
       - total_tasks, total_waves, total_sub_waves
@@ -472,12 +473,12 @@ _LETTERS = "abcdefghijklmnopqrstuvwxyz"
 def _sub_label(idx: int) -> str:
     if idx < len(_LETTERS):
         return _LETTERS[idx]
-    # Fallback robusto para sub-waves > 26 (raro)
+    # Robust fallback for sub-waves > 26 (rare)
     return f"x{idx}"
 
 
 def render_wave_plan(result: dict, *, plan_source: str, workspace: str) -> str:
-    """Renderiza wave-plan.md (frontmatter YAML + tabelas)."""
+    """Renders wave-plan.md (YAML frontmatter + tables)."""
     tasks_by_slug = {t.slug: t for t in result["tasks"]}
     frontmatter = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
@@ -506,9 +507,9 @@ def render_wave_plan(result: dict, *, plan_source: str, workspace: str) -> str:
             count = len(slugs)
             cap_note = ""
             if len(sub_waves) > 1:
-                cap_note = " (cap atingido)" if sw_idx > 0 else ""
+                cap_note = " (cap reached)" if sw_idx > 0 else ""
             lines.append(
-                f"## Wave {w_idx} (sub-wave {w_idx}.{label}) - {count} tasks paralelas{cap_note}"
+                f"## Wave {w_idx} (sub-wave {w_idx}.{label}) - {count} parallel tasks{cap_note}"
             )
             if count == 1:
                 lines.append("")
@@ -535,9 +536,9 @@ def render_wave_plan(result: dict, *, plan_source: str, workspace: str) -> str:
             if flagged:
                 lines.append(
                     f"> **E2E coverage required** ({len(flagged)} task[s]): "
-                    f"{', '.join(flagged)}. Designer deve adicionar "
-                    "`### Requires E2E update\\n- true` em plan.md task. "
-                    "Forensic+ Check 8 audita (HARD em tier dev/prod)."
+                    f"{', '.join(flagged)}. Lead must add "
+                    "`### Requires E2E update\\n- true` to plan.md task. "
+                    "Forensic+ Check 8 enforces (HARD in tier dev/prod)."
                 )
                 lines.append("")
 
@@ -545,18 +546,18 @@ def render_wave_plan(result: dict, *, plan_source: str, workspace: str) -> str:
     lines.append("")
     file_conflicts = _file_conflict_pairs(result["tasks"])
     if file_conflicts:
-        lines.append("- Tasks com files conflict serializadas:")
+        lines.append("- Tasks with file conflicts serialized:")
         for a, b in file_conflicts:
             lines.append(f"  - ({a}, {b})")
     else:
-        lines.append("- Nenhum file conflict serializado.")
+        lines.append("- No file conflicts serialized.")
     if result["ambiguities"]:
         lines.append(
-            f"- {len(result['ambiguities'])} ambiguidade(s) registrada(s) em "
+            f"- {len(result['ambiguities'])} ambiguity(ies) recorded in "
             "`ambiguities-resolved.md`."
         )
     else:
-        lines.append("- Nenhuma ambiguidade registrada.")
+        lines.append("- No ambiguities recorded.")
     lines.append("")
 
     return "\n".join(lines)
@@ -576,7 +577,7 @@ def _file_conflict_pairs(tasks: list[Task]) -> list[tuple[str, str]]:
 
 def render_ambiguities(ambiguities: list[str]) -> str:
     if not ambiguities:
-        return "# Ambiguities Resolved\n\nNenhuma ambiguidade detectada na fase deterministica.\n"
+        return "# Ambiguities Resolved\n\nNo ambiguities detected in the deterministic phase.\n"
     lines = ["# Ambiguities Resolved", ""]
     for note in ambiguities:
         lines.append(f"- {note}")
@@ -589,17 +590,17 @@ def render_ambiguities(ambiguities: list[str]) -> str:
 # ----------------------------------------------------------------------------
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Wave Planner deterministico (sem LLM).")
-    parser.add_argument("--plan", required=True, type=Path, help="path para plan.md")
+    parser = argparse.ArgumentParser(description="Deterministic Wave Planner (no LLM).")
+    parser.add_argument("--plan", required=True, type=Path, help="path to plan.md")
     parser.add_argument("--tier", required=True, choices=sorted(VALID_TIERS))
     parser.add_argument("--profile", required=True, choices=sorted(VALID_PROFILES))
-    parser.add_argument("--workspace", required=True, help="ID do workspace (ex: 042-feat-auth)")
-    parser.add_argument("--output", required=True, type=Path, help="path para wave-plan.md")
+    parser.add_argument("--workspace", required=True, help="workspace ID (e.g. 042-feat-auth)")
+    parser.add_argument("--output", required=True, type=Path, help="path to wave-plan.md")
     parser.add_argument(
         "--ambiguities-output",
         type=Path,
         default=None,
-        help="path para ambiguities-resolved.md (default: ao lado de --output)",
+        help="path to ambiguities-resolved.md (default: next to --output)",
     )
     return parser.parse_args(argv)
 

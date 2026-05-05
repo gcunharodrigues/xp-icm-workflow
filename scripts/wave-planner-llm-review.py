@@ -1,19 +1,20 @@
 #!/usr/bin/env python3
-"""Wave Planner LLM Review subagent (companion do wave-planner-script.py).
+"""Wave Planner LLM Review subagent (companion to wave-planner-script.py).
 
-Recebe o DAG draft (wave-plan.md), o plan.md original e o ambiguities-resolved.md,
-devolve um veredicto json estruturado (APPROVE / PROPOSE_CHANGES / SKIPPED).
+Receives the DAG draft (wave-plan.md), the original plan.md and
+ambiguities-resolved.md, and returns a structured JSON verdict
+(APPROVE / PROPOSE_CHANGES / SKIPPED).
 
-Modos de operacao:
-  1. Mock mode (--mock-response): le JSON de fixture (usado em testes).
-  2. Prod mode (--llm-response): le JSON gerado por LLM externo (human-in-the-loop
-     ou pipeline CI que roda LLM separadamente).
-  3. Prompt mode (nenhum response path): imprime prompt formatado para stdout e
-     sai com exit 2, aguardando que humano/algoritmo externo rode LLM e
-     reenvie o JSON via --llm-response.
+Operating modes:
+  1. Mock mode (--mock-response): reads JSON from fixture (used in tests).
+  2. Prod mode (--llm-response): reads JSON produced by an external LLM (human-in-the-loop
+     or CI pipeline that runs the LLM separately).
+  3. Prompt mode (no response path): prints a formatted prompt to stdout and
+     exits with code 2, waiting for a human/external algorithm to run the LLM and
+     resubmit the JSON via --llm-response.
 
-Skip threshold: total_tasks <= 2 ou total_waves <= 1 -> nao spawna LLM (custo
-nao justifica sinal).
+Skip threshold: total_tasks <= 2 or total_waves <= 1 -> do not spawn LLM (cost
+does not justify the signal).
 
 CLI:
   python scripts/wave-planner-llm-review.py
@@ -26,11 +27,11 @@ CLI:
 
 Stdout: verdict=<X> issues=<N> proposed_changes=<M> skipped=<true|false>
 Exit codes:
-  0  sucesso (qualquer verdict, inclusive SKIPPED)
-  1  erro (mock ausente, schema invalido, IO)
-  2  prompt emitido (modo interativo / human-in-the-loop)
+  0  success (any verdict, including SKIPPED)
+  1  error (missing mock, invalid schema, IO)
+  2  prompt emitted (interactive mode / human-in-the-loop)
 
-Spec do schema (json):
+JSON schema spec:
   {
     "verdict": "APPROVE" | "PROPOSE_CHANGES" | "SKIPPED",
     "issues": [
@@ -39,7 +40,7 @@ Spec do schema (json):
     "proposed_dag_changes": [
       {"action": "add_dep" | "split_wave", ...}
     ],
-    "skip_reason": "<str>" (apenas se SKIPPED)
+    "skip_reason": "<str>" (only if SKIPPED)
   }
 """
 from __future__ import annotations
@@ -54,7 +55,7 @@ from typing import Any
 import yaml
 
 # ----------------------------------------------------------------------------
-# Constantes / enums
+# Constants / enums
 # ----------------------------------------------------------------------------
 VALID_VERDICTS: frozenset[str] = frozenset({"APPROVE", "PROPOSE_CHANGES", "SKIPPED"})
 VALID_ISSUE_TYPES: frozenset[str] = frozenset(
@@ -68,7 +69,7 @@ VALID_ACTIONS: frozenset[str] = frozenset({"add_dep", "split_wave"})
 # Errors
 # ----------------------------------------------------------------------------
 class LLMReviewError(Exception):
-    """Erro de parse, validacao ou execucao do review."""
+    """Parse, validation, or review execution error."""
 
 
 # ----------------------------------------------------------------------------
@@ -76,7 +77,7 @@ class LLMReviewError(Exception):
 # ----------------------------------------------------------------------------
 @dataclass
 class WavePlanSummary:
-    """Subset minimal extraido do wave-plan.md para decidir skip."""
+    """Minimal subset extracted from wave-plan.md to decide skip."""
 
     total_tasks: int
     total_waves: int
@@ -84,12 +85,12 @@ class WavePlanSummary:
 
 
 def parse_wave_plan(path: Path) -> WavePlanSummary:
-    """Le wave-plan.md (frontmatter YAML) e retorna summary com totals.
+    """Reads wave-plan.md (YAML frontmatter) and returns a summary with totals.
 
-    Erros possiveis:
-      - arquivo inexistente
-      - frontmatter ausente
-      - campos obrigatorios faltando
+    Possible errors:
+      - file not found
+      - missing frontmatter
+      - required fields missing
     """
     if not path.exists():
         raise LLMReviewError(f"wave-plan file not found: {path}")
@@ -121,7 +122,7 @@ def parse_wave_plan(path: Path) -> WavePlanSummary:
 # Decisao de skip
 # ----------------------------------------------------------------------------
 def should_skip(summary: WavePlanSummary) -> tuple[bool, str]:
-    """Retorna (skip?, reason). Skip se total_tasks <= 2 OU total_waves <= 1."""
+    """Returns (skip?, reason). Skips if total_tasks <= 2 OR total_waves <= 1."""
     if summary.total_tasks <= 2:
         return True, f"total_tasks={summary.total_tasks}"
     if summary.total_waves <= 1:
@@ -133,40 +134,40 @@ def should_skip(summary: WavePlanSummary) -> tuple[bool, str]:
 # Build prompt for human-in-the-loop / external LLM
 # ----------------------------------------------------------------------------
 PROMPT_TEMPLATE: str = """\
-Você é um wave-planner-reviewer. Recebe o DAG draft + plan.md + ambiguities.
+You are a wave-planner-reviewer. You receive the DAG draft + plan.md + ambiguities.
 
-Tarefa: ler tasks + grafo + ambiguidades. Verificar se há:
-1. Footprints ambíguos não resolvidos pelo determinístico
-2. Deps implícitas não declaradas (ex: task B precisa do schema migrado por task A
-   mas não declara dep)
-3. Sub-waves que poderiam re-paralelizar (cap reduzido por engano)
+Task: read tasks + graph + ambiguities. Verify whether there are:
+1. Ambiguous footprints not resolved by the deterministic phase
+2. Undeclared implicit deps (e.g. task B needs the schema migrated by task A
+   but does not declare the dep)
+3. Sub-waves that could re-parallelize (cap unnecessarily reduced)
 
-Output JSON estruturado:
+Structured JSON output:
 {
   "verdict": "APPROVE" | "PROPOSE_CHANGES",
   "issues": [
     {"type": "implicit_dep", "from": "task-a", "to": "task-b", "reason": "..."},
     {"type": "ambiguous_footprint", "tasks": ["task-x", "task-y"], "suggestion": "..."}
   ],
-  "proposed_dag_changes": [...]   // só se PROPOSE_CHANGES
+  "proposed_dag_changes": [...]   // only if PROPOSE_CHANGES
 }
 """
 
 
 def _build_prompt(wave_plan_text: str, plan_text: str, ambiguities_text: str) -> str:
-    """Monta prompt completo para review, incluindo os 3 documentos como contexto."""
+    """Builds the complete review prompt, including the 3 documents as context."""
     return (
         f"{PROMPT_TEMPLATE}\n"
         "---\n"
-        "## Contexto: wave-plan.md (DAG draft)\n"
+        "## Context: wave-plan.md (DAG draft)\n"
         "\n"
         f"{wave_plan_text}\n"
         "---\n"
-        "## Contexto: plan.md (input original)\n"
+        "## Context: plan.md (original input)\n"
         "\n"
         f"{plan_text}\n"
         "---\n"
-        "## Contexto: ambiguities-resolved.md\n"
+        "## Context: ambiguities-resolved.md\n"
         "\n"
         f"{ambiguities_text}\n"
     )
@@ -182,17 +183,17 @@ def request_review(
     *,
     response_path: Path | None = None,
 ) -> dict[str, Any] | str:
-    """Solicita review do LLM.
+    """Requests LLM review.
 
-    - Se `response_path` fornecido: le JSON do path (mock ou resposta real de LLM
-      externo) e retorna parse.
-    - Se `response_path` ausente: monta prompt via `_build_prompt` e retorna-o
-      como string. O caller deve detectar tipo str, imprimir para stdout e
-      retornar exit 2.
+    - If `response_path` is provided: reads JSON from path (mock or real external
+      LLM response) and returns the parsed dict.
+    - If `response_path` is absent: builds prompt via `_build_prompt` and returns it
+      as a string. The caller should detect type str, print to stdout and
+      return exit 2.
 
-    Os tres primeiros params (`wave_plan_text`/`plan_text`/`ambiguities_text`)
-    alimentam o prompt em modo interativo, ou sao ignorados quando um
-    `response_path` ja existe.
+    The first three params (`wave_plan_text`/`plan_text`/`ambiguities_text`)
+    feed the prompt in interactive mode, or are ignored when a
+    `response_path` already exists.
     """
     if response_path is not None:
         if not response_path.exists():
@@ -215,9 +216,9 @@ def request_review(
 # Validacao do response
 # ----------------------------------------------------------------------------
 def validate_response(d: Any) -> dict[str, Any]:
-    """Valida schema do veredicto. Aborta com LLMReviewError se invalido.
+    """Validates verdict schema. Aborts with LLMReviewError if invalid.
 
-    Retorna o dict normalizado (com defaults preenchidos).
+    Returns the normalized dict (with defaults filled in).
     """
     if not isinstance(d, dict):
         raise LLMReviewError(f"response must be a dict, got {type(d).__name__}")
@@ -229,12 +230,12 @@ def validate_response(d: Any) -> dict[str, Any]:
         )
 
     if verdict == "SKIPPED":
-        # Caminho legitimo apenas quando produzido pelo proprio script (skip threshold).
-        # Aceitamos SKIPPED do mock para teste de pass-through; defaults vazios.
+        # Legitimate path only when produced by the script itself (skip threshold).
+        # We accept SKIPPED from mock for pass-through testing; empty defaults.
         issues = d.get("issues", [])
         proposed = d.get("proposed_dag_changes", [])
     else:
-        # APPROVE / PROPOSE_CHANGES exigem campos issues + proposed_dag_changes.
+        # APPROVE / PROPOSE_CHANGES require fields issues + proposed_dag_changes.
         if "issues" not in d:
             raise LLMReviewError(
                 f"response with verdict={verdict} must have field 'issues'"
@@ -297,7 +298,7 @@ def validate_response(d: Any) -> dict[str, Any]:
 # Build verdict SKIPPED localmente (sem chamar LLM)
 # ----------------------------------------------------------------------------
 def build_skipped_verdict(skip_reason: str) -> dict[str, Any]:
-    """Monta o dict canonico de SKIPPED produzido pelo proprio script."""
+    """Builds the canonical SKIPPED dict produced by the script itself."""
     return {
         "verdict": "SKIPPED",
         "issues": [],
@@ -310,11 +311,11 @@ def build_skipped_verdict(skip_reason: str) -> dict[str, Any]:
 # Update wave-plan.md frontmatter
 # ----------------------------------------------------------------------------
 def _update_wave_plan_llm_review(wave_plan_path: Path, verdict: str) -> None:
-    """Atualiza frontmatter do wave-plan.md com llm_review + incrementa iteracoes.
+    """Updates wave-plan.md frontmatter with llm_review + increments iterations.
 
     - llm_review -> <verdict>
-    - llm_review_iterations -> +1 (ou 1 se ausente)
-    - Preserva corpo markdown e todos os outros campos do frontmatter.
+    - llm_review_iterations -> +1 (or 1 if absent)
+    - Preserves markdown body and all other frontmatter fields.
     """
     if not wave_plan_path.exists():
         raise LLMReviewError(f"wave-plan file not found: {wave_plan_path}")
@@ -354,11 +355,11 @@ def _update_wave_plan_llm_review(wave_plan_path: Path, verdict: str) -> None:
 # Update L1 llm_review_skipped_count
 # ----------------------------------------------------------------------------
 def _increment_llm_review_skipped_count(context_path: Path) -> None:
-    """Incrementa `llm_review_skipped_count` no frontmatter de L1 (CONTEXT.md).
+    """Increments `llm_review_skipped_count` in the L1 frontmatter (CONTEXT.md).
 
-    Se campo ausente, inicializa em 1. Preserva corpo markdown e demais campos.
-    Silenciosamente retorna se arquivo inexistente ou frontmatter inválido
-    (não falha o review por erro de L1).
+    If field is absent, initializes to 1. Preserves markdown body and other fields.
+    Returns silently if file does not exist or frontmatter is invalid
+    (does not fail the review on L1 error).
     """
     if not context_path.exists():
         return
@@ -393,49 +394,49 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         "--wave-plan",
         required=True,
         type=Path,
-        help="path para wave-plan.md (gerado pelo wave-planner-script.py)",
+        help="path to wave-plan.md (generated by wave-planner-script.py)",
     )
     parser.add_argument(
         "--plan",
         required=True,
         type=Path,
-        help="path para plan.md (input original do wave planner)",
+        help="path to plan.md (original wave planner input)",
     )
     parser.add_argument(
         "--ambiguities",
         required=True,
         type=Path,
-        help="path para ambiguities-resolved.md",
+        help="path to ambiguities-resolved.md",
     )
     parser.add_argument(
         "--output",
         required=True,
         type=Path,
-        help="path para llm-review-verdict.json (saida)",
+        help="path to llm-review-verdict.json (output)",
     )
     parser.add_argument(
         "--mock-response",
         type=Path,
         default=None,
-        help="path para json de mock (test mode); mutuamente exclusivo com --llm-response",
+        help="path to mock JSON (test mode); mutually exclusive with --llm-response",
     )
     parser.add_argument(
         "--llm-response",
         type=Path,
         default=None,
-        help="path para json gerado por LLM externo (prod mode); mutuamente exclusivo com --mock-response",
+        help="path to JSON produced by external LLM (prod mode); mutually exclusive with --mock-response",
     )
     parser.add_argument(
         "--update-wave-plan",
         type=Path,
         default=None,
-        help="path do wave-plan.md a ser atualizado com llm_review no frontmatter",
+        help="path to wave-plan.md to update with llm_review in frontmatter",
     )
     parser.add_argument(
         "--workspace-context",
         type=Path,
         default=None,
-        help="path do L1 CONTEXT.md do workspace; usado para incrementar llm_review_skipped_count quando skip ocorre",
+        help="path to workspace L1 CONTEXT.md; used to increment llm_review_skipped_count when skip occurs",
     )
     return parser.parse_args(argv)
 
@@ -457,7 +458,7 @@ def main(argv: list[str] | None = None) -> int:
         if skip:
             verdict_dict = build_skipped_verdict(reason)
         else:
-            # 2. Le inputs textuais.
+            # 2. Read text inputs.
             wave_plan_text = _read_text_safe(args.wave_plan, "wave-plan")
             plan_text = _read_text_safe(args.plan, "plan")
             ambiguities_text = _read_text_safe(args.ambiguities, "ambiguities")
@@ -470,7 +471,7 @@ def main(argv: list[str] | None = None) -> int:
                 response_path=response_path,
             )
             if isinstance(raw, str):
-                # Prompt mode: nenhum response path fornecido.
+                # Prompt mode: no response path provided.
                 print(raw, end="")
                 return 2
             verdict_dict = validate_response(raw)
@@ -479,7 +480,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"llm-review error: {exc}", file=sys.stderr)
         return 1
 
-    # 3. Atualiza wave-plan.md frontmatter se solicitado.
+    # 3. Update wave-plan.md frontmatter if requested.
     if args.update_wave_plan is not None:
         if not args.update_wave_plan.exists():
             raise LLMReviewError(
@@ -489,21 +490,21 @@ def main(argv: list[str] | None = None) -> int:
             args.update_wave_plan, verdict_dict["verdict"]
         )
 
-    # 3b. Se skip ocorreu e workspace-context fornecido, incrementa counter em L1.
+    # 3b. If skip occurred and workspace-context provided, increment counter in L1.
     if (
         verdict_dict["verdict"] == "SKIPPED"
         and args.workspace_context is not None
     ):
         _increment_llm_review_skipped_count(args.workspace_context)
 
-    # 4. Escreve output json.
+    # 4. Write output JSON.
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(
         json.dumps(verdict_dict, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
 
-    # 5. Stdout sumarizado.
+    # 5. Summarized stdout.
     is_skipped = verdict_dict["verdict"] == "SKIPPED"
     print(
         f"verdict={verdict_dict['verdict']} "
