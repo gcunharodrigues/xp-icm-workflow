@@ -1,104 +1,104 @@
-# Triage State Machine — Fase 08 feedback intake
+# Triage State Machine — Stage 08 feedback intake
 
-Adaptado de [mattpocock/skills/skills/engineering/triage/SKILL.md].
+Adapted from [mattpocock/skills/skills/engineering/triage/SKILL.md].
 
-Stage 08 (feedback_intake) classifica feedback recebido em **(category, state)**
-antes de inferir A/B/C. Mapping direto: classificação → saída.
+Stage 08 (feedback_intake) classifies received feedback into **(category, state)**
+before inferring A/B/C. Direct mapping: classification → output.
 
-## Categorias
+## Categories
 
-- **bug** — algo está quebrado.
-- **enhancement** — nova feature ou improvement.
+- **bug** — something is broken.
+- **enhancement** — new feature or improvement.
 
-Toda issue classificada carrega **exatamente 1 categoria**.
+Every classified issue carries **exactly 1 category**.
 
-## Estados
+## States
 
-- **needs-triage** — precisa avaliação. Estado inicial.
-- **needs-info** — esperando reporter dar mais info. Volta a `needs-triage` após resposta.
-- **ready-for-action** — fully specified, ready para ser actioned (B ou C).
-- **wontfix** — não será actioned. Vai para `_out-of-scope/` se enhancement.
+- **needs-triage** — requires evaluation. Initial state.
+- **needs-info** — waiting for the reporter to provide more info. Returns to `needs-triage` after a response.
+- **ready-for-action** — fully specified, ready to be actioned (B or C).
+- **wontfix** — will not be actioned. Goes to `_out-of-scope/` if an enhancement.
 
-Toda issue triada carrega **exatamente 1 estado**.
+Every triaged issue carries **exactly 1 state**.
 
-## Transições válidas
+## Valid transitions
 
 ```
 unlabeled → needs-triage
 needs-triage → needs-info
               → ready-for-action
               → wontfix
-needs-info → needs-triage  (após reporter responder)
+needs-info → needs-triage  (after reporter responds)
 ```
 
-Maintainer pode override em qualquer momento — flag transitions unusuais e
-ask antes de proceder.
+Maintainer may override at any time — flag unusual transitions and
+ask before proceeding.
 
-## Mapping classificação → Saída A/B/C
+## Classification → Output A/B/C mapping
 
-| Categoria | Estado | Saída | Comportamento |
+| Category | State | Output | Behavior |
 |---|---|---|---|
-| **bug** | ready-for-action | **B** restart fase X | Mapeia stage do bug: testes/CI → 05, código → 04, design errado → 02, requisitos errados → 01, review missou → 06, merge → 07 |
-| **enhancement** | ready-for-action (aceito) | **C** spawn novo workspace | Workspace novo com escopo da enhancement |
-| **enhancement** | wontfix | **A** close + append `_out-of-scope/<conceito>.md` | Workspace fecha, decisão registrada |
-| qualquer | needs-info | sessão pausa | Status `COMPLETED_AWAITING_HUMAN`; aguarda reporter |
-| nada | tudo ok | **A** close | Workspace fecha sem ação |
+| **bug** | ready-for-action | **B** restart stage X | Map stage of bug: tests/CI → 05, code → 04, wrong design → 02, wrong requirements → 01, review missed → 06, merge → 07 |
+| **enhancement** | ready-for-action (accepted) | **C** spawn new workspace | New workspace scoped to the enhancement |
+| **enhancement** | wontfix | **A** close + append `_out-of-scope/<concept>.md` | Workspace closes, decision recorded |
+| any | needs-info | session pauses | Status `COMPLETED_AWAITING_HUMAN`; waiting for reporter |
+| none | all ok | **A** close | Workspace closes with no action |
 
-## AGENT-BRIEF para Saída B e C
+## AGENT-BRIEF for Output B and C
 
-Cada item que vai para Saída B ou C **produz um AGENT-BRIEF**
-(formato: `references/agent-brief-template.md`):
+Each item going to Output B or C **produces an AGENT-BRIEF**
+(format: `references/agent-brief-template.md`):
 
-- **Saída B:** AGENT-BRIEF descreve o bug + fix esperado + acceptance criteria.
-  Vai como input para próxima sessão da fase X reaberta.
-- **Saída C:** AGENT-BRIEF descreve a enhancement + escopo do novo workspace.
-  Sessão B (bootstrap) usa como kickoff.
+- **Output B:** AGENT-BRIEF describes the bug + expected fix + acceptance criteria.
+  Used as input for the next session of the reopened stage X.
+- **Output C:** AGENT-BRIEF describes the enhancement + scope of the new workspace.
+  Session B (bootstrap) uses it as kickoff.
 
-## OUT-OF-SCOPE para wontfix
+## OUT-OF-SCOPE for wontfix
 
-Enhancement rejeitado (wontfix) registra:
+Rejected enhancement (wontfix) records:
 
-1. Cria/atualiza `<workspace>/_out-of-scope/<conceito-kebab>.md` com:
+1. Create/update `<workspace>/_out-of-scope/<concept-kebab>.md` with:
    - `# {Concept Name}`
    - **Decision:** out-of-scope
-   - **Reason:** raciocínio durável (não temporário)
-   - **Prior requests:** lista de issues/sessions que pediram
+   - **Reason:** durable rationale (not temporary)
+   - **Prior requests:** list of issues/sessions that requested it
 
-2. Próxima fase 02 (em iterações futuras) consulta `_out-of-scope/` e
-   surfaces match ao humano antes de re-propor.
+2. Next stage 02 (in future iterations) reads `_out-of-scope/` and
+   surfaces a match to the human before re-proposing.
 
-Ver `references/out-of-scope-kb.md` para format completo.
+See `references/out-of-scope-kb.md` for the full format.
 
-## Disclaimer obrigatório
+## Mandatory disclaimer
 
-Toda mensagem postada na issue/log durante triage começa com:
-
-```
-> *Esta classificação foi gerada por IA durante triage.*
-```
-
-## Fluxo completo Stage 08
+Every message posted on the issue/log during triage begins with:
 
 ```
-1. Pre-flight: L1 declara stage_atual=08, sub_stage=08_in_progress
-2. Coletar feedback (input livre + logs)
+> *This classification was generated by AI during triage.*
+```
+
+## Full Stage 08 flow
+
+```
+1. Pre-flight: L1 declares stage_atual=08, sub_stage=08_in_progress
+2. Collect feedback (free input + logs)
 3. Triage classification:
-   - Para cada item de feedback:
-     a. Categoria = bug | enhancement | none
-     b. Estado = ready-for-action | needs-info | wontfix
-4. Se needs-info → status=COMPLETED_AWAITING_HUMAN, sair
-5. Mapear classificação → saída (A | B | C)
-6. Para B e C: gerar AGENT-BRIEF
-7. Para wontfix: append em _out-of-scope/
-8. Mini-confirm com humano: mostra decisão + brief, espera s/n/edit
-9. Executar saída:
+   - For each feedback item:
+     a. Category = bug | enhancement | none
+     b. State = ready-for-action | needs-info | wontfix
+4. If needs-info → status=COMPLETED_AWAITING_HUMAN, exit
+5. Map classification → output (A | B | C)
+6. For B and C: generate AGENT-BRIEF
+7. For wontfix: append to _out-of-scope/
+8. Mini-confirm with human: show decision + brief, wait s/n/edit
+9. Execute output:
    - A: deactivate CLAUDE.md root + L1 status=COMPLETED + lessons append
-   - B: move outputs antigos, L1 iteration++, gera _kickoff, update CLAUDE.md root
-   - C: remove bloco do dono em CLAUDE.md root, imprime comando spawn
-10. Commit atômico + sair
+   - B: move old outputs, L1 iteration++, generate _kickoff, update CLAUDE.md root
+   - C: remove owner block from CLAUDE.md root, print spawn command
+10. Atomic commit + exit
 ```
 
 ## Quick override
 
-Maintainer humano pode dizer "marcar #42 como wontfix" — agent confirma
-ação proposta + executa direto. Skip grilling.
+Human maintainer can say "mark #42 as wontfix" — agent confirms
+proposed action + executes directly. Skip grilling.

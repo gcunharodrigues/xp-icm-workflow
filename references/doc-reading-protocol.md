@@ -1,36 +1,36 @@
-# Doc Reading Protocol — Canais de documentação para o subagente
+# Doc Reading Protocol — Documentation channels for the subagent
 
-> Protocolo que define **como** um subagente (fase 04) recebe documentação: quais docs ler, em que ordem, e quem injeta cada qual.
+> Protocol defining **how** a subagent (stage 04) receives documentation: which docs to read, in what order, and who injects each one.
 
-## Os 3 canais
+## The 3 channels
 
-| Canal | Nome | Quem injeta | O quê | Onde |
+| Channel | Name | Who injects | What | Where |
 |---|---|---|---|---|
-| 1 | **L2 Inputs** | Estrutura do workspace (bootstrap + sessões) | `CONTEXT.md` do estágio + arquivos declarados na tabela `Inputs` | `stages/<NN>/CONTEXT.md` lista todos os inputs obrigatórios e condicionais |
-| 2 | **Lead injeta** | Lead da wave (agente coordenador da fase 04) | Lições críticas pré-marcadas, contexto de task, ADRs relevantes, conventions extras | Injetado no `_kickoff.md` da wave e/ou na task do `plan.md` |
-| 3 | **plan.md declara** | Designer (fase 02), refinado pelo wave-planner (fase 03) | Metadados por task: Files touched, ADRs aplicáveis, Lições críticas, Tech debt paydown, Requires_peer_review | Seção de metadados de cada task no `plan.md` |
+| 1 | **L2 Inputs** | Workspace structure (bootstrap + sessions) | The stage's `CONTEXT.md` + files declared in the `Inputs` table | `stages/<NN>/CONTEXT.md` lists all mandatory and conditional inputs |
+| 2 | **Lead injects** | Wave lead (stage 04 coordinating agent) | Pre-marked critical lessons, task context, relevant ADRs, extra conventions | Injected into the wave's `_kickoff.md` and/or the task in `plan.md` |
+| 3 | **plan.md declares** | Designer (stage 02), refined by wave-planner (stage 03) | Per-task metadata: Files touched, ADRs aplicáveis, Critical lessons, Tech debt paydown, Requires_peer_review | Metadata section of each task in `plan.md` |
 
-## Regra de leitura
+## Reading rule
 
-1. **Canal 1 é obrigatório.** Todo subagente lê L0 → L1 → L2 (seu estágio) → Inputs declarados. Sem exceção.
-2. **Canal 2 é obrigatório quando presente.** Se `_kickoff.md` existe no estágio, o subagente lê antes de começar. O lead pode injetar contexto adicional via mensagem direta (apenas quando estritamente necessário).
-3. **Canal 3 é task-specific.** Cada task no `plan.md` declara quais ADRs, lições e files o subagente deve consultar. O subagente lê **somente** os files declarados em `Files touched`, não a árvore inteira de `src/`.
+1. **Channel 1 is mandatory.** Every subagent reads L0 → L1 → L2 (its stage) → declared Inputs. No exception.
+2. **Channel 2 is mandatory when present.** If `_kickoff.md` exists in the stage, the subagent reads it before starting. The lead may inject additional context via direct message (only when strictly necessary).
+3. **Channel 3 is task-specific.** Each task in `plan.md` declares which ADRs, lessons, and files the subagent must consult. The subagent reads **only** the files declared in `Files touched`, not the entire `src/` tree.
 
-## O que o subagente NÃO lê
+## What the subagent does NOT read
 
-- Outros workspaces em `workspaces/<outro>/`
-- Outputs de estágios não listados em `Inputs`
-- `src/` inteiro — somente `Files touched` da task
-- L4 outputs de estágios futuros (que ainda não existem)
+- Other workspaces in `workspaces/<other>/`
+- Outputs from stages not listed in `Inputs`
+- The entire `src/` tree — only `Files touched` from the task
+- L4 outputs from future stages (which do not yet exist)
 
 ## Anti-patterns
 
-- **Over-read:** ler `src/` inteiro em vez de `Files touched` declarados. Custo de token alto, contexto diluído.
-- **Under-read:** pular L2 Inputs obrigatórios. Perde convenções, stop points, gates.
-- **Canal 2 sem kickstart:** lead que não gera `_kickoff.md` deixa subagente sem contexto de wave. Cada wave deve ter kickoff.
+- **Over-read:** reading the entire `src/` instead of the declared `Files touched`. High token cost, diluted context.
+- **Under-read:** skipping mandatory L2 Inputs. Misses conventions, stop points, gates.
+- **Channel 2 without kickstart:** a lead that does not generate `_kickoff.md` leaves the subagent without wave context. Every wave must have a kickoff.
 
-## Cruzamento com outros protocolos
+## Cross-reference with other protocols
 
-- **4-block-contract-template.md:** O schema de task no `plan.md` é o veículo do canal 3. Cada task carrega O QUE / COMO / NÃO QUERO / VALIDAÇÃO + metadados.
-- **subagent-protocol.md:** O lead usa canais 1+2+3 para montar o contexto de cada subagente antes do spawn.
-- **session-handoff-protocol.md:** O `_kickoff.md` é o artefato do canal 2 entre sessões (lead → próxima sessão).
+- **4-block-contract-template.md:** The task schema in `plan.md` is the vehicle for channel 3. Each task carries O QUE / COMO / NÃO QUERO / VALIDAÇÃO + metadata.
+- **subagent-protocol.md:** The lead uses channels 1+2+3 to assemble each subagent's context before spawn.
+- **session-handoff-protocol.md:** The `_kickoff.md` is the channel 2 artifact between sessions (lead → next session).

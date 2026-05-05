@@ -1,61 +1,61 @@
 # Design It Twice — parallel interface design
 
-Adaptado de [mattpocock/skills/skills/engineering/improve-codebase-architecture/INTERFACE-DESIGN.md].
+Adapted from [mattpocock/skills/skills/engineering/improve-codebase-architecture/INTERFACE-DESIGN.md].
 
-Para módulos core em stage 02 (design), spawnar **3+ subagents em paralelo**
-com constraints distintos. Comparar antes de commitar interface. Baseado em
-"Design It Twice" (Ousterhout, *A Philosophy of Software Design*) — primeira
-ideia raramente é a melhor.
+For core modules in stage 02 (design), spawn **3+ subagents in parallel**
+with distinct constraints. Compare before committing to an interface. Based on
+"Design It Twice" (Ousterhout, *A Philosophy of Software Design*) — the first
+idea is rarely the best.
 
-## Quando aplicar
+## When to apply
 
-- Módulo marcado `core: true` no plan.md (decisão arquitetural meaningful)
-- Interface terá múltiplos callers / public surface
-- Lock-in alto (refactor depois custa quarter+)
-- Não aplicável: módulos triviais, single-caller, glue code
+- Module marked `core: true` in plan.md (meaningful architectural decision)
+- Interface will have multiple callers / public surface
+- High lock-in (refactoring later costs a quarter+)
+- Not applicable: trivial modules, single-caller, glue code
 
-## Processo
+## Process
 
 ### 1. Frame the problem space
 
-Antes de spawn, escreva user-facing explanation da problem space:
-- Constraints que qualquer interface satisfaria
+Before spawning, write a user-facing explanation of the problem space:
+- Constraints that any interface would satisfy
 - Dependencies (categorize: in-process / local-substitutable / remote-owned / true-external)
-- Code sketch ilustrativo (não proposal — só ground constraints)
+- Illustrative code sketch (not a proposal — just grounding constraints)
 
-Mostre ao user, depois proceed para Step 2 (user lê enquanto subagents trabalham).
+Show to the user, then proceed to Step 2 (user reads while subagents work).
 
-### 2. Spawn 3+ subagents em paralelo
+### 2. Spawn 3+ subagents in parallel
 
-Use `Agent` tool com 3+ chamadas paralelas. Cada subagent tem **constraint
-diferente** (briefs separados, mas todos referenciam CONTEXT.md + ADRs):
+Use the `Agent` tool with 3+ parallel calls. Each subagent has a **different
+constraint** (separate briefs, but all reference CONTEXT.md + ADRs):
 
-- **Agent 1:** "Minimize interface — 1-3 entry points max. Maximize leverage por entry point."
+- **Agent 1:** "Minimize interface — 1-3 entry points max. Maximize leverage per entry point."
 - **Agent 2:** "Maximize flexibility — support many use cases + extension."
 - **Agent 3:** "Optimize common caller — default case trivial."
-- **Agent 4 (se aplicável):** "Design around ports & adapters para cross-seam dependencies."
+- **Agent 4 (if applicable):** "Design around ports & adapters for cross-seam dependencies."
 
-Cada subagent retorna:
+Each subagent returns:
 1. Interface (types, methods, params + invariants, ordering, error modes)
-2. Usage example mostrando como callers usam
-3. O que implementação esconde behind seam
+2. Usage example showing how callers use it
+3. What the implementation hides behind the seam
 4. Dependency strategy + adapters
-5. Trade-offs — onde leverage é alto, onde é thin
+5. Trade-offs — where leverage is high, where it is thin
 
 ### 3. Present and compare
 
-Apresenta designs sequencialmente para user absorver cada um. Compare em
-prosa por:
-- **Depth** — leverage no interface (deep = high leverage)
-- **Locality** — onde change concentra
-- **Seam placement** — onde behavior pode ser altered
+Present designs sequentially so the user can absorb each one. Compare in
+prose by:
+- **Depth** — leverage at the interface (deep = high leverage)
+- **Locality** — where change concentrates
+- **Seam placement** — where behavior can be altered
 
-Após comparação, dê **opinionated recommendation**: qual design é mais forte
-e por quê. Se elements de designs diferentes combinam bem, propor hybrid.
+After the comparison, give an **opinionated recommendation**: which design is strongest
+and why. If elements from different designs combine well, propose a hybrid.
 
-User wants strong read, not menu.
+User wants a strong read, not a menu.
 
-## Output em stage 02
+## Output in stage 02
 
 `stages/02_design/output/design-alternatives-<module>.md`:
 
@@ -82,15 +82,15 @@ User wants strong read, not menu.
 | Seam | external | internal | external |
 
 ## Recommendation
-<opinionated pick, ou hybrid proposal, com razões>
+<opinionated pick, or hybrid proposal, with reasons>
 ```
 
-`decisions.md` lista a decisão final (com link). Pode virar ADR se passar
-3-criteria gate (ver `references/adr-format.md`).
+`decisions.md` lists the final decision (with link). May become an ADR if it passes
+the 3-criteria gate (see `references/adr-format.md`).
 
-## Anti-padrões
+## Anti-patterns
 
-- Spawnar 3 subagents com mesmo prompt — não vai produzir diversidade.
-- Aplicar a TODO módulo — overhead. Reservar para core decisions.
-- Usar como menu (escolha do user) — agent deve ter opinião.
-- Pular Step 1 (problem space) — subagents trabalham com constraints diferentes do user.
+- Spawning 3 subagents with the same prompt — will not produce diversity.
+- Applying to EVERY module — overhead. Reserve for core decisions.
+- Using it as a menu (user's choice) — the agent must have an opinion.
+- Skipping Step 1 (problem space) — subagents work with different constraints than the user.

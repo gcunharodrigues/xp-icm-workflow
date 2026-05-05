@@ -1,47 +1,47 @@
 # OUT-OF-SCOPE Knowledge Base
 
-Adaptado de [mattpocock/skills/skills/engineering/triage/OUT-OF-SCOPE.md].
+Adapted from [mattpocock/skills/skills/engineering/triage/OUT-OF-SCOPE.md].
 
-`<workspace>/_out-of-scope/` armazena registros persistentes de feature
-requests rejeitadas. Dois propósitos:
+`<workspace>/_out-of-scope/` stores persistent records of rejected feature
+requests. Two purposes:
 
-1. **Memória institucional** — por que feature foi rejeitada, raciocínio
-   preservado quando issue fecha.
-2. **Deduplicação** — quando issue nova bate com rejeição prior, skill
-   surfaces decisão prévia em vez de re-litigar.
+1. **Institutional memory** — why a feature was rejected, rationale
+   preserved when the issue closes.
+2. **Deduplication** — when a new issue matches a prior rejection, the skill
+   surfaces the previous decision instead of re-litigating.
 
-## Estrutura
+## Structure
 
 ```
 <workspace>/_out-of-scope/
-├── README.md            (template explicando convenção)
+├── README.md            (template explaining the convention)
 ├── dark-mode.md
 ├── plugin-system.md
 └── graphql-api.md
 ```
 
-**1 arquivo por conceito**, NÃO por issue. Múltiplas issues pedindo a mesma
-coisa são agrupadas sob 1 arquivo.
+**1 file per concept**, NOT per issue. Multiple issues requesting the same
+thing are grouped under 1 file.
 
-## Formato
+## Format
 
-Estilo relaxed/readable — short design doc, não database entry.
+Relaxed/readable style — short design doc, not a database entry.
 
 ```markdown
 # Dark Mode
 
-Este projeto não suporta dark mode ou theming.
+This project does not support dark mode or theming.
 
-## Por que está fora de escopo
+## Why it is out of scope
 
-Rendering pipeline assume single color palette em `ThemeConfig`. Suportar
-multiple themes exigiria:
-- Theme context provider wrapping component tree
+The rendering pipeline assumes a single color palette in `ThemeConfig`. Supporting
+multiple themes would require:
+- Theme context provider wrapping the component tree
 - Per-component theme-aware style resolution
-- Persistence layer para user theme preference
+- Persistence layer for user theme preference
 
-Mudança arquitetural significativa que não alinha com foco em content authoring.
-Theming é concern downstream — embed/redistribute output.
+Significant architectural change that does not align with the focus on content authoring.
+Theming is a downstream concern — embed/redistribute output.
 
 ```ts
 interface ThemeConfig {
@@ -52,68 +52,68 @@ interface ThemeConfig {
 
 ## Prior requests
 
-- session 042 fase 08 — "Add dark mode support"
-- session 087 fase 02 — "Night theme accessibility"
-- session 134 fase 01 — "Dark theme option"
+- session 042 stage 08 — "Add dark mode support"
+- session 087 stage 02 — "Night theme accessibility"
+- session 134 stage 01 — "Dark theme option"
 ```
 
 ## Naming
 
 - Short, descriptive kebab-case: `dark-mode.md`, `plugin-system.md`,
   `graphql-api.md`.
-- Recognizable enough — pessoa browsing diretório entende o que foi rejeitado
-  sem abrir arquivo.
+- Descriptive enough — someone browsing the directory understands what was
+  rejected without opening the file.
 
-## Razão deve ser substantiva
+## Reason must be substantive
 
-Não "we don't want this" mas **por quê**. Boas razões referenciam:
+Not "we don't want this" but **why**. Good reasons reference:
 
-- Project scope/philosophy ("Foco em X; theming é concern downstream")
-- Technical constraints ("Suportar isso exigiria Y, conflita com Z")
-- Strategic decisions ("Escolhemos A em vez de B porque...")
+- Project scope/philosophy ("Focus on X; theming is a downstream concern")
+- Technical constraints ("Supporting this would require Y, conflicting with Z")
+- Strategic decisions ("We chose A over B because...")
 
-Razão deve ser **durável**. Evite circumstance temporária ("muito ocupado
-agora") — isso é deferral, não rejection real.
+The reason must be **durable**. Avoid temporary circumstances ("too busy
+right now") — that is a deferral, not a real rejection.
 
-## Quando consultar `_out-of-scope/`
+## When to consult `_out-of-scope/`
 
-**Stage 02 (design):** se workspace tem `iteration > 0`, ler todos
-`_out-of-scope/*.md`. Se design proposto bate com rejeição prévia, surface ao
-humano:
-> "Esta proposta é similar a `_out-of-scope/dark-mode.md` — rejeitamos antes
-> porque [reason]. Ainda concorda?"
+**Stage 02 (design):** if the workspace has `iteration > 0`, read all
+`_out-of-scope/*.md` files. If the proposed design matches a prior rejection, surface it to
+the human:
+> "This proposal is similar to `_out-of-scope/dark-mode.md` — we rejected it before
+> because [reason]. Do you still agree?"
 
-Humano pode:
-- **Confirmar** — issue nova adicionada à "Prior requests", workspace
-  prossegue sem incluir o item no design.
-- **Reconsiderar** — arquivo deletado/atualizado, design prossegue normal.
-- **Disagree** — issues relacionadas mas distintas, prosseguir.
+The human may:
+- **Confirm** — new issue added to "Prior requests", workspace
+  proceeds without including the item in the design.
+- **Reconsider** — file deleted/updated, design proceeds normally.
+- **Disagree** — related but distinct issues, proceed.
 
-**Stage 08 (feedback intake):** durante triage, antes de classificar feedback
-novo, check matching com `_out-of-scope/` files.
+**Stage 08 (feedback intake):** during triage, before classifying new feedback,
+check for a match with `_out-of-scope/` files.
 
-## Quando escrever em `_out-of-scope/`
+## When to write to `_out-of-scope/`
 
-Apenas quando **enhancement** (não bug) é rejeitada como `wontfix`:
+Only when an **enhancement** (not a bug) is rejected as `wontfix`:
 
-1. Maintainer/agent decide feature é fora de escopo.
-2. Check se arquivo correspondente já existe.
-3. Se sim: append nova entry em "Prior requests".
-4. Se não: criar arquivo novo com concept name + decision + reason + first prior request.
-5. Post mensagem no log explaining decisão + mencionando arquivo.
-6. Workspace fecha com Saída A (close), L1 status=COMPLETED.
+1. Maintainer/agent decides the feature is out of scope.
+2. Check whether the corresponding file already exists.
+3. If yes: append a new entry to "Prior requests".
+4. If no: create a new file with concept name + decision + reason + first prior request.
+5. Post a message in the log explaining the decision + mentioning the file.
+6. Workspace closes with Output A (close), L1 status=COMPLETED.
 
-## Quando atualizar/remover
+## When to update/remove
 
-Se decisão muda (não está mais out-of-scope):
-- Delete arquivo `_out-of-scope/<conceito>.md`.
-- Skill não precisa reabrir issues antigas — são historical records.
-- Issue nova que triggered reconsideração prossegue triage normal.
+If the decision changes (it is no longer out of scope):
+- Delete the `_out-of-scope/<concept>.md` file.
+- The skill does not need to reopen old issues — they are historical records.
+- The new issue that triggered the reconsideration proceeds through normal triage.
 
-## Match de conceito (não keyword)
+## Concept match (not keyword)
 
-"Night theme" matches `dark-mode.md` porque concept similarity. Mecanismo:
-agent lê todos arquivos da kb, compara semântica do feedback novo com cada
-concept. Se match: surface ao humano.
+"Night theme" matches `dark-mode.md` because of concept similarity. Mechanism:
+agent reads all files in the kb, compares the semantics of the new feedback against each
+concept. If match: surface to human.
 
-Não é keyword matching estrito — não exige termos idênticos.
+Not strict keyword matching — identical terms are not required.

@@ -1,37 +1,37 @@
 # Task Types — HITL vs AFK
 
-Adaptado de [mattpocock/skills/skills/engineering/to-issues/SKILL.md].
+Adapted from [mattpocock/skills/skills/engineering/to-issues/SKILL.md].
 
-## Definições
+## Definitions
 
-**HITL (Human-In-The-Loop):** task que **exige interação humana** durante
-execução. Subagent não pode terminar autonomamente.
+**HITL (Human-In-The-Loop):** task that **requires human interaction** during
+execution. A subagent cannot complete it autonomously.
 
-Exemplos:
-- Decisão arquitetural com trade-off não-óbvio (escolher entre 2 frameworks)
-- Design review (mockup precisa aprovação)
-- Manual UX/QA testing (clica botão, valida visual)
-- Acesso a credentials/cofres
-- Deploy production gate
-- Aceite de stakeholder externo
+Examples:
+- Architectural decision with non-obvious trade-off (choosing between 2 frameworks)
+- Design review (mockup requires approval)
+- Manual UX/QA testing (clicking buttons, validating visuals)
+- Access to credentials/vaults
+- Production deploy gate
+- External stakeholder sign-off
 
-**AFK (Away-From-Keyboard):** task que **um subagent pode completar
-autonomamente** com o brief. Lead spawna via Agent tool, subagent executa
-ciclo TDD 7 passos, retorna report.
+**AFK (Away-From-Keyboard):** task that **a subagent can complete
+autonomously** given the brief. Lead spawns via Agent tool, subagent runs
+the 7-step TDD cycle, returns report.
 
-Exemplos:
-- Implementar endpoint REST com schema definido em plan.md
-- Adicionar coluna em schema + migration
-- Refactor de função interna preservando contrato
-- Adicionar test coverage em módulo existente
-- Fix bug com repro test claro
+Examples:
+- Implement REST endpoint with schema defined in plan.md
+- Add column to schema + migration
+- Refactor internal function preserving contract
+- Add test coverage to existing module
+- Fix bug with clear repro test
 
 ## Default
 
-`AFK` é default. Mark as `HITL` apenas com **justificativa explícita** em
-coluna do plan.md.
+`AFK` is the default. Mark as `HITL` only with **explicit justification** in
+the plan.md column.
 
-## Schema no plan.md
+## Schema in plan.md
 
 ```markdown
 ### Task: implementar-jwt-refresh
@@ -50,8 +50,8 @@ coluna do plan.md.
 ### Task: choose-orm
 
 **Type:** HITL
-**Reason:** Decisão arquitetural — Prisma vs Drizzle vs raw SQL. Lock-in
-significativo, equipe deve aprovar.
+**Reason:** Architectural decision — Prisma vs Drizzle vs raw SQL. Significant
+lock-in; team must approve.
 **Files touched:** docs/decisions/0007-orm-choice.md
 **Depends on:** none
 
@@ -60,56 +60,56 @@ significativo, equipe deve aprovar.
 
 ## Wave planner consequence
 
-- **AFK tasks:** agrupadas em waves topológicas respeitando cap por tier
+- **AFK tasks:** grouped into topological waves respecting cap per tier
   (experimental: 2, tool: 3, development: 5, production: 5).
-- **HITL tasks:** cada uma vira **wave isolada com cap=1**. Lead session
-  pausa ao chegar nessa wave, gera AGENT-BRIEF (mas NÃO spawna subagent),
-  exibe ao humano e aguarda input. Status: `wave-N_hitl_pending`.
+- **HITL tasks:** each becomes an **isolated wave with cap=1**. Lead session
+  pauses upon reaching that wave, generates an AGENT-BRIEF (but does NOT spawn a subagent),
+  displays it to the human and waits for input. Status: `wave-N_hitl_pending`.
 
-## Lead session na wave HITL
+## Lead session on a HITL wave
 
 ```
-1. Detecta wave type=HITL
-2. Gera AGENT-BRIEF a partir da task
-3. Imprime ao humano:
+1. Detect wave type=HITL
+2. Generate AGENT-BRIEF from the task
+3. Print to human:
    "Wave N (HITL): <task summary>
-    Brief gerado em stages/04/output/wave-N/hitl-brief.md
-    Ação requerida: <reason>
-    Após resolver, retome a sessão e marque sub_stage=04_wave_N_completed."
-4. Atualiza L1: status=COMPLETED_AWAITING_HUMAN, sub_stage=04_wave_N_hitl_pending
-5. SAIR da sessão.
+    Brief generated at stages/04/output/wave-N/hitl-brief.md
+    Action required: <reason>
+    After resolving, resume the session and set sub_stage=04_wave_N_completed."
+4. Update L1: status=COMPLETED_AWAITING_HUMAN, sub_stage=04_wave_N_hitl_pending
+5. EXIT the session.
 ```
 
-Próxima sessão (após humano resolver) retoma na wave seguinte.
+Next session (after human resolves) resumes at the following wave.
 
-## Critérios de classificação
+## Classification criteria
 
-**Marque HITL quando:**
-- Decisão é hard to reverse + tem alternativas reais (corresponde ao gate ADR)
-- Subagent não tem informação suficiente (precisa input externo)
-- Aceite de stakeholder explícito requerido
-- Manual testing precisa olhos humanos (UX, design)
-- Credentials/secrets envolvidos
+**Mark HITL when:**
+- Decision is hard to reverse + has real alternatives (corresponds to the ADR gate)
+- Subagent lacks sufficient information (requires external input)
+- Explicit stakeholder sign-off required
+- Manual testing requires human eyes (UX, design)
+- Credentials/secrets involved
 
-**Marque AFK quando:**
-- Brief tem acceptance criteria testáveis
-- Path técnico está claro (mesmo que múltiplos passos)
-- Tests podem confirmar correctness automaticamente
-- Sem dependências externas humanas
+**Mark AFK when:**
+- Brief has testable acceptance criteria
+- Technical path is clear (even if multi-step)
+- Tests can confirm correctness automatically
+- No external human dependencies
 
 ## Task-level HITL granularity (v3.5.0)
 
-Antes de v3.5.0: wave inteira pausava se 1+ task HITL (lead saía, próxima sessão retomava). Resultado: tasks não-HITL da mesma wave esperavam desnecessariamente.
+Before v3.5.0: the entire wave paused if 1+ tasks were HITL (lead exited, next session resumed). Result: non-HITL tasks in the same wave waited unnecessarily.
 
-A partir de v3.5.0:
-- **Wave HITL pura** (todas tasks `type: HITL`, ou wave-planner isolou em sub-wave cap=1): comportamento legacy mantido. Lead não spawna Agent, gera AGENT-BRIEFs, sai com `BLOCKED_HITL`.
-- **Wave mista** (tasks HITL + não-HITL): lead spawna Agents só pra não-HITL EM PARALELO. Tasks HITL: AGENT-BRIEF inline em `task-<slug>.md` + `status: AWAITING_HITL`. Lead aguarda Agents retornarem. Se ainda há `AWAITING_HITL`: L1 `status: BLOCKED_HITL`, sai. Próxima sessão valida tasks HITL viraram COMPLETE (humano editou) e retoma wave-reviewer.
+From v3.5.0 onward:
+- **Pure HITL wave** (all tasks `type: HITL`, or wave-planner isolated them into a sub-wave with cap=1): legacy behavior preserved. Lead does not spawn Agent, generates AGENT-BRIEFs, exits with `BLOCKED_HITL`.
+- **Mixed wave** (HITL + non-HITL tasks): lead spawns Agents only for non-HITL tasks IN PARALLEL. HITL tasks: inline AGENT-BRIEF in `task-<slug>.md` + `status: AWAITING_HITL`. Lead waits for Agents to return. If `AWAITING_HITL` tasks remain: L1 `status: BLOCKED_HITL`, exit. Next session validates that HITL tasks became COMPLETE (human edited them) and resumes the wave-reviewer.
 
-### Status canônico associado
+### Canonical associated status
 
-`BLOCKED_HITL` (distinto de `BLOCKED_ERROR` — não é falha, é espera externa). Listado em `references/state-machine-schema.md`.
+`BLOCKED_HITL` (distinct from `BLOCKED_ERROR` — not a failure, it is an external wait). Listed in `references/state-machine-schema.md`.
 
 ### Cross-ref
 
-- Pipeline detalhado: `references/wave-execution-protocol.md`
+- Detailed pipeline: `references/wave-execution-protocol.md`
 - L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` § HITL handling
