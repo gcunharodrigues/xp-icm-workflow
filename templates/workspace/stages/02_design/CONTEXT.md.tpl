@@ -19,155 +19,155 @@ output_files:
 next_stage: "03"
 ---
 
-# Estágio 02 — design (L2)
+# Stage 02 — design (L2)
 
-Design técnico detalhado a partir do escopo refinado em discovery. Produz `plan.md` no schema 4-block + Files touched + ADRs por task (consumido pelo Wave Planner em 03). Cria ADRs novos em `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (worktree linkada da base branch — modelo v3.4.0) quando decisões arquiteturais surgem (stack, db, dependências, serviços pagos, migrações irreversíveis, etc.). Gate humano antes de transitar para 03.
+Detailed technical design from the scope refined in discovery. Produces `plan.md` in the 4-block schema + Files touched + ADRs per task (consumed by the Wave Planner in 03). Creates new ADRs in `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (worktree linked to the base branch — model v3.4.0) when architectural decisions arise (stack, db, dependencies, paid services, irreversible migrations, etc.). Human gate before transitioning to 03.
 
-## Inputs (lê SOMENTE estes, na ordem)
+## Inputs (reads ONLY these, in order)
 
-| # | Path | Layer | Obrigatório? |
-|---|------|-------|--------------|
-| 1 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md | L0 | sim |
-| 2 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | sim |
-| 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/CONTEXT.md | L2 | sim |
-| 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/discovery.md | L4 | sim |
-| 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/output/recon-report.md | L4 | sim |
-| 6 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | condicional: ler conteúdo dos ADRs vigentes listados no recon-report (filenames já indexados em 00). Lido via worktree `.icm-main/`. |
-| 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml | L3 | sim |
-| 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | sim |
-| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md | L3 | sim |
-| 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md | L3 | sim |
-| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | sim |
-| 12 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | condicional: existe se herdou ou foi acumulada. Lido via worktree `.icm-main/`. |
-| 13 | {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md | L3 | condicional: existe se há débito declarado em iterações anteriores. Lido via worktree `.icm-main/`. |
-| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. |
-| 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio |
-| 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | condicional: catálogo canônico de IDs, complementar ao _config/stop-points.md de thresholds |
-| 17 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/wave-planner-algorithm.md | L3 | condicional: referenciado no mapeamento discovery → tasks técnicas |
-| 18 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/design-system.md | L3 | condicional: profile efetivo tem `design_system_required: True` (atualmente: `app_web_frontend`, `fullstack`) |
-| 19 | {{PROJECT_ROOT}}/.icm-main/DESIGN.md | L3 | condicional: profile com `design_system_required: True` AND brownfield (arquivo já existe). Lido via worktree `.icm-main/`. |
+| # | Path | Layer | Required? |
+|---|------|-------|-----------|
+| 1 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md | L0 | yes |
+| 2 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | yes |
+| 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/CONTEXT.md | L2 | yes |
+| 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/discovery.md | L4 | yes |
+| 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/output/recon-report.md | L4 | yes |
+| 6 | {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | conditional: read content of active ADRs listed in recon-report (filenames already indexed in 00). Read via worktree `.icm-main/`. |
+| 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml | L3 | yes |
+| 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | yes |
+| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md | L3 | yes |
+| 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md | L3 | yes |
+| 11 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md | L3 | yes |
+| 12 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | conditional: exists if inherited or accumulated. Read via worktree `.icm-main/`. |
+| 13 | {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md | L3 | conditional: exists if debt has been declared in prior iterations. Read via worktree `.icm-main/`. |
+| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md | L4-kickoff | conditional: generated by the previous session. Absent in beta1/beta2 workspaces (4B legacy) or if this is the first session of the stage. |
+| 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | conditional: required for the stage's final handoff |
+| 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional: canonical catalogue of IDs, complementary to _config/stop-points.md for thresholds |
+| 17 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/wave-planner-algorithm.md | L3 | conditional: referenced in discovery → technical tasks mapping |
+| 18 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/design-system.md | L3 | conditional: effective profile has `design_system_required: True` (currently: `app_web_frontend`, `fullstack`) |
+| 19 | {{PROJECT_ROOT}}/.icm-main/DESIGN.md | L3 | conditional: profile with `design_system_required: True` AND brownfield (file already exists). Read via worktree `.icm-main/`. |
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/.icm-main/src/ e {{PROJECT_ROOT}}/.icm-main/tests/ — design é output-driven a partir de discovery + ADRs; não inspeciona código existente. Se contexto de código for crítico, declarar dependência no plan.md (task com ADR de leitura) e revisitar 01.
-- ADRs não-listados pelo recon-report — só lê os indexados em 00 ou criados nesta sessão.
-- Outputs de estágios 03+ — não existem ainda.
-- {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md — lido como Input #11; NÃO re-ler de outras fontes.
-- Workspaces irmãos em {{PROJECT_ROOT}}/workspaces/<outro>/ — escopo é {{WORKSPACE}}.
+- {{PROJECT_ROOT}}/.icm-main/src/ and {{PROJECT_ROOT}}/.icm-main/tests/ — design is output-driven from discovery + ADRs; does not inspect existing code. If code context is critical, declare the dependency in plan.md (task with reading ADR) and revisit 01.
+- ADRs not listed by recon-report — only reads those indexed in 00 or created in this session.
+- Outputs of stages 03+ — they do not exist yet.
+- {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/xp-conventions.md — read as Input #11; do NOT re-read from other sources.
+- Sibling workspaces in {{PROJECT_ROOT}}/workspaces/<other>/ — scope is {{WORKSPACE}}.
 
 ## Process
 
-1. **Pre-flight:** validar paths Inputs marcados `sim`; sub_stage `02_in_progress`. Se `discovery.md` ausente → status `BLOCKED_ERROR`.
-2. **Ler 4-block-contract-template** para internalizar schema obrigatório de cada task em plan.md (O QUE / COMO / NÃO QUERO / VALIDAÇÃO + Files touched + ADRs aplicáveis + Lições críticas + Tech debt paydown + Requires_peer_review).
-   - **Heading levels canônicos (CRÍTICO):** task header é **h2** (`## Task <slug>: <título>`); subseções 4-block + metadados são **h3** (`### O QUE`, `### COMO`, `### NÃO QUERO`, `### VALIDAÇÃO`, `### Files touched`, `### Depends on`, etc). Wave-planner em stage 03 roda pre-flight `_detect_heading_drift` em `parse_plan` e aborta com `WavePlannerError` se encontrar `#### Task` (h4) ou `##### O QUE` (h5+). Não copiar o schema do template aplicando offset; usar `## ` e `### ` literais.
-3. **Mapear discovery → tasks técnicas:** quebrar a opção macro escolhida em 01 numa lista de tasks discretas. Cada task encaixa em ≤1 wave do Wave Planner (ver `references/wave-planner-algorithm.md` — em construção, Wave 4 da skill).
-4. **Para cada task, escrever 4-block + metadados** (Files touched, ADRs aplicáveis, Lições críticas se há match, etc.). Linguagem direta, evita over-engineering.
-5. **Detectar stop points durante design:** stack/db/new_dep/paid_service/irreversible/over_eng/pii/adr_drift. Calibração por tier em `_config/stop-points.md`. Disparo: pausar, menu A/B/C, atualizar L1 `BLOCKED_STOP_POINT`, esperar resposta humana, retomar.
-6. **Spawn ADRs novos** quando decisão arquitetural irreversível ou divergente do declarado: workflow canônico v3.4.0 via worktree `.icm-main/`:
+1. **Pre-flight:** validate Input paths marked `yes`; sub_stage `02_in_progress`. If `discovery.md` is absent → status `BLOCKED_ERROR`.
+2. **Read 4-block-contract-template** to internalize the mandatory schema for each task in plan.md (O QUE / COMO / NÃO QUERO / VALIDAÇÃO + Files touched + ADRs aplicáveis + Critical lessons + Tech debt paydown + Requires_peer_review).
+   - **Canonical heading levels (CRITICAL):** task header is **h2** (`## Task <slug>: <title>`); 4-block subsections + metadata are **h3** (`### O QUE`, `### COMO`, `### NÃO QUERO`, `### VALIDAÇÃO`, `### Files touched`, `### Depends on`, etc). Wave-planner in stage 03 runs pre-flight `_detect_heading_drift` in `parse_plan` and aborts with `WavePlannerError` if it finds `#### Task` (h4) or `##### O QUE` (h5+). Do not copy the schema from the template with an offset; use literal `## ` and `### `.
+3. **Map discovery → technical tasks:** break the macro option chosen in 01 into a list of discrete tasks. Each task fits into ≤1 wave of the Wave Planner (see `references/wave-planner-algorithm.md` — under construction, Wave 4 of the skill).
+4. **For each task, write 4-block + metadata** (Files touched, ADRs aplicáveis, Critical lessons if there is a match, etc.). Direct language, avoids over-engineering.
+5. **Detect stop points during design:** stack/db/new_dep/paid_service/irreversible/over_eng/pii/adr_drift. Calibration by tier in `_config/stop-points.md`. Trigger: pause, A/B/C menu, update L1 `BLOCKED_STOP_POINT`, wait for human response, resume.
+6. **Spawn new ADRs** when an architectural decision is irreversible or diverges from what was declared: canonical v3.4.0 workflow via `.icm-main/` worktree:
    ```
    1. Write {{PROJECT_ROOT}}/.icm-main/docs/decisions/NNNN-<slug>.md
-      (formato canônico — ver `_references/runtime/adr-format.md`)
+      (canonical format — see `_references/runtime/adr-format.md`)
    2. cd {{PROJECT_ROOT}}/.icm-main
    3. git add docs/decisions/NNNN-*.md
    4. git commit -m "docs(decisions): <slug> (workspace {{WORKSPACE}})"
    5. cd {{PROJECT_ROOT}}
    ```
-   Numeração contínua a partir do maior NNNN existente em `.icm-main/docs/decisions/`. Validar 3-criteria gate antes (`adr-format.md`).
-7. **Detectar adr_drift:** se proposta de design diverge de ADR vigente sem superseding declarado → stop point `adr_drift`. Resolução: superseding ADR (`NNNN-supersedes-MMMM.md`) OU revisão da proposta para alinhar.
-7.5. **Design System (apenas profiles `app_web_frontend` + `fullstack`):** se profile efetivo tem `design_system_required: True` (lido em `_config/profile-effective.yaml`):
-   - **Brownfield:** ler `{{PROJECT_ROOT}}/.icm-main/DESIGN.md` se existe; design respeita tokens declarados.
-   - **Greenfield (arquivo ausente):** apresentar menu A/B/C ao humano:
-     - **A) Criar do zero** — designer propõe tokens iniciais baseado em brand voice + audience capturados em discovery.md.
-     - **B) Inspirar em exemplo** — escolha brand de referência da galeria [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) (airbnb, apple, claude, figma, framer, ferrari, etc.).
-     - **C) Extrair de URL existente** — humano fornece URL e roda `npx designlang <url>` externamente. Designer adapta output base.
-   - Após escolha, designer escreve/atualiza `<project_root>/.icm-main/DESIGN.md` seguindo schema canônico Google Stitch (YAML frontmatter + section order: Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts).
-   - Commit em base branch via worktree:
+   Numbering continuous from the highest NNNN in `.icm-main/docs/decisions/`. Validate 3-criteria gate first (`adr-format.md`).
+7. **Detect adr_drift:** if design proposal diverges from an active ADR without a declared superseding → stop point `adr_drift`. Resolution: superseding ADR (`NNNN-supersedes-MMMM.md`) OR revision of the proposal to align.
+7.5. **Design System (profiles `app_web_frontend` + `fullstack` only):** if the effective profile has `design_system_required: True` (read from `_config/profile-effective.yaml`):
+   - **Brownfield:** read `{{PROJECT_ROOT}}/.icm-main/DESIGN.md` if it exists; design respects declared tokens.
+   - **Greenfield (file absent):** present an A/B/C menu to the human:
+     - **A) Create from scratch** — designer proposes initial tokens based on brand voice + audience captured in discovery.md.
+     - **B) Inspire from example** — choose a reference brand from the [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) gallery (airbnb, apple, claude, figma, framer, ferrari, etc.).
+     - **C) Extract from existing URL** — human provides URL and runs `npx designlang <url>` externally. Designer adapts the base output.
+   - After choice, designer writes/updates `<project_root>/.icm-main/DESIGN.md` following the canonical Google Stitch schema (YAML frontmatter + section order: Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts).
+   - Commit to base branch via worktree:
      ```
      cd {{PROJECT_ROOT}}/.icm-main
      git add DESIGN.md
      git commit -m "design: {{WORKSPACE}} — design system v<N>"
      cd {{PROJECT_ROOT}}
      ```
-   - Plan.md cita componentes não-triviais com Component Spec table (Default/Hover/Active/Disabled) referenciando tokens declarados.
-   - Tasks com files frontend ganham flag `requires_design_system: true` no metadata (consumido pelo lead na fase 04 — canal 2 inject).
-   - Doc canônico: `_references/runtime/design-system.md`.
-7.6. **Preview Loop — schema mock data + preview pages flag (v3.6.0):** se profile efetivo tem `preview_loop.preview_loop_enabled: true` (lido em `_config/profile-effective.yaml`):
-   - **Mock data strategy** lida do efetivo (`preview_loop.mock_data_strategy`):
-     - `fixtures` (experimental/tool): designer NÃO escreve schema formal; plan.md menciona apenas paths de `fixtures/*.json` esperados.
-     - `msw_faker` (development): designer descreve em plan.md os endpoints `/api/*` esperados pelo frontend + shape do payload (em pseudo-TS), suficiente pra lead/subagente em fase 04 escrever `mocks/handlers.ts` usando MSW + Faker.
-     - `msw_faker_zod` (production): designer escreve schema **Zod** completo em plan.md (bloco de código), salvo em `mocks/schema.ts` na fase 04. Schema é fonte de verdade do contrato API que o backend real implementará depois — refatorar mock → real = trocar handler MSW por chamada HTTP real, sem mexer em componente.
-   - **Componentes reusáveis** ganham flag `requires_preview_page: true` no metadata da task. Indica ao subagente em fase 04 que junto com o componente deve escrever `preview/<component>/page.tsx` (Next.js app router) ou equivalente do build tool detectado, com ≥4 estados (Default/Hover/Active/Disabled). Path canônico em `preview_loop.preview_pages_path` (default `preview/`).
-   - **Routes map (fallback CDP):** designer popula `output/routes.md` listando rotas planejadas + componente principal por rota + fixture/handler associado. Ativa fallback automático quando CDP indisponível em fase 04.
-   - **Wireframe ASCII opcional:** plan.md task com layout não-trivial (ex: dashboard multi-grid) inclui wireframe ASCII no bloco `COMO`. Stage 04 lead injeta wireframe no canal 2 do subagente. Wireframe NÃO substitui DESIGN.md tokens; é aux pra layout coords.
-   - Doc canônico: `_references/runtime/preview-loop-protocol.md`.
-8. **Definir Test Strategy global do workspace** (uma vez no plan.md, não por task). Ler `test_specs` do `_config/profile-effective.yaml` para calibrar. Seção obrigatória com:
-   - **Framework**: linguagem → framework principal (ex: Python → pytest + httpx; TS → vitest + @testing-library/react)
-   - **Test pyramid**: proporção unit/integration/e2e justificada pelo profile
-   - **Coverage threshold**: de `test_specs.coverage_threshold` do profile efetivo (mínimo 80% development, 90% production em linhas/branches)
-   - **Path crítico 100%**: código de autenticação, pagamento, PII deve ter 100% unit obrigatório
-   - **Test file location**: convenção de onde ficam os arquivos de teste (co-located vs `tests/`)
-   - Se profile == `agent_ia`: incluir **Eval Strategy** (golden_output, eval_threshold, determinism seed)
-   - Se profile == `ml_project`: incluir **Model Regression** (dataset fixtures, performance baseline)
-9. **Escrever `output/plan.md`** com seções: Visão geral (5-10 linhas); **Test Strategy** (seção 8 acima); Tasks (lista, cada uma com 4-block + metadados); ADRs criados nesta sessão; Stop points disparados (se houve); Tech debt herdado (se houve); Métricas de aceite (vinculam a discovery.md).
-10. **Handoff de fim de stage:** seguir protocolo gate-inline na seção `## End of stage handoff` deste L2 (Fase 1 WORK_DONE → gate humano → Fase 2 GATE_APPROVED).
+   - Plan.md cites non-trivial components with a Component Spec table (Default/Hover/Active/Disabled) referencing declared tokens.
+   - Tasks with frontend files get flag `requires_design_system: true` in metadata (consumed by lead in stage 04 — channel 2 inject).
+   - Canonical doc: `_references/runtime/design-system.md`.
+7.6. **Preview Loop — mock data schema + preview pages flag (v3.6.0):** if the effective profile has `preview_loop.preview_loop_enabled: true` (read from `_config/profile-effective.yaml`):
+   - **Mock data strategy** read from effective (`preview_loop.mock_data_strategy`):
+     - `fixtures` (experimental/tool): designer does NOT write a formal schema; plan.md only mentions expected `fixtures/*.json` paths.
+     - `msw_faker` (development): designer describes in plan.md the `/api/*` endpoints expected by the frontend + payload shape (in pseudo-TS), sufficient for lead/subagent in stage 04 to write `mocks/handlers.ts` using MSW + Faker.
+     - `msw_faker_zod` (production): designer writes a complete **Zod** schema in plan.md (code block), saved as `mocks/schema.ts` in stage 04. Schema is the source of truth for the API contract the real backend will implement later — refactoring mock → real = replacing MSW handler with a real HTTP call, without touching the component.
+   - **Reusable components** get flag `requires_preview_page: true` in task metadata. Indicates to the subagent in stage 04 that along with the component it should write `preview/<component>/page.tsx` (Next.js app router) or equivalent for the detected build tool, with ≥4 states (Default/Hover/Active/Disabled). Canonical path in `preview_loop.preview_pages_path` (default `preview/`).
+   - **Routes map (CDP fallback):** designer populates `output/routes.md` listing planned routes + main component per route + associated fixture/handler. Activates automatic fallback when CDP is unavailable in stage 04.
+   - **Optional ASCII wireframe:** plan.md task with non-trivial layout (e.g., multi-grid dashboard) includes an ASCII wireframe in the `COMO` block. Stage 04 lead injects the wireframe in the subagent's channel 2. Wireframe does NOT replace DESIGN.md tokens; it is aux for layout coords.
+   - Canonical doc: `_references/runtime/preview-loop-protocol.md`.
+8. **Define global Test Strategy for the workspace** (once in plan.md, not per task). Read `test_specs` from `_config/profile-effective.yaml` for calibration. Mandatory section with:
+   - **Framework**: language → main framework (e.g., Python → pytest + httpx; TS → vitest + @testing-library/react)
+   - **Test pyramid**: unit/integration/e2e proportion justified by profile
+   - **Coverage threshold**: from `test_specs.coverage_threshold` of the effective profile (minimum 80% development, 90% production in lines/branches)
+   - **Critical path 100%**: authentication, payment, PII code must have mandatory 100% unit coverage
+   - **Test file location**: convention for where test files live (co-located vs `tests/`)
+   - If profile == `agent_ia`: include **Eval Strategy** (golden_output, eval_threshold, determinism seed)
+   - If profile == `ml_project`: include **Model Regression** (dataset fixtures, performance baseline)
+9. **Write `output/plan.md`** with sections: Overview (5-10 lines); **Test Strategy** (section 8 above); Tasks (list, each with 4-block + metadata); ADRs created in this session; Triggered stop points (if any); Inherited tech debt (if any); Acceptance metrics (linked to discovery.md).
+10. **End-of-stage handoff:** follow the gate-inline protocol in the `## End of stage handoff` section of this L2 (Phase 1 WORK_DONE → human gate → Phase 2 GATE_APPROVED).
 
 ## Outputs
 
-- `output/plan.md` — design técnico com **Test Strategy global** + lista de tasks no schema 4-block (cada task com ≥1 arquivo de teste em `Files touched`), consumido pelo Wave Planner em 03. ADRs vivem em `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (worktree base branch) — plan.md cita os filenames criados como path relativo a `.icm-main/`.
+- `output/plan.md` — technical design with **global Test Strategy** + list of tasks in the 4-block schema (each task with ≥1 test file in `Files touched`), consumed by the Wave Planner in 03. ADRs live in `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (base branch worktree) — plan.md cites created filenames as path relative to `.icm-main/`.
 
 ## Sub_stage transitions
 
-Enum válido: `02_in_progress`, `02_completed`.
+Valid enum: `02_in_progress`, `02_completed`.
 
-Transição IN_PROGRESS → COMPLETED dispara quando:
-- `output/plan.md` existe com pelo menos 1 task no schema 4-block + metadados completos.
-- `output/plan.md` contém seção **Test Strategy** preenchida com framework, pyramid, coverage threshold e test file location.
-- Toda task com código funcional tem ≥1 arquivo de teste em `Files touched`.
-- Stop points disparados durante a sessão estão resolvidos (status volta a `IN_PROGRESS` antes do completar).
-- ADRs novos commitados em base branch via `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (se houve decisão arquitetural).
-- Humano aprovou via gate (status `COMPLETED_AWAITING_HUMAN` → humano responde "aprovado, prosseguir 03").
+IN_PROGRESS → COMPLETED transition fires when:
+- `output/plan.md` exists with at least 1 task in the 4-block schema + complete metadata.
+- `output/plan.md` contains a **Test Strategy** section filled with framework, pyramid, coverage threshold, and test file location.
+- Every task with functional code has ≥1 test file in `Files touched`.
+- Stop points triggered during the session are resolved (status returns to `IN_PROGRESS` before completing).
+- New ADRs committed to base branch via `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (if there was an architectural decision).
+- Human approved via gate (status `COMPLETED_AWAITING_HUMAN` → human replies "approved, proceed to 03").
 
-## Status canônicos disponíveis neste estágio
+## Canonical statuses available in this stage
 
-- `IN_PROGRESS` — design ativo, escrevendo plan.md e ADRs.
-- `COMPLETED_AWAITING_HUMAN` — plan.md pronto, humano revisa/edita antes de transitar.
-- `BLOCKED_STOP_POINT` — menu A/B/C aguardando resposta (qualquer um dos 8 IDs aplicáveis).
-- `BLOCKED_ERROR` — discovery.md ausente, ADR superseding malformado, ou hook rejeitou commit.
+- `IN_PROGRESS` — active design, writing plan.md and ADRs.
+- `COMPLETED_AWAITING_HUMAN` — plan.md ready, human reviews/edits before transitioning.
+- `BLOCKED_STOP_POINT` — A/B/C menu awaiting response (any of the 8 applicable IDs).
+- `BLOCKED_ERROR` — discovery.md absent, malformed superseding ADR, or hook rejected commit.
 
-## Stop points aplicáveis
+## Applicable stop points
 
-Catálogo canônico em `references/stop-points-canonical.md`. IDs disparáveis no estágio 02 design:
+Canonical catalogue in `references/stop-points-canonical.md`. IDs triggerable in stage 02 design:
 
-- `stack` — proposta troca de linguagem/framework/runtime vs ADR vigente. Sempre `hard`.
-- `db` — engine ou schema design novo. Sempre `hard`.
-- `new_dep` — npm/pip/cargo nova no manifesto (license/maintenance/size). Sempre `hard`.
-- `paid_service` — SaaS recorrente (calibrado por tier: warning R$50 / hard R$200/500/1000).
-- `irreversible` — drop table, migração destrutiva, schema sem volta. Sempre `hard`.
-- `over_eng` — 3+ camadas de abstração novas sem requisito (warning experimental/tool, hard development/production).
-- `pii` — LGPD, dados sensíveis (warning experimental, hard tool/development, hard+DPO production).
-- `adr_drift` — proposta diverge de ADR existente sem superseding declarado. Sempre `hard`.
+- `stack` — proposal changes language/framework/runtime vs active ADR. Always `hard`.
+- `db` — new engine or schema design. Always `hard`.
+- `new_dep` — new npm/pip/cargo dependency in the manifest (license/maintenance/size). Always `hard`.
+- `paid_service` — recurring SaaS (calibrated by tier: warning R$50 / hard R$200/500/1000).
+- `irreversible` — drop table, destructive migration, no-rollback schema. Always `hard`.
+- `over_eng` — 3+ new abstraction layers without requirement (warning experimental/tool, hard development/production).
+- `pii` — LGPD, sensitive data (warning experimental, hard tool/development, hard+DPO production).
+- `adr_drift` — proposal diverges from existing ADR without declared superseding. Always `hard`.
 
-Disparo: agente pausa, escreve menu A/B/C no output, atualiza L1 `status: BLOCKED_STOP_POINT`. Humano responde, sessão retoma com `IN_PROGRESS`. Decisões arquiteturais resolvidas viram ADRs em `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`.
+Trigger: agent pauses, writes A/B/C menu in the output, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes with `IN_PROGRESS`. Resolved architectural decisions become ADRs in `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`.
 
-## Skill superpowers de referência
+## Skill superpowers reference
 
-Sumário 200tok: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md`
+200tok summary: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/writing-plans-200tok.md`
 
-Skill formal: `superpowers:writing-plans` (escape hatch — invocação real só se design demanda planejamento estruturado profundo além do sumário).
+Formal skill: `superpowers:writing-plans` (escape hatch — actual invocation only if design demands structured deep planning beyond the summary).
 
 ## Gates
 
-- **Humano:** revisa `output/plan.md` e ADRs criados; aprova ou requisita ajustes. Pode editar plan.md diretamente se discordar.
-- **Automático (CI):** pre-commit hook valida atomicidade L1↔outputs e prefixo de commit `workspace/{{WORKSPACE}}`. ADRs commitam via `cd {{PROJECT_ROOT}}/.icm-main && git commit ...` — esses commits caem em base_branch automaticamente (worktree linkada).
-- **Aprovação para transitar:** humano explicitamente aprova; sub_stage vira `02_completed` no commit que registra a aprovação. Stop points pendentes bloqueiam transição.
+- **Human:** reviews `output/plan.md` and created ADRs; approves or requests adjustments. Can edit plan.md directly if they disagree.
+- **Automatic (CI):** pre-commit hook validates L1↔outputs atomicity and commit prefix `workspace/{{WORKSPACE}}`. ADRs commit via `cd {{PROJECT_ROOT}}/.icm-main && git commit ...` — those commits land in base_branch automatically (linked worktree).
+- **Approval to transition:** human explicitly approves; sub_stage becomes `02_completed` in the commit that records the approval. Pending stop points block the transition.
 
-## End of stage handoff (gate inline + 1-stage-1-sessão)
+## End of stage handoff (gate inline + 1-stage-1-session)
 
-Handoff é split em DUAS fases dentro da MESMA sessão. Gate humano fica entre elas — `_kickoff.md` só é renderizado APÓS aprovação. Bug v3.4.2 corrigido: render+exit prematuros antes da aprovação criavam loop "kickoff → user aprova em sessão nova → kickoff de novo". Doc canônico: `<skill_root>/references/session-handoff-protocol.md`.
+Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `<skill_root>/references/session-handoff-protocol.md`.
 
-### Fase 1: WORK_DONE (após outputs prontos)
+### Phase 1: WORK_DONE (after outputs are ready)
 
-1. **Atualizar L1** (`<workspace>/CONTEXT.md`):
+1. **Update L1** (`<workspace>/CONTEXT.md`):
    - `sub_stage = 02_completed`
    - `status = COMPLETED_AWAITING_HUMAN`
    - `last_transition.from = 02_in_progress`
@@ -175,37 +175,37 @@ Handoff é split em DUAS fases dentro da MESMA sessão. Gate humano fica entre e
    - `last_transition.at = <ISO 8601 UTC now>`
    - `history` append: `{at, event: "stage_transition", from: "02_in_progress", to: "02_completed", commit_sha, note: "work done, awaiting gate"}`
 
-2. **Commit atômico 1/2** (outputs + L1; pre-commit hook valida atomicidade):
+2. **Atomic commit 1/2** (outputs + L1; pre-commit hook validates atomicity):
    ```
    workspace <NNN>: stage 02 work done, awaiting gate
    ```
-   Files: outputs do stage atual + L1. **NÃO** inclui `_kickoff.md` (não renderizado ainda).
+   Files: current stage outputs + L1. **DO NOT** include `_kickoff.md` (not rendered yet).
 
-3. **Imprimir prompt de gate** pro humano. NÃO sair da sessão. NÃO renderizar `_kickoff.md`:
+3. **Print gate prompt** for human. Do NOT exit the session. Do NOT render `_kickoff.md`:
 
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ✅ Stage 02 (design) trabalho COMPLETO — workspace <NNN-slug>
+   ✅ Stage 02 (design) work COMPLETE — workspace <NNN-slug>
 
-   Outputs prontos pra revisão:
-     - <lista de paths>
+   Outputs ready for review:
+     - <list of paths>
 
    L1: sub_stage=02_completed, status=COMPLETED_AWAITING_HUMAN
    Commit 1/2: <sha>
 
-   🛑 Gate humano: revise os outputs acima.
-   Responda no chat:
-     - "aprovado" / "ok prosseguir 03" → renderizo kickoff e saio
-     - "ajustar X" → volto ao trabalho com seu pedido (status=IN_PROGRESS)
-     - "abort" → marco workspace BLOCKED_ERROR
+   🛑 Human gate: review the outputs above.
+   Reply in chat:
+     - "approved" / "ok proceed to 03" → I render kickoff and exit
+     - "adjust X" → I return to work with your request (status=IN_PROGRESS)
+     - "abort" → I mark workspace BLOCKED_ERROR
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
 
-4. **AGUARDAR resposta humana** na MESMA sessão.
+4. **WAIT for human response** in the SAME session.
 
-### Fase 2: GATE_APPROVED (após humano responder "aprovado")
+### Phase 2: GATE_APPROVED (after human replies "approved")
 
-5. **Atualizar L1** (segunda transição):
+5. **Update L1** (second transition):
    - `stage_atual = 03`
    - `sub_stage = 03_in_progress`
    - `status = IN_PROGRESS`
@@ -214,31 +214,31 @@ Handoff é split em DUAS fases dentro da MESMA sessão. Gate humano fica entre e
    - `last_transition.at = <ISO 8601 UTC now>`
    - `history` append: `{at, event: "stage_transition", from: "02_completed", to: "03_in_progress", commit_sha, note: "gate approved by human"}`
 
-6. **Renderizar `_kickoff.md`** no stage seguinte:
+6. **Render `_kickoff.md`** in the next stage:
    - Path: `<workspace>/stages/03_wave_planner/_kickoff.md`
-   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` ou função `render_kickoff` do `{{SKILL_DIR}}/scripts/handoff.py`
-   - Frontmatter YAML L4-kickoff conforme schema em `references/session-handoff-protocol.md`
-   - Corpo: prev_outputs + prev_decisions + pending pra próximo stage
+   - Use `python {{SKILL_DIR}}/scripts/handoff.py render` or function `render_kickoff` from `{{SKILL_DIR}}/scripts/handoff.py`
+   - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`
+   - Body: prev_outputs + prev_decisions + pending for next stage
 
-7. **Commit atômico 2/2** (kickoff + L1):
+7. **Atomic commit 2/2** (kickoff + L1):
    ```
-   workspace <NNN>: gate aprovado, kickoff stage 03
+   workspace <NNN>: gate approved, kickoff stage 03
    ```
-   Files: `_kickoff.md` do próximo + L1 atualizado.
+   Files: next stage `_kickoff.md` + updated L1.
 
-8. **Imprimir KICKOFF block verbal** pro user (copy-paste pra próxima sessão):
+8. **Print verbal KICKOFF block** for user (copy-paste for next session):
 
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ✅ Stage 02 (design) GATE APROVADO — workspace <NNN-slug>
+   ✅ Stage 02 (design) GATE APPROVED — workspace <NNN-slug>
 
-   Workspace atualizado em commit <sha>:
+   Workspace updated at commit <sha>:
      - L1: stage_atual=03, sub_stage=03_in_progress, status=IN_PROGRESS
-     - Kickoff: stages/03_wave_planner/_kickoff.md gerado
+     - Kickoff: stages/03_wave_planner/_kickoff.md generated
 
-   🔄 KICKOFF próxima sessão — copy/paste:
+   🔄 KICKOFF next session — copy/paste:
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Continuar workspace <NNN-slug> no estágio 03 (wave_planner).
+   Continue workspace <NNN-slug> at stage 03 (wave_planner).
 
    Read order:
      workspaces/<NNN-slug>/CLAUDE.md
@@ -247,67 +247,67 @@ Handoff é split em DUAS fases dentro da MESMA sessão. Gate humano fica entre e
      workspaces/<NNN-slug>/stages/03_wave_planner/_kickoff.md
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   Encerre esta sessão (Ctrl+D ou /exit) e abra nova sessão Claude
-   no project_root, depois cole o prompt acima.
+   Close this session (Ctrl+D or /exit) and open a new Claude session
+   at the project_root, then paste the prompt above.
    ```
 
-9. **SAIR** da sessão. NÃO continuar pro próximo stage na mesma sessão.
+9. **EXIT** the session. Do NOT continue to the next stage in the same session.
 
-### Resposta "ajustar X" (gate rejeitado)
+### Response "adjust X" (gate rejected)
 
-Se humano responder texto livre pedindo ajuste:
-- Atualizar L1: `status = IN_PROGRESS`, append history `{event: "gate_rejected", note: "humano pediu ajuste: X"}`. Sub_stage permanece `02_completed` (volta a `02_in_progress` se mudança não-trivial).
-- Voltar ao trabalho conforme pedido.
-- Quando refizer outputs, voltar à Fase 1 (novo commit 1/2 + novo gate prompt).
+If human replies with free text requesting an adjustment:
+- Update L1: `status = IN_PROGRESS`, append history `{event: "gate_rejected", note: "human requested adjustment: X"}`. Sub_stage stays `02_completed` (returns to `02_in_progress` if change is non-trivial).
+- Return to work as requested.
+- When outputs are redone, return to Phase 1 (new commit 1/2 + new gate prompt).
 
-### Resposta "abort"
+### Response "abort"
 
-Se humano responder "abort":
-- Atualizar L1: `status = BLOCKED_ERROR`, append history `{event: "blocked_error", error_type: "human_abort", note: "humano abortou em gate"}`.
-- Commit + sair. Workspace fica em BLOCKED_ERROR aguardando intervenção manual.
+If human replies "abort":
+- Update L1: `status = BLOCKED_ERROR`, append history `{event: "blocked_error", error_type: "human_abort", note: "human aborted at gate"}`.
+- Commit + exit. Workspace stays in BLOCKED_ERROR awaiting manual intervention.
 
 ---
 
-## v3.3.0 references aplicáveis a este stage
+## v3.3.0 references applicable to this stage
 
-- **ADR 3-critérios gate (`_references/runtime/adr-format.md`):** antes de
-  spawnar ADR, validar TODOS os 3 critérios: (1) hard to reverse, (2)
-  surprising without context, (3) result of real trade-off. Falha em qualquer
-  → vai para `decisions.md` como nota, NÃO ADR.
-- **OUT-OF-SCOPE check (`_references/runtime/out-of-scope-kb.md`):** se
-  `iteration > 0` no L1, ler `<workspace>/_out-of-scope/*.md` antes de
-  propor design. Match com rejeição prior → surface ao humano antes de
-  re-propor.
-- **HITL/AFK no plan.md (`_references/runtime/task-types-hitl-afk.md`):**
-  cada task no plan.md ganha campo `**Type:** HITL|AFK`. AFK é default.
-  HITL exige justificativa em campo `**Reason:**`.
+- **ADR 3-criteria gate (`_references/runtime/adr-format.md`):** before
+  spawning an ADR, validate ALL 3 criteria: (1) hard to reverse, (2)
+  surprising without context, (3) result of real trade-off. Fail on any
+  → goes to `decisions.md` as a note, NOT an ADR.
+- **OUT-OF-SCOPE check (`_references/runtime/out-of-scope-kb.md`):** if
+  `iteration > 0` in L1, read `<workspace>/_out-of-scope/*.md` before
+  proposing design. Match with prior rejection → surface to human before
+  re-proposing.
+- **HITL/AFK in plan.md (`_references/runtime/task-types-hitl-afk.md`):**
+  each task in plan.md gets field `**Type:** HITL|AFK`. AFK is the default.
+  HITL requires justification in field `**Reason:**`.
 - **AGENT-BRIEF compatibility (`_references/runtime/agent-brief-template.md`):**
-  4-block (O QUE / COMO / NÃO QUERO / VALIDAÇÃO) por task DEVE ser parseável
-  pelo `agent-brief-render.py` na fase 04. Mapping: O QUE→Summary+Desired,
-  COMO→Key interfaces (sem paths absolutos!), NÃO QUERO→Out of scope,
+  4-block (O QUE / COMO / NÃO QUERO / VALIDAÇÃO) per task MUST be parseable
+  by `agent-brief-render.py` in stage 04. Mapping: O QUE→Summary+Desired,
+  COMO→Key interfaces (no absolute paths!), NÃO QUERO→Out of scope,
   VALIDAÇÃO→Acceptance criteria.
-- **Design It Twice (`_references/runtime/design-it-twice.md`):** módulos
-  marcados `core: true` no plan.md acionam Design It Twice. Spawnar 3+
-  Agent tool calls em paralelo com constraints distintos (minimize
-  interface / maximize flexibility / optimize common caller). Output em
-  `output/design-alternatives-<module>.md` + decisão final em decisions.md.
-- **Deep modules (`_references/runtime/deep-modules.md`, v3.4.1):** para
-  cada módulo novo introduzido pelo design, validar checklist de 5 itens:
-  interface mínima (≤5 métodos), information hiding (API não expõe estado),
-  single responsibility (nome sem and/or), deletion test (blast radius
-  <30% callers precisarem adaptar lógica), alternativa considerada em ADR.
-  ≥2 itens falhando = voltar à prancheta. Skip para bug fix puro ou módulo
-  trivial single-function.
+- **Design It Twice (`_references/runtime/design-it-twice.md`):** modules
+  marked `core: true` in plan.md trigger Design It Twice. Spawn 3+
+  parallel Agent tool calls with distinct constraints (minimize
+  interface / maximize flexibility / optimize common caller). Output in
+  `output/design-alternatives-<module>.md` + final decision in decisions.md.
+- **Deep modules (`_references/runtime/deep-modules.md`, v3.4.1):** for
+  each new module introduced by the design, validate checklist of 5 items:
+  minimal interface (≤5 methods), information hiding (API does not expose state),
+  single responsibility (name without and/or), deletion test (blast radius
+  <30% callers need to adapt logic), alternative considered in ADR.
+  ≥2 items failing = back to the drawing board. Skip for pure bug fix or trivial
+  single-function module.
 
 ## Ubiquitous Language
 
-Inputs: `_config/CONTEXT.md` (L3, populado em stage 01) é obrigatório.
-Vocabulário do glossário deve ser usado consistentemente em plan.md, ADRs,
-e output/. Auto-QA Akita valida consistência.
+Inputs: `_config/CONTEXT.md` (L3, populated in stage 01) is mandatory.
+Glossary vocabulary must be used consistently in plan.md, ADRs,
+and output/. Auto-QA Akita validates consistency.
 
-## v3.4.0 — Worktree paralelo
+## v3.4.0 — Parallel worktree
 
-Pré-flight do estágio inclui validar `.icm-main/` worktree existe em
-`{{PROJECT_ROOT}}/`. Ausente = `BLOCKED_ERROR`; recovery wizard sugere
-`git worktree add .icm-main {{BASE_BRANCH}}`. Doc canônico:
+Stage pre-flight includes validating the `.icm-main/` worktree exists in
+`{{PROJECT_ROOT}}/`. Absent = `BLOCKED_ERROR`; recovery wizard suggests
+`git worktree add .icm-main {{BASE_BRANCH}}`. Canonical doc:
 `_references/runtime/worktree-model.md`.

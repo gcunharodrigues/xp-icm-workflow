@@ -8,52 +8,52 @@ sub_stage_enum:
   - "08_decided_B"
   - "08_decided_C"
 applicable_stop_points:
-  - "runtime_cleanup_failed"  # v3.7.0 — strict universal, todos tiers
+  - "runtime_cleanup_failed"  # v3.7.0 — strict universal, all tiers
 output_files:
   - "output/intake-report.md"
 next_stage: null
 ---
 
-# Estágio 08 — feedback_intake (L2)
+# Stage 08 — feedback_intake (L2)
 
-Gate de iteração universal do ciclo ICM. Workspace transita pra cá automaticamente após stage 07 e fica em `COMPLETED_AWAITING_HUMAN` aguardando humano voltar com feedback livre após uso real do projeto (semanas/meses sem prazo). Quando humano abre nova sessão e cola feedback livre (texto solto, sem menu), sessão **infere intenção** e mapeia pra uma das 3 saídas: A) close workspace + lições em `docs/lessons.md`, B) restart fase X (X ∈ 01..07) com `iteration++`, C) spawn novo workspace via humano colando comando em sessão nova. Sessão confirma a inferência com humano antes de executar (mini-menu s/n/ajusta). Coleta logs (se `logs_root` declarado), extrai 4 blocos do feedback livre, calcula top-N error patterns. NÃO faz código novo — apenas analisa, infere e transita estado. Protocolo literal em `_references/runtime/feedback-intake-fase08.md`.
+Universal iteration gate of the ICM cycle. Workspace transitions here automatically after stage 07 and stays in `COMPLETED_AWAITING_HUMAN` waiting for the human to return with free-form feedback after real use of the project (weeks/months with no deadline). When the human opens a new session and pastes free-form feedback (loose text, no menu), the session **infers intent** and maps it to one of 3 outputs: A) close workspace + lessons in `docs/lessons.md`, B) restart stage X (X ∈ 01..07) with `iteration++`, C) spawn new workspace via human pasting command in a new session. Session confirms the inference with the human before executing (mini-menu y/n/adjust). Collects logs (if `logs_root` is declared), extracts 4 blocks from the free-form feedback, calculates top-N error patterns. Does NOT write new code — only analyzes, infers, and transitions state. Literal protocol in `_references/runtime/feedback-intake-fase08.md`.
 
-## Inputs (lê SOMENTE estes, na ordem)
+## Inputs (reads ONLY these, in order)
 
-| # | Path | Layer | Obrigatório? |
-|---|------|-------|--------------|
-| 1 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md | L0 | sim |
-| 2 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | sim |
-| 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/CONTEXT.md | L2 | sim |
-| 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/ | L4 | condicional: existe se discovery rodou (profile não pulou 01) |
-| 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/ | L4 | condicional: existe se design rodou |
-| 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/output/ | L4 | condicional: existe se wave planner rodou |
-| 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/ | L4 | condicional: existe se implementação rodou |
-| 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/output/ | L4 | condicional: existe se verification rodou |
-| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/output/ | L4 | condicional: existe se review rodou |
-| 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/output/ | L4 | sim (sample-check pré-condição) |
-| 11 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | condicional: append apenas em saída A |
-| 12 | {{LOGS_ROOT}} | L3 | condicional: opcional — sample dos últimos 30 dias se L0 declara `logs_root` ≠ null |
-| 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-fase08.md | L3 | sim (protocolo literal — cópia local da reference) |
-| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md | L4-kickoff | condicional: gerado pela sessão anterior. Ausente em workspaces beta1/beta2 (4B legacy) ou se for primeira sessão de stage. Em stage 08 normalmente AUSENTE — humano dispara manualmente após uso real, não há sessão anterior automática. |
-| 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | condicional: necessário no handoff final do estágio (saída B gera kickoff) |
-| 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/recovery-wizard.md | L3 | condicional: referenciado no pre-flight se workspace inconsistente |
+| # | Path | Layer | Required? |
+|---|------|-------|-----------|
+| 1 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md | L0 | yes |
+| 2 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | yes |
+| 3 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/CONTEXT.md | L2 | yes |
+| 4 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/ | L4 | conditional: exists if discovery ran (profile did not skip 01) |
+| 5 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/ | L4 | conditional: exists if design ran |
+| 6 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/output/ | L4 | conditional: exists if wave planner ran |
+| 7 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/ | L4 | conditional: exists if implementation ran |
+| 8 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/05_verification/output/ | L4 | conditional: exists if verification ran |
+| 9 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/output/ | L4 | conditional: exists if review ran |
+| 10 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/07_merge/output/ | L4 | yes (pre-condition sample-check) |
+| 11 | {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | conditional: append only in output A |
+| 12 | {{LOGS_ROOT}} | L3 | conditional: optional — sample of last 30 days if L0 declares `logs_root` ≠ null |
+| 13 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-fase08.md | L3 | yes (literal protocol — local copy of the reference) |
+| 14 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/08_feedback_intake/_kickoff.md | L4-kickoff | conditional: generated by the previous session. Absent in beta1/beta2 workspaces (4B legacy) or if this is the first session of the stage. In stage 08 normally ABSENT — human triggers manually after real use, there is no prior automatic session. |
+| 15 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | conditional: required for the stage's final handoff (output B generates kickoff) |
+| 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/recovery-wizard.md | L3 | conditional: referenced in pre-flight if workspace is inconsistent |
 
-**Nota sobre `{{LOGS_ROOT}}`:** placeholder resolvido pelo bootstrap a partir do campo `logs_root` do L0. Se `logs_root: null` (greenfield, texto, skill), bootstrap substitui por marcador inerte e o input é skipped no pre-flight. Se `logs_root` é path real, sessão samplea os últimos 30 dias.
+**Note on `{{LOGS_ROOT}}`:** placeholder resolved by bootstrap from the `logs_root` field of L0. If `logs_root: null` (greenfield, text, skill), bootstrap substitutes with an inert marker and the input is skipped in pre-flight. If `logs_root` is a real path, session samples the last 30 days.
 
 ## Não Lê (negative constraint)
 
-- {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/ — fase 08 não revisita código.
-- Outros workspaces em {{PROJECT_ROOT}}/workspaces/<outro>/ — saída C (spawn) consulta CONTEXT.md de workspace antigo via `spawn_from`, mas isso é responsabilidade do NOVO workspace; o workspace atual não lê outros.
-- {{PROJECT_ROOT}}/.icm-main/docs/decisions/ — ADRs não são editados na fase 08; herança em saída C é responsabilidade do novo workspace.
+- {{PROJECT_ROOT}}/.icm-main/src/, {{PROJECT_ROOT}}/.icm-main/tests/ — stage 08 does not revisit code.
+- Other workspaces in {{PROJECT_ROOT}}/workspaces/<other>/ — output C (spawn) consults the old workspace's CONTEXT.md via `spawn_from`, but that is the responsibility of the NEW workspace; the current workspace does not read others.
+- {{PROJECT_ROOT}}/.icm-main/docs/decisions/ — ADRs are not edited in stage 08; inheritance in output C is the new workspace's responsibility.
 
-**v3.7.0:** `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` PODE ser **escrito** (append) em saídas A/B se feedback livre revela débito técnico durável (não-lição). Diferença lessons vs tech_debt: lição = aprendizado pra próximo workspace; débito técnico = item rastreável que precisa ser endereçado em código futuro. Ambos coexistem em saída A; B append apenas se feedback explicitamente cita débito.
+**v3.7.0:** `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` MAY be **written** (append) in outputs A/B if free-form feedback reveals durable technical debt (not a lesson). Difference lessons vs tech_debt: lesson = learning for next workspace; technical debt = trackable item that needs to be addressed in future code. Both coexist in output A; B appends only if feedback explicitly cites debt.
 
-## Runtime Cleanup Checklist (v3.7.0 — pré-Process obrigatório)
+## Runtime Cleanup Checklist (v3.7.0 — mandatory pre-Process)
 
-ANTES de qualquer step do Process, executar checklist runtime cleanup. Strict universal — todos tiers (`experimental` → `production`) passam pelo checklist sem opt-out.
+BEFORE any Process step, execute the runtime cleanup checklist. Strict universal — all tiers (`experimental` → `production`) go through the checklist without opt-out.
 
-**Comando:**
+**Command:**
 
 ```bash
 python {{SKILL_DIR}}/scripts/runtime-status.py \
@@ -62,269 +62,269 @@ python {{SKILL_DIR}}/scripts/runtime-status.py \
     --format text
 ```
 
-**6 categorias verificadas:**
+**6 categories verified:**
 
-| # | Categoria | Detecta |
+| # | Category | Detects |
 |---|---|---|
-| 1 | `dev_servers` | Entries kind=dev_server alive em runtime-registry |
+| 1 | `dev_servers` | Entries kind=dev_server alive in runtime-registry |
 | 2 | `background_tasks` | Entries kind=background_task alive |
-| 3 | `docker` | Containers com label `icm-workspace={{WORKSPACE}}` |
-| 4 | `wave_branches` | Git branches `wave-<workspace_num>-*` órfãs |
-| 5 | `working_tree` | `git status --short` no project_root (workspace branch) |
-| 6 | `untracked` | `.icm-main/` dirty (worktree base) |
+| 3 | `docker` | Containers with label `icm-workspace={{WORKSPACE}}` |
+| 4 | `wave_branches` | Orphan git branches `wave-<workspace_num>-*` |
+| 5 | `working_tree` | `git status --short` at project_root (workspace branch) |
+| 6 | `untracked` | `.icm-main/` dirty (base worktree) |
 
-**Comportamento por categoria detectada não-clean:**
+**Behavior per non-clean detected category:**
 
 ```
 ✗ dev_servers: 1 dev server(s) alive: pid=12345
 
-[s] resolvi (dev server matado / unregistered), retoma checklist
-[n] cancela fase 08 (status volta COMPLETED_AWAITING_HUMAN)
-[edit] descreva ajuste
+[s] resolved (dev server killed / unregistered), resume checklist
+[n] cancel stage 08 (status returns to COMPLETED_AWAITING_HUMAN)
+[edit] describe adjustment
 ```
 
-**Fluxo:**
+**flow:**
 
-1. Sessão roda checklist completo (todas 6 categorias).
-2. Pra cada categoria não-clean, sessão imprime confirm humano (per categoria, não 1 confirm global — strict universal).
-3. Humano resolve (kill processo, deletar branch, etc.) e responde `[s]` pra retomar checklist.
-4. Re-run checklist até **todas categorias clean**.
-5. Falha persistente / cancelamento humano → stop point #13 `runtime_cleanup_failed`. Status `BLOCKED_STOP_POINT`.
-6. Sucesso → prosseguir pra Process step 1.
+1. Session runs full checklist (all 6 categories).
+2. For each non-clean category, session prints human confirm (per category, not 1 global confirm — strict universal).
+3. Human resolves (kill process, delete branch, etc.) and replies `[s]` to resume checklist.
+4. Re-run checklist until **all categories clean**.
+5. Persistent failure / human cancellation → stop point #13 `runtime_cleanup_failed`. Status `BLOCKED_STOP_POINT`.
+6. Success → proceed to Process step 1.
 
-**Output reportado em `output/intake-report.md`:** seção §"Runtime cleanup pré-saída (v3.7+)" com snapshot do checklist final + categorias resolvidas + warnings (se algum cleanup foi skipado via menu C com humano explícito).
+**Output reported in `output/intake-report.md`:** section §"Runtime cleanup pre-output (v3.7+)" with final checklist snapshot + resolved categories + warnings (if any cleanup was skipped via explicit human menu C).
 
-Doc canônico: `_references/runtime/runtime-cleanup-protocol.md`.
+Canonical doc: `_references/runtime/runtime-cleanup-protocol.md`.
 
 ## Process
 
-1. **Pre-flight — pré-condição obrigatória:** L1 deve declarar `stage_atual: "08"` com `sub_stage: 08_in_progress` (transição automática vinda de stage 07) e `status: COMPLETED_AWAITING_HUMAN`. Se status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → workspace inconsistente (recovery wizard). Se `stage_atual ≠ 08` → recusar com "workspace ainda não chegou em 08 (termine 07 primeiro)". Se status indefinido → stop point 11 `workspace_corrupt`.
+1. **Pre-flight — mandatory pre-condition:** L1 must declare `stage_atual: "08"` with `sub_stage: 08_in_progress` (automatic transition from stage 07) and `status: COMPLETED_AWAITING_HUMAN`. If status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → inconsistent workspace (recovery wizard). If `stage_atual ≠ 08` → refuse with "workspace has not yet reached 08 (finish 07 first)". If status undefined → stop point 11 `workspace_corrupt`.
 
-   **Step 0 (v3.7.0 — strict universal):** rodar Runtime Cleanup Checklist (§acima) ANTES de step 1. Bloqueia transição se alguma categoria não-clean e humano não confirmou cleanup. Status pode disparar stop point #13 `runtime_cleanup_failed` se humano cancela.
-2. **Setar `status: IN_PROGRESS`** no L1 (sai de `COMPLETED_AWAITING_HUMAN` enquanto sessão trabalha). Append `history` evento `feedback_session_started`.
-3. **Coleta de logs** (somente se `logs_root` ≠ null em L0): sampleia últimos 30 dias de `{{LOGS_ROOT}}`. Se path inacessível/vazio, anota "logs vazios/inacessíveis" e segue.
-4. **Receber feedback livre do humano:** humano cola feedback como texto solto (não menu, não 4 blocos guiados). Sessão valida ≥1 frase substantiva. Em silêncio prolongado / mensagem vazia explicíta tipo "tudo certo, encerra" → considera intenção A close.
-5. **Inferência de intenção (sessão decide A/B/C autonomamente):** aplicar heurísticas abaixo. Se múltiplas categorias matcham, prioridade: B > C > A (correção pontual ganha de pivô; pivô ganha de close). Se ambíguo, sessão pergunta clarificação curta antes de prosseguir.
+   **Step 0 (v3.7.0 — strict universal):** run Runtime Cleanup Checklist (§above) BEFORE step 1. Blocks transition if any category is non-clean and human has not confirmed cleanup. Status may trigger stop point #13 `runtime_cleanup_failed` if human cancels.
+2. **Set `status: IN_PROGRESS`** in L1 (exits `COMPLETED_AWAITING_HUMAN` while session works). Append `history` event `feedback_session_started`.
+3. **Log collection** (only if `logs_root` ≠ null in L0): sample last 30 days of `{{LOGS_ROOT}}`. If path inaccessible/empty, note "logs empty/inaccessible" and continue.
+4. **Receive free-form feedback from human:** human pastes feedback as loose text (not menu, not 4 guided blocks). Session validates ≥1 substantive sentence. During prolonged silence / explicit empty message like "everything OK, close" → consider intent A close.
+5. **Intent inference (session decides A/B/C autonomously):** apply heuristics below. If multiple categories match, priority: B > C > A (point correction beats pivot; pivot beats close). If ambiguous, session asks short clarification before proceeding.
 
-   | Sinal no feedback livre | Saída inferida | Detalhamento |
+   | Signal in free-form feedback | Inferred output | Detail |
    |---|---|---|
-   | "bug em X", "quebra", "erro", "não funciona", "regressão", "fail", "crashou" | **B** restart | Mapeia stage do bug: testes/CI → 05, código → 04, design errado → 02, requisitos errados → 01, review missou → 06, merge → 07 |
-   | "tudo ok", "funcionando", "encerrar", "fechar projeto", "concluído", "sem feedback", silêncio | **A** close | Workspace arquivado + lições |
-   | "novo projeto", "pivotar", "mudar direção", "feature grande nova", "outro workspace", "começar do zero com X aprendido" | **C** spawn | Workspace fecha + spawn instruction |
-   | "extensão pequena", "iterar mais", "voltar a fase Y", explícita menção a stage por número/nome | **B** com X explícito | Stage extraído da menção |
-   | Mistura "bug + feature nova" | preferir **B** primeiro (corrige bug); user pode disparar 08 de novo depois pra C | |
+   | "bug in X", "breaks", "error", "doesn't work", "regression", "fail", "crashed" | **B** restart | Map stage of bug: tests/CI → 05, code → 04, bad design → 02, wrong requirements → 01, review missed → 06, merge → 07 |
+   | "all OK", "working", "close", "end project", "done", "no feedback", silence | **A** close | Workspace archived + lessons |
+   | "new project", "pivot", "change direction", "big new feature", "other workspace", "start from scratch with X learned" | **C** spawn | Workspace closes + spawn instruction |
+   | "small extension", "iterate more", "return to stage Y", explicit mention of stage by number/name | **B** with explicit X | Stage extracted from mention |
+   | Mix "bug + new feature" | prefer **B** first (fix bug); user can trigger 08 again for C | |
 
-6. **Mini-confirm com humano** (1 menu único, sem A/B/C cru):
+6. **Mini-confirm with human** (1 single menu, no raw A/B/C):
    ```
-   Entendi: <saída inferida em prosa>
-   Ex: "restart fase 02 design pra revisar contrato API"
-   Ex: "spawn workspace novo pra feature billing"
-   Ex: "close workspace, tudo ok"
+   Understood: <inferred output in prose>
+   Ex: "restart stage 02 design to revise API contract"
+   Ex: "spawn new workspace for billing feature"
+   Ex: "close workspace, all OK"
 
-   [s] confirma   [n] cancela e pergunta de novo   [edit] descreva o que ajusta
+   [s] confirm   [n] cancel and ask again   [edit] describe what to adjust
    ```
-7. **Análise top-N error patterns:** agrupa logs + feedback em ≤5 padrões com `frequencia`, `impacto` (low/medium/high/critical) e `evidencia`. Aceita 0-2 padrões se logs vazios e feedback curto.
-8. **Extrair 4 blocos do feedback livre** (parsing pra audit, não pergunta inline): O QUE FUNCIONOU / O QUE NÃO FUNCIONOU / QUAL DOR PERSISTE / QUE LIÇÃO TIRAR. Aceita blocos vazios (não força preenchimento).
-9. **Escrever `output/intake-report.md`** com seções fixas: Logs sample, Feedback livre (literal), 4 blocos extraídos, Top-N patterns (tabela), Inferência (saída + heurística disparada + confiança), Decisão final (após mini-confirm).
-10. **Executar saída confirmada** conforme seções "Saída A/B/C" abaixo.
-11. **Commit atômico** (pre-commit hook valida atomicidade L1 ↔ outputs ↔ lessons; prefixo `intake:` ou `feedback:`).
+7. **Top-N error patterns analysis:** group logs + feedback into ≤5 patterns with `frequency`, `impact` (low/medium/high/critical), and `evidence`. Accepts 0-2 patterns if logs are empty and feedback is short.
+8. **Extract 4 blocks from free-form feedback** (parsing for audit, not an inline question): O QUE FUNCIONOU / O QUE NÃO FUNCIONOU / QUAL DOR PERSISTE / QUE LIÇÃO TIRAR. Accepts empty blocks (does not force filling).
+9. **Write `output/intake-report.md`** with fixed sections: Logs sample, Free-form feedback (literal), 4 extracted blocks, Top-N patterns (table), Inference (output + triggered heuristic + confidence), Final decision (after mini-confirm).
+10. **Execute confirmed output** per sections "Output A/B/C" below.
+11. **Atomic commit** (pre-commit hook validates L1 ↔ outputs ↔ lessons atomicity; prefix `intake:` or `feedback:`).
 
 ## Outputs
 
-- `output/intake-report.md` — relatório de intake: logs sample (ou n/a), feedback livre (literal), 4 blocos extraídos, top-N error patterns (tabela), inferência (heurística disparada + confiança), decisão final pós-confirm humano.
+- `output/intake-report.md` — intake report: logs sample (or n/a), free-form feedback (literal), 4 extracted blocks, top-N error patterns (table), inference (triggered heuristic + confidence), final decision post human-confirm.
 
 ## Sub_stage transitions
 
-Enum válido: `08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C`.
+Valid enum: `08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C`.
 
-Transições:
-- `08_in_progress → 08_decided_A`: humano escolhe A. `status: COMPLETED`. Lições appended em `docs/lessons.md`.
-- `08_in_progress → <XX>_in_progress` (saída B): humano escolhe B com X ∈ 01..07. `iteration++`. `status: IN_PROGRESS`. Outputs antigos movidos para `output-iteration-<N>/`. Note: o sub_stage transita DIRETAMENTE para o estágio X — não há `08_decided_B` "estável" persistente; ele aparece apenas como evento em `history`. (Spec exige o enum `08_decided_B` por compatibilidade; sessões transicionam por ele e em seguida saem para `<XX>_in_progress`.)
-- `08_in_progress → 08_decided_C`: humano escolhe C. `status: COMPLETED`. `spawn_to` set. Bootstrap do novo workspace é responsabilidade do humano em sessão separada.
+Transitions:
+- `08_in_progress → 08_decided_A`: human chooses A. `status: COMPLETED`. Lessons appended to `docs/lessons.md`.
+- `08_in_progress → <XX>_in_progress` (output B): human chooses B with X ∈ 01..07. `iteration++`. `status: IN_PROGRESS`. Old outputs moved to `output-iteration-<N>/`. Note: the sub_stage transitions DIRECTLY to the stage X — there is no stable persistent `08_decided_B`; it appears only as an event in `history`. (Spec requires the enum `08_decided_B` for compatibility; sessions transition through it and then move to `<XX>_in_progress`.)
+- `08_in_progress → 08_decided_C`: human chooses C. `status: COMPLETED`. `spawn_to` set. Bootstrap of the new workspace is the human's responsibility in a separate session.
 
-`next_stage: null` — estágio 08 não tem próximo estágio determinístico. Saídas A e C terminam o workspace; saída B retorna a uma fase X via `last_transition`/`history`, não via `next_stage`.
+`next_stage: null` — stage 08 has no deterministic next stage. Outputs A and C end the workspace; output B returns to stage X via `last_transition`/`history`, not via `next_stage`.
 
-**Validação saída B:** sessão recusa X ∉ {`01`, `02`, `03`, `04`, `05`, `06`, `07`}. Para mudar `project_root` ou tipo do projeto, use saída C.
+**Output B validation:** session refuses X ∉ {`01`, `02`, `03`, `04`, `05`, `06`, `07`}. To change `project_root` or project type, use output C.
 
-**UX saída C:** sessão NÃO bootstrappa novo workspace. Apenas imprime comando explícito para humano colar em sessão nova. Preserva separação "skill é parteira one-shot, sai".
+**Output C UX:** session does NOT bootstrap new workspace. Only prints explicit command for human to paste in a new session. Preserves separation "skill is a one-shot midwife, exits".
 
-## Status canônicos disponíveis neste estágio
+## Canonical statuses available in this stage
 
-- `IN_PROGRESS` — coletando logs/feedback, escrevendo intake-report, ou aguardando escolha humana A/B/C. Também é o status final em saída B (no estágio X de retorno).
-- `COMPLETED` — saída A (workspace fechado, lições appended) ou saída C (workspace fechado com `spawn_to` set).
-- `BLOCKED_ERROR` — `workspace_corrupt` detectado no pre-flight, `intake-report.md` não escreve (disco cheio, permissão), pre-commit hook rejeita, ou humano interrompe antes de decidir A/B/C (status fica `IN_PROGRESS` em `08_in_progress`; próxima sessão retoma).
+- `IN_PROGRESS` — collecting logs/feedback, writing intake-report, or awaiting human A/B/C choice. Also the final status in output B (at the return stage X).
+- `COMPLETED` — output A (workspace closed, lessons appended) or output C (workspace closed with `spawn_to` set).
+- `BLOCKED_ERROR` — `workspace_corrupt` detected in pre-flight, `intake-report.md` cannot be written (disk full, permission), pre-commit hook rejects, or human interrupts before deciding A/B/C (status stays `IN_PROGRESS` in `08_in_progress`; next session resumes).
 
-## Stop points aplicáveis
+## Applicable stop points
 
-`applicable_stop_points: []` — fase 08 NÃO dispara stop points por design. É análise + inferência + decisão direta A/B/C; não há trade-off arquitetural a escalar. Stops detectados durante o uso do output do workspace rolam para o próximo workspace via saída C (ou para o restart via saída B).
+`applicable_stop_points: []` — stage 08 does NOT trigger stop points by design. It is analysis + inference + direct A/B/C decision; there is no architectural trade-off to escalate. Stops detected during use of the workspace output roll to the next workspace via output C (or to the restart via output B).
 
-A única exceção é o stop point 11 `workspace_corrupt`, que pode aparecer no pre-flight se o estado do workspace está inconsistente — mas esse é tratado como erro de pré-condição, não como stop point regular do estágio.
+The only exception is stop point 11 `workspace_corrupt`, which may appear in pre-flight if the workspace state is inconsistent — but that is treated as a pre-condition error, not a regular stage stop point.
 
-## Inferência de intenção (heurísticas canônicas)
+## Intent inference (canonical heuristics)
 
-Mapping detalhado feedback livre → saída A/B/C. Ordem de prioridade quando múltiplos matches: **B > C > A**.
+Detailed mapping free-form feedback → output A/B/C. Priority order when multiple matches: **B > C > A**.
 
-### Saída B (restart fase X) — sinais
+### Output B (restart stage X) — signals
 
-- Palavras-chave: "bug", "quebra", "erro", "fail", "regressão", "crashou", "não funciona", "errado", "missed", "passou batido"
-- Frases: "preciso corrigir X", "voltar a Y", "refazer Z"
-- Menção explícita de stage/fase por número (`fase 02`, `stage 4`) ou nome (`design`, `review`, `verification`, etc.)
+- Keywords: "bug", "breaks", "error", "fail", "regression", "crashed", "doesn't work", "wrong", "missed", "slipped through"
+- Phrases: "need to fix X", "return to Y", "redo Z"
+- Explicit mention of stage by number (`stage 02`, `stage 4`) or name (`design`, `review`, `verification`, etc.)
 
-**Mapping bug → stage X:**
+**Bug → stage X mapping:**
 
-| Tipo de bug | X inferido |
+| Bug type | X inferred |
 |---|---|
-| Falha em testes / CI / regressão automatizada | 05 verification |
-| Bug em runtime / código quebrado / lógica errada | 04 implementation_waves |
-| Code smell, design ruim que passou no review, dimensão 7-fold faltou | 06 review |
-| Plano errado / arquitetura inadequada / ADR equivocado | 02 design |
-| Wave plan errada / DAG ruim / dependências mal mapeadas | 03 wave_planner |
-| Requisitos faltando / discovery superficial / faltou pergunta | 01 discovery |
-| Merge com problema / push em branch errada / tag errada | 07 merge |
-| Reconhecimento incompleto (raro — geralmente prefere C) | NÃO permite restart de 00; se intenção é mudar tipo/project_root, vira C |
+| Test / CI failure / automated regression | 05 verification |
+| Runtime bug / broken code / wrong logic | 04 implementation_waves |
+| Code smell, bad design that passed review, 7-fold dimension missed | 06 review |
+| Wrong plan / inadequate architecture / wrong ADR | 02 design |
+| Wrong wave plan / bad DAG / poorly mapped dependencies | 03 wave_planner |
+| Missing requirements / shallow discovery / missed question | 01 discovery |
+| Merge with problem / push to wrong branch / wrong tag | 07 merge |
+| Incomplete recon (rare — usually prefers C) | Does NOT allow restart of 00; if intent is to change type/project_root, becomes C |
 
-### Saída C (spawn novo workspace) — sinais
+### Output C (spawn new workspace) — signals
 
-- Palavras-chave: "pivotar", "mudar direção", "novo projeto", "outro workspace", "feature grande nova", "começar do zero", "este aprendizado vai pra outro"
-- Frases: "esse projeto serviu pra X mas agora preciso Y diferente", "evolução para fora do escopo"
-- Mudança de profile/tier/project_root → sempre C
+- Keywords: "pivot", "change direction", "new project", "other workspace", "big new feature", "start from scratch", "this learning goes to another"
+- Phrases: "this project served for X but now I need different Y", "evolution beyond scope"
+- Change of profile/tier/project_root → always C
 
-### Saída A (close) — sinais
+### Output A (close) — signals
 
-- Palavras-chave: "tudo ok", "funcionando", "encerrar", "fechar", "concluído", "sem feedback", "nada a relatar"
-- Silêncio do humano após pergunta direta
-- Mensagem curta neutra tipo "ok"
+- Keywords: "all OK", "working", "close", "end", "done", "no feedback", "nothing to report"
+- Human silence after a direct question
+- Short neutral message like "ok"
 
 ### Confidence score
 
-Sessão computa `confidence` (0.0-1.0) baseado em:
-- Quantidade de sinais matchados (mais sinais → maior confiança)
-- Especificidade (`fase 02` > `tem bug`)
-- Univocidade (sem mistura de categorias)
+Session computes `confidence` (0.0-1.0) based on:
+- Number of signals matched (more signals → higher confidence)
+- Specificity (`stage 02` > `has bug`)
+- Unambiguity (no mixture of categories)
 
-Se `confidence < 0.6`, sessão pergunta clarificação curta. Se `≥ 0.6`, segue pra mini-confirm.
+If `confidence < 0.6`, session asks short clarification. If `≥ 0.6`, proceeds to mini-confirm.
 
 ### Mini-confirm template
 
 ```
-Entendi: <saída inferida em prosa, 1-2 frases>
+Understood: <inferred output in prose, 1-2 sentences>
 
-Exemplos:
-  - "Restart fase 02 design pra revisar contrato API (bug em endpoints)"
-  - "Spawn workspace novo pra feature billing (escopo fora do atual)"
-  - "Close workspace — tudo ok, lições registradas"
+Examples:
+  - "Restart stage 02 design to revise API contract (bug in endpoints)"
+  - "Spawn new workspace for billing feature (scope outside current)"
+  - "Close workspace — all OK, lessons recorded"
 
-[s] confirma e executa
-[n] cancela, pergunta de novo
-[edit] descreva o ajuste (ex: "na verdade restart fase 03, não 02")
+[s] confirm and execute
+[n] cancel, ask again
+[edit] describe the adjustment (ex: "actually restart stage 03, not 02")
 ```
 
-## Skill superpowers de referência
+## Skill superpowers reference
 
-Não há skill superpowers direta para a fase 08. O protocolo é literal e está em:
+No direct skill superpowers for stage 08. The literal protocol is at:
 
 - `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-fase08.md`
 
-Esta é a cópia local (no workspace) da reference canônica `references/feedback-intake-fase08.md` da skill. Wave 4 da reescrita copia a reference para `_references/runtime/`.
+This is the local copy (in the workspace) of the canonical reference `references/feedback-intake-fase08.md` of the skill. Wave 4 of the rewrite copies the reference to `_references/runtime/`.
 
 ## Gates
 
-- **Humano:** dispara a fase 08 manualmente (nunca automático). Responde os 4 blocos de feedback inline. Escolhe A/B/C no menu (pode discordar da recomendação).
-- **Automático (CI):** pre-commit hook valida atomicidade L1 ↔ outputs ↔ `docs/lessons.md` (em saída A). Pre-commit valida que `output-iteration-<N>/` (saída B) só é criado em commits com prefixo `intake:` ou `feedback:`.
-- **Aprovação para transitar:** humano explicita escolha A/B/C; sub_stage transita conforme escolha no commit que registra a decisão. Saída A e C levam `status: COMPLETED`; saída B leva a fase X com `status: IN_PROGRESS` e `iteration: N+1`.
+- **Human:** triggers stage 08 manually (never automatic). Provides the 4 feedback blocks inline. Chooses A/B/C in the menu (may disagree with the recommendation).
+- **Automatic (CI):** pre-commit hook validates L1 ↔ outputs ↔ `docs/lessons.md` atomicity (in output A). Pre-commit validates that `output-iteration-<N>/` (output B) is only created in commits with prefix `intake:` or `feedback:`.
+- **Approval to transition:** human explicitly states A/B/C choice; sub_stage transitions per choice in the commit that records the decision. Outputs A and C take `status: COMPLETED`; output B takes stage X with `status: IN_PROGRESS` and `iteration: N+1`.
 
-## End of stage handoff (1-stage-1-sessão)
+## End of stage handoff (1-stage-1-session)
 
-**Stage 08 saídas (Q12 do plan):**
+**Stage 08 outputs (Q12 of the plan):**
 
-- **A — Close:** workspace `COMPLETED`. Sessão sai SEM gerar kickoff.
-- **B — Restart phase X:** L1 `iteration++`, `stage_atual=X`, `sub_stage=X_in_progress`. GERAR kickoff em `stages/<X>_<name>/_kickoff.md` herdando outputs anteriores em `prev_outputs` + history append. Imprime KICKOFF verbal pra próxima sessão.
-- **C — Spawn novo workspace:** NÃO gera kickoff (workspace novo é outro). Imprime instrução pro user invocar `/xp-icm-workflow` novo (skill nova faz bootstrap herdando lessons+ADRs do parent via `--spawn-from <NNN>`).
+- **A — Close:** workspace `COMPLETED`. Session exits WITHOUT generating kickoff.
+- **B — Restart stage X:** L1 `iteration++`, `stage_atual=X`, `sub_stage=X_in_progress`. GENERATE kickoff in `stages/<X>_<name>/_kickoff.md` inheriting prior outputs in `prev_outputs` + history append. Print verbal KICKOFF for next session.
+- **C — Spawn new workspace:** does NOT generate kickoff (new workspace is another one). Prints instruction for user to invoke `/xp-icm-workflow` new (new skill bootstraps inheriting lessons+ADRs from parent via `--spawn-from <NNN>`).
 
-Detalhamento por saída:
+Detail per output:
 
 ### Saída A — Close
 
-1. **Atualizar L1**:
+1. **Update L1**:
    - `sub_stage = 08_decided_A`
    - `status = COMPLETED`
    - `last_transition.from = 08_in_progress`
    - `last_transition.to = 08_decided_A`
    - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "saida A close"}`
-2. Append lições novas (de "QUE LIÇÃO TIRAR") em `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` respeitando frontmatter strict.
-3. **(v3.7.0) Append tech debt durante intake — opcional:** se feedback livre revela débito técnico durável (não-lição), append em `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` respeitando frontmatter strict. Diferença: **lição** = aprendizado meta para próximo workspace; **tech debt** = item rastreável que precisa endereçar em código futuro (ex: "refator do módulo X adiado", "validação Y temporariamente flexível"). Se feedback não cita débito explícito, skip step (lessons-only).
-4. Commit atômico (pre-commit valida atomicidade L1↔outputs↔lessons; commit-msg prefix `intake:` ou `feedback:`). Tech debt append (se houve) deve commitar via `cd .icm-main && git commit ...` (workflow ADR-style — ver L0 R6):
+   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "output A close"}`
+2. Append new lessons (from "QUE LIÇÃO TIRAR") to `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` respecting strict frontmatter.
+3. **(v3.7.0) Append tech debt during intake — optional:** if free-form feedback reveals durable technical debt (not a lesson), append to `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` respecting strict frontmatter. Difference: **lesson** = meta-learning for next workspace; **tech debt** = trackable item that needs addressing in future code (ex: "refactor of module X deferred", "validation Y temporarily relaxed"). If feedback does not explicitly cite debt, skip step (lessons-only).
+4. Atomic commit (pre-commit validates L1↔outputs↔lessons atomicity; commit-msg prefix `intake:` or `feedback:`). Tech debt append (if any) must commit via `cd .icm-main && git commit ...` (ADR-style workflow — see L0 R6):
    ```
-   intake: workspace <NNN> close (saida A) + lessons + tech_debt append
+   intake: workspace <NNN> close (output A) + lessons + tech_debt append
    ```
-5. **CLAUDE.md root + detecção último ativo:** rodar `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome A --exit-2-if-last-active`. Capturar exit code:
-   - `0` = outros workspaces ativos remanescentes (região ICM continua populada).
-   - `2` = era o último ativo (região ICM substituída por idle msg + persistida em base via `.icm-main/`).
-6. **(v3.7.0) Auto-invocar `/init` se foi último ativo:** se exit code do step 5 = `2`, invocar `Skill(skill: "init")` na MESMA sessão antes do step 7 (cleanup). Justificativa: pós-saída A do último workspace, região ICM está idle e a região codebase precisa ser regenerada com info do código construído (último merge stage 07). Se exit = `0`, **NÃO invocar** `/init` — outros workspaces ainda ativos, região ICM populada, `/init` sobrescreveria signaling (proibido — ver `_references/runtime/project-root-claude-md.md` §"Contrato com /init"). Pular pro step 8 nesse caso (sem cleanup).
-7. **(v3.7.2) Menu opt-in cleanup ICM (apenas se exit=2):** APÓS `/init`, oferecer cleanup completo do estado ICM-effemeral (deletar workspace branch, remover `.icm-main/` worktree, limpar subagent worktrees órfãs). Imprimir literal:
+5. **CLAUDE.md root + last-active detection:** run `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome A --exit-2-if-last-active`. Capture exit code:
+   - `0` = other active workspaces remain (ICM region remains populated).
+   - `2` = was the last active (ICM region replaced with idle msg + persisted in base via `.icm-main/`).
+6. **(v3.7.0) Auto-invoke `/init` if was último ativo (last active):** if exit code from step 5 = `2`, invoke `Skill(skill: "init")` in the SAME session before step 7 (cleanup). Justification: after output A of the last workspace, ICM region is idle and the codebase region needs to be regenerated with info about built code (last merge stage 07). If exit = `0`, **DO NOT invoke** `/init` — other workspaces still active, ICM region populated, `/init` would overwrite signaling (forbidden — see `_references/runtime/project-root-claude-md.md` §"Contract with /init"). Skip to step 8 in that case (no cleanup).
+7. **(v3.7.2) Opt-in cleanup menu (only if exit=2):** AFTER `/init`, offer complete ICM-ephemeral state cleanup (delete workspace branch, remove `.icm-main/` worktree, clean orphan subagent worktrees). Print literal:
 
    ```
-   🧹 ICM cleanup completo? Vai executar:
-     - git checkout main na raiz (project_root volta a refletir código produto)
-     - git worktree remove .icm-main (worktree paralelo redundante)
-     - git branch -D workspace/<NNN-slug> (workspace branch fechada)
-     - git worktree prune (subagent worktrees órfãs stage 04)
+   🧹 Full ICM cleanup? Will execute:
+     - git checkout main at root (project_root reverts to reflect product code)
+     - git worktree remove .icm-main (redundant parallel worktree)
+     - git branch -D workspace/<NNN-slug> (closed workspace branch)
+     - git worktree prune (orphan subagent worktrees from stage 04)
 
-   [s] sim, executar cleanup
-   [n] não, manter estado atual (cleanup manual depois via scripts/icm-cleanup.py)
-   [dry-run] mostrar o que rodaria sem executar
+   [s] yes, execute cleanup
+   [n] no, keep current state (manual cleanup later via scripts/icm-cleanup.py)
+   [dry-run] show what would run without executing
    ```
 
-   - Se humano responde `[dry-run]`: invocar `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --dry-run)`. Mostrar output. Re-perguntar menu.
-   - Se humano responde `[s]`: invocar `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}})`. Imprimir output.
-   - Se humano responde `[n]`: pular cleanup, print `Estado ICM mantido. Pra cleanup manual depois: python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}}`.
+   - If human replies `[dry-run]`: invoke `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --dry-run)`. Show output. Re-ask menu.
+   - If human replies `[s]`: invoke `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}})`. Print output.
+   - If human replies `[n]`: skip cleanup, print `ICM state kept. For manual cleanup later: python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}}`.
 
-   Cleanup é **opt-in com confirmação** porque é destrutivo (deleta branch + worktrees). Pre-checks no script abortam automaticamente se há uncommitted changes — humano pode investigar antes.
+   Cleanup is **opt-in with confirmation** because it is destructive (deletes branch + worktrees). Pre-checks in the script automatically abort if there are uncommitted changes — human can investigate first.
 
-   Doc canônico: `_references/runtime/icm-cleanup-protocol.md`.
+   Canonical doc: `_references/runtime/icm-cleanup-protocol.md`.
 
-8. Print pro user — varia conforme exit code do step 5:
-   - exit `2`: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md. Era último ativo → /init disparado pra regenerar CLAUDE.md root + cleanup ICM <executado/pulado/dry-run conforme escolha>.` (+ "Tech debt registrado em docs/tech_debt.md." se step 3 executou).
-   - exit `0`: `✅ Workspace <NNN-slug> CLOSED (saída A). Lições registradas em docs/lessons.md. <K> workspace(s) ainda ativo(s) — /init e cleanup NÃO disparados.`
-9. **NÃO gerar `_kickoff.md`.** SAIR da sessão.
+8. Print for user — varies per exit code from step 5:
+   - exit `2`: `✅ Workspace <NNN-slug> CLOSED (output A). Lessons recorded in docs/lessons.md. Was last active (último ativo) → /init triggered to regenerate CLAUDE.md root + ICM cleanup <executed/skipped/dry-run per choice>.` (+ "Tech debt recorded in docs/tech_debt.md." if step 3 executed).
+   - exit `0`: `✅ Workspace <NNN-slug> CLOSED (output A). Lessons recorded in docs/lessons.md. <K> workspace(s) still active — /init and cleanup NOT triggered.`
+9. **Do NOT generate `_kickoff.md`.** EXIT the session.
 
 ### Saída B — Restart phase X
 
-1. Validar `X ∈ {01, 02, 03, 04, 05, 06, 07}` (recusar `00` e `08`).
-2. Mover outputs antigos: `stages/<XX>/output/` → `stages/<XX>/output-iteration-<N>/` (N = iteration ANTES do incremento).
-3. **Atualizar L1**:
+1. Validate `X ∈ {01, 02, 03, 04, 05, 06, 07}` (refuse `00` and `08`).
+2. Move old outputs: `stages/<XX>/output/` → `stages/<XX>/output-iteration-<N>/` (N = iteration BEFORE increment).
+3. **Update L1**:
    - `iteration = N+1`
    - `stage_atual = <XX>`
-   - `sub_stage = <XX>_in_progress` (ou `04_wave_1_in_progress` se X=04)
+   - `sub_stage = <XX>_in_progress` (or `04_wave_1_in_progress` if X=04)
    - `status = IN_PROGRESS`
    - `last_transition.from = 08_in_progress`
    - `last_transition.to = <XX>_in_progress`
    - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append: `{at, event: "iteration_increment", from: "08_in_progress", to: "<XX>_in_progress", commit_sha, note: "saida B restart fase X"}`
-4. **Renderizar `_kickoff.md`** em `<workspace>/stages/<XX>_<name>/_kickoff.md`:
-   - `prev_outputs` herda do `intake-report.md` (sumário das lições + 4 blocos de feedback)
-   - `pending_for_this_stage`: pontos do feedback que motivaram o restart
+   - `history` append: `{at, event: "iteration_increment", from: "08_in_progress", to: "<XX>_in_progress", commit_sha, note: "output B restart stage X"}`
+4. **Render `_kickoff.md`** in `<workspace>/stages/<XX>_<name>/_kickoff.md`:
+   - `prev_outputs` inherits from `intake-report.md` (summary of lessons + 4 feedback blocks)
+   - `pending_for_this_stage`: points from feedback that motivated the restart
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render`
-5. Commit atômico (prefix `intake:` ou `feedback:`):
+5. Atomic commit (prefix `intake:` or `feedback:`):
    ```
-   intake: workspace <NNN> restart fase <XX> (saida B, iteration <N+1>) + kickoff
+   intake: workspace <NNN> restart stage <XX> (output B, iteration <N+1>) + kickoff
    ```
-   Files no commit: `intake-report.md` + L1 + outputs movidos pra `output-iteration-<N>/` + `_kickoff.md` do stage X.
-6. **Imprimir KICKOFF block verbal** pro user (copy-paste):
+   Files in commit: `intake-report.md` + L1 + outputs moved to `output-iteration-<N>/` + `_kickoff.md` of stage X.
+6. **Print verbal KICKOFF block** for user (copy-paste):
 
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   🔁 Stage 08 SAÍDA B — restart fase <XX> — workspace <NNN-slug>
+   🔁 Stage 08 OUTPUT B — restart stage <XX> — workspace <NNN-slug>
 
-   Workspace atualizado em commit <sha>:
+   Workspace updated at commit <sha>:
      - L1: stage_atual=<XX>, sub_stage=<XX>_in_progress, iteration=<N+1>
-     - Outputs antigos movidos: stages/<XX>/output-iteration-<N>/
-     - Kickoff: stages/<XX>_<name>/_kickoff.md gerado
+     - Old outputs moved: stages/<XX>/output-iteration-<N>/
+     - Kickoff: stages/<XX>_<name>/_kickoff.md generated
 
-   🔄 KICKOFF próxima sessão — copy/paste:
+   🔄 KICKOFF next session — copy/paste:
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   Continuar workspace <NNN-slug> no estágio <XX> (<name>) — iteração <N+1>.
+   Continue workspace <NNN-slug> at stage <XX> (<name>) — iteration <N+1>.
 
    Read order:
      workspaces/<NNN-slug>/CLAUDE.md
@@ -333,35 +333,35 @@ Detalhamento por saída:
      workspaces/<NNN-slug>/stages/<XX>_<name>/_kickoff.md
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-   Encerre esta sessão (Ctrl+D ou /exit) e abra nova sessão Claude
-   no project_root, depois cole o prompt acima.
+   Close this session (Ctrl+D or /exit) and open a new Claude session
+   at the project_root, then paste the prompt above.
    ```
-7. SAIR da sessão.
+7. EXIT the session.
 
 ### Saída C — Spawn novo workspace
 
-1. **Atualizar L1**:
+1. **Update L1**:
    - `sub_stage = 08_decided_C`
    - `status = COMPLETED`
-   - `spawn_to = <slug-novo-workspace>`
+   - `spawn_to = <new-workspace-slug>`
    - `last_transition.from = 08_in_progress`
    - `last_transition.to = 08_decided_C`
    - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "saida C spawn"}`
-2. Commit atômico:
+   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "output C spawn"}`
+2. Atomic commit:
    ```
-   intake: workspace <NNN> close + spawn <slug-novo> (saida C)
+   intake: workspace <NNN> close + spawn <new-slug> (output C)
    ```
-3. **(v3.7.0) Renderizar `.icm/spawn-pending.json`** em `{{PROJECT_ROOT}}/.icm/spawn-pending.json` (gitignored). Schema:
+3. **(v3.7.0) Render `.icm/spawn-pending.json`** in `{{PROJECT_ROOT}}/.icm/spawn-pending.json` (gitignored). Schema:
    ```json
    {
      "spawn_from": "{{WORKSPACE}}",
      "intake_report_path": "workspaces/{{WORKSPACE}}/stages/08_feedback_intake/output/intake-report.md",
      "intake_report_branch": "workspace/{{WORKSPACE}}",
-     "proposed_workspace_name": "<slug-novo-workspace>",
-     "proposed_profile": "<profile sugerido baseado escopo>",
-     "proposed_tier": "<tier sugerido>",
-     "intake_commit_sha": "<sha do commit step 2>",
+     "proposed_workspace_name": "<new-workspace-slug>",
+     "proposed_profile": "<suggested profile based on scope>",
+     "proposed_tier": "<suggested tier>",
+     "intake_commit_sha": "<sha from step 2 commit>",
      "agent_brief": {
        "por_que_spawn": "...",
        "escopo_motivador": "...",
@@ -372,95 +372,95 @@ Detalhamento por saída:
      "created_at": "<ISO 8601>"
    }
    ```
-   `agent_brief` consumível pelo recon-report do workspace novo (stage 00 lê + cita herança). Bootstrap próxima sessão auto-detecta arquivo (`bootstrap.detect_spawn_pending`), propõe valores, unlinka pós-sucesso.
-4. **NÃO gerar `_kickoff.md`** (workspace novo é outro; bootstrap acontece em sessão separada).
-5. **CLAUDE.md root + detecção último ativo:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome C --spawn-to <slug-novo> --exit-2-if-last-active`. Capturar exit code:
-   - `0` = outros workspaces ativos remanescentes.
-   - `2` = era o último ativo (região ICM substituída por idle msg).
-6. **(v3.7.0) Auto-invocar `/init` se foi último ativo:** se exit code do step 5 = `2`, invocar `Skill(skill: "init")` na MESMA sessão ANTES do step 7 (cleanup). Justificativa: pós-saída C do último workspace, região ICM está idle e a região codebase precisa ser regenerada pra refletir código construído pré-pivô (humano ainda vai bootstrappar workspace novo em sessão separada — `/init` capta snapshot atual do código). Se exit = `0`, **NÃO invocar** `/init`. Pular pro step 8 nesse caso (sem cleanup).
-7. **(v3.7.2) Menu opt-in cleanup ICM (apenas se exit=2):** APÓS `/init`, oferecer cleanup completo do estado ICM-effemeral (deletar workspace branch, remover `.icm-main/` worktree, limpar subagent worktrees órfãs). Imprimir literal:
+   `agent_brief` consumable by the new workspace's recon-report (stage 00 reads + cites inheritance). Next session bootstrap auto-detects the file (`bootstrap.detect_spawn_pending`), proposes values, unlinks post-success.
+4. **Do NOT generate `_kickoff.md`** (new workspace is another; bootstrap happens in separate session).
+5. **CLAUDE.md root + last-active detection:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome C --spawn-to <new-slug> --exit-2-if-last-active`. Capture exit code:
+   - `0` = other active workspaces remain.
+   - `2` = was the last active (ICM region replaced with idle msg).
+6. **(v3.7.0) Auto-invoke `/init` if was último ativo (last active):** if exit code from step 5 = `2`, invoke `Skill(skill: "init")` in the SAME session BEFORE step 7 (cleanup). Justification: after output C of the last workspace, ICM region is idle and the codebase region needs to be regenerated to reflect code built before the pivot (human will still bootstrap new workspace in a separate session — `/init` captures current code snapshot). If exit = `0`, **DO NOT invoke** `/init`. Skip to step 8 in that case (no cleanup).
+7. **(v3.7.2) Opt-in cleanup menu (only if exit=2):** AFTER `/init`, offer complete ICM-ephemeral state cleanup (delete workspace branch, remove `.icm-main/` worktree, clean orphan subagent worktrees). Print literal:
 
    ```
-   🧹 ICM cleanup completo? Vai executar:
-     - git checkout main na raiz (project_root volta a refletir código produto)
-     - git worktree remove .icm-main (worktree paralelo redundante)
-     - git branch -D workspace/<NNN-slug> (workspace branch fechada)
-     - git worktree prune (subagent worktrees órfãs stage 04)
+   🧹 Full ICM cleanup? Will execute:
+     - git checkout main at root (project_root reverts to reflect product code)
+     - git worktree remove .icm-main (redundant parallel worktree)
+     - git branch -D workspace/<NNN-slug> (closed workspace branch)
+     - git worktree prune (orphan subagent worktrees from stage 04)
 
-   ⚠️  Saída C: workspace novo será bootstrappado em sessão separada via
-   /xp-icm-workflow. Bootstrap re-cria .icm-main/ se ausente. Limpar agora
-   é seguro — bootstrap reconstrói o que precisar.
+   ⚠️  Output C: new workspace will be bootstrapped in a separate session via
+   /xp-icm-workflow. Bootstrap recreates .icm-main/ if absent. Cleaning now
+   is safe — bootstrap rebuilds whatever it needs.
 
-   [s] sim, executar cleanup
-   [n] não, manter estado atual (cleanup manual depois via scripts/icm-cleanup.py)
-   [dry-run] mostrar o que rodaria sem executar
+   [s] yes, execute cleanup
+   [n] no, keep current state (manual cleanup later via scripts/icm-cleanup.py)
+   [dry-run] show what would run without executing
    ```
 
-   - Se humano responde `[dry-run]`: invocar `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --dry-run)`. Mostrar output. Re-perguntar menu.
-   - Se humano responde `[s]`: invocar `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}})`. Imprimir output.
-   - Se humano responde `[n]`: pular cleanup, print `Estado ICM mantido. Pra cleanup manual depois: python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}}`.
+   - If human replies `[dry-run]`: invoke `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --dry-run)`. Show output. Re-ask menu.
+   - If human replies `[s]`: invoke `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}})`. Print output.
+   - If human replies `[n]`: skip cleanup, print `ICM state kept. For manual cleanup later: python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}}`.
 
-   Doc canônico: `_references/runtime/icm-cleanup-protocol.md`.
+   Canonical doc: `_references/runtime/icm-cleanup-protocol.md`.
 
-8. Print pro user — instrução explícita pra próxima sessão:
+8. Print for user — explicit instruction for next session:
 
-   - Se exit `2` (último ativo, /init disparado):
+   - If exit `2` (last active, /init triggered):
      ```
-     ✅ Workspace <NNN-slug> CLOSED + SPAWN registrado (saída C). Era último ativo → /init disparado pra regenerar CLAUDE.md root.
+     ✅ Workspace <NNN-slug> CLOSED + SPAWN registered (output C). Was last active → /init triggered to regenerate CLAUDE.md root.
 
-     Próximo passo (humano, sessão nova):
+     Next step (human, new session):
 
        /xp-icm-workflow project-root={{PROJECT_ROOT}}
 
-     Bootstrap auto-detecta .icm/spawn-pending.json e propõe:
-       - profile=<profile sugerido>
-       - tier=<tier sugerido>
-       - workspace-name=<slug-novo>
+     Bootstrap auto-detects .icm/spawn-pending.json and proposes:
+       - profile=<suggested profile>
+       - tier=<suggested tier>
+       - workspace-name=<new-slug>
        - spawn_from={{WORKSPACE}}
 
-     Você confirma ou ajusta no menu interativo.
-     (Fallback explícito: --spawn-from={{WORKSPACE}} arg sobre arquivo.)
+     You confirm or adjust in the interactive menu.
+     (Explicit fallback: --spawn-from={{WORKSPACE}} arg over file.)
      ```
 
-   - Se exit `0` (outros ativos remanescentes):
+   - If exit `0` (other active workspaces remain):
      ```
-     ✅ Workspace <NNN-slug> CLOSED + SPAWN registrado (saída C). <K> workspace(s) ainda ativo(s) — /init NÃO disparado.
+     ✅ Workspace <NNN-slug> CLOSED + SPAWN registered (output C). <K> workspace(s) still active — /init NOT triggered.
 
-     Próximo passo (humano, sessão nova):
+     Next step (human, new session):
 
        /xp-icm-workflow project-root={{PROJECT_ROOT}}
 
-     Bootstrap auto-detecta .icm/spawn-pending.json e propõe:
-       - profile=<profile sugerido>
-       - tier=<tier sugerido>
-       - workspace-name=<slug-novo>
+     Bootstrap auto-detects .icm/spawn-pending.json and proposes:
+       - profile=<suggested profile>
+       - tier=<suggested tier>
+       - workspace-name=<new-slug>
        - spawn_from={{WORKSPACE}}
 
-     Você confirma ou ajusta no menu interativo.
-     (Fallback explícito: --spawn-from={{WORKSPACE}} arg sobre arquivo.)
+     You confirm or adjust in the interactive menu.
+     (Explicit fallback: --spawn-from={{WORKSPACE}} arg over file.)
      ```
-9. SAIR da sessão.
+9. EXIT the session.
 
-Detalhes em `<skill_root>/references/session-handoff-protocol.md`.
+Details in `<skill_root>/references/session-handoff-protocol.md`.
 
 ---
 
-## v3.3.0 references aplicáveis a este stage
+## v3.3.0 references applicable to this stage
 
 - **Triage state machine (`_references/runtime/triage-state-machine.md`):**
-  ANTES da inferência A/B/C, classificar feedback em (category, state):
-  - bug → Saída B (restart fase X)
-  - enhancement aceito → Saída C (spawn novo workspace)
-  - enhancement rejeitado → wontfix → append em `_out-of-scope/` + Saída A
-  - tudo OK → Saída A
-  Cada item B/C produz AGENT-BRIEF (formato:
+  BEFORE A/B/C inference, classify feedback in (category, state):
+  - bug → Output B (restart stage X)
+  - accepted enhancement → Output C (spawn new workspace)
+  - rejected enhancement → wontfix → append to `_out-of-scope/` + Output A
+  - all OK → Output A
+  Each B/C item produces AGENT-BRIEF (format:
   `_references/runtime/agent-brief-template.md`).
 
 - **OUT-OF-SCOPE wontfix (`_references/runtime/out-of-scope-kb.md`):**
-  enhancement rejeitada → criar/atualizar `<workspace>/_out-of-scope/<conceito-kebab>.md`
-  com decision + reason durável + prior requests.
+  rejected enhancement → create/update `<workspace>/_out-of-scope/<concept-kebab>.md`
+  with decision + durable reason + prior requests.
 
-- **CLAUDE.md root atualização:**
-  - **Saída A:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO8601> --exit-2-if-last-active`. Se era o último ativo, ativa região idle automaticamente + **(v3.7.0)** sessão auto-invoca `Skill(skill: "init")` pra regenerar região codebase do CLAUDE.md root.
-  - **Saída B:** `python {{SKILL_DIR}}/scripts/handoff.py update-project-md --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --profile {{PROFILE}} --tier {{TIER}} --stage-atual <X> --stage-dir <X_name> --sub-stage <X>_in_progress --iteration <N+1> --status IN_PROGRESS --skill-dir {{SKILL_DIR}}`. **(v3.7.0)** `/init` NÃO é disparado — workspace continua ativo.
-  - **Saída C:** `remove-block ... --outcome C --spawn-to <slug-novo> --exit-2-if-last-active` (workspace dono vira COMPLETED). Se era o último ativo, **(v3.7.0)** sessão auto-invoca `/init` igual saída A. Bootstrap em sessão B adiciona bloco do novo workspace.
+- **CLAUDE.md root update:**
+  - **Output A:** `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO8601> --exit-2-if-last-active`. If it was the last active, automatically activates idle region + **(v3.7.0)** session auto-invokes `Skill(skill: "init")` to regenerate CLAUDE.md root codebase region.
+  - **Output B:** `python {{SKILL_DIR}}/scripts/handoff.py update-project-md --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --profile {{PROFILE}} --tier {{TIER}} --stage-atual <X> --stage-dir <X_name> --sub-stage <X>_in_progress --iteration <N+1> --status IN_PROGRESS --skill-dir {{SKILL_DIR}}`. **(v3.7.0)** `/init` is NOT triggered — workspace remains active.
+  - **Output C:** `remove-block ... --outcome C --spawn-to <new-slug> --exit-2-if-last-active` (owning workspace becomes COMPLETED). If it was the last active, **(v3.7.0)** session auto-invokes `/init` same as output A. Bootstrap in session B adds block of new workspace.
