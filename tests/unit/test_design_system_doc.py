@@ -27,19 +27,19 @@ def test_doc_exists():
 def test_doc_has_canonical_sections():
     content = DOC_PATH.read_text(encoding="utf-8")
     expected_sections = [
-        "## Por que DESIGN.md",
-        "## Estrutura canônica do arquivo",
+        "## Why DESIGN.md",
+        "## Canonical file structure",
         "## 3-layer token architecture",
         "## Component spec table",
-        "## Fluxo por stage ICM",
+        "## Flow per ICM stage",
         "## Stage 02 process",
-        "## Stage 04 canal 2",
-        "## Galeria de referência",
-        "## Tool externo opcional — designlang",
+        "## Stage 04 channel 2",
+        "## Reference gallery",
+        "## Optional external tool — designlang",
         "## Escape hatch — ui-ux-pro-max-skill",
-        "## Conversão pra outras representações",
+        "## Conversion to other representations",
         "## Anti-patterns",
-        "## Referências cruzadas",
+        "## Cross-references",
     ]
     for section in expected_sections:
         assert section in content, f"seção faltando: {section!r}"
@@ -76,8 +76,8 @@ def test_doc_mentions_component_spec_states():
 
 def test_doc_mentions_stage_02_menu_options():
     content = DOC_PATH.read_text(encoding="utf-8")
-    # Menu A/B/C: criar do zero, awesome-design-md, designlang
-    assert "Criar do zero" in content
+    # Menu A/B/C: create from scratch, awesome-design-md, designlang
+    assert "Create from scratch" in content
     assert "awesome-design-md" in content
     assert "designlang" in content
 
@@ -92,8 +92,8 @@ def test_doc_mentions_escape_hatch_boundary():
     # Escape hatch documentado + boundary explicado
     assert "ui-ux-pro-max" in content
     assert "Escape hatch" in content
-    # Boundary: skill paralela, invocação humana explícita
-    assert "humana explícita" in content or "humana explicita" in content
+    # Boundary: parallel skill, explicit human invocation
+    assert "Explicit human invocation" in content
 
 
 def test_design_system_in_runtime_refs():

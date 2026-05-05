@@ -14,11 +14,11 @@ def test_doc_has_required_sections() -> None:
     text = DOC.read_text(encoding="utf-8")
     required = [
         "# Deep modules",
-        "## Conceito — Deep modules",
-        "## Os 3 critérios",
+        "## Concept — Deep modules",
+        "## The 3 criteria",
         "## Deletion test",
-        "## Checklist para stage 02",
-        "## Quando pular este check",
+        "## Checklist for stage 02",
+        "## When to skip this check",
     ]
     missing = [s for s in required if s not in text]
     assert not missing, f"Sections missing: {missing}"
@@ -26,8 +26,8 @@ def test_doc_has_required_sections() -> None:
 
 def test_checklist_has_five_items() -> None:
     text = DOC.read_text(encoding="utf-8")
-    # Procura bloco da seção "## Checklist para stage 02"
-    start = text.find("## Checklist para stage 02")
+    # Procura bloco da seção "## Checklist for stage 02"
+    start = text.find("## Checklist for stage 02")
     assert start >= 0
     section = text[start:text.find("\n## ", start + 1) if text.find("\n## ", start + 1) >= 0 else len(text)]
     bullets = [ln for ln in section.splitlines() if ln.strip().startswith("- [ ]")]
