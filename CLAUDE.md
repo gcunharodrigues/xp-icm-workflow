@@ -174,6 +174,7 @@ Templates in `/templates/` use `{{WORKSPACE}}`, `{{PROFILE}}`, `{{TIER}}`, `{{PR
 - `references/wave-planner-algorithm.md` — DAG construction details
 - `references/stop-points-canonical.md` — 12 stop points + tier thresholds
 - `references/example-run.md` — Full 9-session E2E walkthrough
+- `references/maintainer-checklist.md` — How to modify the skill (new script, doc, template, stage, version bump)
 
 ## Tests
 

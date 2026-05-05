@@ -293,6 +293,7 @@ Suggested permissions allowlist in `system-requirements.md`.
 - `references/lead-resolution-protocol.md` — buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK (v3.9.0) when per-task loop exhausts cap OR convergence trip OR catastrophic
 - `references/mocking-guidelines.md` — boundaries only (HTTP/DB/time/randomness/env); never internals (v3.9.0, mattpocock alignment)
 - `references/e2e-coverage-protocol.md` — E2E reinforcement (v3.10.0): wave-planner auto-flag user-facing tasks, forensic+ Check 8, L4 wave gate universal tier dev/prod, Stage 05 audit suite freshness
+- `references/maintainer-checklist.md` — How to modify the skill itself (new script, doc, template, stage, version bump, drift detector)
 
 **Test references:**
 

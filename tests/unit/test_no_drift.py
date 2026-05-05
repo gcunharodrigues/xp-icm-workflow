@@ -578,6 +578,7 @@ SKILL_MD_INDEXED_DOCS: tuple[str, ...] = (
     "lead-resolution-protocol.md",   # v3.9.0
     "mocking-guidelines.md",         # v3.9.0
     "e2e-coverage-protocol.md",      # v3.10.0
+    "maintainer-checklist.md",        # v3.12.1
 )
 
 
