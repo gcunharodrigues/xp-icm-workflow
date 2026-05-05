@@ -178,7 +178,7 @@ Stdout: rendered prompt ready for `Agent(prompt=...)` injection.
 
 - Lead-resolution canonical: `references/lead-resolution-protocol.md`
 - Forensic+ canonical: `references/forensic-plus-protocol.md`
-- 12-step pipeline: `references/wave-execution-protocol.md` step 8c
+- 14-step pipeline: `references/wave-execution-protocol.md` step 8c
 - Pick-model heuristic: `scripts/pick-model.py`
 - L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`
 - State machine: `references/state-machine-schema.md` (`error_type: critic_unavailable|critic_abstain_loop`)

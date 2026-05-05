@@ -43,7 +43,8 @@ This file provides guidance ...
 ## Idempotent insertion algorithm (brownfield)
 
 1. **File does not exist:** create from
-   `templates/project_root/CLAUDE.md.tpl` with the complete ICM region.
+   `templates/project_root/CLAUDE.md.tpl` via `handoff.py:_greenfield_template()`,
+   which reads the template and substitutes `{{PROJECT_NAME}}` and `{{ICM_REGION}}`.
 2. **File exists WITH markers:** replace content only between
    `<!-- ICM-START -->` and `<!-- ICM-END -->`. Bytes outside the markers
    preserved intact.
@@ -135,7 +136,7 @@ and C step 6.
 `/init` may look for the markers and preserve them. Markers are
 stable sentinels for any tool that wants to respect the region.
 
-**Tier 3 (future work):** PreToolUse hook that blocks `/init` invocation
+**Implemented (v3.4.1):** PreToolUse hook `templates/.claude/hooks/block-init-during-icm.sh` blocks `/init` invocation while an ICM workspace is active. Installed by bootstrap for all tiers.
 during active workspace. Out of scope for v3.1.0.
 
 ## Atomicity (G15)

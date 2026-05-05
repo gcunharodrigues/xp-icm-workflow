@@ -6,7 +6,7 @@
 
 > **Origin decision:** Q2/Q7/Q17 + §4.2-4.4 of the plan, simplified in v3.1 to use native Agent tool instead of worktrees + custom mailbox.
 
-> **Single source of truth for the 12-step pipeline:** `references/wave-execution-protocol.md` (v3.5.0). This doc covers specific details of subagent dispatch (cap by tier, subagent-driven-development pattern). Cross-refs avoid duplication.
+> **Single source of truth for the 14-step pipeline:** `references/wave-execution-protocol.md` (v3.12.1). This doc covers specific details of subagent dispatch (cap by tier, subagent-driven-development pattern). Cross-refs avoid duplication.
 
 ---
 

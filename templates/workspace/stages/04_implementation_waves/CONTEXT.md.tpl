@@ -29,10 +29,10 @@ next_stage: "05"
 Parallel execution in waves. Lead session orchestrates subagents via Agent tool respecting the cap per tier (2/3/5/5). Each subagent works on a task in isolated branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` (from `{{BASE_BRANCH}}`), follows vertical TDD cycle (tracer-first + RED→GREEN→CI scope→REFACTOR loop). Per-task loop has cap 3 attempts, validated by L2 forensic+ extended (7 deterministic checks) + L3 orthogonal critic (Agent fresh context, anti-sycophancy, model = tier ceiling). When cap is exhausted OR convergence trip OR catastrophic detected → lead-resolution tier (3 buckets B1 REWRITE_SPEC / B3 DIRECT_IMPL / B4 VOID_TASK). Lead does sequential merge into `{{BASE_BRANCH}}` after approve. One sub_stage per wave: `04_wave_<N>_in_progress` → `04_wave_<N>_completed`. Repeats until `wave-plan.md` is exhausted.
 
 **Consolidated canonical docs:**
-- `references/wave-execution-protocol.md` — 12-step pipeline
+- `references/wave-execution-protocol.md` — 14-step pipeline
 - `references/critic-protocol.md` — L3 critic (v3.9.0)
 - `references/lead-resolution-protocol.md` — buckets B1/B3/B4 (v3.9.0)
-- `references/forensic-plus-protocol.md` — 7 checks (extended v3.9.0)
+- `references/forensic-plus-protocol.md` — 8 checks (extended v3.10.0)
 - `references/4-block-contract-template.md` — vertical TDD + tracer-first (v3.9.0)
 - `references/mocking-guidelines.md` — boundaries only (v3.9.0)
 - `references/script-cli-reference.md` — exact CLI format for all scripts (v3.12.1)
@@ -59,7 +59,7 @@ Parallel execution in waves. Lead session orchestrates subagents via Agent tool 
 | 16 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional: canonical catalogue of IDs, complementary to _config/stop-points.md for thresholds |
 | 17 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/critic-protocol.md | L3 | yes — L3 orthogonal critic (v3.9.0) |
 | 18 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/lead-resolution-protocol.md | L3 | yes — buckets B1/B3/B4 (v3.9.0) |
-| 19 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/forensic-plus-protocol.md | L3 | yes — 7 checks extended (v3.9.0) |
+| 19 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/forensic-plus-protocol.md | L3 | yes — 8 checks extended (v3.10.0) |
 | 20 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/mocking-guidelines.md | L3 | yes — boundaries only (v3.9.0) |
 | 21 | {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/e2e-coverage-protocol.md | L3 | yes — Check 8 + L4 wave gate e2e (v3.10.0) |
 
@@ -91,7 +91,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 1. **Lead pre-flight:** reads wave-plan.md; identifies current wave via L1 `waves.current`. Sub_stage transitions to `04_wave_<N>_in_progress`. Lead records in L1 history event `{event: "wave_started", wave: <N>, pre_wave_sha: <git rev-parse {{BASE_BRANCH}}>}` — used by ci-rollback-protocol.md as reset point.
 
    **Pre-flight verification checklist (MANDATORY — do NOT skip):**
-   - [ ] `git checkout main && git branch --show-current` → confirms merge target is `main`
+   - [ ] `git checkout {{BASE_BRANCH}} && git branch --show-current` → confirms merge target is `{{BASE_BRANCH}}`
    - [ ] `git branch --list "wave-{{WORKSPACE_NUM}}-*"` → verify branch naming pattern matches `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`
    - [ ] `python {{SKILL_DIR}}/scripts/forensic-plus.py --help` → script is callable (catches import errors early)
    - [ ] For each task: run `python {{SKILL_DIR}}/scripts/pick-model.py --plan <path> --task-slug <slug> --tier <tier> --output json` → records `writer_model` and `critic_model` per task
@@ -108,7 +108,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
       - RED → 1 test (1 acceptance bullet OR edge case)
       - GREEN → minimal impl to make the test pass
       - CI scope → tests + types + lint on files touched (fast feedback)
-      - REFACTOR → optional, only if obvious complexity reduction
+      - REFACTOR → mandatory after every GREEN. Skip ONLY when all three Dirt Check questions (duplication, naming, function/file size — see `_config/xp-conventions.md`) answer NO.
    3. **Anti-horizontal slicing** — forbidden to write all tests at once OR all impl at once. Forensic+ Check 5 detects acceptance bullets without test mapping; if diff > 100 LOC without new test → stop and re-pace.
    4. **Commit verify gate** — before COMPLETE, confirm `git log --oneline {{BASE_BRANCH}}..HEAD` shows ≥1 commit. Zero = return to loop.
    5. **COMPLETE** — writes `output/wave-<N>/task-<slug>.md` minimalist (summary, modified files, tests, ADRs applied — NO inline Akita checklist, QA delegated to L2/L3).
@@ -124,7 +124,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 
    8a. **Pre-audit:** real files_touched (`git diff --name-only`) captured for all AFK tasks. Skip cross-task audit in 1-task wave (flag `skip_cross_task_audit: true` in wave-plan.md).
 
-   8b. **L2 Forensic+ extended (7 checks, deterministic, 0 token):** for each AFK task in the wave (skip `type: HITL`), reviewer Agent invokes:
+   8b. **L2 Forensic+ extended (8 checks, deterministic, 0 token):** for each AFK task in the wave (skip `type: HITL`), reviewer Agent invokes:
        ```bash
        python {{SKILL_DIR}}/scripts/forensic-plus.py \
            --workspace-num {{WORKSPACE_NUM}} --wave <N> --task-slug <slug> \
@@ -168,7 +168,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
            --task-slug <slug> --wave <N> --workspace-num {{WORKSPACE_NUM}} \
            --base-branch {{BASE_BRANCH}} \
            --critic-rounds output/wave-<N>/task-<slug>-critic-round1.json[,round2.json,...] \
-           --files-touched <comma-sep> \
+           --files-touched <comma-sep from step 8a: `git diff --name-only {{BASE_BRANCH}}...wave-{{WORKSPACE_NUM}}-<N>/<slug>`> \
            --forensic-files-outside <int from 8b Check 2> \
            --output output/wave-<N>/task-<slug>-diagnose.md
        ```
@@ -180,20 +180,27 @@ Each wave executes the pipeline below. `<N>` = current wave number.
        - **Only SOFT in 8b + APPROVE in 8c** → `approved_pending_ci: true`, warnings logged in `wave-summary.md` § L2/L3 summary. Merge proceeds (step 10).
 
 9. **Lead-resolution tier (B1/B3/B4) — when step 8 escalated:**
-   Lead reads `output/wave-<N>/task-<slug>-diagnose.md` recommended bucket. Lead may override (records choice in `output/wave-<N>/task-<slug>-lead-decision.md`). L1 status: `LEAD_RESOLUTION_IN_PROGRESS`. Canonical doc: `references/lead-resolution-protocol.md`.
+   Lead reads `output/wave-<N>/task-<slug>-diagnose.md` recommended bucket. Lead may override ONLY with explicit justification recorded in `output/wave-<N>/task-<slug>-lead-decision.md` (schema: `diagnose_recommended`, `lead_chose`, `rationale` — MUST explain why override). Override without documented rationale = `BLOCKED_ERROR error_type: lead_override_unjustified`. L1 status: `LEAD_RESOLUTION_IN_PROGRESS`. Canonical doc: `references/lead-resolution-protocol.md`.
 
    - **B1 REWRITE_SPEC:** lead rewrites task in plan.md (VALIDATION more specific, additional OUT OF SCOPE, prescriptive HOW). Commit plan update. 1 final writer spawn with new brief. Output passes L2+L3 (return to step 8). APPROVE → merge. REJECT → escalate B3.
    - **B3 DIRECT_IMPL:** lead writes code directly in branch `wave-<NNN>-<N>/<slug>-lead-resolved`. Same vertical TDD cycle. Output passes L2+L3 same as normal writer (return to step 8). APPROVE → merge. REJECT → escalate B4.
-   - **B4 VOID_TASK:** lead rewrites task with block `### VOIDED — wave <N> attempt <date>` (concrete rationale: ADR conflict / invalid scope / upstream blocker). Commit plan update. Trigger `wave-planner-script.py --recalculate` re-derives DAG without task. Wave continues with remaining tasks. L1 history append `event: task_voided`.
+   - **B4 VOID_TASK:** lead rewrites task with VOIDED block (MUST include all 3 fields):
+     ```markdown
+     ### VOIDED — wave <N> attempt <date>
+     - Reason: <ADR conflict | scope invalid | upstream blocker | other>
+     - Evidence: <file:line OR critic concern OR external constraint>
+     - Action proposed: <new task slug OR defer to v.NEXT OR remove from scope>
+     ```
+     Commit plan update. Trigger `wave-planner-script.py --recalculate` re-derives DAG without task. Wave continues with remaining tasks. L1 history append `event: task_voided`.
 
    Cap: 1 attempt per bucket per task. Sequence B1→B3→B4. Skipping a bucket is OK; revisiting a used bucket is forbidden. All exhausted → `BLOCKED_ERROR error_type: lead_resolution_all_buckets_failed`.
 
-10. **Sequential merge:** lead merges each branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` (OR `-lead-resolved` when B3) into `{{BASE_BRANCH}}` using the buffered order from step 7 (= plan order). Command: `git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>` per task. `--no-ff` preserves commit group (auditable). Merge conflict → `references/conflict-resolution-protocol.md`.
+10. **Sequential merge:** lead merges each branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` (OR `-lead-resolved` when B3) into `{{BASE_BRANCH}}` using the buffered order from step 7 (= plan order). Command: `git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>` per task. `--no-ff` preserves commit group (auditable). **Merge conflict → STOP — NEVER resolve autonomously.** Merge code is high risk. Follow `references/conflict-resolution-protocol.md`: human must decide (rebase/abort/manual resolution). Autonomous merge conflict resolution = `BLOCKED_ERROR`.
 11. **L4 wave gate (CI global + E2E + coherence):** sub-gates after all merges:
 
     11a. **CI global green** (always, all tiers) — runs the project's full CI. Red → `references/ci-rollback-protocol.md`.
     11b. **E2E suite green** (v3.10.0, tier dev/prod with non-empty `user_facing_paths` in profile) — runs E2E suite via `_config/profile-effective.yaml:e2e.e2e_command` (default lookup `npm run test:e2e`/`pnpm test:e2e`/`pytest tests/e2e/`). Red → `BLOCKED_ERROR error_type: e2e_suite_failed` → diagnose protocol → human gate A/B/C. Skip when profile has `user_facing_paths: []` (data_analysis, technical_article, experiment) OR tier exp/tool without declared `e2e_command`.
-    11c. **Cross-task coherence** (production AND ≥2 tasks shared file/API change) — subagent fresh context, optional v3.9.0.
+    11c. **Cross-task coherence** (production tier, ≥2 tasks sharing file/API change) — subagent fresh context, mandatory v3.12.1. Skip only when tier < production OR all tasks in wave touch disjoint file sets with no shared APIs. Canonical doc: `references/e2e-coverage-protocol.md`.
 
     Canonical doc for E2E reinforcement: `references/e2e-coverage-protocol.md`.
 12. **Cleanup wave worktrees + branches (v3.4.3):** after successful merge + green CI, lead removes ephemeral worktrees created by subagents AND deletes already-merged branches. Bug pre-v3.4.3: worktrees in `<project_root>/.icm-wave-*` (or path returned by Agent tool) were orphaned after each wave; branches `wave-<NNN>-<N>/<task-slug>` polluted `git branch` listing.
@@ -224,7 +231,7 @@ CWD: lead at `{{PROJECT_ROOT}}` (workspace branch). Subagent at `{{PROJECT_ROOT}
 
 - `output/wave-<N>/task-<slug>.md` — task report from subagent (summary, Auto-QA Akita 15-items, cycles consumed).
 - `output/wave-<N>/wave-summary.md` — lead synthesis post wave-reviewer + merge.
-- `output/wave-<N>/task-<slug>-blocked.md` — optional, created when subagent triggers stop point or exhausts 3-attempt cap.
+- `output/wave-<N>/task-<slug>-blocked.md` — conditional: MUST be written when subagent triggers stop point or exhausts 3-attempt cap. Contains stop point ID, A/B/C menu presented, human choice, and resolution.
 
 ## Sub_stage transitions
 

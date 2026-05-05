@@ -208,7 +208,7 @@ Catastrophic detected → bypass cap 3, escalate to lead immediately (no surgica
 
 - Critic protocol: `references/critic-protocol.md`
 - Forensic+ protocol: `references/forensic-plus-protocol.md`
-- 12-step pipeline: `references/wave-execution-protocol.md` step 9
+- 14-step pipeline: `references/wave-execution-protocol.md` step 9-10
 - Diagnose script: `scripts/lead-diagnose.py`
 - Pick model: `scripts/pick-model.py`
 - L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`

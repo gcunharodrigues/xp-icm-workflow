@@ -9,11 +9,11 @@ generated_at: "{{CREATED_AT}}"
 
 > Resolved for tier `{{TIER}}` at bootstrap. For a view of all tiers, see `references/stop-points-canonical.md` (in the skill, not the workspace).
 
-Canonical list of 13 stop points + thresholds resolved for this workspace's tier + inline A/B/C menu template. The workspace is self-contained — this copy does not depend on the skill at runtime.
+Canonical list of 15 stop points + thresholds resolved for this workspace's tier + inline A/B/C menu template. The workspace is self-contained — this copy does not depend on the skill at runtime.
 
 ---
 
-## 1. Canonical list (13 items)
+## 1. Canonical list (15 items)
 
 | # | id | Description |
 |---|---|---|
@@ -27,9 +27,11 @@ Canonical list of 13 stop points + thresholds resolved for this workspace's tier
 | 8 | `pii` | PII/sensitive data (LGPD, obfuscation) — **calibrated** |
 | 9 | `prod_migration` | Schema migration against production data |
 | 10 | `adr_drift` | Stack diverges from what is declared in an existing ADR |
-| 11 | `wave_branch_missing` | Wave branch missing (expected branch not found in repository) |
+| 11 | `workspace_corrupt` | ICM workspace corrupted (L1/L2 inconsistent — stops and requests recovery) |
 | 12 | `profile_mismatch` | Profile/tier inconsistent with task scope |
-| 13 | `runtime_cleanup_failed` | Pre-exit stage 08 runtime cleanup failed or human cancelled — **v3.7.0** |
+| 13 | `ambiguous_feedback` | (v3.6.0) Low-confidence human visual feedback — agent does NOT speculate |
+| 14 | `design_system_cascade` | (v3.6.0) Token change affects > `design_cascade_threshold` components |
+| 15 | `runtime_cleanup_failed` | Pre-exit stage 08 runtime cleanup failed or human cancelled — **v3.7.0** |
 
 ---
 
@@ -168,18 +170,19 @@ Plan diverges from an existing ADR.
   - ADR has not been formally superseded.
 - **Typical trade-offs:** keep ADR (cost of complying) vs supersede (cost of re-justifying) vs hybrid coexistence (cost of divergence).
 
-### 11. `wave_branch_missing` — Missing wave branch
+### 11. `workspace_corrupt` — ICM workspace corrupted
 
 **Mode in this tier:** `hard` (always)
 
-Expected wave branch not found in the local repository.
+L1/L2 inconsistent or critical state files damaged. Stops execution and requests recovery.
 
 - **Signals:**
-  - Pre-flight check detects hash mismatch, missing outputs, or vanished commit_sha.
-  - L1 says `IN_PROGRESS` but no commits in workspace for > 24h.
-  - `waves.current=N` without a corresponding `wave-N` branch in the repository.
-- **Typical trade-offs:** recreate branch from the SHA recorded in L1 vs abandon workspace vs spawn a new workspace.
-- **Note:** this stop point is special — always fires `hard` and proposes the Recovery Wizard directly, not a free A/B/C menu.
+  - L1 YAML fails validation (`validate_state.py` exits 1).
+  - L0 `icm_skill_version` missing or unparseable.
+  - `profile_effective_hash` mismatch between L0 and L1.
+  - Required stage output file missing while L1 says `COMPLETED`.
+- **Typical trade-offs:** run Recovery Wizard (repair) vs abandon workspace vs spawn new workspace from last known good state.
+- **Note:** always fires `hard` and invokes Recovery Wizard directly. No free A/B/C menu — wizard presents its own repair options.
 
 ### 12. `profile_mismatch` — Inconsistent profile/tier
 
@@ -194,7 +197,32 @@ Profile/tier chosen at bootstrap does not match the actual scope of the task in 
   - Scope grew beyond what was declared in L0.
 - **Typical trade-offs:** change profile/tier (regenerates matrix, re-validation cost) vs spawn a new workspace with the correct profile vs reduce the scope of the current task.
 
-### 13. `runtime_cleanup_failed` — Pre-exit stage 08 runtime cleanup (v3.7.0)
+### 13. `ambiguous_feedback` — Low-confidence human visual feedback (v3.6.0)
+
+**Mode in this tier:** `hard` (always)
+
+Human feedback during preview loop is ambiguous — agent does NOT speculate and proceed.
+
+- **Signals:**
+  - Human says "it looks weird" or "something is off" without specifying what.
+  - Multiple components referenced without clear target.
+  - Feedback contradicts previous feedback from same session.
+  - Response is a single word or emoji without technical content.
+- **Typical trade-offs:** ask targeted clarifying question (A) vs revert last change and show before/after (B) vs skip this iteration and re-raise after next change (C).
+
+### 14. `design_system_cascade` — Token change exceeds cascade threshold (v3.6.0)
+
+**Mode in this tier:** `hard` (always)
+
+A single design token change affects more than `design_cascade_threshold` components.
+
+- **Signals:**
+  - Color, spacing, or typography token change touches ≥ threshold components (default 5).
+  - Preview shows widespread visual changes from a single token edit.
+  - `git diff --stat` shows > threshold component files changed.
+- **Typical trade-offs:** proceed with cascade (acknowledge and verify each) vs scope-limit the change to a subset vs redesign token architecture to reduce coupling.
+
+### 15. `runtime_cleanup_failed` — Pre-exit stage 08 runtime cleanup (v3.7.0)
 
 **Mode in this tier:** `hard` (always — strict universal, all tiers).
 

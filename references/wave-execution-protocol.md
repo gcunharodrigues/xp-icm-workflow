@@ -25,7 +25,26 @@ main (= BASE_BRANCH)         ← stable, lead merges here
        └─ ...
 ```
 
-## Pipeline (12 steps)
+## Pipeline (14 steps — 1-8 pre-merge, 9 lead-resolution, 10-14 post-resolution)
+
+### Entry/exit criteria per step
+
+| Step | Entry criteria | Exit criteria |
+|------|---------------|---------------|
+| 1 Pre-flight | L1 `sub_stage = 04_wave_N_in_progress` | `pre_wave_sha` recorded; pre-flight checklist all [x]; model assigned per task |
+| 2 Spawn | Pre-flight complete; branches created | All Agent calls dispatched; subagents report `Status: IN_PROGRESS` |
+| 3 Channel 2 | Subagents spawned | ADRs + lessons + design subset injected into each prompt |
+| 4 TDD 7 steps | Subagent in worktree on correct branch | Task report written; tracer test ≥1; CI green; REFACTOR done or skipped with Dirt Check |
+| 5 Stop points | Subagent detects trigger signal | A/B/C menu written; L1 `BLOCKED_STOP_POINT`; human responds |
+| 6 Cap 3 loops | Subagent returned result | `qa_loops_used` ≤ 3; L2+L3 passed OR cap exhausted → step 9 |
+| 7 Lead receives | All subagents returned | Results buffered in `{task_slug: result}`; sorted by plan order |
+| 8 Wave-reviewer | All task reports present; branches exist | Per task: forensic+ JSON + critic JSON; decision APPROVE/REJECT per task |
+| 9 Lead-resolution | ≥1 task escalated from step 8 | Bucket B1/B3/B4 chosen with justification; `lead-decision.md` written |
+| 10 Sequential merge | All tasks APPROVED or resolved | `git merge --no-ff` succeeded per task; no conflicts pending |
+| 11 L4 wave gate | All merges complete | CI global green; E2E green (if applicable); cross-task coherence PASS (if applicable) |
+| 12 Cleanup | Wave gate green | Worktrees removed; branches deleted; `.icm-main` synced |
+| 13 Wave-summary | Cleanup complete | `wave-summary.md` written with all sections |
+| 14 Handoff | Wave-summary written | Case A: kickoff for wave N+1, EXIT. Case B: gate-inline, human approves → kickoff for stage 05, EXIT |
 
 1. **Pre-flight** — lead reads wave-plan.md, identifies current wave, records `pre_wave_sha` in L1 history.
 2. **Spawn** — lead creates branches + invokes `Agent(isolation: "worktree")` in parallel (multi tool-use).

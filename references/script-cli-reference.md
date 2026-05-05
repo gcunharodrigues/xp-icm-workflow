@@ -433,3 +433,63 @@ python scripts/migrate-v3.3-to-v3.4.py \
   [--update-paths] \
   [--dry-run]
 ```
+
+---
+
+## bootstrap.sh
+
+Shell wrapper for `bootstrap.py`. Interactive prompts for profile/tier/workspace-name when not provided via flags.
+
+```
+bash scripts/bootstrap.sh \
+  --profile app_web_backend \
+  --tier development \
+  --project-root /path/to/project \
+  [--workspace-name my-feature] \
+  [--logs-root /path/to/logs] \
+  [--override /path/to/icm-profile.local.yaml]
+```
+
+Profiles: app_web_backend, app_web_frontend, fullstack, dashboard, data_analysis, ml_project, agent_ia, cli_tool, framework_library, technical_article, experiment
+Tiers: experimental, tool, development, production
+
+---
+
+## git-hook-installer.sh
+
+Installs pre-commit + commit-msg hooks idempotently. Used by bootstrap and recovery wizard.
+
+```
+bash scripts/git-hook-installer.sh <project_root>
+```
+
+---
+
+## validate-state.sh
+
+Validates L1 CONTEXT.md YAML frontmatter against state-machine schema. Wrapper around `validate_state.py`.
+
+```
+bash scripts/validate-state.sh --workspace <path>
+```
+
+Exit 0: valid. Exit 1: invalid (errors to stderr).
+
+---
+
+## render-critic-prompt.py
+
+Renders L3 critic prompt from `templates/critic-prompt.md` with all 10 placeholders substituted. Captures git diff + test output automatically.
+
+```
+python scripts/render-critic-prompt.py \
+  --task-slug <slug> --wave <N> --tier <tier> \
+  --workspace-num <NNN> --base-branch main \
+  --plan stages/02_design/output/plan.md \
+  --critic-model <model_from_pick_model_py> \
+  [--test-command "pytest tests/ -x --tb=short"] \
+  [--cwd /path/to/project] \
+  [--output /tmp/critic-prompt.md]
+```
+
+Stdout: rendered prompt ready for Agent tool injection. Exit 0: success. Exit 1: error.

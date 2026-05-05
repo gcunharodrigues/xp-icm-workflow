@@ -60,9 +60,9 @@ Usage: bash scripts/bootstrap.sh \\
     --profile <NAME> --tier <NAME> --project-root <abs-path> \\
     [--workspace-name <slug>] [--logs-root <abs-path>] [--override <yaml>]
 
-Profiles: app_web_backend, app_web_frontend, dashboard, data_analysis,
-          ml_project, agent_ia, cli_tool, framework_library,
-          technical_article, experiment
+Profiles: app_web_backend, app_web_frontend, fullstack, dashboard,
+          data_analysis, ml_project, agent_ia, cli_tool,
+          framework_library, technical_article, experiment
 Tiers:    experimental, tool, development, production
 EOF
 }
@@ -149,25 +149,27 @@ fi
 if [ -z "$PROFILE" ] && [ -t 0 ] && [ -t 1 ]; then
     cat <<EOF
 Choose profile:
-  1) app_web_backend       6) agent_ia
-  2) app_web_frontend      7) cli_tool
-  3) dashboard             8) framework_library
-  4) data_analysis         9) technical_article
-  5) ml_project           10) experiment
+  1) app_web_backend       7) cli_tool
+  2) app_web_frontend      8) framework_library
+  3) fullstack             9) technical_article
+  4) dashboard            10) experiment
+  5) data_analysis        11) agent_ia
+  6) ml_project
 EOF
     printf "Number: "
     read -r idx
     case "$idx" in
         1) PROFILE="app_web_backend" ;;
         2) PROFILE="app_web_frontend" ;;
-        3) PROFILE="dashboard" ;;
-        4) PROFILE="data_analysis" ;;
-        5) PROFILE="ml_project" ;;
-        6) PROFILE="agent_ia" ;;
+        3) PROFILE="fullstack" ;;
+        4) PROFILE="dashboard" ;;
+        5) PROFILE="data_analysis" ;;
+        6) PROFILE="ml_project" ;;
         7) PROFILE="cli_tool" ;;
         8) PROFILE="framework_library" ;;
         9) PROFILE="technical_article" ;;
         10) PROFILE="experiment" ;;
+        11) PROFILE="agent_ia" ;;
     esac
 fi
 

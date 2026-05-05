@@ -926,3 +926,39 @@ def test_kickoff_template_placeholders_match_handoff():
         warnings.warn(
             f"_build_placeholders() provides keys not in _kickoff.md.tpl: {unused}"
         )
+
+
+# ============================================================================
+# v3.12.1 — forensic-plus all 8 checks wired test
+# ============================================================================
+
+def test_forensic_plus_all_8_checks_wired_in_main():
+    """All 8 check functions must be called from forensic-plus.py main().
+
+    If a 9th check is added to the protocol but not wired into main(),
+    no test catches it. This test verifies every check_* function is called.
+    """
+    import importlib.util as _iu
+    forensic_path = REPO_ROOT / "scripts" / "forensic-plus.py"
+    spec = _iu.spec_from_file_location("forensic_plus", forensic_path)
+    forensic = _iu.module_from_spec(spec)
+    spec.loader.exec_module(forensic)
+
+    # Find all check_* functions defined in the module
+    check_funcs = {
+        name for name in dir(forensic)
+        if name.startswith("check_") and callable(getattr(forensic, name))
+    }
+    assert check_funcs, "No check_* functions found in forensic-plus.py"
+
+    # Parse main() to find which check_* functions are called
+    import inspect
+    main_source = inspect.getsource(forensic.main)
+    called = {f for f in check_funcs if f in main_source}
+
+    unwired = check_funcs - called
+    assert not unwired, (
+        "Check functions defined but NOT called in forensic-plus.main():\n  "
+        + "\n  ".join(sorted(unwired))
+        + "\n\nWire them into main() or remove the dead code."
+    )

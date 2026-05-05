@@ -69,10 +69,10 @@ Code and process conventions for this workspace. Derived from profile `{{PROFILE
 
 ## Testing (calibrated by tier)
 
-- **experimental:** TDD optional
-- **tool:** TDD recommended
-- **development:** TDD mandatory
-- **production:** TDD mandatory + security gate
+- **experimental:** TDD optional (skip allowed; no penalty in verification)
+- **tool:** TDD mandatory when task touches >1 module or public API; optional for single-file/internal tasks
+- **development:** TDD mandatory (all tasks; stage 05 verification enforces)
+- **production:** TDD mandatory + security gate (all tasks; stage 05 + stage 06 enforce)
 
 Canonical cycle per task (7 steps): RED → GREEN → CI gate → REFACTOR → CI gate → Auto-QA Akita → COMPLETE. Details in `references/4-block-contract-template.md` §3.
 

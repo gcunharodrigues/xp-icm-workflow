@@ -274,7 +274,7 @@ python scripts/forensic-plus.py \
 
 ## Cross-references
 
-- 12-step pipeline consumer: `references/wave-execution-protocol.md` step 8a-8d.
+- 14-step pipeline consumer: `references/wave-execution-protocol.md` step 8a-8d.
 - Task plan.md schema: `references/4-block-contract-template.md` (`### Estimated lines`).
 - L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`.
 - State machine: `references/state-machine-schema.md` (`error_type: forensic_max_retries|forensic_script_crash`).

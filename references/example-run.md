@@ -518,7 +518,7 @@ The other stages (00-03, 05-08) remain identical to the walkthrough above.
 | `references/stop-points-canonical.md` | 12 stop points + thresholds (paid_service §1.1) |
 | `references/wave-planner-algorithm.md` | DAG construction + LLM review subagent |
 | `references/subagent-protocol.md` | Spawn, Agent tool output, sync barrier, wave-reviewer |
-| `references/wave-execution-protocol.md` | Canonical 12-step pipeline (v3.5.0) |
+| `references/wave-execution-protocol.md` | Canonical 14-step pipeline (v3.12.1) |
 | `references/conflict-resolution-protocol.md` | Conflict mid-wave (human gate A/B/C) |
 | `references/ci-rollback-protocol.md` | CI global red (diagnose → rollback → gate) |
 | `references/4-block-contract-template.md` | Task schema in plan.md + 7-step TDD cycle + Akita 15-item |

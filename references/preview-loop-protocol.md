@@ -459,7 +459,7 @@ preview_pages_path: preview/            # convention
 ## Cross-references
 
 - `references/design-system.md` — DESIGN.md format Google Stitch spec
-- `references/wave-execution-protocol.md` — 12-step pipeline stage 04
+- `references/wave-execution-protocol.md` — 14-step pipeline stage 04
 - `references/state-machine-schema.md` — L1 schema (new stop points)
 - `scripts/recovery-wizard.py` — recovery types (DEV_SERVER_ORPHAN, CDP_DISCONNECTED)
 - `templates/_config/profile-matrix.md` — `preview_loop_enabled`, `mock_data_strategy`

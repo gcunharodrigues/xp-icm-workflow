@@ -55,7 +55,7 @@ L0 is the immutable constitution of this workspace. Every agent in every stage r
 
 **Rule:** ALL doc references resolve absolutely from `{{PROJECT_ROOT}}`. Skill scripts resolve absolutely from `{{SKILL_DIR}}/scripts/`. NEVER use relative `scripts/` (assumes wrong CWD). NEVER use relative `../../`. Path leakage = diagnose bug B2.
 
-**Parallel worktree model (v3.4.0):** when the branch checked out at `{{PROJECT_ROOT}}` is `workspace/{{WORKSPACE}}`, paths like `{{PROJECT_ROOT}}/docs/decisions/` do NOT exist in the working tree (workspace branch has no `docs/`). To read/write those paths, use the linked worktree at `{{PROJECT_ROOT}}/.icm-main/` (always checked out at `{{BASE_BRANCH}}`). Canonical doc: `_references/runtime/worktree-model.md`.
+**Parallel worktree model (v3.4.0):** when the branch checked out at `{{PROJECT_ROOT}}` is `workspace/{{WORKSPACE}}`, paths like `{{PROJECT_ROOT}}/docs/decisions/` do NOT exist in the working tree (workspace branch has no `docs/`). To read/write those paths, use the linked worktree at `{{PROJECT_ROOT}}/.icm-main/` (always checked out at `{{BASE_BRANCH}}`). Canonical doc: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/worktree-model.md`.
 
 ## Non-negotiable rules
 
@@ -103,7 +103,7 @@ Local override in `.icm-profile.local.yaml` (at `{{PROJECT_ROOT}}`). Hash recomp
 
 ### 5. Stop Points
 
-12 canonical stop points in `_config/stop-points.md`. Trigger: agent pauses, writes A/B/C menu, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes.
+15 canonical stop points in `_config/stop-points.md`. Trigger: agent pauses, writes A/B/C menu, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes.
 
 ### 6. ADRs
 
@@ -154,13 +154,13 @@ Skills `superpowers:*` (brainstorming, executing-plans, test-driven-development,
 
 Runtime side-effects (dev servers, background tasks, docker containers, orphan wave branches, working tree dirt, untracked artifacts) are the **human's responsibility**, not the ICM skill's. The skill:
 
-- **Detects** via `scripts/runtime-status.py` run at stage 08 entry hook (exit A/B/C step 0 mandatory).
+- **Detects** via `{{SKILL_DIR}}/scripts/runtime-status.py` run at stage 08 entry hook (exit A/B/C step 0 mandatory).
 - **Prints** a 6-category checklist with detected items.
 - **Waits** for human confirmation per category before transitioning (strict universal — all tiers).
 - **NEVER kills a process, deletes a branch, or forces cleanup automatically.** Destructive actions require explicit human decision.
 
 If human cancels checklist mid-confirmation or cleanup command fails:
-- Status stays `BLOCKED_STOP_POINT` with stop point `runtime_cleanup_failed` (#13).
+- Status stays `BLOCKED_STOP_POINT` with stop point `runtime_cleanup_failed` (#15).
 - Session pauses, writes A/B/C menu; human resolves outside ICM and resumes.
 
 Canonical doc: `_references/runtime/runtime-cleanup-protocol.md`.

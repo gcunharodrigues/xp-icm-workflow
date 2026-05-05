@@ -253,7 +253,17 @@ Detail per output:
    - `last_transition.at = <ISO 8601 UTC now>`
    - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note: "output A close"}`
 2. Append new lessons (from "WHAT LESSON TO TAKE") to `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` respecting strict frontmatter.
-3. **(v3.7.0) Append tech debt during intake — optional:** if free-form feedback reveals durable technical debt (not a lesson), append to `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` respecting strict frontmatter. Difference: **lesson** = meta-learning for next workspace; **tech debt** = trackable item that needs addressing in future code (ex: "refactor of module X deferred", "validation Y temporarily relaxed"). If feedback does not explicitly cite debt, skip step (lessons-only).
+3. **(v3.7.0) Append tech debt during intake — conditional, mandatory when debt is cited:**
+
+   Use this decision tree to distinguish lesson from tech debt:
+
+   - Is there a concrete file, module, or class to refactor? → **tech_debt.md** (trackable item)
+   - Is it a general practice or pattern to adopt/avoid? → **lessons.md** (meta-learning)
+   - Did the human explicitly say "debt" / "refactor later" / "temporary workaround"? → **tech_debt.md**
+   - Does it require a specific future action with measurable scope? → **tech_debt.md**
+   - Is it a lesson learned about process, not code? → **lessons.md**
+
+   Append to `{{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md` respecting strict frontmatter. If the decision tree produces "lessons.md", do NOT also write to tech_debt.md (no duplication). If no feedback explicitly cites debt OR matches tech_debt criteria, skip this step (lessons-only).
 4. Atomic commit (pre-commit validates L1↔outputs↔lessons atomicity; commit-msg prefix `intake:` or `feedback:`). Tech debt append (if any) must commit via `cd .icm-main && git commit ...` (ADR-style workflow — see L0 R6):
    ```
    intake: workspace <NNN> close (output A) + lessons + tech_debt append
