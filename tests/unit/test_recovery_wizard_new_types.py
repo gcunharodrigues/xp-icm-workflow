@@ -111,7 +111,7 @@ class TestDevServerOrphan:
         icm_main = proj / ".icm-main"
         icm_main.mkdir()
         (icm_main / ".dev-server.pid").write_text("garbage", encoding="utf-8")
-        # PID parsing falha → pid = -1 → not alive, mas detecção exige pid > 0
+        # PID parsing fails → pid = -1 → not alive, but detection requires pid > 0
         incs = rw.detect_inconsistencies(ws, project_root=proj)
         codes = [i.code for i in incs]
         # corrupt PID nao dispara DEV_SERVER_ORPHAN (pid <= 0 path)
@@ -150,10 +150,10 @@ class TestCdpDisconnected:
         ws, proj = _make_fake_workspace(tmp_path)
         chrome_profile = proj / ".icm-chrome-profile"
         chrome_profile.mkdir()
-        # Garante que 9222 nao esta listening (assume host livre)
-        # Se algo ja estiver em 9222, skip teste pra evitar falso negativo.
+        # Ensure 9222 is not listening (assumes free host)
+        # If something is already on 9222, skip test to avoid false negative.
         if rw._is_port_listening("127.0.0.1", 9222):
-            pytest.skip("port 9222 ocupada — não testável aqui")
+            pytest.skip("port 9222 occupied — not testable here")
         incs = rw.detect_inconsistencies(ws, project_root=proj)
         codes = [i.code for i in incs]
         assert rw.CODE_CDP_DISCONNECTED in codes

@@ -1,16 +1,16 @@
 """v3.7.0 — handoff.py outcome-aware idle render.
 
-Bug v3.6.0 e anteriores: `_render_icm_idle()` em handoff.py:401
-hardcoded "Saída A" — saída C (spawn) reusa mesma função e mente sobre
-o tipo de fechamento.
+Bug v3.6.0 and earlier: `_render_icm_idle()` in handoff.py:401
+hardcoded "Exit A" — exit C (spawn) reused the same function and lied about
+the closure type.
 
 Fix v3.7.0:
-- `remove_workspace_block` aceita param `outcome ∈ {"A", "C"}` e `spawn_to`.
-- `deactivate_project_claude_md` mesma assinatura.
-- `_render_icm_idle` ramifica mensagem por outcome.
-- CLI `remove-block` aceita `--outcome {A,C}` e `--spawn-to`.
+- `remove_workspace_block` accepts param `outcome ∈ {"A", "C"}` and `spawn_to`.
+- `deactivate_project_claude_md` same signature.
+- `_render_icm_idle` branches message by outcome.
+- CLI `remove-block` accepts `--outcome {A,C}` and `--spawn-to`.
 
-Tests escritos ANTES da implementação (TDD).
+Tests written BEFORE implementation (TDD).
 """
 from __future__ import annotations
 
@@ -53,7 +53,7 @@ def _block(workspace: str, **overrides) -> WorkspaceBlock:
 # ============================================================
 
 def test_remove_block_outcome_A_renders_close_message(tmp_path: Path):
-    """Saída A: idle message diz 'Saída A — close'."""
+    """Exit A: idle message says 'Exit A — close'."""
     project_root = tmp_path
     block = _block("042-feat-auth")
     update_project_claude_md(project_root, block, skill_dir="/skill")
@@ -72,7 +72,7 @@ def test_remove_block_outcome_A_renders_close_message(tmp_path: Path):
 
 
 def test_remove_block_outcome_C_renders_spawn_message(tmp_path: Path):
-    """Saída C: idle message diz 'Saída C — spawn <slug>' e cita bootstrap."""
+    """Exit C: idle message says 'Exit C — spawn <slug>' and cites bootstrap."""
     project_root = tmp_path
     block = _block("042-feat-auth")
     update_project_claude_md(project_root, block, skill_dir="/skill")
@@ -92,7 +92,7 @@ def test_remove_block_outcome_C_renders_spawn_message(tmp_path: Path):
 
 
 def test_remove_block_outcome_A_default(tmp_path: Path):
-    """Backward compat: outcome default = A se não passado."""
+    """Backward compat: outcome default = A if not passed."""
     project_root = tmp_path
     block = _block("042-feat-auth")
     update_project_claude_md(project_root, block, skill_dir="/skill")
@@ -101,14 +101,14 @@ def test_remove_block_outcome_A_default(tmp_path: Path):
         "042-feat-auth",
         skill_dir="/skill",
         closed_at="2026-05-01T12:00:00Z",
-        # outcome omitido — deve assumir A
+        # outcome omitted — should default to A
     )
     text = (project_root / "CLAUDE.md").read_text(encoding="utf-8")
     assert "Exit A" in text
 
 
 def test_remove_block_outcome_C_requires_spawn_to(tmp_path: Path):
-    """Saída C sem spawn_to → raise."""
+    """Exit C without spawn_to → raise."""
     project_root = tmp_path
     block = _block("042-feat-auth")
     update_project_claude_md(project_root, block, skill_dir="/skill")
@@ -132,12 +132,12 @@ def test_remove_block_invalid_outcome_raises(tmp_path: Path):
             project_root,
             "042-feat-auth",
             skill_dir="/skill",
-            outcome="B",  # B usa update_project_claude_md, não remove
+            outcome="B",  # B uses update_project_claude_md, not remove
         )
 
 
 # ============================================================
-# Multi-workspace: removal de não-último não invoca idle
+# Multi-workspace: removing a non-last workspace does not invoke idle
 # ============================================================
 
 def test_remove_block_with_other_workspaces_no_idle_message(tmp_path: Path):
@@ -151,7 +151,7 @@ def test_remove_block_with_other_workspaces_no_idle_message(tmp_path: Path):
     text = (project_root / "CLAUDE.md").read_text(encoding="utf-8")
     assert "042-a" not in text
     assert "043-b" in text
-    # Idle não disparado pois ainda tem 043
+    # Idle not triggered because 043 still exists
     assert "No active workspace" not in text
 
 

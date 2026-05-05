@@ -131,7 +131,7 @@ def test_check_background_tasks_uses_registry(rs, workspace: Path, monkeypatch):
 
 
 def test_check_dev_servers_clean_when_pid_dead(rs, workspace: Path, monkeypatch):
-    """PID morto = clean (registry stale, mas não há side-effect ativo)."""
+    """Dead PID = clean (registry stale, but no active side-effect)."""
     state_dir = workspace / "_state"
     state_dir.mkdir()
     payload = {
@@ -191,7 +191,7 @@ def test_cli_check_specific_category(rs, workspace: Path, monkeypatch, capsys):
 
 
 def test_cli_exit_code_non_zero_if_dirty(rs, workspace: Path, monkeypatch):
-    """Exit code 1 se alguma categoria não-clean. Útil pra hook bash gating."""
+    """Exit code 1 if any category is not clean. Useful for bash hook gating."""
     monkeypatch.setattr(rs, "check_dev_servers",
                         lambda ws: {"clean": False, "items": [{"pid": 1}],
                                     "summary": "1 dev server alive"})

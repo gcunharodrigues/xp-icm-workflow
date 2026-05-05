@@ -1,11 +1,11 @@
-"""v3.7.2 — `scripts/icm-cleanup.py` cleanup pós saída A/C último ativo.
+"""v3.7.2 — `scripts/icm-cleanup.py` cleanup after exit A/C last active.
 
-Cobre:
+Covers:
 - Pre-checks (uncommitted abort).
-- Dry-run não modifica filesystem nem git state.
-- Cleanup completo: subagent worktrees, checkout base, branch delete, .icm-main remove.
-- --keep-worktree preserva .icm-main.
-- Idempotente: 2 runs seguidas = mesmo estado final.
+- Dry-run does not modify filesystem or git state.
+- Full cleanup: subagent worktrees, checkout base, branch delete, .icm-main remove.
+- --keep-worktree preserves .icm-main.
+- Idempotent: 2 consecutive runs = same final state.
 """
 from __future__ import annotations
 
@@ -67,11 +67,11 @@ def _setup_repo_with_workspace(
     _git(["add", "."], cwd=repo)
     _git(["commit", "-m", f"workspace {workspace}: state"], cwd=repo)
 
-    # .icm-main worktree linkada a main
+    # .icm-main worktree linked to main
     if create_icm_main:
         _git(["worktree", "add", ".icm-main", "main"], cwd=repo)
 
-    # Subagent worktree órfã (simula stage 04 não-cleanup)
+    # Orphan subagent worktree (simulates stage 04 without cleanup)
     if create_subagent_wt:
         _git(["branch", "wave-1-1-task-foo"], cwd=repo)
         wt_path = tmp_path / "subagent-foo"

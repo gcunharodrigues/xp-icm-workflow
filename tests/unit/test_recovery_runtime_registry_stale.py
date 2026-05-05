@@ -72,7 +72,7 @@ def test_constant_in_canonical_order(rw):
 
 
 def test_no_registry_no_inconsistency(rw, workspace: Path):
-    """Sem registry: detector não dispara."""
+    """No registry: detector does not fire."""
     # workspace fixture sem _state/
     incs = rw._detect_runtime_registry_stale(workspace)
     assert incs == []

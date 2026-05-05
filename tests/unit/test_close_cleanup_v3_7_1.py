@@ -176,7 +176,7 @@ def test_unregister_hooks_preserves_non_icm_entries(tmp_path: Path):
 
 
 # ============================================================
-# Integração: remove_workspace_block dispara cleanup
+# Integration: remove_workspace_block triggers cleanup
 # ============================================================
 
 def test_remove_block_outcome_A_updates_index_and_unregisters_hooks(tmp_path: Path):

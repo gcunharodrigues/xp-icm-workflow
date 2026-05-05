@@ -26,12 +26,12 @@ def test_doc_has_required_sections() -> None:
 
 def test_checklist_has_five_items() -> None:
     text = DOC.read_text(encoding="utf-8")
-    # Procura bloco da seção "## Checklist for stage 02"
+    # Find the block for section "## Checklist for stage 02"
     start = text.find("## Checklist for stage 02")
     assert start >= 0
     section = text[start:text.find("\n## ", start + 1) if text.find("\n## ", start + 1) >= 0 else len(text)]
     bullets = [ln for ln in section.splitlines() if ln.strip().startswith("- [ ]")]
-    assert len(bullets) >= 5, f"esperado >=5 checklist items, achei {len(bullets)}"
+    assert len(bullets) >= 5, f"expected >=5 checklist items, found {len(bullets)}"
 
 
 def test_references_companion_docs() -> None:

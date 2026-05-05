@@ -8,7 +8,7 @@ Cenários:
   `_state/`, `coverage/`, `__pycache__/`, etc.).
 - Pós-bootstrap consome (unlink) o arquivo.
 
-Tests escritos ANTES da implementação.
+Tests written BEFORE implementation.
 """
 from __future__ import annotations
 
@@ -192,7 +192,7 @@ def test_consume_spawn_pending_removes_file(tmp_path: Path):
 
 
 def test_consume_spawn_pending_idempotent_if_missing(tmp_path: Path):
-    """Consume sem arquivo: no-op (não raise)."""
+    """Consume without file: no-op (must not raise)."""
     bootstrap.consume_spawn_pending(tmp_path)  # ok
 
 

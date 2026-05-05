@@ -561,7 +561,7 @@ def test_claude_md_root_stale_when_stage_diverges(tmp_path, mock_git):
 
 
 def test_claude_md_root_consistent_no_inconsistency(tmp_path, mock_git):
-    """L1 e bloco em sync → não detecta nada."""
+    """L1 and block in sync → detects nothing."""
     workspace = _make_minimal_workspace(tmp_path, stage_atual="03")
     project = workspace.parent.parent
 
@@ -582,7 +582,7 @@ def test_claude_md_root_consistent_no_inconsistency(tmp_path, mock_git):
 
 
 def test_claude_md_root_skipped_when_status_not_in_progress(tmp_path, mock_git):
-    """status=COMPLETED → não dispara MISSING/STALE."""
+    """status=COMPLETED → does not fire MISSING/STALE."""
     workspace = _make_minimal_workspace(tmp_path, status="COMPLETED")
     project = workspace.parent.parent
     # sem CLAUDE.md

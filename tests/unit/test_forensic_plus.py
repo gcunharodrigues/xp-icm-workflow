@@ -873,7 +873,7 @@ def _make_plan_v3_9_0(
     conventions_extras=None,
     estimated_lines=None,
 ):
-    """Write a plan.md with v3.9.0 blocks (NÃO QUERO, VALIDAÇÃO, ADRs aplicáveis)."""
+    """Write a plan.md with v3.9.0 blocks (NÃO QUERO, VALIDAÇÃO, ADRs aplicáveis sections)."""
     plan = repo / "plan.md"
     body = f"## Task {task_slug}:\n\n### O QUE\n- placeholder\n\n"
     if nao_quero:
@@ -903,7 +903,7 @@ def _make_plan_v3_9_0(
 
 # Check 5: acceptance ↔ test mapping
 def test_check5_acceptance_unmapped_hard_in_dev(tmp_path):
-    """VALIDAÇÃO bullet cita test_foo_bar mas test file não contém o nome → HARD em dev."""
+    """VALIDAÇÃO bullet cites test_foo_bar but test file does not contain the name → HARD in dev."""
     test_content = (
         "def test_other_thing():\n"
         "    assert True\n\n"
@@ -1029,7 +1029,7 @@ def test_check6_nao_quero_no_violation_when_pattern_absent(tmp_path):
 
 # Check 7: ADR import drift
 def test_check7_adr_import_drift_hard_in_prod(tmp_path):
-    """ADR aplicável proíbe `jsonwebtoken`; diff importa → HARD em production."""
+    """Applicable ADR prohibits `jsonwebtoken`; diff imports it → HARD in production."""
     repo = _make_repo_with_branch(
         tmp_path,
         base_files={

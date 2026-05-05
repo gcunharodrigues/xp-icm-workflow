@@ -20,7 +20,7 @@ Entries shape:
     }
 
 Helpers reusam `_is_pid_alive`/`_is_port_listening` de recovery-wizard.py.
-Tests escritos ANTES da implementação (TDD red phase).
+Tests written BEFORE implementation (TDD red phase).
 """
 from __future__ import annotations
 

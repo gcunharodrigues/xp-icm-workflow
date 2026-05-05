@@ -1,18 +1,18 @@
-"""v3.7.0 — migrate-workspace.py orquestrador encadeado.
+"""v3.7.0 — migrate-workspace.py chained orchestrator.
 
-Escopo:
-- Detect versão atual via L0 frontmatter `icm_skill_version`.
-- Encadeia migrations: v3.3 → v3.4 → v3.5 → v3.6 → v3.7.
-- Floor v3.3.0 (beta1/beta2 explicitamente unsupported).
-- Backup automático em .icm-migration-backup/<timestamp>/<workspace>/.
-- Idempotente: re-rodar não reaplica steps já-migrados.
+Scope:
+- Detect current version via L0 frontmatter `icm_skill_version`.
+- Chains migrations: v3.3 → v3.4 → v3.5 → v3.6 → v3.7.
+- Floor v3.3.0 (beta1/beta2 explicitly unsupported).
+- Automatic backup in .icm-migration-backup/<timestamp>/<workspace>/.
+- Idempotent: re-running does not reapply already-migrated steps.
 - Status-aware: COMPLETED/AWAITING auto-prompt; IN_PROGRESS warning-only.
 
-v3.6 → v3.7 mudanças aplicadas:
+v3.6 → v3.7 changes applied:
   - L0 bump icm_skill_version
   - Add `_state/` dir
-  - Migrate `.icm-main/.dev-server.pid` → runtime-registry (se PID alive)
-  - Re-render L2 stage 08 (TODO — escopo F3 quando template existe)
+  - Migrate `.icm-main/.dev-server.pid` → runtime-registry (if PID alive)
+  - Re-render L2 stage 08 (TODO — scope F3 when template exists)
 """
 from __future__ import annotations
 
@@ -230,7 +230,7 @@ def test_migrate_3_6_to_3_7_skips_dead_legacy_pid(mw, workspace: Path, monkeypat
 
 
 def test_migrate_idempotent(mw, workspace: Path):
-    """Rodar migration 2x = mesma versão final, sem duplicar entries."""
+    """Running migration 2x = same final version, without duplicating entries."""
     project_root = workspace.parent.parent
     mw.migrate_3_6_to_3_7(workspace, project_root=project_root)
     v1 = mw.detect_workspace_version(workspace)
@@ -355,7 +355,7 @@ def test_supported_versions_includes_3_9_0(mw):
 
 
 def test_migrate_3_9_0_to_3_10_0_smoke(mw, tmp_path: Path):
-    """Smoke: bump-only migration produz L0 com nova versão."""
+    """Smoke: bump-only migration produces L0 with new version."""
     ws = tmp_path / "001-test-310"
     ws.mkdir()
     (ws / "CLAUDE.md").write_text(
@@ -368,7 +368,7 @@ def test_migrate_3_9_0_to_3_10_0_smoke(mw, tmp_path: Path):
 
 
 def test_migrate_3_9_0_to_3_10_0_idempotent(mw, tmp_path: Path):
-    """Aplicar migrate sobre workspace já em 3.10.0 não deve quebrar nem alterar version."""
+    """Applying migrate to workspace already at 3.10.0 must not break or alter version."""
     ws = tmp_path / "002-idempotent-310"
     ws.mkdir()
     (ws / "CLAUDE.md").write_text(
@@ -386,7 +386,7 @@ def test_supported_versions_includes_3_8_0(mw):
 
 
 def test_migrate_3_8_0_to_3_9_0_smoke(mw, tmp_path: Path):
-    """Smoke: bump-only migration produz L0 com nova versão."""
+    """Smoke: bump-only migration produces L0 with new version."""
     ws = tmp_path / "001-test"
     ws.mkdir()
     (ws / "CLAUDE.md").write_text(
@@ -399,7 +399,7 @@ def test_migrate_3_8_0_to_3_9_0_smoke(mw, tmp_path: Path):
 
 
 def test_migrate_3_8_0_to_3_9_0_idempotent(mw, tmp_path: Path):
-    """Aplicar migrate sobre workspace já em 3.9.0 não deve quebrar nem alterar version."""
+    """Applying migrate to workspace already at 3.9.0 must not break or alter version."""
     ws = tmp_path / "002-idempotent"
     ws.mkdir()
     (ws / "CLAUDE.md").write_text(

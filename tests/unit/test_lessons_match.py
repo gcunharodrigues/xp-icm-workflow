@@ -1,14 +1,14 @@
-"""Testes unitários para scripts/lessons-match.py.
+"""Unit tests for scripts/lessons-match.py.
 
-Cobre:
-- Parsing válido / tolerante (G1: tolerant on read).
-- Score determinístico.
-- Ordenação top-N com tie-breaks (Q10).
-- Critical channel separado (G2).
-- Glob match em related_files.
-- CLI produzindo JSON parseável.
+Covers:
+- Valid / tolerant parsing (G1: tolerant on read).
+- Deterministic score.
+- Top-N ordering with tie-breaks (Q10).
+- Separate critical channel (G2).
+- Glob match in related_files.
+- CLI producing parseable JSON.
 - Aging detection (G3).
-- Edge cases (vazio, 0 matches).
+- Edge cases (empty, 0 matches).
 """
 
 from __future__ import annotations
@@ -22,16 +22,16 @@ from pathlib import Path
 
 import pytest
 
-# --- Carregamento dinâmico do script com hyphen no nome ----------------------
+# --- Dynamic loading of script with hyphen in name --------------------------
 
 SCRIPT_PATH = Path(__file__).resolve().parents[2] / "scripts" / "lessons-match.py"
 
 
 def _load_module():
     spec = importlib.util.spec_from_file_location("lessons_match", SCRIPT_PATH)
-    assert spec and spec.loader, f"não consegui carregar {SCRIPT_PATH}"
+    assert spec and spec.loader, f"could not load {SCRIPT_PATH}"
     module = importlib.util.module_from_spec(spec)
-    # Registra antes de exec para que @dataclass consiga resolver
+    # Register before exec so that @dataclass can resolve
     # cls.__module__ → sys.modules["lessons_match"].
     sys.modules["lessons_match"] = module
     spec.loader.exec_module(module)
@@ -248,7 +248,7 @@ def test_glob_match_in_related_files(lm, tmp_path):
         tags=["auth"],
         files=["src/auth/middleware.ts"],
     )
-    # files glob contribuição = 0.2 (1 hit)
+    # files glob contribution = 0.2 (1 hit)
     score = lm.score_lesson(by_id[42], ctx)
     assert score > 0.5
 
@@ -263,7 +263,7 @@ def test_glob_no_match(lm, tmp_path):
         tags=["auth"],
         files=["src/billing/foo.ts"],
     )
-    # related_files=["src/auth/*.ts"] não bate "src/billing/foo.ts".
+    # related_files=["src/auth/*.ts"] does not match "src/billing/foo.ts".
     # tag overlap = 1/1 = 1 -> 0.4; profile=0.2; tier=0.2; files=0; total=0.8
     score = lm.score_lesson(by_id[42], ctx)
     assert score == pytest.approx(0.8)
@@ -305,9 +305,9 @@ def test_match_zero_matches_returns_empty_lists(lm, tmp_path):
         ),
         top_n=3,
     )
-    # Lesson 17 ainda dá score>0 porque opcionais=None (não restringe).
-    # Mas tags=["xxx"] e nenhuma lesson tem essa tag, então tag overlap=0.
-    # Lesson 17: 0 + 0.2 + 0.2 + 0.2 = 0.6 -> entra. Vamos testar tudo zerado:
+    # Lesson 17 still gives score>0 because optionals=None (no restriction).
+    # But tags=["xxx"] and no lesson has this tag, so tag overlap=0.
+    # Lesson 17: 0 + 0.2 + 0.2 + 0.2 = 0.6 -> enters. Let's test all zeroed:
     # forçar por todos os campos:
     result_all_zero = lm.match(
         _write(

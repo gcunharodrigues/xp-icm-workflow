@@ -1,19 +1,19 @@
-"""Drift detection — bloqueia inconsistências cross-file.
+"""Drift detection — blocks cross-file inconsistencies.
 
-7 detectores:
-A. Versão consistente (canonical = scripts/bootstrap.py SKILL_VERSION)
-B. Profile count consistente (canonical = len(CANONICAL_PROFILES))
+7 detectors:
+A. Version consistency (canonical = scripts/bootstrap.py SKILL_VERSION)
+B. Profile count consistency (canonical = len(CANONICAL_PROFILES))
 C. Status enum sync (validate_state.py ALLOWED_STATUSES vs schema doc)
-D. Status canônicos esperados presentes (allow-list anti-typo)
-E. Cross-refs markdown resolvem em references/
-F. Shell templates sem CRLF (CRLF no shebang quebra exec — kernel
-   procura interpretador 'bash\\r' e falha com "No such file or directory")
+D. Expected canonical statuses present (allow-list anti-typo)
+E. Markdown cross-refs resolve in references/
+F. Shell templates without CRLF (CRLF in shebang breaks exec — kernel
+   looks for interpreter 'bash\\r' and fails with "No such file or directory")
 H. Scripts source-of-truth version sync — `CURRENT_SKILL_VERSION = "X.Y.Z"`
-   + última entry de `SUPPORTED_VERSIONS = (...)` em scripts/*.py devem
-   bater canonical (regra v3.7.2: pega drift em scripts auxiliares como
-   migrate-workspace.py que não estavam em VERSION_MUST_MATCH).
+   + last entry of `SUPPORTED_VERSIONS = (...)` in scripts/*.py must
+   match canonical (rule v3.7.2: catches drift in helper scripts like
+   migrate-workspace.py that were not in VERSION_MUST_MATCH).
 
-Whitelist exceptions explícitas — nunca grep-and-update silencioso.
+Explicit whitelist exceptions — never silent grep-and-update.
 """
 import importlib.util
 import re
@@ -38,9 +38,9 @@ def _load_module(name: str, path: Path):
 
 VERSION_RE = re.compile(r"v(\d+\.\d+\.\d+)")
 
-# Whitelist: arquivos que LEGITIMAMENTE mencionam versões antigas
-# (changelog histórico, scripts de migração com target específico,
-# kickoffs arquivados). Caminho relativo a REPO_ROOT (posix-style).
+# Whitelist: files that LEGITIMATELY mention old versions
+# (historical changelog, migration scripts with specific target,
+# archived kickoffs). Path relative to REPO_ROOT (posix-style).
 VERSION_WHITELIST = {
     "references/changelog.md",
     "scripts/migrate-v3.3-to-v3.4.py",
@@ -53,8 +53,8 @@ VERSION_WHITELIST = {
     "references/example-run.md",  # menciona v3.0.0-beta5 + v2.4 (histórico)
 }
 
-# Arquivos que DEVEM mencionar a versão canônica.
-# Toda mudança em SKILL_VERSION exige bump em TODOS estes (regra v3.7.0).
+# Files that MUST mention the canonical version.
+# Any change to SKILL_VERSION requires bumping ALL of these (rule v3.7.0).
 VERSION_MUST_MATCH = [
     ("SKILL.md", r"# xp-icm-workflow v(\d+\.\d+\.\d+)"),
     ("README.md", r"version-v(\d+\.\d+\.\d+)"),
@@ -63,7 +63,7 @@ VERSION_MUST_MATCH = [
         "references/preview-loop-protocol.md",
         r"build-iterate visual \(v(\d+\.\d+\.\d+)\)",
     ),
-    # v3.7.2: scripts canônicos de orquestração também devem bater
+    # v3.7.2: canonical orchestration scripts must also match
     (
         "scripts/migrate-workspace.py",
         r'CURRENT_SKILL_VERSION\s*=\s*"(\d+\.\d+\.\d+)"',
@@ -83,24 +83,24 @@ def test_version_consistency_canonical_files():
         path = REPO_ROOT / rel_path
         text = path.read_text(encoding="utf-8")
         match = re.search(pattern, text)
-        assert match is not None, f"{rel_path}: pattern '{pattern}' não encontrado"
+        assert match is not None, f"{rel_path}: pattern '{pattern}' not found"
         assert match.group(1) == canonical, \
-            f"{rel_path}: versão {match.group(1)} ≠ canonical {canonical}"
+            f"{rel_path}: version {match.group(1)} ≠ canonical {canonical}"
 
 
 def test_changelog_has_entry_for_canonical_version():
-    """Toda SKILL_VERSION nova exige entry em references/changelog.md.
+    """Every new SKILL_VERSION requires an entry in references/changelog.md.
 
-    Regra v3.7.0: bump SKILL_VERSION sem entry no changelog é drift.
-    Pattern aceita "## vX.Y.Z" no início de linha (header de seção).
+    Rule v3.7.0: bumping SKILL_VERSION without a changelog entry is drift.
+    Pattern accepts "## vX.Y.Z" at the start of a line (section header).
     """
     canonical = _canonical_version()
     changelog = (REPO_ROOT / "references" / "changelog.md").read_text(encoding="utf-8")
     pattern = re.compile(rf"^## v{re.escape(canonical)}\b", re.MULTILINE)
     assert pattern.search(changelog), (
-        f"references/changelog.md não tem entry '## v{canonical}'. "
-        f"Toda mudança de SKILL_VERSION exige changelog entry "
-        f"(regra drift v3.7.0)."
+        f"references/changelog.md has no entry '## v{canonical}'. "
+        f"Every SKILL_VERSION change requires a changelog entry "
+        f"(drift rule v3.7.0)."
     )
 
 
@@ -204,7 +204,7 @@ def _check_profile_count_in_file(path: Path, canonical: int) -> list:
 
 
 def test_profile_count_consistency():
-    """Toda menção canônica a 'N profiles' deve bater com len(CANONICAL_PROFILES)."""
+    """Every canonical mention of 'N profiles' must match len(CANONICAL_PROFILES)."""
     canonical = _canonical_profile_count()
     violations = []
     for path in REPO_ROOT.rglob("*.md"):
@@ -281,16 +281,16 @@ SHELL_CRLF_WHITELIST: set[str] = set()
 
 
 def test_shell_templates_no_crlf():
-    """Templates .sh em templates/ não devem ter CRLF.
+    """Templates .sh in templates/ must not have CRLF.
 
-    Bug: shutil.copy2 preserva bytes; CRLF do template cai no destino.
-    Kernel exec do shebang procura literal 'bash\\r' → "No such file
-    or directory". bootstrap.py normaliza na cópia, mas template-source
-    com CRLF arrisca regressão se alguma cópia futura voltar a copy2.
+    Bug: shutil.copy2 preserves bytes; CRLF from template lands in destination.
+    Kernel exec of shebang looks for literal 'bash\\r' → "No such file
+    or directory". bootstrap.py normalizes on copy, but template-source
+    with CRLF risks regression if any future copy reverts to copy2.
     """
     templates_root = REPO_ROOT / "templates"
     if not templates_root.exists():
-        pytest.skip("templates/ não existe")
+        pytest.skip("templates/ does not exist")
     violations = []
     for sh in templates_root.rglob("*.sh"):
         rel = sh.relative_to(REPO_ROOT).as_posix()
@@ -311,7 +311,7 @@ def test_git_hook_templates_no_crlf():
     """Templates .git-hooks/ — git executa via shebang exec mesma classe."""
     hooks_root = REPO_ROOT / "templates" / ".git-hooks"
     if not hooks_root.exists():
-        pytest.skip("templates/.git-hooks/ não existe")
+        pytest.skip("templates/.git-hooks/ does not exist")
     violations = []
     for hook in hooks_root.iterdir():
         if not hook.is_file():
@@ -328,11 +328,11 @@ def test_git_hook_templates_no_crlf():
 # G. Plan.md schema sync — parser regex ↔ template doc
 # ============================================================
 #
-# Bug histórico: LLM (designer fase 02) gera plan.md com headings em
-# h4/h5 ao invés de h2/h3 do schema canônico. Wave-planner em fase 03
-# falha com "no tasks found" ou retorna lista vazia silenciosamente.
-# Causa raiz frequente: schema do template alterado sem atualizar parser
-# (ou vice-versa). Estes testes congelam o contrato.
+# Historical bug: LLM (stage 02 designer) generates plan.md with headings in
+# h4/h5 instead of h2/h3 of the canonical schema. Wave-planner in stage 03
+# fails with "no tasks found" or returns an empty list silently.
+# Frequent root cause: template schema changed without updating parser
+# (or vice-versa). These tests freeze the contract.
 
 def _wave_planner_module():
     """Importa wave-planner-script.py com registro em sys.modules ANTES
@@ -352,8 +352,8 @@ def _wave_planner_module():
 
 
 def test_4block_template_uses_canonical_heading_levels():
-    """4-block-contract-template.md deve declarar schema com h2 (Task) e
-    h3 (subseções). Mudança aqui sem ajustar parser quebra geração.
+    """4-block-contract-template.md must declare schema with h2 (Task) and
+    h3 (subsections). Changing this without adjusting the parser breaks generation.
     """
     template = (REPO_ROOT / "references" / "4-block-contract-template.md").read_text(
         encoding="utf-8"
@@ -379,7 +379,7 @@ def test_parser_regex_matches_template_canonical_example():
     )
     matches = module.SLUG_RE.findall(template)
     assert "auth-middleware" in matches, (
-        f"parser SLUG_RE não casa exemplo do template (got {matches}). "
+        f"parser SLUG_RE does not match template example (got {matches}). "
         "Schema canônico em references/4-block-contract-template.md §6.1."
     )
 
@@ -395,7 +395,7 @@ def test_parser_drift_detector_rejects_h4_task():
 
 
 def test_parser_drift_detector_passes_canonical_h2():
-    """Plan.md correto (h2 + h3) não deve disparar drift detector."""
+    """Correct plan.md (h2 + h3) must not trigger drift detector."""
     module = _wave_planner_module()
     good = (
         "## Task foo: Foo\n\n"
@@ -403,18 +403,18 @@ def test_parser_drift_detector_passes_canonical_h2():
         "### Files touched\n- src/foo.ts\n\n"
         "### Depends on\n\n"
     )
-    module._detect_heading_drift(good)  # não levanta
+    module._detect_heading_drift(good)  # must not raise
 
 
 # ============================================================
 # H. Scripts source-of-truth version sync (v3.7.2)
 # ============================================================
 #
-# Detecta scripts auxiliares que mantêm cópia local de SKILL_VERSION
-# (ex: migrate-workspace.py CURRENT_SKILL_VERSION + SUPPORTED_VERSIONS
-# tuple). VERSION_MUST_MATCH cobre arquivos canônicos com pattern fixo;
-# este detector é genérico — varre scripts/**/*.py por dois padrões e
-# valida == canonical.
+# Detects helper scripts that maintain a local copy of SKILL_VERSION
+# (e.g.: migrate-workspace.py CURRENT_SKILL_VERSION + SUPPORTED_VERSIONS
+# tuple). VERSION_MUST_MATCH covers canonical files with a fixed pattern;
+# this detector is generic — scans scripts/**/*.py for two patterns and
+# validates == canonical.
 
 SCRIPT_CURRENT_VERSION_RE = re.compile(
     r'CURRENT_SKILL_VERSION\s*=\s*"(\d+\.\d+\.\d+)"'
@@ -433,7 +433,7 @@ def _scripts_version_violations(canonical: str) -> list[str]:
         return violations
     for py in scripts_dir.rglob("*.py"):
         rel = py.relative_to(REPO_ROOT).as_posix()
-        # migrate-v3.3-to-v3.4.py é histórico (target fixo) — whitelist
+        # migrate-v3.3-to-v3.4.py is historical (fixed target) — whitelist
         if rel == "scripts/migrate-v3.3-to-v3.4.py":
             continue
         text = py.read_text(encoding="utf-8")
@@ -447,18 +447,18 @@ def _scripts_version_violations(canonical: str) -> list[str]:
             versions = SEMVER_RE.findall(m2.group("body"))
             if versions and versions[-1] != canonical:
                 violations.append(
-                    f"{rel}: SUPPORTED_VERSIONS última entry "
+                    f"{rel}: SUPPORTED_VERSIONS last entry "
                     f"{versions[-1]} ≠ {canonical}"
                 )
     return violations
 
 
 def test_scripts_skill_version_sync():
-    """Scripts auxiliares (migrate-workspace.py etc) devem refletir SKILL_VERSION.
+    """Helper scripts (migrate-workspace.py etc) must reflect SKILL_VERSION.
 
-    Regra v3.7.2: caça drift em CURRENT_SKILL_VERSION e SUPPORTED_VERSIONS
-    tuple por scripts/. Cobre futuros scripts que copiarem padrão sem
-    estarem em VERSION_MUST_MATCH.
+    Rule v3.7.2: hunts drift in CURRENT_SKILL_VERSION and SUPPORTED_VERSIONS
+    tuple across scripts/. Covers future scripts that copy the pattern without
+    being in VERSION_MUST_MATCH.
     """
     canonical = _canonical_version()
     violations = _scripts_version_violations(canonical)
@@ -472,7 +472,7 @@ def test_markdown_cross_refs_resolve_in_references():
     violations = []
     root = REPO_ROOT / "references"
     if not root.exists():
-        pytest.skip("references/ não existe")
+        pytest.skip("references/ does not exist")
     for md in root.rglob("*.md"):
         text = md.read_text(encoding="utf-8")
         for label, target in MD_LINK_RE.findall(text):
@@ -483,7 +483,7 @@ def test_markdown_cross_refs_resolve_in_references():
             path_part = target.split("#", 1)[0]
             if not path_part:
                 continue
-            # Resolução relativa ao MD; fallback REPO_ROOT
+            # Resolve relative to the MD file; fallback to REPO_ROOT
             resolved = (md.parent / path_part).resolve()
             if not resolved.exists():
                 alt = (REPO_ROOT / path_part.lstrip("/")).resolve()
@@ -564,9 +564,9 @@ def test_l2_stage_04_references_forensic_plus_protocol():
     assert "forensic-plus-protocol.md" in text
 
 
-# Docs canônicos que `SKILL.md` deve indexar (seção "Referências de
-# algoritmo" / lista de runtime_refs do bootstrap). Lista crescente: ao
-# introduzir doc canônico novo em `references/`, adicione aqui.
+# Canonical docs that `SKILL.md` must index (section "Algorithm References"
+# / bootstrap runtime_refs list). Growing list: when introducing a new
+# canonical doc in `references/`, add it here.
 SKILL_MD_INDEXED_DOCS: tuple[str, ...] = (
     "wave-planner-algorithm.md",
     "subagent-protocol.md",
@@ -582,20 +582,20 @@ SKILL_MD_INDEXED_DOCS: tuple[str, ...] = (
 
 
 def test_skill_md_indexes_canonical_docs():
-    """SKILL.md deve mencionar cada doc canônico em SKILL_MD_INDEXED_DOCS.
+    """SKILL.md must mention every canonical doc in SKILL_MD_INDEXED_DOCS.
 
-    Direção contrária do detector E (cross-refs link→file): aqui é
-    file→menção. Garante que docs canônicos novos sejam descobríveis a
-    partir do SKILL.md (entry point da skill).
+    Opposite direction of detector E (cross-refs link→file): here it is
+    file→mention. Ensures new canonical docs are discoverable from
+    SKILL.md (skill entry point).
     """
     skill_md = REPO_ROOT / "SKILL.md"
     text = skill_md.read_text(encoding="utf-8")
     missing = [doc for doc in SKILL_MD_INDEXED_DOCS if doc not in text]
     assert not missing, (
-        "SKILL.md não menciona docs canônicos:\n  "
+        "SKILL.md does not mention canonical docs:\n  "
         + "\n  ".join(missing)
-        + "\nAdicione bullet em § 'Referências de algoritmo' ou remova de "
-        "SKILL_MD_INDEXED_DOCS se a omissão é intencional."
+        + "\nAdd bullet in § 'Algorithm References' or remove from "
+        "SKILL_MD_INDEXED_DOCS if the omission is intentional."
     )
 
 

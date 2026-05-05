@@ -303,12 +303,12 @@ class TestMergeProjectSettings:
         assert any("workspaces/001-test/" in c for c in cmds)
         # Commands cwd-independent via $CLAUDE_PROJECT_DIR (worktree-safe)
         assert all("$CLAUDE_PROJECT_DIR" in c for c in cmds), (
-            f"command sem $CLAUDE_PROJECT_DIR: {cmds}"
+            f"command without $CLAUDE_PROJECT_DIR: {cmds}"
         )
 
     def test_pretoolse_matcher_is_slashcommand_or_bash(self, tmp_path):
-        """block-init-during-icm hook só interessa em SlashCommand ou Bash —
-        matcher deve ser específico, não `.*` (evita overhead em outros tools).
+        """block-init-during-icm hook only cares about SlashCommand or Bash —
+        matcher must be specific, not `.*` (avoids overhead in other tools).
         """
         project_root = tmp_path / "project"
         project_root.mkdir()
@@ -326,15 +326,15 @@ class TestMergeProjectSettings:
         )
         matcher = block_init_entry["matcher"]
         assert "SlashCommand" in matcher and "Bash" in matcher, (
-            f"matcher esperado conter SlashCommand+Bash, got: {matcher!r}"
+            f"matcher expected to contain SlashCommand+Bash, got: {matcher!r}"
         )
 
     def test_block_dangerous_git_registered_for_production(self, tmp_path):
-        """tier=production registra block-dangerous-git como PreToolUse(Bash).
+        """tier=production registers block-dangerous-git as PreToolUse(Bash).
 
-        Hook .sh é COPIADO em tier=production (vide _PRODUCTION_HOOK_FILES).
-        Pre-fix: registro em settings.local.json estava ausente — hook
-        inerte. Este test bloqueia regressão.
+        Hook .sh is COPIED in tier=production (see _PRODUCTION_HOOK_FILES).
+        Pre-fix: registration in settings.local.json was absent — hook
+        inert. This test blocks regression.
         """
         project_root = tmp_path / "project"
         project_root.mkdir()

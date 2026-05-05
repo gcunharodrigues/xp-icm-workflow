@@ -1,14 +1,14 @@
-"""Tests dos 9 L2 templates (`templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl`).
+"""Tests for the 9 L2 templates (`templates/workspace/stages/<NN>_<slug>/CONTEXT.md.tpl`).
 
-Valida schema canônico definido em `references/stage-templates.md`:
-  - frontmatter parseável + campos obrigatórios
-  - sub_stage_enum bate com state-machine-schema.md
-  - applicable_stop_points subset de IDs canônicos
-  - tabela Inputs presente com L0/L1/L2 mínimos
-  - seção Não Lê presente
-  - output_files frontmatter == paths citados em Outputs
-  - next_stage válido
-  - placeholders permitidos apenas
+Validates canonical schema defined in `references/stage-templates.md`:
+  - parseable frontmatter + required fields
+  - sub_stage_enum matches state-machine-schema.md
+  - applicable_stop_points subset of canonical IDs
+  - Inputs table present with minimum L0/L1/L2
+  - Não Lê section present
+  - output_files frontmatter == paths cited in Outputs
+  - valid next_stage
+  - only allowed placeholders
 """
 from __future__ import annotations
 
@@ -22,20 +22,20 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 STAGES_DIR = REPO_ROOT / "templates" / "workspace" / "stages"
 REFERENCES_DIR = REPO_ROOT / "references"
 
-# IDs canônicos do plan §4.9 / references/stop-points-canonical.md
+# Canonical IDs from plan §4.9 / references/stop-points-canonical.md
 CANONICAL_STOP_POINT_IDS = {
     "stack", "db", "external_api", "new_dep", "paid_service",
     "irreversible", "over_eng", "pii", "prod_migration", "adr_drift",
     "workspace_corrupt", "profile_mismatch",
     # v3.6.0 preview loop
     "feedback_ambiguous", "design_system_cascade",
-    # v3.7.0 runtime cleanup (fase 08 strict universal)
+    # v3.7.0 runtime cleanup (stage 08 strict universal)
     "runtime_cleanup_failed",
-    # numeric IDs também são aceitos (yaml frontmatter usa "13" string)
+    # numeric IDs are also accepted (yaml frontmatter uses "13" string)
     "13",
 }
 
-# Sub_stage enum canônico do state-machine-schema.md §Sub-stage enum
+# Canonical sub_stage enum from state-machine-schema.md §Sub-stage enum
 CANONICAL_SUB_STAGE = {
     "00": {"00_in_progress", "00_completed"},
     "01": {"01_in_progress", "01_completed"},
@@ -74,13 +74,13 @@ STAGE_SLUGS = {
     "08": "feedback_intake",
 }
 
-# Stages cujo applicable_stop_points DEVE ser vazio (determinísticos / sem decisão).
-# v3.7.0: stage 08 ganha runtime_cleanup_failed (#13) — removido daqui.
+# Stages whose applicable_stop_points MUST be empty (deterministic / no decision).
+# v3.7.0: stage 08 gains runtime_cleanup_failed (#13) — removed from here.
 EMPTY_STOP_POINTS_STAGES = {"03", "05"}
 
 
 def parse_l2_template(path: Path) -> tuple[dict, str]:
-    """Parse `.tpl` L2 → (frontmatter dict, body str). Levanta se malformado."""
+    """Parse `.tpl` L2 → (frontmatter dict, body str). Raises if malformed."""
     content = path.read_text(encoding="utf-8")
     if not content.startswith("---\n"):
         raise ValueError(f"{path}: missing frontmatter delimiter")
@@ -97,12 +97,12 @@ def template_path(stage: str) -> Path:
 
 
 def extract_used_placeholders(body: str) -> set[str]:
-    """Extrai nomes de placeholders Jinja `{{NOME}}` usados no body + frontmatter raw."""
+    """Extracts Jinja placeholder names `{{NAME}}` used in body + raw frontmatter."""
     return set(re.findall(r"\{\{\s*([A-Z_][A-Z0-9_]*)\s*\}\}", body))
 
 
 def extract_outputs_section_paths(body: str) -> list[str]:
-    """Extrai paths citados em `## Outputs` (linhas com backticks ou bullets)."""
+    """Extracts paths cited in `## Outputs` (lines with backticks or bullets)."""
     match = re.search(r"## Outputs\s*\n(.+?)(?=\n## |\Z)", body, re.DOTALL)
     if not match:
         return []
@@ -129,7 +129,7 @@ def test_l2_frontmatter_parses(stage: str):
 def test_l2_frontmatter_required_fields(stage: str):
     fm, _ = parse_l2_template(template_path(stage))
     missing = REQUIRED_FRONTMATTER_FIELDS - set(fm.keys())
-    assert not missing, f"stage {stage}: campos faltando {missing}"
+    assert not missing, f"stage {stage}: missing fields {missing}"
 
 
 @pytest.mark.parametrize("stage", list(STAGE_SLUGS.keys()))
@@ -172,31 +172,31 @@ def test_l2_applicable_stop_points_subset_of_canonical(stage: str):
     fm, _ = parse_l2_template(template_path(stage))
     declared = set(fm["applicable_stop_points"])
     invalid = declared - CANONICAL_STOP_POINT_IDS
-    assert not invalid, f"stage {stage}: stop points não-canônicos {invalid}"
+    assert not invalid, f"stage {stage}: non-canonical stop points {invalid}"
 
 
 @pytest.mark.parametrize("stage", sorted(EMPTY_STOP_POINTS_STAGES))
 def test_l2_empty_stop_points_for_deterministic_stages(stage: str):
     fm, _ = parse_l2_template(template_path(stage))
     assert fm["applicable_stop_points"] == [], (
-        f"stage {stage}: deve ter applicable_stop_points vazio (determinístico/sem decisão)"
+        f"stage {stage}: must have applicable_stop_points empty (deterministic/no decision)"
     )
 
 
 @pytest.mark.parametrize("stage", list(STAGE_SLUGS.keys()))
 def test_l2_inputs_table_has_l0_l1_l2(stage: str):
     _, body = parse_l2_template(template_path(stage))
-    assert "## Inputs" in body, f"stage {stage}: seção Inputs ausente"
-    # checa que há ≥3 linhas com L0, L1, L2 marcados
-    assert "| L0 |" in body, f"stage {stage}: linha L0 ausente em Inputs"
-    assert "| L1 |" in body, f"stage {stage}: linha L1 ausente em Inputs"
-    assert "| L2 |" in body, f"stage {stage}: linha L2 ausente em Inputs"
+    assert "## Inputs" in body, f"stage {stage}: Inputs section missing"
+    # check that there are ≥3 lines with L0, L1, L2 marked
+    assert "| L0 |" in body, f"stage {stage}: L0 row missing in Inputs"
+    assert "| L1 |" in body, f"stage {stage}: L1 row missing in Inputs"
+    assert "| L2 |" in body, f"stage {stage}: L2 row missing in Inputs"
 
 
 @pytest.mark.parametrize("stage", list(STAGE_SLUGS.keys()))
 def test_l2_nao_le_section_present(stage: str):
     _, body = parse_l2_template(template_path(stage))
-    assert "## Não Lê" in body, f"stage {stage}: seção 'Não Lê' ausente"
+    assert "## Não Lê" in body, f"stage {stage}: 'Não Lê' section missing"
 
 
 @pytest.mark.parametrize("stage", list(STAGE_SLUGS.keys()))
@@ -204,16 +204,16 @@ def test_l2_output_files_match_outputs_section(stage: str):
     fm, body = parse_l2_template(template_path(stage))
     declared = set(fm["output_files"])
     cited = set(extract_outputs_section_paths(body))
-    # output_files mandatórios presentes no body (subset relação — body pode citar mais detalhes)
+    # mandatory output_files present in body (subset relation — body may cite more details)
     missing_in_body = {p for p in declared if not p.endswith("(opcional)") and "(opcional)" not in p}
     missing_in_body = {p for p in missing_in_body if p not in cited}
-    # opcionais permitidos não estarem no body se claramente marcados
+    # optionals are allowed to not be in body if clearly marked
     if missing_in_body:
-        # tolera se output_files contém path que aparece no body sem backticks
+        # tolerate if output_files contains path that appears in body without backticks
         plain_text = body
         truly_missing = {p for p in missing_in_body if p not in plain_text}
         assert not truly_missing, (
-            f"stage {stage}: output_files {truly_missing} declarado mas não citado em body"
+            f"stage {stage}: output_files {truly_missing} declared but not cited in body"
         )
 
 
@@ -234,7 +234,7 @@ def test_l2_output_files_match_outputs_section(stage: str):
 def test_l2_next_stage_valid(stage: str, expected_next):
     fm, _ = parse_l2_template(template_path(stage))
     assert fm["next_stage"] == expected_next, (
-        f"stage {stage}: next_stage {fm['next_stage']!r} != esperado {expected_next!r}"
+        f"stage {stage}: next_stage {fm['next_stage']!r} != expected {expected_next!r}"
     )
 
 
@@ -244,7 +244,7 @@ def test_l2_placeholders_only_allowed(stage: str):
     raw = path.read_text(encoding="utf-8")
     used = extract_used_placeholders(raw)
     invalid = used - ALLOWED_PLACEHOLDERS
-    assert not invalid, f"stage {stage}: placeholders não-permitidos {invalid}"
+    assert not invalid, f"stage {stage}: disallowed placeholders {invalid}"
 
 
 @pytest.mark.parametrize("stage", list(STAGE_SLUGS.keys()))
@@ -252,8 +252,8 @@ def test_l2_uses_project_root_and_workspace_placeholders(stage: str):
     path = template_path(stage)
     raw = path.read_text(encoding="utf-8")
     used = extract_used_placeholders(raw)
-    assert "PROJECT_ROOT" in used, f"stage {stage}: PROJECT_ROOT não usado"
-    assert "WORKSPACE" in used, f"stage {stage}: WORKSPACE não usado"
+    assert "PROJECT_ROOT" in used, f"stage {stage}: PROJECT_ROOT not used"
+    assert "WORKSPACE" in used, f"stage {stage}: WORKSPACE not used"
 
 
 # ---- Cross-stage invariants ----------------------------------------------
@@ -264,10 +264,10 @@ def test_all_9_stages_present():
 
 
 def test_no_path_relative_in_inputs():
-    """Nenhum L2 deve usar `../../` ou paths relativos."""
+    """No L2 should use `../../` or relative paths."""
     for stage in STAGE_SLUGS:
         body = template_path(stage).read_text(encoding="utf-8")
-        assert "../" not in body, f"stage {stage}: path relativo `../` detectado"
+        assert "../" not in body, f"stage {stage}: relative path `../` detected"
 
 
 def test_canonical_stop_points_doc_exists():

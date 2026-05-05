@@ -303,14 +303,14 @@ class TestValidateSlug:
             validate_slug(slug)
 
     @pytest.mark.parametrize("slug", [
-        "01-feature",  # 2 dígitos — não bate ^\d{3}-
-        "1234-foo",    # 4 dígitos — não bate ^\d{3}-
-        "abc-001",     # NNN no meio, não no início
-        "12-3-foo",    # dígitos quebrados
+        "01-feature",  # 2 digits — does not match ^\d{3}-
+        "1234-foo",    # 4 digits — does not match ^\d{3}-
+        "abc-001",     # NNN in the middle, not at the start
+        "12-3-foo",    # broken digits
     ])
     def test_NNN_guard_does_not_overreject(self, slug: str) -> None:
         """Guard só pega EXATAMENTE 3 dígitos + hífen no início."""
-        validate_slug(slug)  # não deve raise
+        validate_slug(slug)  # must not raise
 
 
 # ============================================================================
@@ -427,7 +427,7 @@ class TestScaffoldWorkspaceDirs:
 
 
 class TestL2ContextRendering:
-    """Verifica que bootstrap renderiza L2 CONTEXT.md para cada estágio."""
+    """Verifies that bootstrap renders L2 CONTEXT.md for each stage."""
 
     def test_renders_all_9_l2_context_files(self, tmp_path: Path) -> None:
         """Bootstrap deve criar CONTEXT.md em cada stage com placeholders resolvidos."""

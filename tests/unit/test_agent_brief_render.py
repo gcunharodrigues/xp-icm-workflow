@@ -67,7 +67,7 @@ def test_extract_task_section_found():
     section = agent_brief_render.extract_task_section(SAMPLE_PLAN, "implementar-jwt-refresh")
     assert "implementar-jwt-refresh" in section
     assert "AFK" in section
-    assert "choose-orm" not in section  # não pegou seção seguinte
+    assert "choose-orm" not in section  # did not capture next section
 
 
 def test_extract_task_section_last_task():

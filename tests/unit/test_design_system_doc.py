@@ -42,7 +42,7 @@ def test_doc_has_canonical_sections():
         "## Cross-references",
     ]
     for section in expected_sections:
-        assert section in content, f"seção faltando: {section!r}"
+        assert section in content, f"section missing: {section!r}"
 
 
 def test_doc_mentions_design_md_schema_keys():
@@ -100,7 +100,7 @@ def test_design_system_in_runtime_refs():
     """Bootstrap deve copiar design-system.md para <workspace>/_references/runtime/."""
     bootstrap_content = BOOTSTRAP.read_text(encoding="utf-8")
     assert '"design-system.md"' in bootstrap_content, (
-        "design-system.md não está em runtime_refs tuple do bootstrap.py"
+        "design-system.md is not in runtime_refs tuple of bootstrap.py"
     )
 
 

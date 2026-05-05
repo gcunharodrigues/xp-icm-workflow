@@ -19,7 +19,7 @@ def test_doc_exists():
 
 def test_doc_has_version_v3_6():
     text = DOC_PATH.read_text(encoding="utf-8")
-    assert "v3.6.0" in text, "doc não declara versão v3.6.0"
+    assert "v3.6.0" in text, "doc does not declare version v3.6.0"
 
 
 def test_doc_mentions_all_10_decision_topics():
@@ -81,5 +81,5 @@ def test_helper_scripts_use_port_9222():
     sh = REPO_ROOT / "templates" / ".claude" / "scripts" / "launch-chrome-cdp.sh"
     for f in (bat, sh):
         text = f.read_text(encoding="utf-8")
-        assert "9222" in text, f"{f.name} não menciona porta 9222"
-        assert ".icm-chrome-profile" in text, f"{f.name} não usa profile dir canônico"
+        assert "9222" in text, f"{f.name} does not mention port 9222"
+        assert ".icm-chrome-profile" in text, f"{f.name} does not use canonical profile dir"

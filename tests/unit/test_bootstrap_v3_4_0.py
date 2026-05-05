@@ -163,11 +163,11 @@ class TestInstallContextHook:
     def test_workspace_hook_command_uses_claude_project_dir(
         self, project_root_with_main: Path
     ) -> None:
-        """Command DEVE usar $CLAUDE_PROJECT_DIR (cwd-independent).
+        """Command MUST use $CLAUDE_PROJECT_DIR (cwd-independent).
 
-        Path relativo "workspaces/..." quebra quando sessão Claude Code roda
-        com cwd != project_root (worktree .icm-main/, subdir). Regression:
-        se voltar pra path relativo, este teste pega.
+        Relative path "workspaces/..." breaks when Claude Code session runs
+        with cwd != project_root (worktree .icm-main/, subdir). Regression:
+        if it reverts to a relative path, this test catches it.
         """
         ws_dir = project_root_with_main / "workspaces" / "001-test"
         ws_dir.mkdir(parents=True)
@@ -178,7 +178,7 @@ class TestInstallContextHook:
         post_tool = settings["hooks"]["PostToolUse"]
         command = post_tool[0]["hooks"][0]["command"]
         assert "$CLAUDE_PROJECT_DIR" in command, (
-            f"command sem $CLAUDE_PROJECT_DIR — path relativo quebra em "
+            f"command without $CLAUDE_PROJECT_DIR — relative path breaks at "
             f"cwd != project_root. Got: {command!r}"
         )
         assert "workspaces/001-test" in command

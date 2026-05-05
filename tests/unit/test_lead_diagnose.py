@@ -260,7 +260,7 @@ def test_diagnose_t3_catastrophic_overrides_other(ld, tmp_path):
 
 
 def test_diagnose_t1_cap_exhausted(ld, tmp_path):
-    """3 rounds com claims totalmente distintas (sem token sharing) → T1, não T2."""
+    """3 rounds with completely distinct claims (no token sharing) → T1, not T2."""
     rounds = [
         {"concerns": [{"claim": "missing input validation null check", "severity": "BLOCKING"}]},
         {"concerns": [{"claim": "wrong return type annotation", "severity": "BLOCKING"}]},

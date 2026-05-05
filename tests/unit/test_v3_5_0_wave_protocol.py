@@ -39,7 +39,7 @@ def claude_root_text():
 
 
 def test_claude_root_no_worktrees_line_removed(claude_root_text):
-    """Gap 1: linha 'no worktrees' não deve mais existir."""
+    """Gap 1: 'no worktrees' line must no longer exist."""
     assert "no worktrees" not in claude_root_text, \
         "CLAUDE.md root ainda tem linha stale 'no worktrees'"
     assert "isolation: \"worktree\"" in claude_root_text, \
@@ -59,7 +59,7 @@ def test_l2_force_decision_matrix(l2_text):
            "auto_qa_passed: true" in l2_text, \
            "L2 deve ter decision matrix --force"
     assert "JAMAIS usar `-D`" in l2_text or \
-           "não usar `-D`" in l2_text, \
+           "do not use `-D`" in l2_text, \
            "L2 deve proibir -D em branch delete"
 
 
@@ -76,18 +76,18 @@ def test_l2_wave_reviewer_isolation_spec(l2_text):
 
 
 def test_l2_qa_loops_tracking(l2_text):
-    """Gap 4 (v3.5.0): subagente trackeava qa_loops_used (Akita 15-itens cap 3).
+    """Gap 4 (v3.5.0): subagent tracked qa_loops_used (Akita 15-items cap 3).
 
-    v3.9.0 update: Akita 15-itens DROP. QA delegado a layers ortogonais
+    v3.9.0 update: Akita 15-items DROPPED. QA delegated to orthogonal layers
     (L2 forensic+ extended + L3 critic). Per-task loop cap 3 attempts
-    permanece, mas tracked via attempt counter, não qa_loops_used.
+    remains, but tracked via attempt counter, not qa_loops_used.
 
-    Test agora valida que cap 3 attempts é declarado (substituindo
+    Test now validates that cap 3 attempts is declared (replacing
     qa_loops_used legacy field).
     """
     assert "cap 3" in l2_text or "cap 3 attempts" in l2_text or \
            "Cap 3" in l2_text, \
-        "L2 deve declarar cap 3 attempts (substitui qa_loops_used v3.5.0)"
+        "L2 must declare cap 3 attempts (replaces qa_loops_used v3.5.0)"
 
 
 def test_l2_blocked_hitl_status(l2_text):
@@ -130,13 +130,13 @@ def test_conflict_protocol_exists():
 
 
 def test_ci_rollback_protocol_exists():
-    """Gap 9: ci-rollback-protocol.md existe + diagnose-first + 3 opções."""
-    assert ROLLBACK_DOC.exists(), "ci-rollback-protocol.md ausente"
+    """Gap 9: ci-rollback-protocol.md exists + diagnose-first + 3 options."""
+    assert ROLLBACK_DOC.exists(), "ci-rollback-protocol.md missing"
     text = ROLLBACK_DOC.read_text(encoding="utf-8")
     assert "diagnose-protocol" in text or "diagnose" in text.lower(), \
-        "rollback protocol deve referenciar diagnose-protocol"
+        "rollback protocol must reference diagnose-protocol"
     for opt in ("redo wave", "redo task", "abandon"):
-        assert opt in text, f"rollback protocol falta opção '{opt}'"
+        assert opt in text, f"rollback protocol missing option '{opt}'"
     assert "pre_wave_sha" in text
 
 
@@ -158,10 +158,10 @@ def test_skill_version_at_least_v3_5_0():
     text = SKILL_MD.read_text(encoding="utf-8")
     import re
     match = re.search(r"# xp-icm-workflow v(\d+)\.(\d+)\.(\d+)", text)
-    assert match, "SKILL.md deve declarar versão no header"
+    assert match, "SKILL.md must declare version in header"
     major, minor, patch = map(int, match.groups())
     assert (major, minor, patch) >= (3, 5, 0), \
-        f"SKILL.md em versão {major}.{minor}.{patch} < 3.5.0"
+        f"SKILL.md at version {major}.{minor}.{patch} < 3.5.0"
 
 
 def test_changelog_v3_5_0_entry():

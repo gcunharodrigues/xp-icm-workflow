@@ -1,8 +1,8 @@
 """v3.7.2 — recovery wizard detector STALE_ICM_MAIN_AFTER_CLOSE.
 
-Disparo: workspace COMPLETED + .icm-main/ presente + zero outros workspaces
-ativos no project_root. Plan A: registra warning sugerindo
-`scripts/icm-cleanup.py` (não auto-executa — destrutivo).
+Trigger: workspace COMPLETED + .icm-main/ present + zero other active workspaces
+in project_root. Plan A: registers warning suggesting
+`scripts/icm-cleanup.py` (does not auto-execute — destructive).
 """
 from __future__ import annotations
 

@@ -140,7 +140,7 @@ def test_brownfield_without_markers_inserts_after_h1(tmp_path: Path):
     assert "Architecture details preserved." in content
     # Bloco do workspace presente
     assert "001-test" in content
-    # Marcador START vem antes da seção Architecture
+    # START marker comes before the Architecture section
     icm_start_pos = content.find(ICM_START_MARKER)
     arch_pos = content.find("## Architecture")
     assert icm_start_pos < arch_pos
@@ -178,7 +178,7 @@ def test_multi_workspace_adds_block_preserves_existing(tmp_path: Path):
 
 
 def test_update_existing_workspace_replaces_only_its_block(tmp_path: Path):
-    """Update do workspace 001 não toca bloco do 002."""
+    """Update of workspace 001 does not touch block of 002."""
     b1_initial = _make_block(workspace="001-foo", stage_atual="00")
     b2 = _make_block(workspace="002-bar", stage_atual="03")
     update_project_claude_md(tmp_path, b1_initial, SKILL_DIR_FIXTURE)
@@ -231,7 +231,7 @@ def test_remove_last_workspace_activates_idle(tmp_path: Path):
 
 
 def test_remove_nonexistent_workspace_is_noop(tmp_path: Path):
-    """Remover workspace inexistente não toca arquivo."""
+    """Removing a non-existent workspace does not touch the file."""
     b1 = _make_block(workspace="001-foo")
     update_project_claude_md(tmp_path, b1, SKILL_DIR_FIXTURE)
     before = (tmp_path / "CLAUDE.md").read_text(encoding="utf-8")
@@ -274,7 +274,7 @@ def test_deactivate_replaces_region_with_idle(tmp_path: Path):
 
 
 def test_atomic_write_no_tmp_file_left(tmp_path: Path):
-    """Após update, arquivo .tmp não deve existir."""
+    """After update, .tmp file must not exist."""
     block = _make_block()
     update_project_claude_md(tmp_path, block, SKILL_DIR_FIXTURE)
 

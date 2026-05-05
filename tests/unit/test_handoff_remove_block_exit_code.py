@@ -1,11 +1,11 @@
 """v3.7.0 — `handoff.py remove-block --exit-2-if-last-active` CLI exit codes.
 
-Stage 08 saídas A/C precisam saber se workspace removido era o último ativo
-pra decidir se invocam `Skill(skill: "init")` na MESMA sessão. Mecanismo:
-flag CLI `--exit-2-if-last-active` que faz o command retornar exit code 2
-quando deactivate disparou (zero blocos restantes), 0 caso contrário.
+Stage 08 exits A/C need to know if the removed workspace was the last active one
+to decide whether to invoke `Skill(skill: "init")` in the SAME session. Mechanism:
+CLI flag `--exit-2-if-last-active` that makes the command return exit code 2
+when deactivate fired (zero blocks remaining), 0 otherwise.
 
-Sem o flag, comportamento default (backwards-compat) é sempre exit 0.
+Without the flag, default behavior (backwards-compat) is always exit 0.
 """
 from __future__ import annotations
 
@@ -65,20 +65,20 @@ def _run_remove_block(
 
 
 def test_exit_code_2_when_removed_last_active_outcome_A(tmp_path: Path):
-    """Saída A removendo único workspace ativo → exit 2 com flag."""
+    """Exit A removing only active workspace → exit 2 with flag."""
     update_project_claude_md(tmp_path, _block("042-feat-auth"), skill_dir="/skill")
     result = _run_remove_block(
         tmp_path, "042-feat-auth",
         outcome="A", exit_2_if_last_active=True,
     )
     assert result.returncode == 2, (
-        f"esperado exit 2 (último ativo), got {result.returncode}\n"
+        f"expected exit 2 (last active), got {result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
 
 
 def test_exit_code_0_when_other_workspaces_remain_outcome_A(tmp_path: Path):
-    """Saída A com 2+ ativos, removendo um → exit 0 com flag."""
+    """Exit A with 2+ active workspaces, removing one → exit 0 with flag."""
     update_project_claude_md(tmp_path, _block("042-feat-auth"), skill_dir="/skill")
     update_project_claude_md(tmp_path, _block("043-payments"), skill_dir="/skill")
     result = _run_remove_block(
@@ -86,13 +86,13 @@ def test_exit_code_0_when_other_workspaces_remain_outcome_A(tmp_path: Path):
         outcome="A", exit_2_if_last_active=True,
     )
     assert result.returncode == 0, (
-        f"esperado exit 0 (1 workspace ativo restante), got {result.returncode}\n"
+        f"expected exit 0 (1 workspace still active), got {result.returncode}\n"
         f"stdout: {result.stdout}\nstderr: {result.stderr}"
     )
 
 
 def test_exit_code_2_when_removed_last_active_outcome_C(tmp_path: Path):
-    """Saída C (spawn) removendo último ativo → exit 2 com flag."""
+    """Exit C (spawn) removing last active workspace → exit 2 with flag."""
     update_project_claude_md(tmp_path, _block("042-feat-auth"), skill_dir="/skill")
     result = _run_remove_block(
         tmp_path, "042-feat-auth",

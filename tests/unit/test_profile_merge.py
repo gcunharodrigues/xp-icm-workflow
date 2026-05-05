@@ -241,7 +241,7 @@ class TestFullstackProfile:
         for profile in ["app_web_backend", "cli_tool", "ml_project", "agent_ia"]:
             eff, _ = merge_profile(profile=profile, tier="development")
             assert "design_system_required" not in eff["test_specs"], (
-                f"{profile} não deveria ter design_system_required"
+                f"{profile} should not have design_system_required"
             )
 
     def test_hash_fullstack_distinct_from_backend_and_frontend(self):
@@ -276,7 +276,7 @@ class TestPreviewLoopConfig:
         ]:
             eff, _ = merge_profile(profile=profile, tier="development")
             assert "preview_loop" not in eff, (
-                f"{profile}: preview_loop não deveria existir"
+                f"{profile}: preview_loop should not exist"
             )
 
     def test_mock_data_strategy_tier_based(self):

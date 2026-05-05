@@ -1,11 +1,11 @@
-"""v3.7.0 — stage 08 template auto-invoca /init pós saída A/C último ativo.
+"""v3.7.0 — stage 08 template auto-invokes /init after exit A/C last active.
 
-Smoke check do template `08_feedback_intake/CONTEXT.md.tpl`:
-- Saída A step 5 usa `--exit-2-if-last-active`.
-- Saída A step 6 instrui sessão invocar `Skill(skill: "init")` se exit 2.
-- Saída C step 5 usa `--exit-2-if-last-active`.
-- Saída C step 6 idem.
-- Saída B nunca menciona /init (workspace continua ativo).
+Smoke check of template `08_feedback_intake/CONTEXT.md.tpl`:
+- Exit A step 5 uses `--exit-2-if-last-active`.
+- Exit A step 6 instructs session to invoke `Skill(skill: "init")` if exit 2.
+- Exit C step 5 uses `--exit-2-if-last-active`.
+- Exit C step 6 same.
+- Exit B never mentions /init (workspace remains active).
 """
 from __future__ import annotations
 
@@ -23,7 +23,7 @@ def _read() -> str:
 
 
 def _split_outcomes(content: str) -> dict[str, str]:
-    """Quebra template em 3 sub-strings das saídas A/B/C."""
+    """Splits template into 3 sub-strings for exits A/B/C."""
     markers = {
         "A": "### Saída A — Close",
         "B": "### Saída B — Restart phase X",
@@ -34,7 +34,7 @@ def _split_outcomes(content: str) -> dict[str, str]:
     c_start = content.find(markers["C"])
     c_end = content.find("Detalhes em", c_start) if c_start >= 0 else len(content)
     assert a_start >= 0 and b_start > a_start and c_start > b_start, (
-        "marcadores das saídas A/B/C não encontrados em ordem esperada"
+        "A/B/C exit markers not found in expected order"
     )
     return {
         "A": content[a_start:b_start],
@@ -44,47 +44,47 @@ def _split_outcomes(content: str) -> dict[str, str]:
 
 
 def test_outcome_A_uses_exit_2_flag():
-    """Saída A passa --exit-2-if-last-active no remove-block."""
+    """Exit A passes --exit-2-if-last-active in remove-block."""
     sec = _split_outcomes(_read())["A"]
     assert "--exit-2-if-last-active" in sec, (
-        "saída A deve passar --exit-2-if-last-active no remove-block"
+        "exit A must pass --exit-2-if-last-active in remove-block"
     )
 
 
 def test_outcome_A_invokes_skill_init_when_exit_2():
-    """Saída A instrui invocar Skill(skill: 'init') quando exit 2."""
+    """Exit A instructs invoking Skill(skill: 'init') when exit 2."""
     sec = _split_outcomes(_read())["A"]
     assert 'Skill(skill: "init")' in sec or "Skill(skill: 'init')" in sec, (
-        "saída A deve instruir invocar Skill init"
+        "exit A must instruct invoking Skill init"
     )
     assert "exit code" in sec.lower() and "2" in sec
     assert "último ativo" in sec.lower() or "ultimo ativo" in sec.lower()
 
 
 def test_outcome_C_uses_exit_2_flag():
-    """Saída C passa --exit-2-if-last-active no remove-block."""
+    """Exit C passes --exit-2-if-last-active in remove-block."""
     sec = _split_outcomes(_read())["C"]
     assert "--exit-2-if-last-active" in sec
 
 
 def test_outcome_C_invokes_skill_init_when_exit_2():
-    """Saída C instrui invocar Skill(skill: 'init') quando exit 2."""
+    """Exit C instructs invoking Skill(skill: 'init') when exit 2."""
     sec = _split_outcomes(_read())["C"]
     assert 'Skill(skill: "init")' in sec or "Skill(skill: 'init')" in sec
     assert "exit code" in sec.lower() and "2" in sec
 
 
 def test_outcome_B_does_not_invoke_skill_init():
-    """Saída B (restart) NÃO menciona /init nem Skill init."""
+    """Exit B (restart) must NOT mention /init or Skill init."""
     sec = _split_outcomes(_read())["B"]
     assert "Skill(skill" not in sec, (
-        "saída B (workspace continua ativo) NÃO deve invocar /init"
+        "exit B (workspace remains active) must NOT invoke /init"
     )
-    assert "/init" not in sec, "saída B não deve mencionar /init"
+    assert "/init" not in sec, "exit B must not mention /init"
 
 
 def test_outcome_A_offers_icm_cleanup_menu():
-    """v3.7.2 — saída A oferece menu cleanup opt-in pós /init."""
+    """v3.7.2 — exit A offers opt-in cleanup menu after /init."""
     sec = _split_outcomes(_read())["A"]
     assert "icm-cleanup.py" in sec, "saída A deve referenciar icm-cleanup.py"
     assert "[s]" in sec and "[n]" in sec and "[dry-run]" in sec, (
@@ -93,15 +93,15 @@ def test_outcome_A_offers_icm_cleanup_menu():
 
 
 def test_outcome_C_offers_icm_cleanup_menu():
-    """v3.7.2 — saída C oferece menu cleanup opt-in pós /init."""
+    """v3.7.2 — exit C offers opt-in cleanup menu after /init."""
     sec = _split_outcomes(_read())["C"]
     assert "icm-cleanup.py" in sec
     assert "[s]" in sec and "[n]" in sec and "[dry-run]" in sec
 
 
 def test_outcome_B_does_not_offer_cleanup():
-    """Saída B (restart) NÃO oferece cleanup — workspace continua ativo."""
+    """Exit B (restart) must NOT offer cleanup — workspace remains active."""
     sec = _split_outcomes(_read())["B"]
     assert "icm-cleanup.py" not in sec, (
-        "saída B não deve invocar icm-cleanup.py (workspace continua ativo)"
+        "exit B must not invoke icm-cleanup.py (workspace remains active)"
     )

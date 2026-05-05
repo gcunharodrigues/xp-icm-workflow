@@ -248,7 +248,7 @@ class TestDetectWaveWorktreeOrphan:
             (str(tmp_path), "workspace/001-test-wave"),
             (str(tmp_path / ".icm-wave-001-1-pending"), "wave-001-1/pending"),
         ]
-        # patched_git['merged_branches'] não inclui wave-001-1/pending
+        # patched_git['merged_branches'] does not include wave-001-1/pending
         ws = _build_workspace_for_wave_test(tmp_path)
         now = datetime(2026, 4, 29, 14, 30, tzinfo=timezone.utc)
         result = recovery_wizard.detect_inconsistencies(
