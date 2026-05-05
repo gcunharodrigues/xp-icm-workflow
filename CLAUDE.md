@@ -223,6 +223,35 @@ Mudanças ativas em:
 
 934 tests passing, 74% coverage.
 
+## v3.10.0 — E2E coverage reinforcement
+
+Stage 04 ganha 4 frentes complementares de E2E enforcement (Nível 2 do plan reforço):
+
+1. **Wave-planner detection (advisory).** `scripts/wave-planner-script.py:USER_FACING_PATHS_BY_PROFILE` mapeia 11 profiles → tuple de path prefixes (backend: `routes/ controllers/ handlers/ endpoints/ api/ graphql/`; frontend: `pages/ views/ app/ components/pages/ src/routes/`; fullstack union; cli: `cmd/ cli/ commands/`; agent_ia: `prompts/ agents/ tools/`; data_analysis: vazio). `_task_requires_e2e()` checa se `files_touched` matches. `render_wave_plan` emite coluna `E2E required?` na task table + annotation `> **E2E coverage required**` quando ≥1 task flagged.
+
+2. **Forensic+ Check 8 (enforcement).** Task com `Requires E2E update: true` no plan.md DEVE ter ≥1 file modificado em `e2e/`/`cypress/`/`playwright/`/`tests/e2e/`/`tests/integration/`/`test/e2e/`/`__e2e__/` no diff. HARD em tier dev/prod, SOFT em exp/tool. Override via `**E2E:** skip - <rationale>` no 4-block (Stage 05 audit valida rationale concreto).
+
+3. **L4 wave gate step 11b (universal tier dev/prod).** Stage 04 step 11 expandido em 11a (CI global universal) / 11b (E2E suite tier dev/prod com `user_facing_paths` não-vazio) / 11c (cross-task coherence production). Vermelho 11b → `BLOCKED_ERROR error_type: e2e_suite_failed` → diagnose-protocol → gate humano A/B/C.
+
+4. **Stage 05 sub-step 4.7 (audit).** Audita e2e suite existe + última modificação git < 7 dias OR sem tasks user-facing entregues + CI report e2e green. Falhas: `e2e_suite_missing` / `e2e_suite_stale` / `e2e_skip_unjustified`.
+
+Doc canônico: `references/e2e-coverage-protocol.md`.
+
+Mudanças ativas em:
+- `scripts/forensic-plus.py` +Check 8 (`check_e2e_coverage()`); plan parser extrai `Requires E2E update` field + `**E2E:** skip` override; JSON schema `e2e_coverage_missing`.
+- `scripts/wave-planner-script.py` +`USER_FACING_PATHS_BY_PROFILE` constant + `_task_requires_e2e()` helper; render_wave_plan inclui coluna E2E + annotation.
+- `scripts/recovery-wizard.py` +`CODE_E2E_SUITE_STALE` em CANONICAL_ORDER.
+- `scripts/migrate-workspace.py` +`migrate_3_9_0_to_3_10_0` (bump-only).
+- `references/4-block-contract-template.md` +`### Requires E2E update` field opcional.
+- `references/forensic-plus-protocol.md` Check 8 spec + 8 checks tier×severity matrix.
+- `references/state-machine-schema.md` +error_types e2e_suite_failed/missing/stale/skip_unjustified.
+- `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` step 11 → 11a/11b/11c.
+- `templates/workspace/stages/05_verification/CONTEXT.md.tpl` step 4.7 NEW.
+- 6 drift detectors novos em `tests/unit/test_no_drift.py`.
+- `tests/unit/test_forensic_plus.py` +5 cases v3.10.0; `tests/unit/test_wave_planner_dag.py` +2 cases E2E column; `tests/unit/test_migrate_workspace.py` +5 cases v3.10.0.
+
+951 tests passing, 74% coverage.
+
 ## v3.8.0 — Forensic+ wave reviewer (anti-fraude estrutural)
 
 Step 8 do pipeline 12-passos (stage 04) expandido em sub-steps 8a/8b/8c/8d. 8a = `scripts/forensic-plus.py` audita cada task AFK da wave (skip HITL): 4 checks git-only (test asserções ≥2, files fora `files_touched` declarado, scope creep > 3× `### Estimated lines`, TODO/FIXME/HACK adicionados). Severidade tier-aware (HARD/SOFT). HARD → `approved_pending_ci: false` + re-spawn cap `MAX_FORENSIC_RETRIES = 2` (3ª HARD → `BLOCKED_ERROR error_type: forensic_max_retries`); SOFT → `wave-summary.md § Forensic+ summary`; nenhum → approved. Crash do script (exit 1) → `BLOCKED_ERROR error_type: forensic_script_crash`.
@@ -281,14 +310,26 @@ Mudanças ativas em:
 
 ## Pendências para próxima sessão
 
-Itens identificados durante implementação v3.3.0 mas não atacados. Ordenados por prioridade:
+Itens identificados em sessões prévias mas não atacados. Ordenados por prioridade.
 
-### Tier 3 (originalmente fora de escopo)
+### v3.10.0 deferrals (E2E reinforcement Tier 3)
+
+- **Mutation testing oracle** — Stryker/mutmut opt-in via `mutation_oracle: true` em profile-effective. Targets críticos paths (auth/payments/migrations). Sub-wave gate L4. Detecta E2E fraco mesmo verde.
+- **Preview-loop suite completa wave-end** — atualmente sample-check 1-click em v3.6.0; trocar por Playwright suite full em profiles `preview_loop_enabled`.
+- **L4 cross-task coherence semântico** — atualmente regex shared file/API (v3.9.0). Subagent fresh context comparando contracts cross-task.
+- **profile-effective.yaml schema E2E section** — `e2e.user_facing_paths`, `e2e.e2e_command`, `e2e.e2e_suite_root`, `e2e.e2e_freshness_days` config'd per workspace. Atualmente hardcoded em `scripts/wave-planner-script.py:USER_FACING_PATHS_BY_PROFILE`.
+- **agent-brief E2E section render** — `scripts/agent-brief-render.py` injeta seção E2E quando `Requires E2E update: true`. Atualmente apenas forensic+ Check 8 enforces.
+
+### v3.9.0 deferrals (Layered QA loop)
+
+- **`akita-derive.py` post-hoc telemetria** — script extrai métricas Akita-tipo retroativamente de task reports legacy. Decisão stage 08 se telemetria falta.
+
+### v3.3.0 Tier 3 originais (ainda abertos)
 
 - **Deep modules + deletion test** — ferramenta de architecture review pra stage 02. Doc canônico inspirado em [mattpocock/skills/engineering/improve-codebase-architecture]. Adicionar `references/deep-modules.md` + checklist em `templates/workspace/stages/02_design/CONTEXT.md.tpl` + tests `test_deep_modules_doc.py`.
 - **Git guardrails hook (production tier)** — `templates/.claude/hooks/block-dangerous-git.sh` que bloqueia `git push --force`, `reset --hard`, `clean -fd`, `branch -D`, `checkout .` via PreToolUse hook. Bootstrap adiciona condicionalmente quando `tier=production`. Inspirado em [mattpocock/skills/misc/git-guardrails-claude-code].
 - **PreToolUse anti-`/init`** — hook que bloqueia invocação de `/init` enquanto há workspace ICM ativo (G14 do adversarial review do plan v3.3.0). Mitigação atual é apenas warning textual na região ICM do CLAUDE.md root.
-- **Zoom-out instruction completo em stage 00** — adicionei placeholder no L2 mas falta seção structured guiando o agent quando encontra módulo desconhecido (mapear callers + adicionar termos candidatos ao glossário pré-stage-01).
+- **Zoom-out instruction completo em stage 00** — placeholder no L2 mas falta seção structured guiando o agent quando encontra módulo desconhecido (mapear callers + adicionar termos candidatos ao glossário pré-stage-01).
 
 ### Tests opcionais
 
