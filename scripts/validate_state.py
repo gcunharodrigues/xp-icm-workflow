@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-"""Validador L1 (state machine) do schema CONTEXT.md raiz de um workspace.
+"""L1 (state machine) validator for the root CONTEXT.md schema of a workspace.
 
-Backend Python chamado por scripts/validate-state.sh. Separado do wrapper bash
-para testabilidade — testes property-based em tests/unit/test_state_machine.py.
+Python backend called by scripts/validate-state.sh. Separated from the bash
+wrapper for testability — property-based tests in tests/unit/test_state_machine.py.
 
 CLI: python scripts/validate_state.py --workspace <path>
 
-Schema canonico documentado em references/state-machine-schema.md.
+Canonical schema documented in references/state-machine-schema.md.
 """
 
 from __future__ import annotations
@@ -20,7 +20,7 @@ from typing import Any
 import yaml
 
 
-# Enums canonicos --------------------------------------------------------------
+# Canonical enums -------------------------------------------------------------
 
 VALID_TIERS: frozenset[str] = frozenset(
     {"experimental", "tool", "development", "production"}
@@ -38,15 +38,15 @@ VALID_STATUSES: frozenset[str] = frozenset(
     }
 )
 
-# Alias public stable (v3.5.0+) — single source of truth pra drift detector
-# (test_no_drift.py importa esse symbol). Não renomear sem atualizar drift test.
+# Stable public alias (v3.5.0+) — single source of truth for drift detector
+# (test_no_drift.py imports this symbol). Do not rename without updating drift test.
 ALLOWED_STATUSES: frozenset[str] = VALID_STATUSES
 
 VALID_STAGES: frozenset[str] = frozenset(
     {"00", "01", "02", "03", "04", "05", "06", "07", "08"}
 )
 
-# Sub-stage enums simples (estagios sem N variavel)
+# Simple sub-stage enums (stages without variable N)
 SIMPLE_SUB_STAGE_ENUMS: dict[str, frozenset[str]] = {
     "00": frozenset({"00_in_progress", "00_completed"}),
     "01": frozenset({"01_in_progress", "01_completed"}),
@@ -65,7 +65,7 @@ SIMPLE_SUB_STAGE_ENUMS: dict[str, frozenset[str]] = {
     ),
 }
 
-# Estagio 04 tem N variavel — regex
+# Stage 04 has variable N — regex
 SUB_STAGE_04_PATTERN = re.compile(r"^04_wave_(\d+)_(in_progress|completed)$")
 
 REQUIRED_FIELDS: tuple[str, ...] = (
@@ -91,7 +91,7 @@ LAST_TRANSITION_REQUIRED_KEYS: tuple[str, ...] = ("from", "to", "at", "commit_sh
 
 
 class StateValidationError(Exception):
-    """Erro de validacao do estado L1."""
+    """L1 state validation error."""
 
 
 # Parsing ---------------------------------------------------------------------
@@ -102,36 +102,36 @@ _FRONTMATTER_RE = re.compile(
 
 
 def parse_frontmatter(content: str) -> dict[str, Any]:
-    """Extrai e parseia o YAML frontmatter de um CONTEXT.md.
+    """Extracts and parses the YAML frontmatter from a CONTEXT.md.
 
-    Levanta StateValidationError se nao houver frontmatter ou se o YAML for
-    invalido.
+    Raises StateValidationError if there is no frontmatter or if the YAML is
+    invalid.
     """
     match = _FRONTMATTER_RE.match(content)
     if match is None:
         raise StateValidationError(
-            "CONTEXT.md nao tem YAML frontmatter delimitado por '---'"
+            "CONTEXT.md does not have YAML frontmatter delimited by '---'"
         )
     raw = match.group("body")
     try:
         data = yaml.safe_load(raw)
     except yaml.YAMLError as exc:
-        raise StateValidationError(f"YAML frontmatter invalido: {exc}") from exc
+        raise StateValidationError(f"Invalid YAML frontmatter: {exc}") from exc
     if not isinstance(data, dict):
         raise StateValidationError(
-            "YAML frontmatter deve ser um mapping no topo (dict), recebido: "
+            "YAML frontmatter must be a top-level mapping (dict), received: "
             f"{type(data).__name__}"
         )
     return data
 
 
-# Validacao -------------------------------------------------------------------
+# Validation ------------------------------------------------------------------
 
 def _validate_required_fields(state: dict[str, Any]) -> None:
     missing = [f for f in REQUIRED_FIELDS if f not in state]
     if missing:
         raise StateValidationError(
-            f"Campos obrigatorios ausentes em CONTEXT.md: {', '.join(missing)}"
+            f"Required fields missing in CONTEXT.md: {', '.join(missing)}"
         )
 
 
@@ -139,7 +139,7 @@ def _validate_tier(state: dict[str, Any]) -> None:
     tier = state["tier"]
     if tier not in VALID_TIERS:
         raise StateValidationError(
-            f"tier invalido: '{tier}'. Esperado um de: "
+            f"Invalid tier: '{tier}'. Expected one of: "
             f"{sorted(VALID_TIERS)}"
         )
 
@@ -148,7 +148,7 @@ def _validate_status(state: dict[str, Any]) -> None:
     status = state["status"]
     if status not in VALID_STATUSES:
         raise StateValidationError(
-            f"status invalido: '{status}'. Esperado um de: "
+            f"Invalid status: '{status}'. Expected one of: "
             f"{sorted(VALID_STATUSES)}"
         )
 
@@ -157,30 +157,30 @@ def _validate_stage_atual(state: dict[str, Any]) -> None:
     stage = state["stage_atual"]
     if not isinstance(stage, str) or stage not in VALID_STAGES:
         raise StateValidationError(
-            f"stage_atual invalido: '{stage}'. Esperado string em "
+            f"Invalid stage_atual: '{stage}'. Expected string in "
             f"{sorted(VALID_STAGES)}"
         )
 
 
 def _validate_sub_stage(state: dict[str, Any]) -> None:
-    """Sub_stage deve comecar com prefixo `<stage_atual>_` E bater enum."""
+    """sub_stage must start with prefix `<stage_atual>_` AND match enum."""
     stage = state["stage_atual"]
     sub_stage = state["sub_stage"]
     if not isinstance(sub_stage, str):
         raise StateValidationError(
-            f"sub_stage deve ser string, recebido {type(sub_stage).__name__}"
+            f"sub_stage must be a string, received {type(sub_stage).__name__}"
         )
     expected_prefix = f"{stage}_"
     if not sub_stage.startswith(expected_prefix):
         raise StateValidationError(
-            f"sub_stage '{sub_stage}' nao comeca com prefixo "
+            f"sub_stage '{sub_stage}' does not start with prefix "
             f"'{expected_prefix}' (stage_atual='{stage}')"
         )
 
     if stage == "04":
         if not SUB_STAGE_04_PATTERN.match(sub_stage):
             raise StateValidationError(
-                f"sub_stage '{sub_stage}' nao bate padrao "
+                f"sub_stage '{sub_stage}' does not match pattern "
                 "'04_wave_<N>_in_progress|completed'"
             )
         return
@@ -188,21 +188,21 @@ def _validate_sub_stage(state: dict[str, Any]) -> None:
     valid = SIMPLE_SUB_STAGE_ENUMS.get(stage)
     if valid is None or sub_stage not in valid:
         raise StateValidationError(
-            f"sub_stage '{sub_stage}' nao esta no enum valido para stage "
-            f"'{stage}': {sorted(valid) if valid else '<nenhum>'}"
+            f"sub_stage '{sub_stage}' is not in the valid enum for stage "
+            f"'{stage}': {sorted(valid) if valid else '<none>'}"
         )
 
 
 def _validate_iteration(state: dict[str, Any]) -> None:
     iteration = state["iteration"]
-    # bool e int em Python; rejeitar bool explicitamente
+    # bool is int in Python; reject bool explicitly
     if isinstance(iteration, bool) or not isinstance(iteration, int):
         raise StateValidationError(
-            f"iteration deve ser inteiro, recebido {type(iteration).__name__}"
+            f"iteration must be an integer, received {type(iteration).__name__}"
         )
     if iteration < 0:
         raise StateValidationError(
-            f"iteration deve ser >= 0, recebido {iteration}"
+            f"iteration must be >= 0, received {iteration}"
         )
 
     history = state.get("history") or []
@@ -213,9 +213,9 @@ def _validate_iteration(state: dict[str, Any]) -> None:
     )
     if increment_events != iteration:
         raise StateValidationError(
-            f"iteration ({iteration}) nao bate com numero de eventos "
-            f"'iteration_increment' em history ({increment_events}). "
-            "iteration deve ser monotonico vs history."
+            f"iteration ({iteration}) does not match number of "
+            f"'iteration_increment' events in history ({increment_events}). "
+            "iteration must be monotonic vs history."
         )
 
 
@@ -223,26 +223,26 @@ def _validate_history(state: dict[str, Any]) -> None:
     history = state["history"]
     if not isinstance(history, list):
         raise StateValidationError(
-            f"history deve ser lista, recebido {type(history).__name__}"
+            f"history must be a list, received {type(history).__name__}"
         )
     for idx, item in enumerate(history):
         if not isinstance(item, dict):
             raise StateValidationError(
-                f"history[{idx}] deve ser mapping, recebido "
+                f"history[{idx}] must be a mapping, received "
                 f"{type(item).__name__}"
             )
         if "at" not in item:
             raise StateValidationError(
-                f"history[{idx}] sem campo obrigatorio 'at'"
+                f"history[{idx}] missing required field 'at'"
             )
         if "event" not in item:
             raise StateValidationError(
-                f"history[{idx}] sem campo obrigatorio 'event'"
+                f"history[{idx}] missing required field 'event'"
             )
 
 
 def _validate_waves(state: dict[str, Any]) -> None:
-    """waves ausente/null sse stage_atual < '04'; presente sse >= '04'."""
+    """waves absent/null iff stage_atual < '04'; present iff >= '04'."""
     stage = state["stage_atual"]
     waves_present = "waves" in state and state["waves"] is not None
 
@@ -250,13 +250,13 @@ def _validate_waves(state: dict[str, Any]) -> None:
 
     if stage_ge_04 and not waves_present:
         raise StateValidationError(
-            f"stage_atual='{stage}' (>=04) requer campo 'waves' presente "
-            "(nao-null) com keys 'current' e 'completed'"
+            f"stage_atual='{stage}' (>=04) requires 'waves' field present "
+            "(non-null) with keys 'current' and 'completed'"
         )
     if not stage_ge_04 and waves_present:
         raise StateValidationError(
-            f"stage_atual='{stage}' (<04) NAO pode ter campo 'waves' "
-            "presente — deve ser ausente ou null"
+            f"stage_atual='{stage}' (<04) CANNOT have 'waves' field "
+            "present — must be absent or null"
         )
 
     if not waves_present:
@@ -265,23 +265,23 @@ def _validate_waves(state: dict[str, Any]) -> None:
     waves = state["waves"]
     if not isinstance(waves, dict):
         raise StateValidationError(
-            f"waves deve ser mapping, recebido {type(waves).__name__}"
+            f"waves must be a mapping, received {type(waves).__name__}"
         )
     for key in ("current", "completed"):
         if key not in waves:
             raise StateValidationError(
-                f"waves sem campo obrigatorio '{key}'"
+                f"waves missing required field '{key}'"
             )
     if isinstance(waves["current"], bool) or not isinstance(
         waves["current"], int
     ):
         raise StateValidationError(
-            f"waves.current deve ser inteiro, recebido "
+            f"waves.current must be an integer, received "
             f"{type(waves['current']).__name__}"
         )
     if not isinstance(waves["completed"], list):
         raise StateValidationError(
-            f"waves.completed deve ser lista, recebido "
+            f"waves.completed must be a list, received "
             f"{type(waves['completed']).__name__}"
         )
 
@@ -290,40 +290,40 @@ def _validate_last_transition(state: dict[str, Any]) -> None:
     lt = state["last_transition"]
     if not isinstance(lt, dict):
         raise StateValidationError(
-            f"last_transition deve ser mapping, recebido {type(lt).__name__}"
+            f"last_transition must be a mapping, received {type(lt).__name__}"
         )
     missing = [k for k in LAST_TRANSITION_REQUIRED_KEYS if k not in lt]
     if missing:
         raise StateValidationError(
-            f"last_transition sem campos obrigatorios: {', '.join(missing)}"
+            f"last_transition missing required fields: {', '.join(missing)}"
         )
 
 
 def validate_state(state: dict[str, Any]) -> None:
-    """Valida um dict de estado L1.
+    """Validates an L1 state dict.
 
-    Levanta StateValidationError com mensagem especifica em caso de falha.
+    Raises StateValidationError with a specific message on failure.
     """
     _validate_required_fields(state)
     _validate_tier(state)
     _validate_status(state)
     _validate_stage_atual(state)
     _validate_sub_stage(state)
-    _validate_history(state)  # antes de iteration porque iteration usa history
+    _validate_history(state)  # before iteration because iteration uses history
     _validate_iteration(state)
     _validate_waves(state)
     _validate_last_transition(state)
 
 
 def validate_workspace(workspace_path: Path) -> None:
-    """Valida o CONTEXT.md raiz de um workspace.
+    """Validates the root CONTEXT.md of a workspace.
 
-    Levanta StateValidationError ou FileNotFoundError.
+    Raises StateValidationError or FileNotFoundError.
     """
     context_md = workspace_path / "CONTEXT.md"
     if not context_md.is_file():
         raise StateValidationError(
-            f"CONTEXT.md nao encontrado em workspace: {context_md}"
+            f"CONTEXT.md not found in workspace: {context_md}"
         )
     content = context_md.read_text(encoding="utf-8")
     state = parse_frontmatter(content)
@@ -335,12 +335,12 @@ def validate_workspace(workspace_path: Path) -> None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="validate_state.py",
-        description="Valida o estado L1 (CONTEXT.md raiz) de um workspace.",
+        description="Validates the L1 state (root CONTEXT.md) of a workspace.",
     )
     parser.add_argument(
         "--workspace",
         required=True,
-        help="Caminho para o diretorio do workspace (contem CONTEXT.md)",
+        help="Path to the workspace directory (contains CONTEXT.md)",
     )
     args = parser.parse_args(argv)
 

@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """Recovery Wizard L1 (R2.7).
 
-Detecta inconsistencias no estado L1 (`<workspace>/CONTEXT.md`) e propoe
-um plano de recovery. Acoes podem ser executadas em modo interativo
-(escolha humana) ou nao-interativo (`--apply A|B|C`).
+Detects inconsistencies in L1 state (`<workspace>/CONTEXT.md`) and proposes
+a recovery plan. Actions can be executed in interactive mode
+(human choice) or non-interactive (`--apply A|B|C`).
 
-Inconsistencias detectadas (codes):
-  - HASH_MISMATCH       — profile_effective_hash divergiu do recomputado
-  - MISSING_OUTPUT      — history declara output ausente no FS
-  - STALE_IN_PROGRESS   — IN_PROGRESS sem commit nas ultimas 24h
-  - MISSING_COMMIT      — last_transition.commit_sha nao existe em git
-  - BRANCH_MISSING      — branch workspace/NNN-slug nao existe (R4.5)
+Detected inconsistencies (codes):
+  - HASH_MISMATCH       — profile_effective_hash diverged from recomputed value
+  - MISSING_OUTPUT      — history declares output absent in FS
+  - STALE_IN_PROGRESS   — IN_PROGRESS without commit in the last 24h
+  - MISSING_COMMIT      — last_transition.commit_sha does not exist in git
+  - BRANCH_MISSING      — branch workspace/NNN-slug does not exist (R4.5)
 
-Schema canonico em references/state-machine-schema.md.
+Canonical schema at references/state-machine-schema.md.
 
 CLI:
   python scripts/recovery-wizard.py --workspace <path> --dry-run
@@ -39,7 +39,7 @@ from typing import Any
 import yaml
 
 
-# Codes ----------------------------------------------------------------------
+# Codes — inconsistency type constants (UPPER_SNAKE_CASE, never translate) ----
 
 CODE_HASH_MISMATCH = "HASH_MISMATCH"
 CODE_MISSING_COMMIT = "MISSING_COMMIT"
@@ -52,27 +52,27 @@ CODE_CLAUDE_MD_ROOT_MISSING = "CLAUDE_MD_ROOT_MISSING"
 CODE_WORKTREE_MISSING = "WORKTREE_MISSING"
 CODE_WORKTREE_WRONG_BRANCH = "WORKTREE_WRONG_BRANCH"
 CODE_WRONG_BRANCH_CHECKOUT = "WRONG_BRANCH_CHECKOUT"
-# v3.4.2: gate inline antes do kickoff
+# v3.4.2: inline gate before kickoff
 CODE_KICKOFF_WITHOUT_GATE = "KICKOFF_WITHOUT_GATE"
 # v3.4.3: wave worktree cleanup
 CODE_WAVE_WORKTREE_ORPHAN = "WAVE_WORKTREE_ORPHAN"
-# v3.5.0: ci-rollback-protocol.md depends on pre_wave_sha em L1 history.
-# Workspaces v3.4.x iniciaram waves sem gravar esse field — detector
-# permite migração suave (auto-fix marca "unknown").
+# v3.5.0: ci-rollback-protocol.md depends on pre_wave_sha in L1 history.
+# Workspaces v3.4.x started waves without recording this field — detector
+# allows smooth migration (auto-fix marks "unknown").
 CODE_MISSING_PRE_WAVE_SHA = "MISSING_PRE_WAVE_SHA"
 # v3.6.0: preview loop dev server + CDP browser
 CODE_DEV_SERVER_ORPHAN = "DEV_SERVER_ORPHAN"
 CODE_CDP_DISCONNECTED = "CDP_DISCONNECTED"
-# v3.7.0: runtime registry com entries de PID morto (sem unregister)
+# v3.7.0: runtime registry with dead PID entries (without unregister)
 CODE_RUNTIME_REGISTRY_STALE = "RUNTIME_REGISTRY_STALE"
-# v3.7.2: .icm-main worktree presente sem workspaces ativos (cleanup pendente)
+# v3.7.2: .icm-main worktree present without active workspaces (cleanup pending)
 CODE_STALE_ICM_MAIN_AFTER_CLOSE = "STALE_ICM_MAIN_AFTER_CLOSE"
-# v3.9.0: workspace em LEAD_RESOLUTION_IN_PROGRESS sem progresso > 24h
+# v3.9.0: workspace in LEAD_RESOLUTION_IN_PROGRESS without progress > 24h
 CODE_LEAD_RESOLUTION_STALE = "LEAD_RESOLUTION_STALE"
-# v3.10.0: e2e suite > 7 dias sem update + tasks user-facing entregues
+# v3.10.0: e2e suite > 7 days without update + user-facing tasks delivered
 CODE_E2E_SUITE_STALE = "E2E_SUITE_STALE"
 
-# Ordem canonica determinista (R2.7 batch order).
+# Deterministic canonical order (R2.7 batch order).
 CANONICAL_ORDER: tuple[str, ...] = (
     CODE_HASH_MISMATCH,
     CODE_MISSING_COMMIT,
@@ -95,8 +95,8 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_E2E_SUITE_STALE,
 )
 
-# Mapping stage_atual → next stage dir (pra detectar KICKOFF_WITHOUT_GATE).
-# Stage 04 omitido por ter logica de waves complexa; 00 e 08 nao se aplicam.
+# Mapping stage_atual → next stage dir (to detect KICKOFF_WITHOUT_GATE).
+# Stage 04 omitted due to complex waves logic; 00 and 08 do not apply.
 _NEXT_STAGE_DIR: dict[str, str] = {
     "01": "02_design",
     "02": "03_wave_planner",
@@ -106,9 +106,9 @@ _NEXT_STAGE_DIR: dict[str, str] = {
     "07": "08_feedback_intake",
 }
 
-# Mapping pra Plan A do KICKOFF_WITHOUT_GATE: stage_atual → (next_stage_id,
-# next_sub_stage, next_status). Stage 07 special (auto-transit pra 08 com
-# status=COMPLETED_AWAITING_HUMAN, workspace fica vivo aguardando feedback).
+# Mapping for Plan A of KICKOFF_WITHOUT_GATE: stage_atual → (next_stage_id,
+# next_sub_stage, next_status). Stage 07 special (auto-transit to 08 with
+# status=COMPLETED_AWAITING_HUMAN, workspace stays alive waiting for feedback).
 _GATE_RETRO_TRANSITION: dict[str, tuple[str, str, str]] = {
     "01": ("02", "02_in_progress", "IN_PROGRESS"),
     "02": ("03", "03_in_progress", "IN_PROGRESS"),
@@ -120,7 +120,7 @@ _GATE_RETRO_TRANSITION: dict[str, tuple[str, str, str]] = {
 
 STALE_THRESHOLD = timedelta(hours=24)
 
-# Regex pra encontrar referencias `stages/NN_*/output/X.md` em strings.
+# Regex to find references `stages/NN_*/output/X.md` in strings.
 _OUTPUT_REF_RE = re.compile(
     r"(stages/\d{2}[A-Za-z0-9_\-]*/output/[A-Za-z0-9_\-./]+\.md)"
 )
@@ -131,22 +131,22 @@ _FRONTMATTER_RE = re.compile(
 )
 
 
-# Exceptions e dataclasses ---------------------------------------------------
+# Exceptions and dataclasses -------------------------------------------------
 
 class RecoveryWizardError(Exception):
-    """Erro generico do Recovery Wizard."""
+    """Generic Recovery Wizard error."""
 
 
 @dataclass(frozen=True)
 class Inconsistency:
-    """Inconsistencia L1 detectada.
+    """Detected L1 inconsistency.
 
     Attributes:
-        code: codigo canonico (ver CANONICAL_ORDER).
-        message: mensagem humana especifica.
-        proposed_action: acao A (preserve) recomendada.
+        code: canonical code (see CANONICAL_ORDER).
+        message: human-readable specific message.
+        proposed_action: recommended Plan A (preserve) action.
         severity: "critical" | "warning".
-        context: campos auxiliares (paths, shas, etc.).
+        context: auxiliary fields (paths, shas, etc.).
     """
 
     code: str
@@ -159,36 +159,36 @@ class Inconsistency:
 # Parsing helpers ------------------------------------------------------------
 
 def _parse_l1(workspace_path: Path) -> tuple[dict[str, Any], str, str]:
-    """Le CONTEXT.md, retorna (state_dict, frontmatter_str, body_str).
+    """Reads CONTEXT.md, returns (state_dict, frontmatter_str, body_str).
 
-    body_str inclui o resto do markdown apos o segundo '---'.
+    body_str includes the rest of the markdown after the second '---'.
     """
     context_md = workspace_path / "CONTEXT.md"
     if not context_md.is_file():
         raise RecoveryWizardError(
-            f"CONTEXT.md nao encontrado em workspace: {context_md}"
+            f"CONTEXT.md not found in workspace: {context_md}"
         )
     content = context_md.read_text(encoding="utf-8")
     match = _FRONTMATTER_RE.match(content)
     if match is None:
         raise RecoveryWizardError(
-            "CONTEXT.md sem YAML frontmatter delimitado por '---'"
+            "CONTEXT.md missing YAML frontmatter delimited by '---'"
         )
     fm_text = match.group("body")
     rest = match.group("rest") or ""
     try:
         state = yaml.safe_load(fm_text)
     except yaml.YAMLError as exc:
-        raise RecoveryWizardError(f"YAML frontmatter invalido: {exc}") from exc
+        raise RecoveryWizardError(f"Invalid YAML frontmatter: {exc}") from exc
     if not isinstance(state, dict):
         raise RecoveryWizardError(
-            "Frontmatter deve ser mapping no topo"
+            "Frontmatter must be a top-level mapping"
         )
     return state, fm_text, rest
 
 
 def _serialize_l1(state: dict[str, Any], rest: str) -> str:
-    """Re-serializa frontmatter + corpo. yaml.safe_dump preserva ordem."""
+    """Re-serializes frontmatter + body. yaml.safe_dump preserves order."""
     fm_text = yaml.safe_dump(
         state, sort_keys=False, allow_unicode=True, default_flow_style=False
     )
@@ -205,9 +205,9 @@ def _write_l1(workspace_path: Path, state: dict[str, Any], rest: str) -> None:
 
 
 def _compute_profile_hash(workspace_path: Path) -> str | None:
-    """Recomputa sha256 do _config/profile-effective.yaml.
+    """Recomputes sha256 of _config/profile-effective.yaml.
 
-    Retorna None se arquivo ausente.
+    Returns None if file is absent.
     """
     profile_yaml = workspace_path / "_config" / "profile-effective.yaml"
     if not profile_yaml.is_file():
@@ -217,7 +217,7 @@ def _compute_profile_hash(workspace_path: Path) -> str | None:
 
 
 def _parse_iso(stamp: str) -> datetime:
-    """Parse ISO 8601 string. Tolera sufixo 'Z' (=UTC)."""
+    """Parse ISO 8601 string. Tolerates 'Z' suffix (=UTC)."""
     if stamp.endswith("Z"):
         stamp = stamp[:-1] + "+00:00"
     parsed = datetime.fromisoformat(stamp)
@@ -227,13 +227,13 @@ def _parse_iso(stamp: str) -> datetime:
 
 
 def _extract_output_refs(history: list[dict[str, Any]]) -> list[str]:
-    """Coleta paths `stages/.../output/X.md` mencionados em items de history.
+    """Collects `stages/.../output/X.md` paths mentioned in history items.
 
-    Suporta:
-      - campo explicito `outputs: [list de paths]`
-      - regex em qualquer string do item (note, event, etc).
+    Supports:
+      - explicit field `outputs: [list of paths]`
+      - regex in any string value of the item (note, event, etc).
 
-    Retorna lista deduplicada preservando ordem.
+    Returns deduplicated list preserving order.
     """
     found: list[str] = []
     seen: set[str] = set()
@@ -251,7 +251,7 @@ def _extract_output_refs(history: list[dict[str, Any]]) -> list[str]:
             for p in explicit:
                 if isinstance(p, str):
                     _add(p)
-        # Regex em todos os string-values
+        # Regex across all string values
         for value in item.values():
             if isinstance(value, str):
                 for match in _OUTPUT_REF_RE.findall(value):
@@ -264,7 +264,7 @@ def _extract_output_refs(history: list[dict[str, Any]]) -> list[str]:
 def _run_git(
     args: list[str], *, cwd: Path | None = None
 ) -> subprocess.CompletedProcess:
-    """Wrapper de subprocess.run pro git, com captura silenciosa de stdout/err."""
+    """subprocess.run wrapper for git, with silent stdout/err capture."""
     cmd = ["git"] + args
     return subprocess.run(
         cmd,
@@ -288,9 +288,9 @@ def _branch_exists(branch: str, *, cwd: Path | None = None) -> bool:
 
 
 def _list_worktrees(cwd: Path) -> list[tuple[str, str]]:
-    """Parse `git worktree list --porcelain`. Retorna [(path, branch), ...].
+    """Parse `git worktree list --porcelain`. Returns [(path, branch), ...].
 
-    Worktree sem branch (detached HEAD) tem branch="". Path sempre absoluto.
+    Worktree without branch (detached HEAD) has branch="". Path is always absolute.
     """
     result = _run_git(["worktree", "list", "--porcelain"], cwd=cwd)
     if result.returncode != 0:
@@ -315,7 +315,7 @@ def _list_worktrees(cwd: Path) -> list[tuple[str, str]]:
 def _is_branch_merged(
     branch: str, base_branch: str, *, cwd: Path | None = None
 ) -> bool:
-    """True se `branch` ja foi merged em `base_branch` (i.e., ancestor)."""
+    """True if `branch` has already been merged into `base_branch` (i.e., is ancestor)."""
     if not branch or not base_branch:
         return False
     result = _run_git(
@@ -328,8 +328,8 @@ def _is_pid_alive(pid: int) -> bool:
     """Cross-platform PID liveness check.
 
     POSIX: os.kill(pid, 0) raises ProcessLookupError if dead.
-    Windows: usa OpenProcess via ctypes (sem psutil dep).
-    Falsa-positivo aceitavel (warning-level recovery).
+    Windows: uses OpenProcess via ctypes (no psutil dep).
+    False-positive acceptable (warning-level recovery).
     """
     if pid <= 0:
         return False
@@ -350,14 +350,14 @@ def _is_pid_alive(pid: int) -> bool:
     except ProcessLookupError:
         return False
     except PermissionError:
-        # POSIX: processo existe mas inacessivel. Considera alive.
+        # POSIX: process exists but inaccessible. Consider alive.
         return True
     except OSError:
         return False
 
 
 def _is_port_listening(host: str, port: int, timeout: float = 0.3) -> bool:
-    """True se houver listener TCP aceitando conexao em host:port."""
+    """True if there is a TCP listener accepting connections on host:port."""
     try:
         with socket.create_connection((host, port), timeout=timeout):
             return True
@@ -368,7 +368,7 @@ def _is_port_listening(host: str, port: int, timeout: float = 0.3) -> bool:
 def _last_workspace_commit_at(
     workspace_id: str, *, cwd: Path | None = None
 ) -> datetime | None:
-    """Retorna ISO 8601 do commit mais recente que tocou workspaces/<id>/."""
+    """Returns ISO 8601 of the most recent commit that touched workspaces/<id>/."""
     result = _run_git(
         [
             "log",
@@ -396,10 +396,10 @@ def detect_inconsistencies(
     project_root: Path | None = None,
     now: datetime | None = None,
 ) -> list[Inconsistency]:
-    """Roda os 5 checks. Retorna inconsistencias em ordem canonica.
+    """Runs all checks. Returns inconsistencies in canonical order.
 
-    `project_root` defaults para `state["project_root"]` se ausente.
-    `now` defaults para `datetime.now(timezone.utc)`.
+    `project_root` defaults to `state["project_root"]` if absent.
+    `now` defaults to `datetime.now(timezone.utc)`.
     """
     if now is None:
         now = datetime.now(timezone.utc)
@@ -419,19 +419,19 @@ def detect_inconsistencies(
             Inconsistency(
                 code=CODE_HASH_MISMATCH,
                 message=(
-                    f"profile_effective_hash declarado ({declared[:12]}...) "
-                    f"divergiu do recomputado ({actual[:12]}...). "
-                    "_config/profile-effective.yaml mudou sem update de L1."
+                    f"profile_effective_hash declared ({declared[:12]}...) "
+                    f"diverged from recomputed ({actual[:12]}...). "
+                    "_config/profile-effective.yaml changed without L1 update."
                 ),
                 proposed_action=(
-                    "recompute hash + update L1 (preserva profile)"
+                    "recompute hash + update L1 (preserves profile)"
                 ),
                 severity="warning",
                 context={"declared": declared, "actual": actual},
             )
         )
 
-    # 2) MISSING_COMMIT (chega antes de OUTPUT na ordem canonica)
+    # 2) MISSING_COMMIT (comes before OUTPUT in canonical order)
     last_transition = state.get("last_transition") or {}
     sha = last_transition.get("commit_sha", "")
     cwd_for_git = project_root if project_root else None
@@ -440,11 +440,11 @@ def detect_inconsistencies(
             Inconsistency(
                 code=CODE_MISSING_COMMIT,
                 message=(
-                    f"last_transition.commit_sha={sha} nao existe em git "
+                    f"last_transition.commit_sha={sha} does not exist in git "
                     "history (rebased away?)."
                 ),
                 proposed_action=(
-                    "rollback last_transition pro penultimo evento valido em "
+                    "rollback last_transition to the second-to-last valid event in "
                     "history"
                 ),
                 severity="critical",
@@ -465,12 +465,12 @@ def detect_inconsistencies(
             Inconsistency(
                 code=CODE_MISSING_OUTPUT,
                 message=(
-                    "outputs declarados em history nao existem no FS: "
+                    "outputs declared in history do not exist in FS: "
                     f"{listed}"
                 ),
                 proposed_action=(
-                    "remover historia referente + warning (ou rollback "
-                    "ao last_transition antes do output)"
+                    "remove related history entry + warning (or rollback "
+                    "to last_transition before the output)"
                 ),
                 severity="warning",
                 context={"missing": missing_outputs},
@@ -482,7 +482,7 @@ def detect_inconsistencies(
         last_commit = _last_workspace_commit_at(
             state.get("workspace", ""), cwd=cwd_for_git
         )
-        # Fallback: usa last_action_at se git log nao retornou nada.
+        # Fallback: use last_action_at if git log returned nothing.
         last_seen: datetime | None = last_commit
         if last_seen is None:
             laa = state.get("last_action_at")
@@ -497,11 +497,11 @@ def detect_inconsistencies(
                 Inconsistency(
                     code=CODE_STALE_IN_PROGRESS,
                     message=(
-                        f"status=IN_PROGRESS sem commit em workspaces/* "
-                        f"ha {age}. Provavel sessao orfa."
+                        f"status=IN_PROGRESS without commit in workspaces/* "
+                        f"for {age}. Probable orphaned session."
                     ),
                     proposed_action=(
-                        "appender 'recovery_applied' em history + status "
+                        "append 'recovery_applied' to history + status "
                         "COMPLETED_AWAITING_HUMAN"
                     ),
                     severity="warning",
@@ -517,13 +517,13 @@ def detect_inconsistencies(
                 Inconsistency(
                     code=CODE_BRANCH_MISSING,
                     message=(
-                        f"branch '{branch}' ausente. Tentar restore via "
+                        f"branch '{branch}' absent. Try restore via "
                         "reflog: git reflog | grep "
                         f"'{branch}' (R4.5)."
                     ),
                     proposed_action=(
-                        "tentar restore via reflog ou criar branch novo "
-                        "do last_transition.commit_sha"
+                        "try restore via reflog or create new branch "
+                        "from last_transition.commit_sha"
                     ),
                     severity="critical",
                     context={"branch": branch},
@@ -531,8 +531,8 @@ def detect_inconsistencies(
             )
 
     # 6) CLAUDE_MD_ROOT_STALE / MISSING (G5)
-    # Verifica consistência entre L1.stage_atual e bloco do workspace no
-    # <project_root>/CLAUDE.md (região ICM). Doc: references/project-root-claude-md.md.
+    # Checks consistency between L1.stage_atual and the workspace block in
+    # <project_root>/CLAUDE.md (ICM region). Doc: references/project-root-claude-md.md.
     if project_root is not None and project_root.is_dir():
         ws_id = state.get("workspace", "")
         l1_status = state.get("status", "")
@@ -544,13 +544,13 @@ def detect_inconsistencies(
                     Inconsistency(
                         code=CODE_CLAUDE_MD_ROOT_MISSING,
                         message=(
-                            f"workspace {ws_id} status=IN_PROGRESS mas não "
-                            "aparece como bloco em <project_root>/CLAUDE.md "
-                            "região ICM. Bootstrap não rodou ou bloco foi "
-                            "removido manualmente."
+                            f"workspace {ws_id} status=IN_PROGRESS but does not "
+                            "appear as a block in <project_root>/CLAUDE.md "
+                            "ICM region. Bootstrap did not run or block was "
+                            "manually removed."
                         ),
                         proposed_action=(
-                            "regerar bloco do workspace a partir do L1 via "
+                            "regenerate workspace block from L1 via "
                             "handoff.py update-project-md"
                         ),
                         severity="warning",
@@ -564,13 +564,13 @@ def detect_inconsistencies(
                         Inconsistency(
                             code=CODE_CLAUDE_MD_ROOT_STALE,
                             message=(
-                                f"<project_root>/CLAUDE.md mostra stage "
-                                f"{root_stage!r} para workspace {ws_id} mas "
-                                f"L1 declara {l1_stage!r}. Sessão anterior "
-                                "crash sem chamar handoff."
+                                f"<project_root>/CLAUDE.md shows stage "
+                                f"{root_stage!r} for workspace {ws_id} but "
+                                f"L1 declares {l1_stage!r}. Previous session "
+                                "crashed without calling handoff."
                             ),
                             proposed_action=(
-                                "regerar bloco a partir do L1 via "
+                                "regenerate block from L1 via "
                                 "handoff.py update-project-md"
                             ),
                             severity="warning",
@@ -583,7 +583,7 @@ def detect_inconsistencies(
                     )
 
     # 7) WORKTREE_MISSING / WORKTREE_WRONG_BRANCH (v3.4.0)
-    # `.icm-main/` worktree linkada eh obrigatoria desde v3.4.0. Doc:
+    # `.icm-main/` linked worktree is mandatory since v3.4.0. Doc:
     # references/worktree-model.md.
     if project_root is not None and project_root.is_dir():
         base_branch = state.get("base_branch", "")
@@ -593,9 +593,9 @@ def detect_inconsistencies(
                 Inconsistency(
                     code=CODE_WORKTREE_MISSING,
                     message=(
-                        f"`.icm-main/` worktree ausente em {project_root}. "
-                        "Modelo cross-branch v3.4.0 exige worktree linkada da "
-                        "base branch. Sessoes futuras nao conseguirao ler "
+                        f"`.icm-main/` worktree absent in {project_root}. "
+                        "Cross-branch model v3.4.0 requires linked worktree of "
+                        "base branch. Future sessions will not be able to read "
                         "ADRs/lessons/tech_debt."
                     ),
                     proposed_action=(
@@ -606,7 +606,7 @@ def detect_inconsistencies(
                 )
             )
         else:
-            # Validar branch checada
+            # Validate checked-out branch
             try:
                 import subprocess as _sp
                 res = _sp.run(
@@ -622,8 +622,8 @@ def detect_inconsistencies(
                         Inconsistency(
                             code=CODE_WORKTREE_WRONG_BRANCH,
                             message=(
-                                f"`.icm-main/` esta em '{wt_branch}', deveria "
-                                f"estar em base_branch '{base_branch}'."
+                                f"`.icm-main/` is on '{wt_branch}', should "
+                                f"be on base_branch '{base_branch}'."
                             ),
                             proposed_action=(
                                 f"cd {worktree_path} && git checkout {base_branch}"
@@ -636,8 +636,8 @@ def detect_inconsistencies(
                 pass
 
     # 8) WRONG_BRANCH_CHECKOUT (v3.4.0)
-    # Worktree principal deveria estar em workspace branch durante ciclo ICM
-    # ativo. Se humano abriu sessao em base_branch por engano, sinaliza.
+    # Main worktree should be on workspace branch during active ICM cycle.
+    # If human opened session on base_branch by mistake, signal it.
     expected_ws_branch = state.get("workspace_branch", "")
     if expected_ws_branch and project_root is not None and project_root.is_dir():
         try:
@@ -660,8 +660,8 @@ def detect_inconsistencies(
                     Inconsistency(
                         code=CODE_WRONG_BRANCH_CHECKOUT,
                         message=(
-                            f"branch atual em {project_root} eh '{current_branch}', "
-                            f"esperado '{expected_ws_branch}' (workspace ainda ativo, "
+                            f"current branch in {project_root} is '{current_branch}', "
+                            f"expected '{expected_ws_branch}' (workspace still active, "
                             f"status={l1_status})."
                         ),
                         proposed_action=(
@@ -675,11 +675,11 @@ def detect_inconsistencies(
             pass
 
     # 9) KICKOFF_WITHOUT_GATE (v3.4.2)
-    # Sintoma do bug pre-v3.4.2: sessao anterior renderizou _kickoff.md do
-    # stage NN+1 mas L1 indica stage_atual=NN com status=COMPLETED_AWAITING_HUMAN
-    # (gate nao aprovado). Workspaces criados antes do fix podem estar
-    # neste estado. Detect: kickoff existe AND status pendente AND
-    # sub_stage termina em _completed.
+    # Symptom of pre-v3.4.2 bug: previous session rendered _kickoff.md of
+    # stage NN+1 but L1 indicates stage_atual=NN with status=COMPLETED_AWAITING_HUMAN
+    # (gate not approved). Workspaces created before the fix may be in
+    # this state. Detect: kickoff exists AND status pending AND
+    # sub_stage ends in _completed.
     stage_atual = str(state.get("stage_atual", ""))
     sub_stage = str(state.get("sub_stage", ""))
     status = state.get("status", "")
@@ -695,15 +695,15 @@ def detect_inconsistencies(
                 Inconsistency(
                     code=CODE_KICKOFF_WITHOUT_GATE,
                     message=(
-                        f"_kickoff.md de {next_dir} existe mas L1 declara "
+                        f"_kickoff.md of {next_dir} exists but L1 declares "
                         f"stage_atual={stage_atual!r} sub_stage={sub_stage!r} "
-                        "status=COMPLETED_AWAITING_HUMAN. Sintoma do bug "
-                        "pre-v3.4.2: sessao anterior renderizou kickoff sem "
-                        "aguardar gate humano."
+                        "status=COMPLETED_AWAITING_HUMAN. Symptom of pre-v3.4.2 bug: "
+                        "previous session rendered kickoff without "
+                        "waiting for human gate."
                     ),
                     proposed_action=(
-                        "aprovar gate retroativo (mantém kickoff, transita "
-                        "L1 pra próximo stage)"
+                        "approve gate retroactively (keeps kickoff, transitions "
+                        "L1 to next stage)"
                     ),
                     severity="warning",
                     context={
@@ -716,13 +716,13 @@ def detect_inconsistencies(
             )
 
     # 10) WAVE_WORKTREE_ORPHAN (v3.4.3)
-    # Worktrees efemeras criadas pelo Agent tool em fase 04 deveriam ser
-    # removidas pelo lead apos merge sequencial + CI verde. Bug pre-v3.4.3:
-    # cleanup ausente fazia worktrees + branches `wave-<NNN>-N/<task>`
-    # acumularem em <project_root>/.icm-wave-* (ou path retornado pelo
-    # Agent tool). Detect: worktrees com branch pattern `wave-<NNN>-`
-    # onde NNN bate workspace_num, AND branch ja merged em base_branch
-    # (cleanup safe).
+    # Ephemeral worktrees created by Agent tool in stage 04 should be
+    # removed by lead after sequential merge + green CI. Pre-v3.4.3 bug:
+    # missing cleanup caused worktrees + branches `wave-<NNN>-N/<task>`
+    # to accumulate in <project_root>/.icm-wave-* (or path returned by
+    # Agent tool). Detect: worktrees with branch pattern `wave-<NNN>-`
+    # where NNN matches workspace_num, AND branch already merged into base_branch
+    # (safe cleanup).
     if project_root is not None and project_root.is_dir():
         ws_id = state.get("workspace", "")
         base_branch = state.get("base_branch", "")
@@ -732,7 +732,7 @@ def detect_inconsistencies(
             worktrees = _list_worktrees(project_root)
             orphans: list[tuple[str, str]] = []
             for wt_path, wt_branch in worktrees:
-                # Skip worktree principal (project_root) e .icm-main
+                # Skip main worktree (project_root) and .icm-main
                 wt_path_resolved = Path(wt_path).resolve()
                 if wt_path_resolved == project_root.resolve():
                     continue
@@ -740,7 +740,7 @@ def detect_inconsistencies(
                     continue
                 if not wt_branch.startswith(wave_branch_prefix):
                     continue
-                # Cleanup safe apenas se branch ja merged
+                # Cleanup safe only if branch already merged
                 if _is_branch_merged(wt_branch, base_branch, cwd=project_root):
                     orphans.append((wt_path, wt_branch))
             if orphans:
@@ -750,13 +750,13 @@ def detect_inconsistencies(
                     Inconsistency(
                         code=CODE_WAVE_WORKTREE_ORPHAN,
                         message=(
-                            f"{len(orphans)} wave worktree(s) orfa(s) "
-                            f"detectada(s): {listed}{more}. Bug pre-v3.4.3: "
-                            "lead nao executou cleanup pos-merge."
+                            f"{len(orphans)} orphaned wave worktree(s) "
+                            f"detected: {listed}{more}. Pre-v3.4.3 bug: "
+                            "lead did not execute post-merge cleanup."
                         ),
                         proposed_action=(
                             "auto-cleanup: git worktree remove + "
-                            "git branch -d (safe pq ja merged)"
+                            "git branch -d (safe because already merged)"
                         ),
                         severity="warning",
                         context={
@@ -768,11 +768,11 @@ def detect_inconsistencies(
                 )
 
     # 11) MISSING_PRE_WAVE_SHA (v3.5.0)
-    # ci-rollback-protocol.md exige pre_wave_sha em L1 history evento
-    # `wave_started` (gravado no passo 1 do Process). Workspaces v3.4.x
-    # iniciaram waves antes do field existir — detect via varredura de
-    # history events `wave_started` em stage 04 sem pre_wave_sha. Auto-fix
-    # marca "unknown" (não tenta inferir SHA — humano decide rollback).
+    # ci-rollback-protocol.md requires pre_wave_sha in L1 history event
+    # `wave_started` (recorded in Process step 1). Workspaces v3.4.x
+    # started waves before the field existed — detect by scanning
+    # history events `wave_started` in stage 04 without pre_wave_sha. Auto-fix
+    # marks "unknown" (does not attempt to infer SHA — human decides rollback).
     if isinstance(history, list) and stage_atual == "04":
         wave_started_missing = []
         for ev in history:
@@ -788,14 +788,14 @@ def detect_inconsistencies(
                 Inconsistency(
                     code=CODE_MISSING_PRE_WAVE_SHA,
                     message=(
-                        f"history evento(s) wave_started sem pre_wave_sha: "
-                        f"waves={waves_listed}. Workspace iniciou wave(s) "
-                        "pre-v3.5.0; ci-rollback-protocol cego se acionado."
+                        f"history event(s) wave_started without pre_wave_sha: "
+                        f"waves={waves_listed}. Workspace started wave(s) "
+                        "pre-v3.5.0; ci-rollback-protocol is blind if triggered."
                     ),
                     proposed_action=(
-                        "auto-fix: marcar pre_wave_sha: 'unknown' nos "
-                        "eventos afetados (humano decide rollback se "
-                        "BLOCKED_ERROR ci_global_red disparar)"
+                        "auto-fix: mark pre_wave_sha: 'unknown' in "
+                        "affected events (human decides rollback if "
+                        "BLOCKED_ERROR ci_global_red fires)"
                     ),
                     severity="warning",
                     context={"waves": wave_started_missing},
@@ -803,10 +803,10 @@ def detect_inconsistencies(
             )
 
     # 12) DEV_SERVER_ORPHAN (v3.6.0)
-    # Preview loop entry hook salva PID em .icm-main/.dev-server.pid quando
-    # starta dev server. Exit hook deveria matar processo + apagar PID.
-    # Sintoma: PID file existe AND processo morto (sessao crashou ou exit
-    # hook nao rodou). Plan A: apaga PID file, registra warning.
+    # Preview loop entry hook saves PID in .icm-main/.dev-server.pid when
+    # dev server starts. Exit hook should kill process + delete PID.
+    # Symptom: PID file exists AND process is dead (session crashed or exit
+    # hook did not run). Plan A: delete PID file, record warning.
     if project_root is not None and project_root.is_dir():
         pid_file = project_root / ".icm-main" / ".dev-server.pid"
         if pid_file.is_file():
@@ -820,13 +820,13 @@ def detect_inconsistencies(
                     Inconsistency(
                         code=CODE_DEV_SERVER_ORPHAN,
                         message=(
-                            f"PID file {pid_file} aponta pra processo morto "
-                            f"(pid={pid}). Stage 04 exit hook nao rodou ou "
-                            "sessao crashou. Doc: preview-loop-protocol.md."
+                            f"PID file {pid_file} points to dead process "
+                            f"(pid={pid}). Stage 04 exit hook did not run or "
+                            "session crashed. Doc: preview-loop-protocol.md."
                         ),
                         proposed_action=(
-                            "apagar PID file + registrar warning (proximo "
-                            "stage 04 entry rebota dev server limpo)"
+                            "delete PID file + record warning (next "
+                            "stage 04 entry restarts dev server cleanly)"
                         ),
                         severity="warning",
                         context={"pid_file": str(pid_file), "pid": pid},
@@ -834,11 +834,11 @@ def detect_inconsistencies(
                 )
 
     # 13) CDP_DISCONNECTED (v3.6.0)
-    # Preview loop usa Chrome com --remote-debugging-port=9222 e
-    # --user-data-dir=.icm-chrome-profile. Sintoma: profile dir existe
-    # mas Chrome nao listening em 9222 (Chrome fechado, porta ocupada,
-    # helper falhou). Warning-level — agente degrada via fallback (route
-    # map + screenshot manual).
+    # Preview loop uses Chrome with --remote-debugging-port=9222 and
+    # --user-data-dir=.icm-chrome-profile. Symptom: profile dir exists
+    # but Chrome is not listening on 9222 (Chrome closed, port busy,
+    # helper failed). Warning-level — agent degrades via fallback (route
+    # map + manual screenshot).
     if project_root is not None and project_root.is_dir():
         cdp_profile_dir = project_root / ".icm-chrome-profile"
         if cdp_profile_dir.is_dir():
@@ -847,14 +847,14 @@ def detect_inconsistencies(
                     Inconsistency(
                         code=CODE_CDP_DISCONNECTED,
                         message=(
-                            f"`{cdp_profile_dir.name}/` existe mas Chrome "
-                            "nao listening em :9222. Lance helper "
-                            "`scripts/launch-chrome-cdp.{bat,sh}` ou siga "
-                            "fallback (route map + screenshot manual)."
+                            f"`{cdp_profile_dir.name}/` exists but Chrome "
+                            "is not listening on :9222. Launch helper "
+                            "`scripts/launch-chrome-cdp.{bat,sh}` or follow "
+                            "fallback (route map + manual screenshot)."
                         ),
                         proposed_action=(
-                            "registrar warning; humano relança Chrome via "
-                            "helper script (skill nao mata profile)"
+                            "record warning; human relaunches Chrome via "
+                            "helper script (skill does not remove profile)"
                         ),
                         severity="warning",
                         context={"profile_dir": str(cdp_profile_dir)},
@@ -862,16 +862,16 @@ def detect_inconsistencies(
                 )
 
     # 14) RUNTIME_REGISTRY_STALE (v3.7.0)
-    # Detecta workspaces/<NNN>/_state/runtime-registry.json com entries
-    # de PID morto (processo finalizado sem unregister). Plan A: sugere
-    # `runtime-registry.py purge-dead`. Não auto-purga (humano confirma).
+    # Detects workspaces/<NNN>/_state/runtime-registry.json with entries
+    # of dead PIDs (process terminated without unregister). Plan A: suggests
+    # `runtime-registry.py purge-dead`. Does not auto-purge (human confirms).
     found.extend(_detect_runtime_registry_stale(workspace_path))
 
     # 15) STALE_ICM_MAIN_AFTER_CLOSE (v3.7.2)
-    # Disparo: workspace atual COMPLETED + .icm-main/ presente + zero outros
-    # workspaces ativos no project_root. Sintoma de saída A/C pré-v3.7.2 que
-    # não rodou cleanup, ou humano respondeu [n] no menu opt-in. Plan A:
-    # sugere invocar scripts/icm-cleanup.py interativamente.
+    # Trigger: current workspace COMPLETED + .icm-main/ present + zero other
+    # active workspaces in project_root. Symptom of exit A/C pre-v3.7.2 that
+    # did not run cleanup, or human answered [n] in opt-in menu. Plan A:
+    # suggests invoking scripts/icm-cleanup.py interactively.
     if (
         project_root is not None
         and project_root.is_dir()
@@ -884,14 +884,14 @@ def detect_inconsistencies(
                 Inconsistency(
                     code=CODE_STALE_ICM_MAIN_AFTER_CLOSE,
                     message=(
-                        f"workspace {ws_id} COMPLETED + .icm-main/ presente "
-                        "+ zero workspaces ativos. Cleanup ICM pendente "
-                        "(saída A/C pré-v3.7.2 ou opt-out humano)."
+                        f"workspace {ws_id} COMPLETED + .icm-main/ present "
+                        "+ zero active workspaces. ICM cleanup pending "
+                        "(exit A/C pre-v3.7.2 or human opt-out)."
                     ),
                     proposed_action=(
-                        f"rodar scripts/icm-cleanup.py --project-root "
+                        f"run scripts/icm-cleanup.py --project-root "
                         f"{project_root} --workspace {ws_id} --dry-run "
-                        "(humano confirma antes de executar sem --dry-run)"
+                        "(human confirms before running without --dry-run)"
                     ),
                     severity="warning",
                     context={
@@ -901,7 +901,7 @@ def detect_inconsistencies(
                 )
             )
 
-    # Reordenar pra ordem canonica
+    # Reorder to canonical order
     by_code: dict[str, Inconsistency] = {i.code: i for i in found}
     ordered = [by_code[c] for c in CANONICAL_ORDER if c in by_code]
     return ordered
@@ -913,11 +913,11 @@ def detect_inconsistencies(
 
 
 def _count_active_workspaces(project_root: Path) -> int:
-    """Conta workspaces no project_root cujo L1 status != COMPLETED.
+    """Counts workspaces in project_root whose L1 status != COMPLETED.
 
-    Itera dirs em `<project_root>/workspaces/`, lê `CONTEXT.md` frontmatter,
-    extrai status. Usado pelo detector STALE_ICM_MAIN_AFTER_CLOSE pra
-    confirmar que cleanup é seguro (zero workspaces ativos restantes).
+    Iterates dirs in `<project_root>/workspaces/`, reads `CONTEXT.md` frontmatter,
+    extracts status. Used by STALE_ICM_MAIN_AFTER_CLOSE detector to
+    confirm cleanup is safe (zero active workspaces remaining).
     """
     ws_dir = project_root / "workspaces"
     if not ws_dir.is_dir():
@@ -950,16 +950,16 @@ def _count_active_workspaces(project_root: Path) -> int:
 # ============================================================================
 
 def _pid_alive_for_registry(pid: int) -> bool:
-    """Wrapper testável pra _is_pid_alive de runtime-registry.
+    """Testable wrapper for _is_pid_alive used by runtime-registry.
 
-    Função separada pra permitir monkeypatch em tests sem mexer na fn
-    cross-platform original.
+    Separate function to allow monkeypatching in tests without touching
+    the original cross-platform function.
     """
     return _is_pid_alive(pid)
 
 
 def _detect_runtime_registry_stale(workspace_path: Path) -> list[Inconsistency]:
-    """Detecta entries com PID morto em runtime-registry.json."""
+    """Detects entries with dead PIDs in runtime-registry.json."""
     registry_path = workspace_path / "_state" / "runtime-registry.json"
     if not registry_path.is_file():
         return []
@@ -984,13 +984,13 @@ def _detect_runtime_registry_stale(workspace_path: Path) -> list[Inconsistency]:
     return [Inconsistency(
         code=CODE_RUNTIME_REGISTRY_STALE,
         message=(
-            f"`{rel}` contém {len(dead)} entry(ies) com PID morto "
-            f"(pids: {pids}). Processos finalizados sem unregister."
+            f"`{rel}` contains {len(dead)} entry(ies) with dead PID "
+            f"(pids: {pids}). Processes terminated without unregister."
         ),
         proposed_action=(
-            f"rodar `python {{SKILL_DIR}}/scripts/runtime-registry.py "
+            f"run `python {{SKILL_DIR}}/scripts/runtime-registry.py "
             f"purge-dead --workspace-root {workspace_path}` "
-            "ou unregister manual por id"
+            "or unregister manually by id"
         ),
         severity="warning",
         context={"registry": str(registry_path),
@@ -999,10 +999,10 @@ def _detect_runtime_registry_stale(workspace_path: Path) -> list[Inconsistency]:
 
 
 def _get_root_workspace_block(project_root: Path, workspace_id: str) -> dict | None:
-    """Lê <project_root>/CLAUDE.md, retorna dict do bloco do workspace ou None.
+    """Reads <project_root>/CLAUDE.md, returns workspace block dict or None.
 
-    Parse via comentários `<!-- ICM-DATA:... -->` (JSON). Lazy import de handoff
-    via sys.path para evitar dependência circular.
+    Parses via `<!-- ICM-DATA:... -->` comments (JSON). Lazy import of handoff
+    via sys.path to avoid circular dependency.
     """
     claude_md = project_root / "CLAUDE.md"
     if not claude_md.is_file():
@@ -1025,18 +1025,18 @@ def _get_root_workspace_block(project_root: Path, workspace_id: str) -> dict | N
 # Plan rendering -------------------------------------------------------------
 
 def propose_recovery_plan(inconsistencies: list[Inconsistency]) -> str:
-    """Renderiza plano de recovery em markdown."""
+    """Renders recovery plan as markdown."""
     if not inconsistencies:
-        return "Workspace consistent. Nada a recuperar.\n"
+        return "Workspace consistent. Nothing to recover.\n"
 
     lines: list[str] = []
     lines.append("# Recovery Plan\n")
     lines.append(
-        f"Detectadas {len(inconsistencies)} inconsistencia(s) em L1.\n"
+        f"Detected {len(inconsistencies)} inconsistency(ies) in L1.\n"
     )
 
-    # Tabela summary
-    lines.append("## Resumo\n")
+    # Summary table
+    lines.append("## Summary\n")
     lines.append("| Code | Severity | Message |")
     lines.append("|---|---|---|")
     for inc in inconsistencies:
@@ -1044,26 +1044,26 @@ def propose_recovery_plan(inconsistencies: list[Inconsistency]) -> str:
         lines.append(f"| {inc.code} | {inc.severity} | {msg} |")
     lines.append("")
 
-    # Detalhes por inconsistencia + 3 opcoes
-    lines.append("## Detalhe e acoes\n")
+    # Details per inconsistency + 3 options
+    lines.append("## Details and actions\n")
     for idx, inc in enumerate(inconsistencies, start=1):
         lines.append(f"### {idx}. {inc.code} ({inc.severity})\n")
         lines.append(f"{inc.message}\n")
         lines.append("**Plan A (preserve):** " + inc.proposed_action)
         lines.append(
-            "**Plan B (rollback):** rollback L1 pro ultimo estado consistente"
-            " antes do evento problematico"
+            "**Plan B (rollback):** rollback L1 to the last consistent state"
+            " before the problematic event"
         )
         lines.append(
-            "**Plan C (escalate):** marcar status=BLOCKED_ERROR e "
-            "escalar pra humano (sem mudanca automatizada)"
+            "**Plan C (escalate):** mark status=BLOCKED_ERROR and "
+            "escalate to human (no automated change)"
         )
         lines.append("")
 
-    lines.append("## Escolha")
+    lines.append("## Choice")
     lines.append(
-        "Selecione A | B | C aplicavel a TODAS as inconsistencias "
-        "(batch). Para resolucao individual, edite L1 manualmente."
+        "Select A | B | C applicable to ALL inconsistencies "
+        "(batch). For individual resolution, edit L1 manually."
     )
     return "\n".join(lines) + "\n"
 
@@ -1075,14 +1075,14 @@ def _append_history(
 ) -> None:
     history = state.setdefault("history", [])
     if not isinstance(history, list):
-        raise RecoveryWizardError("history nao eh lista — L1 corrompido")
+        raise RecoveryWizardError("history is not a list — L1 corrupted")
     history.append(event)
 
 
 def _now_iso(now: datetime | None = None) -> str:
     if now is None:
         now = datetime.now(timezone.utc)
-    # ISO 8601 com 'Z'
+    # ISO 8601 with 'Z'
     return now.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
 
 
@@ -1092,7 +1092,7 @@ def _apply_plan_a(
     inconsistencies: list[Inconsistency],
     now: datetime,
 ) -> None:
-    """Plan A — preserve. Aplica fix por code."""
+    """Plan A — preserve. Applies fix per code."""
     codes = [i.code for i in inconsistencies]
 
     for inc in inconsistencies:
@@ -1105,7 +1105,7 @@ def _apply_plan_a(
 
         elif inc.code == CODE_MISSING_COMMIT:
             history = state.get("history") or []
-            # Acha penultimo evento com commit_sha valido (preferencia: stage_transition)
+            # Find second-to-last event with valid commit_sha (preference: stage_transition)
             valid: list[dict[str, Any]] = [
                 ev
                 for ev in history
@@ -1125,14 +1125,14 @@ def _apply_plan_a(
                 }
 
         elif inc.code == CODE_MISSING_OUTPUT:
-            # Append warning event; nao apaga history existente (append-only).
+            # Append warning event; do not delete existing history (append-only).
             _append_history(
                 state,
                 {
                     "at": _now_iso(now),
                     "event": "recovery_warning",
                     "note": (
-                        "outputs ausentes: "
+                        "missing outputs: "
                         + ", ".join(inc.context.get("missing", []))
                     ),
                 },
@@ -1142,26 +1142,26 @@ def _apply_plan_a(
             state["status"] = "COMPLETED_AWAITING_HUMAN"
 
         elif inc.code == CODE_BRANCH_MISSING:
-            # Plan A pra branch missing nao re-cria automaticamente —
-            # apenas registra warning. Recreate exige humano.
+            # Plan A for branch missing does not auto-recreate —
+            # only records warning. Recreate requires human.
             _append_history(
                 state,
                 {
                     "at": _now_iso(now),
                     "event": "recovery_warning",
                     "note": (
-                        "branch ausente: "
+                        "branch absent: "
                         + inc.context.get("branch", "")
-                        + ". Sugestao: git reflog | grep "
+                        + ". Suggestion: git reflog | grep "
                         + inc.context.get("branch", "")
                     ),
                 },
             )
 
         elif inc.code == CODE_WAVE_WORKTREE_ORPHAN:
-            # Plan A: auto-cleanup. Para cada orfa: git worktree remove +
-            # git branch -d. Cleanup safe pq deteccao filtrou por branch
-            # ja merged em base_branch.
+            # Plan A: auto-cleanup. For each orphan: git worktree remove +
+            # git branch -d. Cleanup safe because detection filtered by branch
+            # already merged into base_branch.
             project_root_str = state.get("project_root", "")
             if not project_root_str:
                 continue
@@ -1175,11 +1175,11 @@ def _apply_plan_a(
                     ["worktree", "remove", wt_path], cwd=cwd
                 )
                 if wt_result.returncode != 0:
-                    # Tenta com --force se cleanup falhou
+                    # Retry with --force if cleanup failed
                     wt_result = _run_git(
                         ["worktree", "remove", "--force", wt_path], cwd=cwd
                     )
-                # 2. Delete branch (safe pq merged)
+                # 2. Delete branch (safe because merged)
                 br_result = _run_git(
                     ["branch", "-d", wt_branch], cwd=cwd
                 )
@@ -1192,7 +1192,7 @@ def _apply_plan_a(
                         f"branch_rc={br_result.returncode}"
                     )
             note = (
-                f"removed {len(removed)} orfa(s); "
+                f"removed {len(removed)} orphan(s); "
                 f"failed {len(failed)}: {failed[:3]}"
             )
             _append_history(
@@ -1209,8 +1209,8 @@ def _apply_plan_a(
             )
 
         elif inc.code == CODE_KICKOFF_WITHOUT_GATE:
-            # Plan A: aprovar gate retroativamente. Transita L1 pro próximo
-            # stage usando _GATE_RETRO_TRANSITION (mantém kickoff já gerado).
+            # Plan A: approve gate retroactively. Transitions L1 to next
+            # stage using _GATE_RETRO_TRANSITION (keeps already generated kickoff).
             stage_atual_str = str(state.get("stage_atual", ""))
             transition = _GATE_RETRO_TRANSITION.get(stage_atual_str)
             if transition:
@@ -1242,7 +1242,7 @@ def _apply_plan_a(
                 )
 
         elif inc.code == CODE_DEV_SERVER_ORPHAN:
-            # Plan A: apaga PID file + log. Proximo stage 04 entry rebota.
+            # Plan A: delete PID file + log. Next stage 04 entry restarts cleanly.
             pid_file_str = inc.context.get("pid_file", "")
             if pid_file_str:
                 pid_file = Path(pid_file_str)
@@ -1250,7 +1250,7 @@ def _apply_plan_a(
                     pid_file.unlink()
                 except OSError:
                     pass
-                # Apaga tambem .dev-server.log se existe
+                # Also delete .dev-server.log if it exists
                 log_file = pid_file.with_suffix(".log")
                 if log_file.is_file():
                     try:
@@ -1270,24 +1270,24 @@ def _apply_plan_a(
             )
 
         elif inc.code == CODE_CDP_DISCONNECTED:
-            # Plan A: registra warning, NAO mata profile dir (humano pode
-            # querer reabrir via helper script). Sem mudanca de estado.
+            # Plan A: record warning, do NOT remove profile dir (human may
+            # want to reopen via helper script). No state change.
             _append_history(
                 state,
                 {
                     "at": _now_iso(now),
                     "event": "recovery_warning",
                     "note": (
-                        "CDP_DISCONNECTED: relance Chrome via "
+                        "CDP_DISCONNECTED: relaunch Chrome via "
                         "scripts/launch-chrome-cdp.{bat,sh}. Profile "
-                        f"dir preservado em {inc.context.get('profile_dir', '')}"
+                        f"dir preserved at {inc.context.get('profile_dir', '')}"
                     ),
                 },
             )
 
         elif inc.code in (CODE_CLAUDE_MD_ROOT_STALE, CODE_CLAUDE_MD_ROOT_MISSING):
-            # Plan A: regerar bloco do workspace no <project_root>/CLAUDE.md
-            # a partir do estado L1 atual. Lazy import de handoff.
+            # Plan A: regenerate workspace block in <project_root>/CLAUDE.md
+            # from current L1 state. Lazy import of handoff.
             scripts_dir = str(Path(__file__).resolve().parent)
             if scripts_dir not in sys.path:
                 sys.path.insert(0, scripts_dir)
@@ -1299,7 +1299,7 @@ def _apply_plan_a(
                     {
                         "at": _now_iso(now),
                         "event": "recovery_warning",
-                        "note": "handoff.py indisponível; bloco CLAUDE.md root não regenerado",
+                        "note": "handoff.py unavailable; CLAUDE.md root block not regenerated",
                     },
                 )
                 continue
@@ -1324,14 +1324,14 @@ def _apply_plan_a(
                 last_action_at=_now_iso(now),
                 next_action=state.get("next_action", ""),
             )
-            # SKILL_DIR não está em L1; usar placeholder (workspace L0 tem skill_dir
-            # absoluto, mas recovery não consulta L0). Doc canônico orienta usuário.
+            # SKILL_DIR not in L1; use placeholder (workspace L0 has absolute
+            # skill_dir, but recovery does not consult L0). Canonical doc guides user.
             handoff.update_project_claude_md(proj_root, block, skill_dir="<skill-dir>")
 
         elif inc.code == CODE_STALE_ICM_MAIN_AFTER_CLOSE:
-            # Plan A: registra warning (NÃO executa cleanup automático —
-            # destrutivo, exige confirm humano). History inclui comando
-            # exato pra humano rodar. Doc: references/icm-cleanup-protocol.md.
+            # Plan A: record warning (does NOT execute automatic cleanup —
+            # destructive, requires human confirmation). History includes the
+            # exact command for human to run. Doc: references/icm-cleanup-protocol.md.
             proj_root_str = inc.context.get("project_root", "")
             ws_id = inc.context.get("workspace", "")
             _append_history(
@@ -1340,16 +1340,16 @@ def _apply_plan_a(
                     "at": _now_iso(now),
                     "event": "recovery_warning",
                     "note": (
-                        f"STALE_ICM_MAIN_AFTER_CLOSE: rode "
+                        f"STALE_ICM_MAIN_AFTER_CLOSE: run "
                         f"`python <skill-dir>/scripts/icm-cleanup.py "
                         f"--project-root {proj_root_str} --workspace {ws_id} "
-                        f"--dry-run` pra preview, depois sem --dry-run pra "
-                        f"executar. Cleanup é opt-in (destrutivo)."
+                        f"--dry-run` for preview, then without --dry-run to "
+                        f"execute. Cleanup is opt-in (destructive)."
                     ),
                 },
             )
 
-    # Append evento sumario recovery_applied
+    # Append summary recovery_applied event
     _append_history(
         state,
         {
@@ -1367,14 +1367,14 @@ def _apply_plan_b(
     inconsistencies: list[Inconsistency],
     now: datetime,
 ) -> None:
-    """Plan B — rollback. Reverte L1 pro ultimo estado consistente."""
+    """Plan B — rollback. Reverts L1 to the last consistent state."""
     codes = [i.code for i in inconsistencies]
     history = state.get("history") or []
 
-    # Estrategia: pra cada code aplicavel, reverter o campo pro penultimo
-    # evento valido em history. Mais conservador que Plan A.
+    # Strategy: for each applicable code, revert the field to the second-to-last
+    # valid event in history. More conservative than Plan A.
     if any(i.code == CODE_MISSING_COMMIT for i in inconsistencies):
-        # Mesmo handler do A
+        # Same handler as A
         valid = [
             ev
             for ev in history
@@ -1394,16 +1394,16 @@ def _apply_plan_b(
             }
 
     if any(i.code == CODE_HASH_MISMATCH for i in inconsistencies):
-        # Plan B: nao mexe em L1 (assume profile-effective.yaml errado);
-        # registra warning para humano regenerar profile.
+        # Plan B: does not touch L1 (assumes profile-effective.yaml is wrong);
+        # records warning for human to regenerate profile.
         pass
 
     if any(i.code == CODE_STALE_IN_PROGRESS for i in inconsistencies):
-        # Plan B identico ao A
+        # Plan B identical to A
         state["status"] = "COMPLETED_AWAITING_HUMAN"
 
-    # KICKOFF_WITHOUT_GATE: Plan B = deleta kickoff + volta L1 pra in_progress.
-    # Workspace continua trabalhando no stage NN (refaz outputs).
+    # KICKOFF_WITHOUT_GATE: Plan B = deletes kickoff + reverts L1 to in_progress.
+    # Workspace continues working on stage NN (redoes outputs).
     for inc in inconsistencies:
         if inc.code == CODE_KICKOFF_WITHOUT_GATE:
             kickoff_path_str = inc.context.get("kickoff_path", "")
@@ -1413,7 +1413,7 @@ def _apply_plan_b(
                     try:
                         kickoff_path.unlink()
                     except OSError:
-                        pass  # warning silencioso — humano vê history
+                        pass  # silent warning — human sees history
             stage_atual_str = str(state.get("stage_atual", ""))
             prev_sub = str(state.get("sub_stage", ""))
             new_sub = f"{stage_atual_str}_in_progress"
@@ -1435,7 +1435,7 @@ def _apply_plan_b(
                     "from": prev_sub,
                     "to": new_sub,
                     "note": (
-                        "kickoff deletado, voltando ao trabalho via "
+                        "kickoff deleted, returning to work via "
                         "recovery wizard (KICKOFF_WITHOUT_GATE Plan B)"
                     ),
                 },
@@ -1458,7 +1458,7 @@ def _apply_plan_c(
     inconsistencies: list[Inconsistency],
     now: datetime,
 ) -> None:
-    """Plan C — escalate. Marca BLOCKED_ERROR + history append. Sem mudanca."""
+    """Plan C — escalate. Marks BLOCKED_ERROR + history append. No other change."""
     codes = [i.code for i in inconsistencies]
     state["status"] = "BLOCKED_ERROR"
     _append_history(
@@ -1479,13 +1479,13 @@ def apply_recovery(
     project_root: Path | None = None,
     now: datetime | None = None,
 ) -> None:
-    """Aplica recovery escolhido. plan_choice in {A, B, C}.
+    """Applies chosen recovery. plan_choice in {A, B, C}.
 
-    Workspace consistente -> no-op (sem write).
+    Consistent workspace -> no-op (no write).
     """
     if plan_choice not in {"A", "B", "C"}:
         raise RecoveryWizardError(
-            f"plan_choice invalido: '{plan_choice}'. Esperado A | B | C."
+            f"Invalid plan_choice: '{plan_choice}'. Expected A | B | C."
         )
 
     if now is None:
@@ -1495,7 +1495,7 @@ def apply_recovery(
         workspace_path, project_root=project_root, now=now
     )
     if not inconsistencies:
-        return  # No-op em workspace consistente
+        return  # No-op on consistent workspace
 
     state, _, rest = _parse_l1(workspace_path)
 
@@ -1525,28 +1525,28 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="recovery-wizard.py",
         description=(
-            "Detecta inconsistencias L1 (CONTEXT.md raiz) e propoe / "
-            "aplica recovery."
+            "Detects L1 inconsistencies (root CONTEXT.md) and proposes / "
+            "applies recovery."
         ),
     )
     parser.add_argument(
-        "--workspace", required=True, help="Caminho do workspace"
+        "--workspace", required=True, help="Path to the workspace"
     )
     parser.add_argument(
         "--project-root",
         default=None,
-        help="Override pro project_root (default: lido de L1)",
+        help="Override for project_root (default: read from L1)",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Audit only — imprime inconsistencias e plano sem aplicar",
+        help="Audit only — prints inconsistencies and plan without applying",
     )
     parser.add_argument(
         "--apply",
         choices=["A", "B", "C"],
         default=None,
-        help="Aplica plan A | B | C nao-interativo",
+        help="Applies plan A | B | C non-interactively",
     )
     args = parser.parse_args(argv)
 
@@ -1555,7 +1555,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if not workspace.is_dir():
         print(
-            f"RecoveryWizardError: workspace nao existe: {workspace}",
+            f"RecoveryWizardError: workspace does not exist: {workspace}",
             file=sys.stderr,
         )
         return 1
@@ -1570,7 +1570,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.dry_run:
         _print_audit(workspace, inconsistencies)
-        return 0  # Audit mode sempre exit 0
+        return 0  # Audit mode always exits 0
 
     if args.apply:
         if not inconsistencies:
@@ -1585,27 +1585,27 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         print(
             f"Recovery applied (Plan {args.apply}): "
-            f"{len(inconsistencies)} inconsistencia(s) processada(s)."
+            f"{len(inconsistencies)} inconsistency(ies) processed."
         )
         return 0
 
-    # Modo interativo
+    # Interactive mode
     if not inconsistencies:
         print(f"Workspace consistent: {workspace}")
         return 0
 
     print(propose_recovery_plan(inconsistencies))
-    print("Escolha plano (A / B / C) ou Q pra sair:")
+    print("Choose plan (A / B / C) or Q to quit:")
     try:
         choice = input("> ").strip().upper()
     except (EOFError, KeyboardInterrupt):
-        print("Cancelado.")
+        print("Cancelled.")
         return 1
     if choice == "Q":
-        print("Cancelado.")
+        print("Cancelled.")
         return 1
     if choice not in {"A", "B", "C"}:
-        print(f"Escolha invalida: {choice}", file=sys.stderr)
+        print(f"Invalid choice: {choice}", file=sys.stderr)
         return 1
     try:
         apply_recovery(workspace, choice, project_root=project_root)

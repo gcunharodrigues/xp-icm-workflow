@@ -1,19 +1,19 @@
-"""Migrate workspace — orquestrador de migrations encadeadas (v3.8.0).
+"""Migrate workspace — chained migration orchestrator (v3.8.0).
 
-Detecta versão atual via L0 frontmatter `icm_skill_version` e aplica
-sequência de migrations até `--target` (default: SKILL_VERSION corrente).
+Detects current version via L0 frontmatter `icm_skill_version` and applies
+the migration sequence up to `--target` (default: current SKILL_VERSION).
 
-Versões suportadas: v3.3.0+. Beta1/beta2 explicitamente unsupported
-(estado batched/legacy de pre-3.3 sem path automatizável).
+Supported versions: v3.3.0+. Beta1/beta2 explicitly unsupported
+(batched/legacy pre-3.3 state with no automatable path).
 
 Trigger:
 - `auto-prompt`: workspace status ∈ {COMPLETED, COMPLETED_AWAITING_HUMAN}
-  → bootstrap/sessão fase 08 deve oferecer migration.
-- `warning-only`: status IN_PROGRESS → não interromper trabalho mid-stage,
-  só logar warning.
+  → bootstrap/stage 08 session should offer migration.
+- `warning-only`: status IN_PROGRESS → do not interrupt work mid-stage,
+  only log warning.
 
-Backup automático em <project_root>/.icm-migration-backup/<timestamp>/
-antes de cada step. Idempotente: re-rodar não duplica state.
+Automatic backup at <project_root>/.icm-migration-backup/<timestamp>/
+before each step. Idempotent: re-running does not duplicate state.
 
 CLI:
     python migrate-workspace.py --workspace-root <path> [--target 3.7.2] \\
@@ -32,15 +32,15 @@ from typing import Sequence
 
 
 # ============================================================================
-# Constantes
+# Constants
 # ============================================================================
 
 CURRENT_SKILL_VERSION = "3.10.0"
 FLOOR_VERSION = "3.3.0"
 
-# Sequência de versões suportadas. Migration steps são pares consecutivos.
-# v3.7.1 colapsada em v3.7.2 (changelog: intermediária mergeada). Migration
-# direta 3.7.0→3.7.2 cobre ambas — sem schema change em L0.
+# Supported version sequence. Migration steps are consecutive pairs.
+# v3.7.1 collapsed into v3.7.2 (changelog: intermediate merged). Direct
+# migration 3.7.0→3.7.2 covers both — no schema change in L0.
 SUPPORTED_VERSIONS: tuple[str, ...] = (
     "3.3.0",
     "3.4.0",
@@ -55,7 +55,7 @@ SUPPORTED_VERSIONS: tuple[str, ...] = (
 
 
 class MigrationError(Exception):
-    """Erro de migration (versão não suportada, conflito, IO)."""
+    """Migration error (unsupported version, conflict, IO)."""
 
 
 # ============================================================================
@@ -88,9 +88,9 @@ STATUS_RE = re.compile(
 
 
 def detect_workspace_version(workspace_root: Path) -> str | None:
-    """Lê L0 (`<ws>/CLAUDE.md`) e extrai icm_skill_version do frontmatter.
+    """Reads L0 (`<ws>/CLAUDE.md`) and extracts icm_skill_version from frontmatter.
 
-    Retorna versão semver ou None se L0 ausente / sem campo.
+    Returns semver string or None if L0 absent / field missing.
     """
     l0 = workspace_root / "CLAUDE.md"
     if not l0.is_file():
@@ -103,10 +103,10 @@ def detect_workspace_version(workspace_root: Path) -> str | None:
 
 
 def detect_trigger_mode(workspace_root: Path) -> str:
-    """Decide trigger: auto-prompt vs warning-only.
+    """Decides trigger: auto-prompt vs warning-only.
 
-    Status COMPLETED/AWAITING → auto-prompt (seguro interromper).
-    IN_PROGRESS → warning-only (não interromper trabalho ativo).
+    Status COMPLETED/AWAITING → auto-prompt (safe to interrupt).
+    IN_PROGRESS → warning-only (do not interrupt active work).
     """
     l1 = workspace_root / "CONTEXT.md"
     if not l1.is_file():
@@ -126,19 +126,19 @@ def detect_trigger_mode(workspace_root: Path) -> str:
 # ============================================================================
 
 def plan_migration(from_version: str, to_version: str) -> list[str]:
-    """Retorna lista de steps `<a>-><b>` ordenada from → to.
+    """Returns list of steps `<a>-><b>` ordered from → to.
 
-    Raise MigrationError se from < FLOOR_VERSION.
+    Raises MigrationError if from < FLOOR_VERSION.
     """
     if from_version not in SUPPORTED_VERSIONS:
         raise MigrationError(
-            f"versão {from_version} abaixo do floor {FLOOR_VERSION} "
+            f"version {from_version} below floor {FLOOR_VERSION} "
             f"(supported: {SUPPORTED_VERSIONS}). "
-            "Migration manual necessária pra workspaces pre-3.3.0."
+            "Manual migration required for pre-3.3.0 workspaces."
         )
     if to_version not in SUPPORTED_VERSIONS:
         raise MigrationError(
-            f"target {to_version} desconhecido (supported: {SUPPORTED_VERSIONS})"
+            f"target {to_version} unknown (supported: {SUPPORTED_VERSIONS})"
         )
     from_idx = SUPPORTED_VERSIONS.index(from_version)
     to_idx = SUPPORTED_VERSIONS.index(to_version)
@@ -157,10 +157,10 @@ def plan_migration(from_version: str, to_version: str) -> list[str]:
 # ============================================================================
 
 def backup_workspace(workspace_root: Path) -> Path:
-    """Copia workspace pra `<project_root>/.icm-migration-backup/<ts>/<ws>/`.
+    """Copies workspace to `<project_root>/.icm-migration-backup/<ts>/<ws>/`.
 
-    Não copia `_state/` (local-only) nem `output/` (artefatos pesados — git
-    tem versão).
+    Does not copy `_state/` (local-only) or `output/` (heavy artifacts — git
+    has the version).
     """
     project_root = workspace_root.parent.parent
     ts = _dt.datetime.now(_dt.UTC).strftime("%Y%m%dT%H%M%SZ")
@@ -184,8 +184,8 @@ def backup_workspace(workspace_root: Path) -> Path:
 def migrate_3_6_to_3_7(workspace_root: Path, project_root: Path) -> None:
     """v3.6.0 → v3.7.0 step:
     - Bump L0 icm_skill_version
-    - Cria _state/ dir
-    - Migra .icm-main/.dev-server.pid → runtime-registry (se PID alive)
+    - Create _state/ dir
+    - Migrate .icm-main/.dev-server.pid → runtime-registry (if PID alive)
     """
     rr = _load_runtime_registry()
 
@@ -211,7 +211,7 @@ def migrate_3_6_to_3_7(workspace_root: Path, project_root: Path) -> None:
         except ValueError:
             pid = -1
         if pid > 0 and rr._is_pid_alive(pid):
-            # Idempotente: só registra se ainda não existe entry com mesmo pid
+            # Idempotent: only register if no entry with same pid exists yet
             existing = rr.list_entries(workspace_root, kind="dev_server")
             if not any(e.get("pid") == pid for e in existing):
                 rr.register(
@@ -224,9 +224,9 @@ def migrate_3_6_to_3_7(workspace_root: Path, project_root: Path) -> None:
         pid_file.unlink()
 
 
-# Steps no-op pra versões intermediárias (mudanças foram backward-compat).
-# Cada step só bumpa L0 version pra próxima versão da sequência. Workspaces
-# v3.4/v3.5/v3.6 já têm schemas compatíveis; nenhum dado migrate.
+# No-op steps for intermediate versions (changes were backward-compat).
+# Each step only bumps L0 version to the next version in the sequence.
+# v3.4/v3.5/v3.6 workspaces already have compatible schemas; no data migrates.
 
 def _bump_version_only(workspace_root: Path, target: str) -> None:
     l0 = workspace_root / "CLAUDE.md"
@@ -240,14 +240,14 @@ def _bump_version_only(workspace_root: Path, target: str) -> None:
 
 
 def migrate_3_3_to_3_4(workspace_root: Path, project_root: Path) -> None:
-    """v3.3 → v3.4: cross-branch worktree model. Migration substantive
-    em scripts/migrate-v3.3-to-v3.4.py (pre-existing). Aqui apenas bump
-    de version se já foi migrado manualmente."""
+    """v3.3 → v3.4: cross-branch worktree model. Substantive migration
+    in scripts/migrate-v3.3-to-v3.4.py (pre-existing). Here only version
+    bump if already migrated manually."""
     _bump_version_only(workspace_root, "3.4.0")
 
 
 def migrate_3_4_to_3_5(workspace_root: Path, project_root: Path) -> None:
-    """v3.4 → v3.5: stage 04 protocol gaps. Backward-compat full."""
+    """v3.4 → v3.5: stage 04 protocol gaps. Fully backward-compat."""
     _bump_version_only(workspace_root, "3.5.0")
 
 
@@ -257,10 +257,10 @@ def migrate_3_5_to_3_6(workspace_root: Path, project_root: Path) -> None:
 
 
 def migrate_3_7_0_to_3_7_2(workspace_root: Path, project_root: Path) -> None:
-    """v3.7.0 → v3.7.2: saída A/C cleanup + recovery wizard novo detector.
+    """v3.7.0 → v3.7.2: output A/C cleanup + recovery wizard new detector.
 
-    Sem schema change em L0 — apenas runtime/handoff behavior. v3.7.1
-    foi colapsada em v3.7.2 (changelog: intermediária mergeada). Bump-only.
+    No schema change in L0 — only runtime/handoff behavior. v3.7.1
+    was collapsed into v3.7.2 (changelog: intermediate merged). Bump-only.
     """
     _bump_version_only(workspace_root, "3.7.2")
 
@@ -268,9 +268,9 @@ def migrate_3_7_0_to_3_7_2(workspace_root: Path, project_root: Path) -> None:
 def migrate_3_7_2_to_3_8_0(workspace_root: Path, project_root: Path) -> None:
     """v3.7.2 → v3.8.0: Forensic+ wave reviewer. Bump-only.
 
-    Sem schema change em L0 — campos novos em task-md frontmatter são opcionais
-    com default tolerante a ausência. Workspaces existentes são compatíveis
-    sem mutação destrutiva.
+    No schema change in L0 — new fields in task-md frontmatter are optional
+    with absence-tolerant defaults. Existing workspaces are compatible
+    without destructive mutation.
     """
     _bump_version_only(workspace_root, "3.8.0")
 
@@ -279,16 +279,16 @@ def migrate_3_8_0_to_3_9_0(workspace_root: Path, project_root: Path) -> None:
     """v3.8.0 → v3.9.0: Layered QA loop (L2 forensic+ extended + L3 critic +
     lead-resolution tier).
 
-    Bump-only. Sem schema change destrutivo em L0/L1:
-    - Status enum ganha LEAD_RESOLUTION_IN_PROGRESS (additive); workspaces
-      existentes mid-stage 04 NÃO ativam novo flow até terminarem stage atual.
-    - Akita 15-itens drop em 4-block-contract-template.md afeta apenas tasks
-      novas; task reports legacy (com bloco Auto-QA Akita) parseiam OK
-      (campo é tolerante a ausência OR presença).
-    - Novos checks forensic+ 5/6/7 só ativam em wave novas; não re-auditam
-      tasks pre-bump.
-    - pick-model fields (model_recommended_writer/critic) são opcionais em
-      AGENT-BRIEF — workspaces existentes continuam sem.
+    Bump-only. No destructive schema change in L0/L1:
+    - Status enum gains LEAD_RESOLUTION_IN_PROGRESS (additive); existing
+      workspaces mid-stage 04 do NOT activate new flow until current stage ends.
+    - Akita 15-item drop in 4-block-contract-template.md affects only new tasks;
+      legacy task reports (with Auto-QA Akita block) parse OK
+      (field is tolerant of absence OR presence).
+    - New forensic+ checks 5/6/7 only activate on new waves; do not re-audit
+      pre-bump tasks.
+    - pick-model fields (model_recommended_writer/critic) are optional in
+      AGENT-BRIEF — existing workspaces continue without them.
     """
     _bump_version_only(workspace_root, "3.9.0")
 
@@ -296,16 +296,16 @@ def migrate_3_8_0_to_3_9_0(workspace_root: Path, project_root: Path) -> None:
 def migrate_3_9_0_to_3_10_0(workspace_root: Path, project_root: Path) -> None:
     """v3.9.0 → v3.10.0: E2E coverage reinforcement.
 
-    Bump-only. Sem schema change destrutivo em L0/L1:
-    - 4-block schema +Requires E2E update field opcional; tasks legacy sem
-      o field são tratadas como False (Check 8 skip).
-    - Forensic+ Check 8 só ativa em waves novas; não re-audita tasks pre-bump.
-    - L4 wave gate e2e (step 11b) só ativa em waves novas tier dev/prod;
-      workspaces mid-stage 04 mantêm flow v3.9.0 até concluir wave atual.
-    - Stage 05 audit 4.7 só ativa em verification runs novas; relatórios
-      legacy não são re-auditados.
-    - profile-effective.yaml ganha section e2e (opcional); workspaces
-      existentes seguem com defaults hardcoded em wave-planner-script.
+    Bump-only. No destructive schema change in L0/L1:
+    - 4-block schema +Requires E2E update optional field; legacy tasks without
+      the field are treated as False (Check 8 skip).
+    - Forensic+ Check 8 only activates on new waves; does not re-audit pre-bump tasks.
+    - L4 wave gate e2e (step 11b) only activates on new waves tier dev/prod;
+      workspaces mid-stage 04 keep v3.9.0 flow until current wave ends.
+    - Stage 05 audit 4.7 only activates on new verification runs; legacy
+      reports are not re-audited.
+    - profile-effective.yaml gains e2e section (optional); existing workspaces
+      continue with defaults hardcoded in wave-planner-script.
     """
     _bump_version_only(workspace_root, "3.10.0")
 
@@ -323,7 +323,7 @@ STEP_FUNCTIONS = {
 
 
 # ============================================================================
-# Orquestrador
+# Orchestrator
 # ============================================================================
 
 def migrate(
@@ -334,9 +334,9 @@ def migrate(
     dry_run: bool = False,
     do_backup: bool = True,
 ) -> dict:
-    """Aplica migration encadeada do workspace.
+    """Applies chained migration to the workspace.
 
-    Returns: dict com `from_version`, `to_version`, `steps_planned`,
+    Returns: dict with `from_version`, `to_version`, `steps_planned`,
     `steps_applied`, `backup_path`, `trigger_mode`.
     """
     if project_root is None:
@@ -344,8 +344,8 @@ def migrate(
     current = detect_workspace_version(workspace_root)
     if current is None:
         raise MigrationError(
-            f"workspace {workspace_root} sem icm_skill_version em L0 "
-            "(possivelmente beta1/beta2 unsupported)"
+            f"workspace {workspace_root} missing icm_skill_version in L0 "
+            "(possibly beta1/beta2 unsupported)"
         )
     plan = plan_migration(current, target)
     trigger = detect_trigger_mode(workspace_root)
@@ -367,7 +367,7 @@ def migrate(
     for step in plan:
         fn = STEP_FUNCTIONS.get(step)
         if fn is None:
-            raise MigrationError(f"step desconhecido: {step}")
+            raise MigrationError(f"unknown step: {step}")
         fn(workspace_root, project_root)
         result["steps_applied"].append(step)
     return result
@@ -381,7 +381,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="migrate-workspace.py")
     p.add_argument("--workspace-root", type=Path, required=True)
     p.add_argument("--project-root", type=Path, default=None,
-                   help="default: workspace_root.parent.parent")
+                   help="default: workspace_root.parent.parent (two levels up)")
     p.add_argument("--target", default=CURRENT_SKILL_VERSION)
     p.add_argument("--dry-run", action="store_true")
     p.add_argument("--no-backup", action="store_true")
