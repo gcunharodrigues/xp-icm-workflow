@@ -680,7 +680,7 @@ def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root
         "conflict-resolution-protocol.md",  # stage 04 step 10 — merge conflicts
         "icm-cleanup-protocol.md",       # stage 08 output A — workspace cleanup
         "script-cli-reference.md",       # stages 00-05,08 — script CLI format contracts
-        "wave-execution-protocol.md",    # stage 04 — 12-step pipeline (single source of truth)
+        "wave-execution-protocol.md",    # stage 04 — 14-step pipeline (single source of truth)
         "worktree-model.md",             # L0 CLAUDE.md + stage 02 — parallel worktree model
     )
     refs_src = skill_root / "references"

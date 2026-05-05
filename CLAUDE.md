@@ -172,7 +172,7 @@ Templates in `/templates/` use `{{WORKSPACE}}`, `{{PROFILE}}`, `{{TIER}}`, `{{PR
 - `references/session-handoff-protocol.md` — 1-stage-1-session flow
 - `references/state-machine-schema.md` — L1 YAML spec
 - `references/wave-planner-algorithm.md` — DAG construction details
-- `references/stop-points-canonical.md` — 12 stop points + tier thresholds
+- `references/stop-points-canonical.md` — 15 stop points + tier thresholds
 - `references/example-run.md` — Full 9-session E2E walkthrough
 - `references/maintainer-checklist.md` — How to modify the skill (new script, doc, template, stage, version bump)
 
@@ -211,7 +211,7 @@ Active changes in:
 - `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl` (new flow: vertical TDD → L2 → L3 → diagnose → retry/lead-bucket; step 9 lead-resolution)
 - `templates/workspace/stages/05_verification/CONTEXT.md.tpl` (sub-step 5.5 audit lead resolutions)
 - `references/4-block-contract-template.md` (rewrite §3 vertical TDD; §5 Akita DELETED)
-- `references/forensic-plus-protocol.md` (7 checks)
+- `references/forensic-plus-protocol.md` (7 checks v3.9.0, expanded to 8 in v3.10.0)
 - `references/state-machine-schema.md` (+status LEAD_RESOLUTION_IN_PROGRESS, +5 error_types)
 - `scripts/migrate-workspace.py` (3.8.0→3.9.0 step bump-only)
 - `scripts/recovery-wizard.py` (+LEAD_RESOLUTION_STALE)
@@ -255,7 +255,7 @@ Active changes in:
 
 ## v3.8.0 — Forensic+ wave reviewer (structural anti-fraud)
 
-Step 8 of the 12-step pipeline (stage 04) expanded into sub-steps 8a/8b/8c/8d. 8a = `scripts/forensic-plus.py` audits each AFK task in the wave (skip HITL): 4 git-only checks (test assertions ≥2, files outside declared `files_touched`, scope creep > 3× `### Estimated lines`, TODO/FIXME/HACK added). Tier-aware severity (HARD/SOFT). HARD → `approved_pending_ci: false` + re-spawn cap `MAX_FORENSIC_RETRIES = 2` (3rd HARD → `BLOCKED_ERROR error_type: forensic_max_retries`); SOFT → `wave-summary.md § Forensic+ summary`; none → approved. Script crash (exit 1) → `BLOCKED_ERROR error_type: forensic_script_crash`.
+Step 8 of the 14-step pipeline (stage 04) expanded into sub-steps 8a/8b/8c/8d. 8a = `scripts/forensic-plus.py` audits each AFK task in the wave (skip HITL): 4 git-only checks (test assertions ≥2, files outside declared `files_touched`, scope creep > 3× `### Estimated lines`, TODO/FIXME/HACK added). Tier-aware severity (HARD/SOFT). HARD → `approved_pending_ci: false` + re-spawn cap `MAX_FORENSIC_RETRIES = 2` (3rd HARD → `BLOCKED_ERROR error_type: forensic_max_retries`); SOFT → `wave-summary.md § Forensic+ summary`; none → approved. Script crash (exit 1) → `BLOCKED_ERROR error_type: forensic_script_crash`.
 
 Canonical doc: `references/forensic-plus-protocol.md`. Active changes in:
 - `scripts/forensic-plus.py` (new, 188 lines)

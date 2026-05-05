@@ -311,8 +311,8 @@ class TestRenderStopPointsTemplate:
             f"placeholder nao-resolvido em tier={tier}: {leftover.group(0) if leftover else None}"
         )
 
-    def test_render_includes_canonical_12_items(self) -> None:
-        """Sanity: output lista todos os 12 stops canonicos."""
+    def test_render_includes_canonical_15_items(self) -> None:
+        """Sanity: output lists all 15 canonical stop points."""
         custom = render_custom_stop_points_block(None, tier="development")
         out = render_template(TEMPLATE_PATH, _full_render_vars("development", custom))
         for sp_id in (
@@ -326,10 +326,13 @@ class TestRenderStopPointsTemplate:
             "pii",
             "prod_migration",
             "adr_drift",
-            "wave_branch_missing",
+            "workspace_corrupt",
             "profile_mismatch",
+            "ambiguous_feedback",
+            "design_system_cascade",
+            "runtime_cleanup_failed",
         ):
-            assert sp_id in out, f"stop point canonico ausente: {sp_id}"
+            assert sp_id in out, f"canonical stop point missing: {sp_id}"
 
     def test_render_includes_menu_template_inline(self) -> None:
         """Workspace e self-contained: template do menu A/B/C deve estar inline."""

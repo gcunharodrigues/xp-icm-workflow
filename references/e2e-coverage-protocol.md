@@ -80,7 +80,7 @@ A subagent reading a flagged task MUST add/update ≥1 file in an e2e directory 
 
 ## Forensic+ Check 8 — user-journey coverage
 
-Added to `references/forensic-plus-protocol.md` § 7 checks.
+Added to `references/forensic-plus-protocol.md` § 8 checks.
 
 Trigger: task has `Requires E2E update: true` in its metadata (OR `**E2E:** skip` is absent).
 

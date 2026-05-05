@@ -2,9 +2,9 @@
 
 > **Version:** v3.0.0-beta5
 > **Path resolution:** `scripts/` paths in this document refer to `<SKILL_DIR>/scripts/`, where `SKILL_DIR` is defined in L0 (`CLAUDE.md`).
-> **Purpose:** canonical list of the 12 stop points for the `xp-icm-workflow` skill + thresholds calibrated by tier for items 5/7/8 + standardized A/B/C menu template + L1 update protocol.
+> **Purpose:** canonical list of the 15 stop points for the `xp-icm-workflow` skill + thresholds calibrated by tier for items 5/7/8 + standardized A/B/C menu template + L1 update protocol.
 
-Resolution **Q5** from the plan: fixed list of 12 stops; items 5, 7, 8 calibrated by tier per `templates/_config/profile-matrix.md` (keys `stop_points_calibration.item_5/7/8`); remaining 9 always `hard` in any tier.
+Resolution **Q5** from the plan: fixed list of 15 stops; items 5, 7, 8 calibrated by tier per `templates/_config/profile-matrix.md` (keys `stop_points_calibration.item_5/7/8`); remaining 12 always `hard` in any tier.
 
 ---
 

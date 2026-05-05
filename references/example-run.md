@@ -515,7 +515,7 @@ The other stages (00-03, 05-08) remain identical to the walkthrough above.
 |---|---|
 | `references/state-machine-schema.md` | Full L1 schema (yaml frontmatter + history) |
 | `references/stage-templates.md` | Spec of the 9 L2 templates |
-| `references/stop-points-canonical.md` | 12 stop points + thresholds (paid_service §1.1) |
+| `references/stop-points-canonical.md` | 15 stop points + thresholds (paid_service §1.1) |
 | `references/wave-planner-algorithm.md` | DAG construction + LLM review subagent |
 | `references/subagent-protocol.md` | Spawn, Agent tool output, sync barrier, wave-reviewer |
 | `references/wave-execution-protocol.md` | Canonical 14-step pipeline (v3.12.1) |

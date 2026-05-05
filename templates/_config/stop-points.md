@@ -350,7 +350,7 @@ Typical applicability table. `n/a` means the stage rarely triggers that stop by 
 
 | Stage | Most common stops |
 |---|---|
-| 00 recon | 11 (`wave_branch_missing`), 12 (`profile_mismatch`) |
+| 00 recon | 11 (`workspace_corrupt`), 12 (`profile_mismatch`) |
 | 01 discovery | 1 (`stack`), 3 (`external_api`), 5 (`paid_service`), 8 (`pii`) |
 | 02 design | 1, 2 (`db`), 4 (`new_dep`), 5, 6 (`irreversible`), 7 (`over_eng`), 8, 10 (`adr_drift`) |
 | 03 wave_planner | n/a (wave-planner is deterministic — gap-fill if applicable) |

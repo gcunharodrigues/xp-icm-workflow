@@ -284,7 +284,7 @@ Suggested permissions allowlist in `system-requirements.md`.
 
 - `references/wave-planner-algorithm.md` — DAG construction, sub-waves, LLM review subagent
 - `references/subagent-protocol.md` — spawn via Agent tool, plan approval, mid-wave reduce
-- `references/stop-points-canonical.md` — 12 stop points + thresholds by tier
+- `references/stop-points-canonical.md` — 15 stop points + thresholds by tier
 - `references/4-block-contract-template.md` — WHAT / HOW / OUT OF SCOPE / VALIDATION
 - `references/feedback-intake-stage08.md` — 3 exits A/B/C
 - `references/profile-matrix.md` — calibration by profile/tier (skipped stages, etc.) — copy in `templates/_config/profile-matrix.md`

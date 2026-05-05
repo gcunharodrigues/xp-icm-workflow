@@ -342,7 +342,7 @@ QA is validated by layers L2 (forensic+) + L3 (critic) — see `references/criti
 | `references/doc-reading-protocol.md` | Channels 1/2/3 — who injects what into the subagent |
 | `references/wave-planner-algorithm.md` | DAG, Q10 lesson match, Q6 peer-review trigger |
 | `references/subagent-protocol.md` | Lead spawn, Agent tool output, plan approval |
-| `references/stop-points-canonical.md` | 12 stop points + thresholds per tier |
+| `references/stop-points-canonical.md` | 15 stop points + thresholds per tier |
 | `references/forensic-plus-protocol.md` | L2 deterministic checks (7 in v3.9.0) |
 | `references/critic-protocol.md` | L3 orthogonal LLM critic |
 | `references/lead-resolution-protocol.md` | Buckets B1/B3/B4 when cap exhausted |

@@ -327,7 +327,7 @@ flowchart TD
 | `references/wave-planner-algorithm.md` | DAG, sub-waves (E3), Q10 lesson match, Q6 peer-review trigger |
 | `references/stage-templates.md` | L2 of stage 04 `implementation_waves` (Inputs/Outputs) |
 | `references/state-machine-schema.md` | Canonical L1 statuses (BLOCKED_ERROR, RESTARTING_AT_PHASE_X) |
-| `references/stop-points-canonical.md` | 12 stop points + escalation |
+| `references/stop-points-canonical.md` | 15 stop points + escalation |
 | `references/recovery-wizard.md` | Recovery if lead crashed mid-wave |
 | `templates/workspace/CLAUDE.md.tpl` | L0 — workspace immutable identity |
 ---
