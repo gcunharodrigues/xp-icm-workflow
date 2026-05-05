@@ -28,7 +28,7 @@ Invoke `/xp-icm-workflow` to **start** a new workspace. Typical cases:
 
 - New project (greenfield or existing) with multiple stages + human review between steps.
 - Complex feature (discovery → design → implementation → review → merge).
-- Implementation that benefits from parallelism (subagents via Agent Tool in phase 04).
+- Implementation that benefits from parallelism (subagents via Agent Tool in stage 04).
 - Want to see, edit, and approve intermediate artifacts (L4 outputs per stage).
 - Non-trivial architectural decisions that require an A/B/C menu.
 
@@ -224,7 +224,7 @@ The skill **exits**. Next steps follow the **1-stage-1-session** protocol (super
 
 **Stage 08 real terminal (exits inferred from feedback intent):** human pastes free-form feedback in session 08 (no raw A/B/C menu); session **infers** A/B/C autonomously via heuristics and mini-confirms before executing.
 - **A close** → workspace `COMPLETED` + lessons in `docs/lessons.md` (signals: "all good", silence).
-- **B restart phase X** → `iteration++`, kickoff to stage X (mapping: bug in tests → 05, code → 04, design → 02, etc.).
+- **B restart stage X** → `iteration++`, kickoff to stage X (mapping: bug in tests → 05, code → 04, design → 02, etc.).
 - **C spawn** → workspace closes + instruction for user to invoke `/xp-icm-workflow spawn_from=<NNN>` in a new session (signals: "pivot", "new project").
 
 **Beta1/beta2 migration (decision 4B):** existing workspaces in batched mode continue batched; no forced conversion. Only workspaces created via `/xp-icm-workflow` post-beta3 use 1-stage-1-session.
@@ -233,9 +233,9 @@ The skill **exits**. Next steps follow the **1-stage-1-session** protocol (super
 
 **Stop points:** 12 canonical stop points in `_config/stop-points.md` calibrated by tier. Triggered: agent pauses, writes A/B/C menu, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes.
 
-**Subagents (phase 04):** parallelism waves via Agent tool. Cap by tier (2/3/5/5). Deterministic Wave Planner + LLM review subagent. Details in `_references/runtime/subagent-protocol.md`.
+**Subagents (stage 04):** parallelism waves via Agent tool. Cap by tier (2/3/5/5). Deterministic Wave Planner + LLM review subagent. Details in `_references/runtime/subagent-protocol.md`.
 
-**Feedback intake (phase 08):** triggered manually by the human after real use. 3 exits: A) close workspace; B) restart phase X (iteration++); C) spawn new workspace inheriting lessons+ADRs.
+**Feedback intake (stage 08):** triggered manually by the human after real use. 3 exits: A) close workspace; B) restart stage X (iteration++); C) spawn new workspace inheriting lessons+ADRs.
 
 ---
 
