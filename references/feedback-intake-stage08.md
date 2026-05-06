@@ -19,7 +19,7 @@ Stage 08 is the **universal iteration gate** of the ICM cycle. Human triggers af
 
 ### Stages skipped by profile
 
-The `profile-matrix.md` declares `stages_skipped for v4/07 removed as stages).
+The `profile-matrix.md` declares `stages_skipped` per profile. v4.0: `experiment` lists `["02", "04", "08"]` (03/05/06/07 removed as stages).
 
 ---
 
@@ -68,14 +68,14 @@ Canonical doc: `references/runtime-cleanup-protocol.md`.
 Reads:
 
 - L0 (`<workspace>/CLAUDE.md`) — absolute paths, profile, tier, `logs_root`.
-- L1 (`<workspace>/CONTEXT.md`) — confirms `status: COMPLETED`, reads current `iteration` and `history`.
+- L1 (`<workspace>/CONTEXT.md`) — confirms `status: IN_PROGRESS` (v4.0), reads `iteration`, `history`, `prev_outputs`, `pending`.
 - L2 (`<workspace>/stages/08_feedback_intake/CONTEXT.md`) — stage-specific instructions.
 - Prior outputs: `stages/04_implementation_waves/output/*` — existence sample-check (audit).
 
 Automatic validations:
 
-1. `status == "COMPLETED"`.
-2. Outputs 01-07 exist (sample-check of at least 1 file per stage that ran — respecting `stages_skipped` from the profile).
+1. `status == "IN_PROGRESS"` (v4.0 pre-condition).
+2. Outputs from stages 01, 02, 04 exist (sample-check of at least 1 file per stage that ran — respecting `stages_skipped`).
 3. Current `sub_stage` ∈ {`08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C`} or absent (first trigger).
 
 Failure in any validation → abort with specific message + proposed action.
@@ -161,9 +161,9 @@ After `intake-report.md` is written, session triggers the A/B/C menu with the re
 1. Append to `history`: `event: stage_transition`, `from: 08_in_progress`, `to: 08_decided_A`, `note: "<short reason>"`, `at: <ISO>`, `commit_sha: <to be filled post-commit>`.
 2. Set `sub_stage: 08_decided_A`.
 3. Set `status: COMPLETED`.
-4. Append new lessons (extracted from the "WHAT LESSON TO TAKE" block of intake-report) to `<project_root>/docs/lessons.md` respecting strict frontmatter (id, date, tags, severity).
+4. Append new lessons (extracted from the "WHAT LESSON TO TAKE" block of intake-report) to `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` via base-branch worktree, respecting strict frontmatter (id, date, tags, severity).
 5. Atomic commit (pre-commit hook validates atomicity L1↔outputs↔lessons).
-6. Human message: "Workspace NNN closed. M lessons added to docs/lessons.md."
+6. Human message: "Workspace NNN closed. M lessons added to .icm-main/docs/lessons.md."
 
 **Concrete example — exit A:**
 
@@ -171,7 +171,7 @@ Message to human:
 ```
 Workspace 042 closed with decision A (close).
 
-3 lessons added to docs/lessons.md:
+3 lessons added to .icm-main/docs/lessons.md:
   #017 critical — race in large wave rebase
   #018 medium — on-demand peer review caught bug in critical path
   #019 low — wave-reviewer with 1 task adds noise (skip in future)
@@ -183,7 +183,7 @@ YAML diff in L1:
 ```yaml
 # before
 sub_stage: "08_in_progress"
-status: "COMPLETED"
+status: "IN_PROGRESS"
 last_action: "stage 04 last wave merged, approved for feedback"
 
 # after
@@ -218,7 +218,7 @@ history:
 
 **When:** new discovery requires partial redesign. Workspace returns to stage X with lessons from the intake applied.
 
-**Constraint H1:** X ∈ {`01`, `02`, `03`, `04`, `05`, `06`, `07`}. Restart NOT permitted for:
+**Constraint H1 (v4.0):** X ∈ {`01`, `02`, `04`}. Restart NOT permitted for:
 
 - `00` (recon — to change `project_root` or project type, use exit C).
 - `08` (current — restarting the gate itself makes no sense).
@@ -239,21 +239,21 @@ Validation in L2 of stage 08: human choosing B must declare valid X; session ref
 10. Human message: instruction to open new session.
 11. Session exits. Next session reads L1 and naturally resumes stage XX.
 
-**Concrete example — exit B (restart stage 03):**
+**Concrete example — exit B (restart stage 02):**
 
 Message to human:
 ```
-Workspace 042 returned to stage 03 (wave planner), iteration 2.
+Workspace 042 returned to stage 02 (design+plan), iteration 2.
 
 Old outputs preserved in:
-  stages/03/output-iteration-1/
-  (wave-plan.md, ambiguities-resolved.md, llm_review_findings.md)
+  stages/02_design/output-iteration-1/
+  (plan.md, wave-plan.md, ambiguities-resolved.md)
 
-New iteration 2 outputs go in stages/03/output/ (clean).
+New iteration 2 outputs go in stages/02_design/output/ (clean).
 
 Open a new session at project_root to resume.
-The session will read L1, see stage_atual=03 + iteration=2,
-and pick up the lessons from intake-report when building the new wave-plan.
+The session will read L1, see stage_atual=02 + iteration=2,
+and pick up the lessons from intake-report when building the new plan.
 ```
 
 YAML diff in L1:
@@ -261,39 +261,38 @@ YAML diff in L1:
 # before
 stage_atual: "08"
 sub_stage: "08_in_progress"
-status: "COMPLETED"
+status: "IN_PROGRESS"
 iteration: 1
 
 # after
-stage_atual: "03"
-sub_stage: "03_in_progress"
+stage_atual: "02"
+sub_stage: "02_in_progress"
 status: "IN_PROGRESS"
 iteration: 2
-last_action: "restart stage 03 iteration 2"
+last_action: "restart stage 02 iteration 2"
 last_action_at: "2026-04-25T16:00:00Z"
-next_action: "run stage 03 with lessons from intake-report (wave 1 had race in rebase, redesign DAG)"
+next_action: "run stage 02 with lessons from intake-report (DAG from wave 1 caused race in rebase, redesign)"
 last_transition:
   from: "08_in_progress"
-  to: "03_in_progress"
+  to: "02_in_progress"
   at: "2026-04-25T16:00:00Z"
   commit_sha: "9a8b7c6d5e4f"
 history:
-  # ... prior entries preserved
   - at: "2026-04-25T16:00:00Z"
     event: "iteration_increment"
     from: "08_in_progress"
-    to: "03_in_progress"
+    to: "02_in_progress"
     iteration_new: 2
-    note: "restart stage 03 — DAG from wave 1 caused race in rebase, redesign"
+    note: "restart stage 02 — DAG from wave 1 caused race in rebase, redesign"
     commit_sha: "9a8b7c6d5e4f"
 ```
 
 Filesystem move:
 ```
-stages/03/output/wave-plan.md            → stages/03/output-iteration-1/wave-plan.md
-stages/03/output/ambiguities-resolved.md → stages/03/output-iteration-1/ambiguities-resolved.md
-stages/03/output/llm_review_findings.md  → stages/03/output-iteration-1/llm_review_findings.md
-stages/03/output/                        → (empty, ready for iteration 2)
+stages/02_design/output/plan.md               → stages/02_design/output-iteration-1/plan.md
+stages/02_design/output/wave-plan.md           → stages/02_design/output-iteration-1/wave-plan.md
+stages/02_design/output/ambiguities-resolved.md → stages/02_design/output-iteration-1/ambiguities-resolved.md
+stages/02_design/output/                       → (empty, ready for iteration 2)
 ```
 
 ---
@@ -409,7 +408,7 @@ Pre-commit hook validates that `output-iteration-<N>/` is only created in commit
 - **Stage 08 does NOT write new code.** Only analyzes + decides + transitions state. Any new code is the responsibility of a new iteration (exit B) or new workspace (exit C).
 - **Pre-commit hook validates transition** like any other (atomicity L1 ↔ outputs/lessons, prefix `feedback:` or `intake:`).
 - **Stop points rare but possible:** item 11 `workspace_corrupt` if `intake-report.md` cannot be written (disk full, permission), or if human interrupts the session before deciding A/B/C (status stays `IN_PROGRESS` in `08_in_progress`; next session resumes).
-- **New lessons only in exit A.** Exits B and C naturally reuse lessons (B via intake-report of iteration N+1; C via inheritance in recon-report of 043). Exit A is the only path for explicit append to `docs/lessons.md`.
+- **New lessons only in exit A.** Exits B and C naturally reuse lessons (B via intake-report of iteration N+1; C via inheritance in recon-report of 043). Exit A is the only path for explicit append to `.icm-main/docs/lessons.md`.
 
 ---
 
