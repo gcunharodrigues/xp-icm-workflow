@@ -1,22 +1,22 @@
 # System requirements — xp-icm-workflow
 
-Runtime e setup necessários para rodar a skill e sua suite de testes.
+Runtime and setup needed to run the skill and its test suite.
 
-## Runtime obrigatório
+## Required runtime
 
-- **Python 3.11+** (testado em 3.13)
-- **bash POSIX** — Linux/macOS nativo; Windows via Git for Windows / Git Bash
+- **Python 3.11+** (tested on 3.13)
+- **POSIX bash** — Linux/macOS native; Windows via Git for Windows / Git Bash
 - **git 2.30+**
-- **jq** — processamento JSON no hook `context-check.sh` (threshold de contexto)
-- **bats** — CI-only (instalado via `apt`); opcional em ambiente local
+- **jq** — JSON processing in `context-check.sh` hook (context threshold detection)
+- **bats** — CI-only (installed via `apt`); optional in local environment
 
-## Setup local
+## Local setup
 
 ```bash
 pip install -r requirements.txt
 ```
 
-Para validar o ambiente antes de rodar a skill:
+To validate the environment before running the skill:
 
 ```bash
 bash scripts/check-runtime.sh
@@ -24,62 +24,84 @@ bash scripts/check-runtime.sh
 
 ## Permissions allowlist (R6.1)
 
-Para reduzir prompts de permissão durante a execução da skill, adicione ao
-`~/.claude/settings.json` (ou em `settings.local.json` no escopo do projeto):
+To reduce permission prompts during skill execution, add to
+`~/.claude/settings.json` (or `settings.local.json` in project scope):
 
 ```json
 {
   "permissions": {
     "allow": [
-      "Bash(python scripts/*)",
-      "Bash(pytest *)",
-      "Bash(git status *)",
-      "Bash(git diff *)",
-      "Bash(git log *)",
-      "Bash(git branch *)",
-      "Bash(git rev-parse *)",
-      "Bash(git worktree *)",  # kept for potential future use; subagents no longer require worktrees
-      "Bash(git checkout *)",
-      "Bash(git stash *)",
-      "Bash(bash scripts/*)",
-      "Bash(bash tests/run.sh)"
+      "Bash(git:*)",
+      "Bash(python:*)",
+      "Bash(pip:*)",
+      "Bash(pytest:*)",
+      "Bash(npm:*)",
+      "Bash(pnpm:*)",
+      "Bash(yarn:*)",
+      "Bash(bun:*)",
+      "Bash(ruff:*)",
+      "Bash(tsc:*)",
+      "Bash(npx:*)",
+      "Read",
+      "Edit",
+      "Write",
+      "Glob",
+      "Grep",
+      "WebFetch",
+      "WebSearch",
+      "Skill(*)"
     ]
   }
 }
 ```
 
-Se o bootstrap detectar que essas permissions estão ausentes, ele imprime esse
-snippet para o humano colar manualmente. A skill nunca edita `settings.json`
-silenciosamente.
+If bootstrap detects these permissions are missing, it prints the
+recommended block in the session output — copy and paste into `settings.local.json`.
 
-## Context checkpoint hook (anti-compact)
+## Bats CI-only
 
-O bootstrap instala automaticamente:
+`tests/run.sh` auto-detects bats: `bats: command not found` generates a warning
+but the exit code is 0 (skip, not fail). Run with `--no-bats` for local:
 
-- **`<project_root>/workspaces/<NNN-slug>/.claude/hooks/context-check.sh`** — hook `PostToolUse` que
-  detecta quando o contexto da sessão atinge ≥70%. Dispara alerta obrigatório
-  de handoff antecipado conforme protocolo ICM (`references/session-handoff-protocol.md`).
-- **Registro em `<project_root>/.claude/settings.local.json`** — chave
-  `hooks.PostToolUse` apontando para `bash workspaces/<NNN-slug>/.claude/hooks/context-check.sh`.
+```bash
+bash tests/run.sh --no-bats
+```
 
-O hook lê o transcript de `~/.claude/projects/` diretamente (independente do
-statusline), calcula percentual de contexto, e emite alerta com cooldown de 60s.
-Threshold: 70% — margem para completar handoff antes do compact real (~90%).
+## `context-check.sh` hook
 
-**Dependência:** `jq` deve estar no PATH. O hook falha silenciosamente se `jq`
-não estiver disponível (não bloqueia a sessão, apenas não emite alertas).
+Claude Code `PostToolUse` hook that detects when session context
+reaches >=70% and emits a mandatory handoff alert. Requires `jq` on PATH.
+Installed by bootstrap at workspace creation time.
 
-## Cross-platform notes (I2)
+Does NOT block the session — the alert is informational. The ICM protocol
+requires the agent to stop work and perform a handoff when the alert fires.
 
-- **CI primary:** Ubuntu (GitHub Actions, Wave 6).
-- **macOS:** smoke manual ocasional — comportamento idêntico ao Linux.
-- **Windows:** Git Bash (vem com Git for Windows) executa scripts POSIX sem
-  ajustes. Caminhos com backslash em fluxos de teste não são suportados — use
-  forward slashes.
+`jq` must be on PATH. The hook silently fails if `jq` is not available
+(does not block the session, just does not emit alerts).
 
-## Notas adicionais
+## macOS extra installs
 
-- A skill roda **dentro** do Claude Code (Q1.1 / J1.1) — não há SDK Anthropic
-  separado nas dependências.
-- `bats` é detectado em runtime: ausência gera apenas warning, nunca falha.
-- Override local de profile vai em `.icm-profile.local.yaml` (gitignored).
+```bash
+brew install jq coreutils
+```
+
+## CI dependencies
+
+```yaml
+# GitHub Actions example (Ubuntu 22.04)
+- name: Install deps
+  run: |
+    sudo apt-get update
+    sudo apt-get install -y bats jq
+    pip install -r requirements.txt
+```
+
+`bats` is detected at runtime: absence generates only a warning, never a failure.
+
+## Pre-commit hooks
+
+The skill installs git hooks in `<project>/.git/hooks/` on bootstrap:
+- `pre-commit` — validates atomicity (L1 `outputs` ↔ declared `output_files`)
+- `commit-msg` — enforces commit prefix `workspace NNN: ` on workspace branch
+
+Both validated by `test_no_drift.py`.

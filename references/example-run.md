@@ -1,6 +1,6 @@
-# Example Run — End-to-end with subagents (xp-icm-workflow v3.0.0-beta5)
+# Example Run — End-to-end (xp-icm-workflow v3.x, historical)
 
-> **Version:** v3.0.0-beta5
+> **Version:** v3.0.0-beta5 (historical). v4.0 uses 5 stages: 00→01→02→04→08. This 9-session v3 walkthrough preserved for reference.
 > **Skill:** `xp-icm-workflow`
 > **Purpose:** concrete walkthrough of a full workspace, from bootstrap to feedback intake. Fictional but realistic workspace. Shows what each session reads, writes, and how L1 transitions. Use as a mental anchor when running real cycles.
 

@@ -8,7 +8,7 @@
 
 ---
 
-## The 9 stages
+## The Stages (v4.0: 5 active, 9 total with deprecated)
 
 | NN | Name (slug)              | One-sentence summary |
 |----|--------------------------|----------------|

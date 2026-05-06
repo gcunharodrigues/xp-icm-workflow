@@ -1,38 +1,35 @@
 # Feedback Intake — Stage 08
 
-> **Version:** v3.0.0-beta5 · Defines stage 08 (universal feedback intake). Manual human trigger after real use of the workspace output. Three exits: A close, B restart stage X, C spawn new workspace.
+> **Version:** v4.0.0 · Three exits: A close, B restart stage X, C spawn new workspace.
+> **Canonical source:** `templates/workspace/stages/08_feedback_intake/CONTEXT.md.tpl` — the L2 template is authoritative. This reference doc provides additional context.
 
 ---
 
 ## Purpose
 
-Stage 08 is the **universal iteration gate** of the ICM cycle. It is not monitoring, not cron, not Grafana. It is a deliberate session the human triggers when they have already used the workspace output long enough to have real data (logs, real pain, lessons) and want to decide: close, redo a part, or escalate to a new workspace.
-
-Plan resolution: Q12 (universal all tiers), H1 (exit B only stages 01-07), H2 (exit C UX pastes command in new session).
+Stage 08 is the **universal iteration gate** of the ICM cycle. Human triggers after real use of the workspace output (weeks/months after stage 04 last wave). Three exits: close workspace + record lessons, restart a stage with iteration++, or spawn a new workspace.
 
 ---
 
 ## When to run stage 08
 
-- **Always optional, never automatic.** Human triggers explicitly after real use of the workspace output — weeks, months after the `COMPLETED` from stage 07.
-- **Universal.** Any tier (`experimental` → `production`). The plan dropped the "production only" restriction. The difference per tier is only internal calibration (weight of each exit, depth of log analysis).
-- **Non-cron, non-scheduled.** Trigger: human opens new Claude Code session at project_root and says "run stage 08 for workspace 042".
+- **Always optional, never automatic.** Human triggers after real use — weeks, months after stage 04 last wave approved.
+- **Universal.** Any tier (`experimental` → `production`).
+- **Trigger:** human opens new Claude Code session at project_root. L1 `stage_atual: "08"`, `sub_stage: 08_in_progress`.
 
 ### Stages skipped by profile
 
-The `profile-matrix.md` declares `stages_skipped` per profile. `experiment` lists `"08"` (and typically `"03"`, `"05"`, `"06"`). Other profiles run 08 when human triggers it.
+The `profile-matrix.md` declares `stages_skipped for v4/07 removed as stages).
 
 ---
 
-## Pre-condition
+## Pre-condition (v4.0)
 
-Workspace must be in `status: COMPLETED_AWAITING_HUMAN` (stage 07 already done, awaiting human) or `status: COMPLETED` (prior stage 08 decided A/C and workspace reopened).
+Workspace must have `stage_atual: "08"`, `sub_stage: 08_in_progress`, `status: IN_PROGRESS`. Transition from stage 04 last wave via `BLOCKED` + `block_reason: human_gate` → human approval → `IN_PROGRESS`.
 
-If status is undefined or inconsistent → Stop point 11 (`workspace_corrupt`) → Recovery Wizard.
+If `status: BLOCKED` with `block_reason: human_gate` → human already approved → set `status: IN_PROGRESS`, proceed.
 
-If status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → session refuses stage 08 with message: "workspace not yet completed (stage 07). Finish the main cycle before running feedback intake."
-
-If status = `COMPLETED_AWAITING_HUMAN` → valid, proceed (automatic transition from 07).
+If status undefined or inconsistent → stop point `workspace_corrupt` → Recovery Wizard.
 
 ---
 
@@ -54,7 +51,7 @@ BEFORE any Process action (pre-flight, collection, inference), session MUST run 
 6. Session re-runs full checklist (idempotent).
 7. Loop until **all categories clean** OR human cancels with `[n]` on any category.
 8. Success → proceed to Process step 1 (pre-flight L1 validation).
-9. Failure (human `[n]` or command errored after retry) → stop point #13 `runtime_cleanup_failed`. Status `BLOCKED_STOP_POINT`. Session pauses, writes specific A/B/C menu (resolved / skip / cancel).
+9. Failure (human `[n]` or command errored after retry) → stop point #13 `runtime_cleanup_failed`. Status `BLOCKED (stop_point)`. Session pauses, writes specific A/B/C menu (resolved / skip / cancel).
 
 **Output reported in `intake-report.md`:** section §"Runtime cleanup pre-exit" with final snapshot + confirmed categories + warnings (if any cleanup was skipped via stop point #13 menu B).
 
@@ -73,7 +70,7 @@ Reads:
 - L0 (`<workspace>/CLAUDE.md`) — absolute paths, profile, tier, `logs_root`.
 - L1 (`<workspace>/CONTEXT.md`) — confirms `status: COMPLETED`, reads current `iteration` and `history`.
 - L2 (`<workspace>/stages/08_feedback_intake/CONTEXT.md`) — stage-specific instructions.
-- Prior outputs: `stages/01..07/output/*` — existence sample-check (audit).
+- Prior outputs: `stages/04_implementation_waves/output/*` — existence sample-check (audit).
 
 Automatic validations:
 
@@ -185,9 +182,9 @@ Final sub_stage: 08_decided_A. Status: COMPLETED.
 YAML diff in L1:
 ```yaml
 # before
-sub_stage: "07_completed"
+sub_stage: "08_in_progress"
 status: "COMPLETED"
-last_action: "stage 07 merged into main, CI green"
+last_action: "stage 04 last wave merged, approved for feedback"
 
 # after
 sub_stage: "08_decided_A"
@@ -204,7 +201,7 @@ history:
   # ... prior entries preserved
   - at: "2026-04-25T15:30:00Z"
     event: "stage_transition"
-    from: "07_completed"
+    from: "04_wave_N_completed"
     to: "08_in_progress"
     commit_sha: "a1b2c3d4"
   - at: "2026-04-25T16:00:00Z"
@@ -226,7 +223,7 @@ history:
 - `00` (recon — to change `project_root` or project type, use exit C).
 - `08` (current — restarting the gate itself makes no sense).
 
-Validation in L2 of stage 08: human choosing B must declare valid X; session refuses X ∉ {01..07}.
+Validation in L2 of stage 08: human choosing B must declare valid X; session refuses X ∉ {01, 02, 04}.
 
 **Session executes:**
 
@@ -425,7 +422,7 @@ BEFORE A/B/C inference, classify feedback in **(category, state)**:
 | bug | ready-for-action | **B** restart stage X |
 | enhancement | ready-for-action | **C** spawn new workspace |
 | enhancement | wontfix | **A** close + append `_out-of-scope/` |
-| any | needs-info | pause (status=COMPLETED_AWAITING_HUMAN) |
+| any | needs-info | pause (status=BLOCKED (human_gate)) |
 | none | all OK | **A** close |
 
 Each item classified as B or C **generates an AGENT-BRIEF** (format:
