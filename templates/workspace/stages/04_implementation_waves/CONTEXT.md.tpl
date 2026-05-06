@@ -91,7 +91,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 1. **Lead pre-flight:** reads wave-plan.md; identifies current wave via L1 `waves.current`. Sub_stage transitions to `04_wave_<N>_in_progress`. Lead records in L1 history event `{event: "wave_started", wave: <N>, pre_wave_sha: <git rev-parse {{BASE_BRANCH}}>}` — used by ci-rollback-protocol.md as reset point.
 
    **Pre-flight verification checklist (MANDATORY — do NOT skip):**
-   - [ ] `git checkout {{BASE_BRANCH}} && git branch --show-current` → confirms merge target is `{{BASE_BRANCH}}`
+   - [ ] `git branch --show-current` → MUST show `workspace/{{WORKSPACE}}`. Lead stays on workspace branch (NEVER checkout {{BASE_BRANCH}} until merge step 10)
    - [ ] `git branch --list "wave-{{WORKSPACE_NUM}}-*"` → verify branch naming pattern matches `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`
    - [ ] `python {{SKILL_DIR}}/scripts/forensic-plus.py --help` → script is callable (catches import errors early)
    - [ ] For each task: run `python {{SKILL_DIR}}/scripts/pick-model.py --plan <path> --task-slug <slug> --tier <tier> --output json` → records `writer_model` and `critic_model` per task
