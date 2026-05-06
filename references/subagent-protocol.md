@@ -81,13 +81,83 @@ The lead pre-creates the branch (step 2.1) and the harness handles worktree setu
 
 ### 2.2 Isolation (v3.4+ worktree model)
 
-Subagents run in **ephemeral worktrees** created by the harness via `Agent(isolation: "worktree")`. The subagent's CWD is the worktree directory (not `{{PROJECT_ROOT}}`). The worktree is checked out on the task branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
+Subagents run in **isolated worktrees**. Two isolation paths exist:
 
-**CRITICAL — do NOT bleed into main worktree:** the subagent MUST NOT write to `{{PROJECT_ROOT}}` via absolute paths. All edits happen within the worktree. The worktree boundary provides git isolation but does not prevent the subagent from using absolute paths — this is a behavioral rule, not a technical guarantee. Violating it corrupts state files (L0/L1/L2) on the workspace branch.
+#### Path A: Standard — `Agent(isolation: "worktree")`
 
-**Branch is pre-created by the lead** before Agent spawn (§2.1 step 1). The harness does `git worktree add` pointing to the already-existing branch. The subagent does NOT create its own branch and does NOT run `git checkout`. The subagent verifies its branch with `git branch --show-current` on startup — it must show `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. If the branch is wrong, the subagent STOPS and reports `Status: BLOCKED`.
+Used when `<project_root>/.git` is a **directory** (standard git clone).
+The harness creates an ephemeral worktree via `Agent(isolation: "worktree")`.
+The subagent's CWD is the worktree directory (not `{{PROJECT_ROOT}}`).
+The worktree is checked out on the task branch
+`wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
 
-For tasks that modify the same files, the lead **MUST** place them in different waves (see wave-planner-algorithm.md §5 dependency detection). The worktree model prevents file-level conflicts between parallel subagents.
+#### Path B: Nested-worktree — manual `git worktree add`
+
+Used when `<project_root>/.git` is a **file** (ICM parallel worktree model —
+the project root IS a linked worktree). The Agent tool rejects `.git` files
+with: "Cannot create agent worktree: not in a git repository."
+
+**Known limitation:** the Agent tool checks for `.git` directory and does not
+recognize linked worktrees.
+
+**Detection (lead pre-flight, mandatory):**
+```bash
+if [ -f .git ]; then      # file = linked worktree
+    MODE="nested-worktree"
+else                       # directory = standard clone
+    MODE="standard"
+fi
+```
+
+**Nested-worktree procedure:**
+
+1. Lead creates manual worktree BEFORE Agent spawn:
+   ```bash
+   _wt="/tmp/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>"
+   git worktree add "$_wt" wave-{{WORKSPACE_NUM}}-<N>/<task-slug>
+   ```
+
+2. Lead spawns Agent with `isolation=none` + explicit `cwd`:
+   ```python
+   Agent(
+       isolation=None,    # manual worktree = isolation
+       cwd="/tmp/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>",
+       subagent_type="general-purpose",
+       model=<writer_model>,
+       description="wave <N> task <slug>",
+       prompt=<AGENT-BRIEF + channel-2>,
+   )
+   ```
+
+3. After subagent returns, lead cleans up:
+   ```bash
+   git worktree remove /tmp/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>
+   git branch -d wave-{{WORKSPACE_NUM}}-<N>/<task-slug>   # after merge
+   ```
+
+**Anti-pattern — NEVER fall back to `isolation=none` at project root** for
+code-writing tasks. This bleeds files (`.venv/`, `egg-info/`, etc.) into
+`{{PROJECT_ROOT}}` instead of keeping them isolated. If worktree creation
+fails → `status: BLOCKED, block_reason: error`, diagnose root cause, retry.
+
+**CRITICAL — do NOT bleed into main worktree:** the subagent MUST NOT write
+to `{{PROJECT_ROOT}}` via absolute paths. All edits happen within the
+worktree. The worktree boundary provides git isolation but does not prevent
+the subagent from using absolute paths — this is a behavioral rule, not a
+technical guarantee. Violating it corrupts state files (L0/L1/L2) on the
+workspace branch.
+
+**Branch is pre-created by the lead** before Agent spawn (§2.1 step 1). The
+harness (standard mode) or lead (nested mode) does `git worktree add`
+pointing to the already-existing branch. The subagent does NOT create its
+own branch and does NOT run `git checkout`. The subagent verifies its
+branch with `git branch --show-current` on startup — it must show
+`wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. If the branch is wrong, the
+subagent STOPS and reports `Status: BLOCKED`.
+
+For tasks that modify the same files, the lead **MUST** place them in
+different waves (see wave-planner-algorithm.md §5 dependency detection).
+The worktree model prevents file-level conflicts between parallel subagents.
 
 ### 2.3 Branches
 

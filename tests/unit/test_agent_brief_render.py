@@ -150,3 +150,243 @@ def test_warn_if_brittle_clean():
     )
     warnings = agent_brief_render.warn_if_brittle(clean_brief)
     assert warnings == []
+
+
+# ============================================================================
+# Isolation mode & nested worktree detection (v4.0.x)
+# ============================================================================
+
+
+class TestDetectIsolationMode:
+    """Tests for detect_isolation_mode() — .git file vs directory."""
+
+    def test_returns_worktree_when_project_root_empty(self):
+        assert agent_brief_render.detect_isolation_mode("") == "worktree"
+
+    def test_returns_worktree_when_dot_git_is_directory(self, tmp_path):
+        dot_git = tmp_path / ".git"
+        dot_git.mkdir()
+        assert agent_brief_render.detect_isolation_mode(str(tmp_path)) == "worktree"
+
+    def test_returns_manual_worktree_when_dot_git_is_file(self, tmp_path):
+        dot_git = tmp_path / ".git"
+        dot_git.write_text("gitdir: /some/real/.git")
+        assert agent_brief_render.detect_isolation_mode(str(tmp_path)) == "manual-worktree"
+
+    def test_returns_worktree_when_dot_git_absent(self, tmp_path):
+        # No .git at all — safe default is worktree (will fail fast in pre-flight)
+        assert agent_brief_render.detect_isolation_mode(str(tmp_path)) == "worktree"
+
+
+class TestRenderIsolationBlock:
+    """Tests for _render_isolation_block() — isolation rules per mode."""
+
+    def _call(self, **kwargs):
+        defaults = dict(
+            slug="test-task",
+            workspace_num="001",
+            wave_num=1,
+            project_root="/tmp/test-project",
+            base_branch="main",
+            mode="worktree",
+        )
+        defaults.update(kwargs)
+        return agent_brief_render._render_isolation_block(**defaults)
+
+    def test_returns_empty_when_no_workspace_num(self):
+        block = self._call(workspace_num="")
+        assert block == ""
+
+    def test_returns_empty_when_no_wave_num(self):
+        block = self._call(wave_num=0)
+        assert block == ""
+
+    def test_worktree_mode_contains_agent_isolation_header(self):
+        block = self._call(mode="worktree")
+        assert "worktree mode" in block
+        assert 'Agent(isolation: "worktree")' in block
+        assert "wave-001-1/test-task" in block
+        assert "NOT the project root" in block
+
+    def test_worktree_mode_includes_isolation_rules(self):
+        block = self._call(mode="worktree")
+        assert "git branch --show-current" in block
+        assert "git status --short" in block
+        assert "git diff --name-only main...HEAD" in block
+        assert "NEVER write to" in block
+        assert "/tmp/test-project/.icm-main/" in block
+
+    def test_manual_worktree_mode_contains_manual_header(self):
+        block = self._call(mode="manual-worktree")
+        assert "manual-worktree mode" in block
+        assert "Agent(isolation=none, cwd=<worktree>)" in block
+        assert "wave-001-1/test-task" in block
+        assert "Your CWD IS the isolation" in block
+
+    def test_manual_worktree_mode_mentions_tmp_path(self):
+        block = self._call(mode="manual-worktree")
+        assert "/tmp/icm-wave-" in block
+
+    def test_direct_mode_forbids_code_writing(self):
+        block = self._call(mode="direct")
+        assert "direct mode" in block
+        assert "REVIEWER/CRITIC ONLY" in block
+        assert "NEVER write code" in block
+        assert "NEVER modify `src/` or `tests/`" in block
+
+    def test_direct_mode_does_not_mention_branch_verification(self):
+        block = self._call(mode="direct")
+        assert "git branch --show-current" not in block
+
+
+class TestRenderBriefWithIsolationMode:
+    """Tests for render_brief() — isolation_mode parameter."""
+
+    def test_brief_includes_isolation_mode_field(self):
+        section = agent_brief_render.extract_task_section(SAMPLE_PLAN, "implementar-jwt-refresh")
+        parsed = agent_brief_render.parse_4block(section)
+        brief = agent_brief_render.render_brief(
+            "implementar-jwt-refresh", parsed, [],
+            workspace_num="042", wave_num=1,
+            project_root="/tmp/test", base_branch="main",
+            isolation_mode="manual-worktree",
+        )
+        assert "**Isolation mode:** manual-worktree" in brief
+
+    def test_brief_uses_manual_worktree_isolation_block(self):
+        section = agent_brief_render.extract_task_section(SAMPLE_PLAN, "implementar-jwt-refresh")
+        parsed = agent_brief_render.parse_4block(section)
+        brief = agent_brief_render.render_brief(
+            "implementar-jwt-refresh", parsed, [],
+            workspace_num="042", wave_num=1,
+            project_root="/tmp/test", base_branch="main",
+            isolation_mode="manual-worktree",
+        )
+        assert "manual-worktree mode" in brief
+        assert "Your CWD IS the isolation" in brief
+
+    def test_brief_uses_direct_mode_isolation_block(self):
+        section = agent_brief_render.extract_task_section(SAMPLE_PLAN, "implementar-jwt-refresh")
+        parsed = agent_brief_render.parse_4block(section)
+        brief = agent_brief_render.render_brief(
+            "implementar-jwt-refresh", parsed, [],
+            workspace_num="042", wave_num=1,
+            project_root="/tmp/test", base_branch="main",
+            isolation_mode="direct",
+        )
+        assert "direct mode" in brief
+        assert "REVIEWER/CRITIC ONLY" in brief
+
+    def test_brief_defaults_to_worktree_when_no_mode_specified(self):
+        section = agent_brief_render.extract_task_section(SAMPLE_PLAN, "implementar-jwt-refresh")
+        parsed = agent_brief_render.parse_4block(section)
+        brief = agent_brief_render.render_brief(
+            "implementar-jwt-refresh", parsed, [],
+            workspace_num="042", wave_num=1,
+            project_root="/tmp/test", base_branch="main",
+        )
+        assert "Isolation rules" in brief
+        assert "worktree mode" in brief
+
+
+# ============================================================================
+# CLI --isolation-mode flag (v4.0.x)
+# ============================================================================
+
+
+class TestCliIsolationMode:
+    """Tests for CLI --isolation-mode flag behavior."""
+
+    def test_auto_detects_nested_worktree_from_git_file(self, tmp_path):
+        (tmp_path / ".git").write_text("gitdir: /some/real/.git")
+        plan = tmp_path / "plan.md"
+        plan.write_text("""\
+## Task my-task: Test task
+
+**Type:** AFK
+**Files touched:** src/x.py
+
+### WHAT
+Do something.
+
+### HOW
+Use something.
+
+### OUT OF SCOPE
+Nothing.
+
+### VALIDATION
+Test passes.
+""")
+        rc = agent_brief_render.main([
+            "--task", "my-task",
+            "--plan", str(plan),
+            "--workspace-num", "042",
+            "--wave", "1",
+            "--project-root", str(tmp_path),
+            "--base-branch", "main",
+            "--isolation-mode", "auto",
+        ])
+        assert rc == 0
+
+    def test_explicit_manual_worktree_mode(self, tmp_path):
+        plan = tmp_path / "plan.md"
+        plan.write_text("""\
+## Task my-task: Test task
+
+**Type:** AFK
+**Files touched:** src/x.py
+
+### WHAT
+Do something.
+
+### HOW
+Use something.
+
+### OUT OF SCOPE
+Nothing.
+
+### VALIDATION
+Test passes.
+""")
+        rc = agent_brief_render.main([
+            "--task", "my-task",
+            "--plan", str(plan),
+            "--workspace-num", "042",
+            "--wave", "1",
+            "--project-root", str(tmp_path),
+            "--base-branch", "main",
+            "--isolation-mode", "manual-worktree",
+        ])
+        assert rc == 0
+
+    def test_direct_mode_allowed(self, tmp_path):
+        plan = tmp_path / "plan.md"
+        plan.write_text("""\
+## Task my-task: Test task
+
+**Type:** AFK
+**Files touched:** src/x.py
+
+### WHAT
+Do something.
+
+### HOW
+Use something.
+
+### OUT OF SCOPE
+Nothing.
+
+### VALIDATION
+Test passes.
+""")
+        rc = agent_brief_render.main([
+            "--task", "my-task",
+            "--plan", str(plan),
+            "--workspace-num", "042",
+            "--wave", "1",
+            "--project-root", str(tmp_path),
+            "--base-branch", "main",
+            "--isolation-mode", "direct",
+        ])
+        assert rc == 0

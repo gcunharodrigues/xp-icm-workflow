@@ -138,6 +138,60 @@ def test_agent_brief_isolation_rules_consistent():
         "agent-brief-template.md still has 'write via workspace worktree'"
     )
 
+    # v4.0.x: both must document all three isolation modes
+    for mode in ("worktree", "manual-worktree", "direct"):
+        assert mode in render_content.lower(), (
+            f"agent-brief-render.py missing isolation mode '{mode}'"
+        )
+        assert mode in template_content.lower(), (
+            f"agent-brief-template.md missing isolation mode '{mode}'"
+        )
+
+
+def test_agent_brief_render_has_detect_isolation_mode():
+    """agent-brief-render.py must have detect_isolation_mode function."""
+    render_path = SKILL_ROOT / "scripts/agent-brief-render.py"
+    content = _read(render_path)
+    assert "def detect_isolation_mode" in content, (
+        "agent-brief-render.py missing detect_isolation_mode() function"
+    )
+
+
+def test_stage04_preflight_has_worktree_topology_detection():
+    """Stage 04 pre-flight MUST include worktree topology detection."""
+    l2_path = SKILL_ROOT / "templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl"
+    content = _read(l2_path)
+    assert "test -f .git" in content, (
+        "Stage 04 L2 pre-flight missing worktree topology detection"
+    )
+    assert "NESTED" in content, (
+        "Stage 04 L2 pre-flight missing NESTED keyword for worktree detection"
+    )
+
+
+def test_stage04_has_agend_brief_hard_gate():
+    """Stage 04 must declare AGENT-BRIEF as HARD GATE."""
+    l2_path = SKILL_ROOT / "templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl"
+    content = _read(l2_path)
+    assert "HARD GATE" in content, (
+        "Stage 04 L2 missing AGENT-BRIEF HARD GATE declaration"
+    )
+    assert "NEVER spawn Agent without AGENT-BRIEF" in content, (
+        "Stage 04 L2 missing explicit prohibition of spawn without AGENT-BRIEF"
+    )
+
+
+def test_worktree_model_documents_agent_tool_incompatibility():
+    """worktree-model.md must document Agent tool incompatibility with .git files."""
+    wt_path = SKILL_ROOT / "references/worktree-model.md"
+    content = _read(wt_path)
+    assert "Cannot create agent worktree" in content, (
+        "worktree-model.md missing Agent tool error message documentation"
+    )
+    assert "manual-worktree" in content.lower() or "manual worktree add" in content.lower(), (
+        "worktree-model.md missing manual worktree fallback procedure"
+    )
+
 
 def test_subagent_protocol_says_lead_writes():
     """subagent-protocol.md Section 3 must say lead writes, not subagent writes."""

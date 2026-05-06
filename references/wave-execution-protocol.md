@@ -31,8 +31,8 @@ main (= BASE_BRANCH)         ← stable, lead merges here
 
 | Step | Entry criteria | Exit criteria |
 |------|---------------|---------------|
-| 1 Pre-flight | L1 `sub_stage = 04_wave_N_in_progress` | `pre_wave_sha` recorded; pre-flight checklist all [x]; model assigned per task |
-| 2 Spawn | Pre-flight complete; branches created | All Agent calls dispatched; subagents report `Status: IN_PROGRESS` |
+| 1 Pre-flight | L1 `sub_stage = 04_wave_N_in_progress` | `pre_wave_sha` recorded; pre-flight checklist all [x]; model assigned per task; AGENT-BRIEF rendered per task; worktree topology detected |
+| 2 Spawn | Pre-flight complete; branches created; AGENT-BRIEF injected | All Agent calls dispatched; subagents report `Status: IN_PROGRESS` |
 | 3 Channel 2 | Subagents spawned | ADRs + lessons + design subset injected into each prompt |
 | 4 TDD 7 steps | Subagent in worktree on correct branch | Task report written; tracer test ≥1; CI green; REFACTOR done or skipped with Dirt Check |
 | 5 Stop points | Subagent detects trigger signal | A/B/C menu written; L1 `BLOCKED` with `block_reason: stop_point`; human responds |
@@ -47,7 +47,7 @@ main (= BASE_BRANCH)         ← stable, lead merges here
 | 14 Handoff | Wave-summary written | Case A: kickoff for wave N+1, EXIT. Case B: human gate approved → transition to stage 08 (feedback), EXIT |
 
 1. **Pre-flight** — lead reads wave-plan.md, identifies current wave, records `pre_wave_sha` in L1 history.
-2. **Spawn** — lead creates branches + invokes `Agent(isolation: "worktree")` in parallel (multi tool-use).
+2. **Spawn** — lead creates branches. If `.git` is directory: `Agent(isolation: "worktree")`. If `.git` is FILE (nested worktree) OR Agent tool worktree fails: manual `git worktree add` + `Agent(isolation=None, cwd=<worktree>)`. NEVER fall back to `isolation=none` at project root. AGENT-BRIEF injected into each prompt (hard gate). Parallel dispatch in multi tool-use.
 3. **Channel 2** — lead injects ADR subset + lessons + design subset (if frontend) into the Agent prompt.
 4. **TDD 7 steps** — subagent in worktree: RED → GREEN → CI 1st → REFACTOR → CI 2nd → Auto-QA → COMPLETE.
 5. **Stop points** — subagent detects `new_dep`/`irreversible`/`over_eng`/`prod_migration`/`adr_drift` → menu A/B/C.
@@ -89,3 +89,4 @@ main (= BASE_BRANCH)         ← stable, lead merges here
 - `pre_wave_sha` captured in L1 history for rollback.
 - Wave branches deleted ONLY after successful merge + CI green + cleanup.
 - Cleanup `--force` ONLY with `auto_qa_passed: true` in task report.
+- Subagent MUST be isolated from project root: worktree mode (Agent or manual). NEVER `isolation=none` at project root for code-writing tasks. Violation → files bleed into project dir.

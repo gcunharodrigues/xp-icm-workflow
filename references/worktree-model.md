@@ -95,8 +95,14 @@ reference `(commit <SHA>)` if useful.
 
 ### 3. Stage 04 implementation_waves — code via subagent worktrees
 
-Lead stays on workspace branch (in `<project_root>`). Subagents via
-Agent tool MUST use `isolation: "worktree"` (native tool parameter):
+Lead stays on workspace branch (in `<project_root>`). Subagents are
+spawned in isolated worktrees. Two paths exist, depending on the git
+worktree topology:
+
+#### 3a. Standard mode — `Agent(isolation: "worktree")`
+
+When `<project_root>/.git` is a **directory** (standard git clone, no
+linked worktrees), use the native Agent tool parameter:
 
 - Tool creates ephemeral worktree `<project_root>/.icm-wave-001-N-<task>/`
   (or similar) checked out on `wave-NNN-N/<task-slug>` derived from
@@ -109,6 +115,58 @@ Agent tool MUST use `isolation: "worktree"` (native tool parameter):
 
 Tool with `isolation: worktree` auto-cleanup if subagent modifies nothing;
 branch + path returned if it modified.
+
+#### 3b. Nested-worktree mode — `manual-worktree` (manual `git worktree add`)
+
+When `<project_root>/.git` is a **file** (ICM parallel worktree model —
+the project root IS a linked worktree, §2), the Agent tool's
+`isolation: "worktree"` **cannot be used**. The Agent tool checks for a
+`.git` directory and rejects `.git` files with the error:
+
+> "Cannot create agent worktree: not in a git repository and no
+> WorktreeCreate hooks are configured."
+
+This is a known limitation. The ICM nested-worktree model makes the
+project root a linked worktree (`.git` → `.icm-main/.git/worktrees/...`),
+which the Agent tool does not recognize as a git repository.
+
+**Detection (lead pre-flight, mandatory):**
+```bash
+if [ -f .git ]; then
+    echo "NESTED_WORKTREE"   # manual worktree required
+else
+    echo "STANDARD"           # Agent(isolation: "worktree") works
+fi
+```
+
+**Manual worktree procedure** (when NESTED_WORKTREE detected):
+
+1. Lead creates manual worktree BEFORE Agent spawn:
+   ```bash
+   _wt="/tmp/icm-wave-<NNN>-<N>-<task-slug>"
+   git worktree add "$_wt" wave-<NNN>-<N>/<task-slug>
+   ```
+
+2. Lead spawns Agent with isolation=none + explicit CWD (the manual
+   worktree IS the isolation):
+   ```python
+   Agent(
+       isolation=None,       # NO worktree — manual worktree = isolation
+       cwd="/tmp/icm-wave-<NNN>-<N>-<task-slug>",
+       description="wave <N> task <slug>",
+       prompt=<AGENT-BRIEF>,
+   )
+   ```
+
+3. After subagent returns, lead cleans up:
+   ```bash
+   git worktree remove /tmp/icm-wave-<NNN>-<N>-<task-slug>
+   git branch -d wave-<NNN>-<N>/<task-slug>     # after merge
+   ```
+
+**Never fall back** to `isolation=none` at `<project_root>` for
+code-writing tasks — this bleeds files (`.venv/`, `egg-info/`, etc.)
+into the project root instead of keeping them isolated.
 
 **Mandatory cleanup post-merge (v3.4.3):** subagent in stage 04 ALWAYS
 modifies (TDD writes tests + impl), so Agent tool never auto-cleans up

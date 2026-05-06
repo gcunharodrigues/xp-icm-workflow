@@ -7,7 +7,17 @@ prints to stdout for the lead to paste into the Agent tool prompt.
 CLI:
     python scripts/agent-brief-render.py --task <slug> \\
         --plan <workspace>/stages/02_design/output/plan.md \\
-        [--adrs <project>/docs/decisions]
+        --workspace-num <NNN> --wave <N> \\
+        --project-root <path> --base-branch <name> \\
+        [--adrs <project>/docs/decisions] \\
+        [--isolation-mode worktree|manual-worktree|direct]
+
+Isolation modes (v4.0.x):
+  worktree         — Agent(isolation: "worktree") when .git is directory
+  manual-worktree  — manual git worktree add + Agent(isolation=none, cwd=<wt>)
+                     when .git is a FILE (nested worktree model)
+  direct           — no isolation, reviewer/critic ONLY (never for code tasks)
+  auto (default)   — detects .git file → manual-worktree, else → worktree
 
 Output: AGENT-BRIEF markdown on stdout. Exit 0 if task found, 1 otherwise.
 """
@@ -32,6 +42,25 @@ LINE_NUMBER_RE = re.compile(r":\d+\b")
 # ============================================================================
 # Model selection heuristic (v4.0 — replaces pick-model.py)
 # ============================================================================
+
+# ============================================================================
+# Nested worktree detection (v4.0.x)
+# ============================================================================
+
+def detect_isolation_mode(project_root: str) -> str:
+    """Detect isolation mode based on .git type.
+
+    Returns:
+        "worktree" — .git is a directory (standard clone) -> Agent(isolation: "worktree")
+        "manual-worktree" — .git is a file (linked worktree) -> manual git worktree add
+    """
+    if not project_root:
+        return "worktree"  # safe default
+    dot_git = Path(project_root) / ".git"
+    if dot_git.is_file():
+        return "manual-worktree"
+    return "worktree"
+
 
 def _recommend_model(task_section: str) -> str:
     """Heuristic model recommendation based on task signals.
@@ -154,6 +183,7 @@ def render_brief(
     wave_num: int = 0,
     project_root: str = "",
     base_branch: str = "",
+    isolation_mode: str = "worktree",
 ) -> str:
     """Render AGENT-BRIEF markdown from parsed 4-block + applicable ADRs.
 
@@ -162,6 +192,10 @@ def render_brief(
 
     v4.0: model str from heuristic (haiku|sonnet|opus). Lead may override.
     v4.0: project_root + base_branch resolve placeholders in isolation block.
+    v4.0.x: isolation_mode controls which isolation rules are rendered:
+        worktree — Agent(isolation: "worktree")
+        manual-worktree — manual git worktree add + Agent(isolation=none, cwd=<wt>)
+        direct — reviewer/critic only, NO isolation (never for code tasks)
     """
     pr = project_root or "<project_root>"
     bb = base_branch or "main"
@@ -174,41 +208,14 @@ def render_brief(
     if model:
         model_block = f"**Model recommended (writer):** {model}\n"
 
-    isolation_block = ""
-    if workspace_num and wave_num:
-        branch = f"wave-{workspace_num}-{wave_num}/{slug}"
-        isolation_block = (
-            "\n"
-            "**Isolation rules (MANDATORY — you are in an isolated worktree):**\n"
-            f"- [ ] You are in an isolated git worktree on branch `{branch}`.\n"
-            "      Your CWD is the worktree root — NOT the project root.\n"
-            "      Run `pwd` to confirm your worktree path.\n"
-            "- [ ] Write code ONLY in this worktree. NEVER write via absolute paths to the project.\n"
-            f"- [ ] NEVER write to `{pr}/.icm-main/` or any path under it. It is the\n"
-            "      base-branch linked worktree — read-only for docs.\n"
-            "- [ ] NEVER run `git checkout`, `git switch`, `git rebase`, or\n"
-            "      `git push`. You are on the correct branch already.\n"
-            "- [ ] Read base-branch docs (ADRs, lessons, tech_debt) from `.icm-main/` via\n"
-            f"      Read tool with absolute path `{pr}/.icm-main/<path>`.\n"
-            "- [ ] Verify on startup:\n"
-            "      1. `git branch --show-current` MUST show `{branch}`.\n"
-            "      2. `git status --short` — confirm clean working tree.\n"
-            "      If wrong -> STOP, report `Status: BLOCKED`.\n"
-            "- [ ] Workspace state (L0/L1/L2) is injected into this brief by the lead.\n"
-            "      Do NOT read workspace state files separately.\n"
-            "- [ ] Return results in Agent tool output using this format:\n"
-            "      ```\n"
-            "      ## Result: {slug}\n"
-            "      **Status:** COMPLETE | BLOCKED\n"
-            "      **Summary:** <1-3 sentences>\n"
-            "      **Modified files:** <git diff --name-only {bb}...HEAD output>\n"
-            "      **Tests written:** <count and file paths>\n"
-            "      **ADRs applied:** <list or 'none'>\n"
-            "      ```\n"
-            "      The lead writes all workspace state files (task report, L1 updates).\n"
-            "      MUST NOT write to workspace branch paths.\n"
-            "\n"
-        )
+    isolation_block = _render_isolation_block(
+        slug=slug,
+        workspace_num=workspace_num,
+        wave_num=wave_num,
+        project_root=pr,
+        base_branch=bb,
+        mode=isolation_mode,
+    )
 
     return (
         f"## Agent Brief — {slug}\n"
@@ -216,6 +223,7 @@ def render_brief(
         f"**Type:** {parsed['type']}\n"
         f"**Files touched:** {parsed['files_touched']}\n"
         f"{model_block}"
+        f"**Isolation mode:** {isolation_mode}\n"
         "\n"
         f"**Summary:** {_first_line(parsed["what"])}\n"
         "\n"
@@ -242,6 +250,107 @@ def _first_line(text: str) -> str:
         if s:
             return s[:200]
     return ""
+
+
+def _render_isolation_block(
+    *,
+    slug: str,
+    workspace_num: str,
+    wave_num: int,
+    project_root: str,
+    base_branch: str,
+    mode: str,
+) -> str:
+    """Render isolation rules block based on mode.
+
+    Modes (v4.0.x):
+      worktree — Agent(isolation: "worktree")
+      manual-worktree — manual git worktree add + Agent(isolation=none, cwd=<wt>)
+      direct — reviewer/critic only, NO isolation
+    """
+    if not workspace_num or not wave_num:
+        return ""
+
+    branch = f"wave-{workspace_num}-{wave_num}/{slug}"
+    pr = project_root
+
+    if mode == "direct":
+        return (
+            "\n"
+            "**Isolation rules — direct mode (MANDATORY — REVIEWER/CRITIC ONLY):**\n"
+            "- [ ] You run WITHOUT worktree isolation. CWD = project root on workspace branch.\n"
+            "- [ ] You are a REVIEWER/CRITIC only. NEVER write code. NEVER modify `src/` or `tests/`.\n"
+            "- [ ] Read code via `git show <branch>:<path>` or `git diff`.\n"
+            f"- [ ] Write outputs to workspace state paths only.\n"
+            "\n"
+        )
+
+    if mode == "manual-worktree":
+        return (
+            "\n"
+            "**Isolation rules — manual-worktree mode (MANDATORY — Agent(isolation=none, cwd=<worktree>)):**\n"
+            f"- [ ] You are in a manually-created git worktree on branch `{branch}`.\n"
+            "      Your CWD is a path like `/tmp/icm-wave-<NNN>-<N>/<slug>` — NOT `{{PROJECT_ROOT}}`.\n"
+            "      Run `pwd` to confirm your worktree path.\n"
+            "- [ ] Your CWD IS the isolation. Write code ONLY in this worktree.\n"
+            "      NEVER write via absolute paths to the project.\n"
+            f"- [ ] NEVER write to `{pr}/.icm-main/` or any path under it.\n"
+            "      It is the base-branch linked worktree — read-only for docs.\n"
+            "- [ ] NEVER run `git checkout`, `git switch`, `git rebase`, or `git push`.\n"
+            "      Your branch is pre-created and checked out.\n"
+            "- [ ] Read base-branch docs (ADRs, lessons, tech_debt) via Read tool with\n"
+            f"      absolute path `{pr}/.icm-main/<path>`.\n"
+            "- [ ] Verify on startup:\n"
+            f"      1. `git branch --show-current` MUST show `{branch}`.\n"
+            "      2. `git status --short` — confirm clean working tree.\n"
+            "      If wrong -> STOP, report `Status: BLOCKED`.\n"
+            "- [ ] Return results in Agent tool output using this format:\n"
+            "      ```\n"
+            f"      ## Result: {slug}\n"
+            "      **Status:** COMPLETE | BLOCKED\n"
+            "      **Summary:** <1-3 sentences>\n"
+            f"      **Modified files:** <git diff --name-only {base_branch}...HEAD output>\n"
+            "      **Tests written:** <count and file paths>\n"
+            "      **ADRs applied:** <list or 'none'>\n"
+            "      ```\n"
+            "      The lead writes all workspace state files (task report, L1 updates).\n"
+            "      MUST NOT write to workspace branch paths.\n"
+            "\n"
+        )
+
+    # Default: worktree mode (Agent isolation)
+    return (
+        "\n"
+        "**Isolation rules — worktree mode (MANDATORY — Agent(isolation: \"worktree\")):**\n"
+        f"- [ ] You are in an isolated git worktree on branch `{branch}`.\n"
+        "      Your CWD is the worktree root — NOT the project root.\n"
+        "      Run `pwd` to confirm your worktree path.\n"
+        "- [ ] Write code ONLY in this worktree. NEVER write via absolute paths to the project.\n"
+        f"- [ ] NEVER write to `{pr}/.icm-main/` or any path under it.\n"
+        "      It is the base-branch linked worktree — read-only for docs.\n"
+        "- [ ] NEVER run `git checkout`, `git switch`, `git rebase`, or `git push`.\n"
+        "      You are on the correct branch already.\n"
+        "- [ ] Read base-branch docs (ADRs, lessons, tech_debt) via Read tool with\n"
+        f"      absolute path `{pr}/.icm-main/<path>`.\n"
+        "- [ ] Verify on startup:\n"
+        f"      1. `git branch --show-current` MUST show `{branch}`.\n"
+        "      2. `git status --short` — confirm clean working tree.\n"
+        "      If wrong -> STOP, report `Status: BLOCKED`.\n"
+        "- [ ] Workspace state (L0/L1/L2) is injected into this brief by the lead.\n"
+        "      Do NOT read workspace state files separately.\n"
+        "- [ ] Return results in Agent tool output using this format:\n"
+        "      ```\n"
+        f"      ## Result: {slug}\n"
+        "      **Status:** COMPLETE | BLOCKED\n"
+        "      **Summary:** <1-3 sentences>\n"
+        f"      **Modified files:** <git diff --name-only {base_branch}...HEAD output>\n"
+        "      **Tests written:** <count and file paths>\n"
+        "      **ADRs applied:** <list or 'none'>\n"
+        "      ```\n"
+        "      The lead writes all workspace state files (task report, L1 updates).\n"
+        "      MUST NOT write to workspace branch paths.\n"
+        "\n"
+    )
 
 
 # ============================================================================
@@ -306,6 +415,16 @@ def main(argv: list[str] | None = None) -> int:
         "--base-branch", default=None,
         help="base branch name — resolves <BASE> in git diff command",
     )
+    parser.add_argument(
+        "--isolation-mode",
+        choices=("worktree", "manual-worktree", "direct", "auto"),
+        default="auto",
+        help=(
+            "isolation mode for the subagent: worktree (Agent isolation), "
+            "manual-worktree (manual git worktree add), direct (reviewer/critic only), "
+            "auto (detect from .git type — default)"
+        ),
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -331,12 +450,17 @@ def main(argv: list[str] | None = None) -> int:
     if args.tier:
         model = _recommend_model(section)
 
+    isolation_mode = args.isolation_mode
+    if isolation_mode == "auto":
+        isolation_mode = detect_isolation_mode(args.project_root or "")
+
     brief = render_brief(
         args.task, parsed, adrs, model=model or "",
         workspace_num=args.workspace_num or "",
         wave_num=args.wave or 0,
         project_root=args.project_root or "",
         base_branch=args.base_branch or "",
+        isolation_mode=isolation_mode,
     )
 
     warnings = warn_if_brittle(brief)

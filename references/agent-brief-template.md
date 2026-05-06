@@ -55,7 +55,7 @@ cases and error conditions.
 - Thing that should NOT be changed or addressed in this issue
 - Adjacent feature that might seem related but is separate
 
-**Isolation rules (MANDATORY — this brief executes in an isolated worktree):**
+**Isolation rules — worktree mode (MANDATORY — Agent(isolation: "worktree")):**
 - [ ] You are in an isolated git worktree on branch `wave-<NNN>-<N>/<task-slug>`. Your CWD is the worktree root — NOT `{{PROJECT_ROOT}}`.
 - [ ] Write code ONLY in this worktree. NEVER write to `{{PROJECT_ROOT}}` via absolute paths.
 - [ ] NEVER write to `.icm-main/`. That is the base-branch linked worktree — read-only for docs.
@@ -63,6 +63,21 @@ cases and error conditions.
 - [ ] Verify on startup: `git branch --show-current` MUST show `wave-<NNN>-<N>/<task-slug>`. If wrong → STOP, report `Status: BLOCKED`.
 - [ ] NEVER run `git checkout` or `git checkout -b`. You are already on the correct branch.
 - [ ] Return results in Agent tool output: summary, modified files (`git diff --name-only <BASE>...HEAD`), tests written, ADRs applied. The lead writes all workspace state files (task report, L1 updates). NEVER write to workspace branch paths — you cannot reach them from this worktree.
+
+**Isolation rules — manual-worktree mode (MANDATORY — Agent(isolation=none, cwd=<worktree>)):**
+- [ ] You are in a manually-created git worktree at a path like `/tmp/icm-wave-<NNN>-<N>/<task-slug>`. Your CWD is the worktree root — NOT `{{PROJECT_ROOT}}`.
+- [ ] Your CWD IS the isolation. Write code ONLY in this worktree. NEVER write to `{{PROJECT_ROOT}}` via absolute paths.
+- [ ] NEVER write to `{{PROJECT_ROOT}}/.icm-main/` or any path under it — that is the base-branch linked worktree, read-only for docs.
+- [ ] Read base-branch files (ADRs, lessons, tech_debt, DESIGN.md) from `{{PROJECT_ROOT}}/.icm-main/<path>`.
+- [ ] Verify on startup: `git branch --show-current` MUST show `wave-<NNN>-<N>/<task-slug>`. If wrong → STOP, report `Status: BLOCKED`.
+- [ ] NEVER run `git checkout`, `git switch`, `git rebase`, or `git push`. Your branch is pre-created.
+- [ ] Return results in Agent tool output. The lead writes all workspace state files.
+
+**Isolation rules — direct mode (reviewer/critic ONLY — NOT for code-writing tasks):**
+- [ ] You run WITHOUT worktree isolation. CWD = `{{PROJECT_ROOT}}` on `workspace/<NNN-slug>` branch.
+- [ ] You are a REVIEWER/CRITIC only. NEVER write code, NEVER modify `src/` or `tests/`.
+- [ ] Read code via `git show <branch>:<path>` or `git diff`. Write outputs to workspace state paths only.
+- [ ] NEVER use this mode for implementation tasks (TDD cycle).
 ```
 
 ## Mapping to 4-block in plan.md
