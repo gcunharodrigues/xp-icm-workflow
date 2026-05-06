@@ -1,8 +1,14 @@
 #!/usr/bin/env python3
-"""Pick-model — deterministic heuristic to choose (writer, critic) per task.
+"""DEPRECATED in v4.0 — model selection moved to inline heuristic in agent-brief-render.py.
+
+Pick-model — deterministic heuristic to choose (writer, critic) per task.
 
 Compute complexity score from task metadata + tier ceiling cap. Emit JSON to
 stdout. Consumed by agent-brief-render.py for stage 04 subagent dispatch.
+
+v4.0: replaced by _recommend_model() inline heuristic in agent-brief-render.py.
+Keep this file for backward compat reference only.
+DEPRECATED."""
 
 Spec: references/critic-protocol.md (critic always tier ceiling),
 plan v3.9.0 §7 (compute_score formula + TIER_CEILING + pick_models split).
@@ -23,7 +29,7 @@ from typing import Any
 # Constants — keep aligned with plan v3.9.0 §7 + critic-protocol.md
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.12.1"
+CURRENT_SKILL_VERSION = "4.0.0"  # deprecated in v4.0 — heuristic moved to agent-brief-render.py
 
 # Models ordered worst → best (used for `min()` cap on writer).
 MODEL_RANK: dict[str, int] = {
@@ -193,8 +199,8 @@ def parse_task_metadata(plan_path: Path, task_slug: str) -> dict:
 
     files_touched = _bullets_under(section, "Files touched")
     conventions = _bullets_under(section, "Conventions extras")
-    o_que = _bullets_under(section, "WHAT")
-    como = _bullets_under(section, "HOW")
+    what = _bullets_under(section, "WHAT")
+    how = _bullets_under(section, "HOW")
 
     # estimated_lines
     est_lines = None

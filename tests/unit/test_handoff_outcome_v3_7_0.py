@@ -39,7 +39,7 @@ def _block(workspace: str, **overrides) -> WorkspaceBlock:
         stage_dir="08_feedback_intake",
         sub_stage="08_in_progress",
         iteration=0,
-        status="COMPLETED_AWAITING_HUMAN",
+        status="BLOCKED",
         last_action="phase 08 init",
         last_action_at="2026-05-01T10:00:00Z",
         next_action="awaiting human feedback",

@@ -5,7 +5,7 @@
 [![tests](https://img.shields.io/badge/tests-855%20passed-brightgreen)](tests/)
 [![coverage](https://img.shields.io/badge/coverage-83%25-brightgreen)](pyproject.toml)
 [![python](https://img.shields.io/badge/python-3.11%2B-blue)](system-requirements.md)
-[![version](https://img.shields.io/badge/version-v3.12.1-blue)](references/changelog.md)
+[![version](https://img.shields.io/badge/version-v4.0.0-blue)](references/changelog.md)
 [![license](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
 ---
@@ -114,7 +114,7 @@ Each stage ends by writing `_kickoff.md` to the next one. You open a new Claude 
 
 ## Features
 
-- **9 canonical stages:** `00 recon → 01 discovery → 02 design → 03 wave_planner → 04 implementation_waves → 05 verification → 06 review → 07 merge → 08 feedback_intake`.
+- **5 active stages (v4.0):** `00 recon → 01 discovery → 02 design+plan → 04 implementation waves → 08 feedback intake` (03 wave_planner, 05 verification, 06 review, 07 merge deprecated — merged into 02 and 04).
 - **11 profiles × 4 tiers = 44 combinations** calibrating rigor (mandatory TDD, security gate, stop points, subagent cap).
 - **Parallel subagents** in stage 04 via Agent Tool (`Agent(isolation: "worktree")`).
 - **Deterministic Wave Planner:** DAG → topological sort → sub-waves (HITL isolated cap=1).

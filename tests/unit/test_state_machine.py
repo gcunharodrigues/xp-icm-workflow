@@ -12,7 +12,7 @@ Cobertura:
 
 - Tests deterministicos:
   * frontmatter valido passa
-  * cada campo obrigatorio ausente levanta StateValidationError
+  * each missing required field raises StateValidationError
   * enum invalido (tier, status) levanta
   * sub_stage prefix mismatch levanta
   * waves presente em stage 02 levanta
@@ -114,6 +114,8 @@ def _make_valid_state(
     }
     if stage >= "04":
         state["waves"] = {"current": 1, "completed": []}
+    if status == "BLOCKED":
+        state["block_reason"] = "human_gate"
     return state
 
 
@@ -219,8 +221,8 @@ class TestValidStates:
         state = _make_valid_state(stage="04")
         validate_state(state)
 
-    def test_valid_stage_07_with_waves_passes(self) -> None:
-        state = _make_valid_state(stage="07")
+    def test_valid_stage_08_passes(self) -> None:
+        state = _make_valid_state(stage="08")
         validate_state(state)
 
     def test_valid_iteration_with_matching_history(self) -> None:

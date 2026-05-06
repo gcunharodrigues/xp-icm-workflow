@@ -68,11 +68,11 @@ class HandoffData:
     """Dados completos para renderizar `_kickoff.md`."""
     workspace: str           # "042-feat-auth"
     project_root: str        # absolute path
-    prev_stage: str          # "02"
-    prev_stage_name: str     # "design"
-    stage_target: str        # "03"
-    stage_target_name: str   # "wave_planner"
-    stage_target_dir: str    # "03_wave_planner"
+    prev_stage: str          # e.g. "02"
+    prev_stage_name: str     # e.g. "design"
+    stage_target: str        # e.g. "04" (v4.0: 02→04, skips deprecated 03)
+    stage_target_name: str   # e.g. "implementation_waves"
+    stage_target_dir: str    # e.g. "04_implementation_waves"
     generated_at: str        # ISO 8601 UTC
     generator_commit_sha: str
     prev_outputs: Sequence[PrevOutput] = field(default_factory=tuple)
@@ -338,13 +338,13 @@ def _render_workspace_block_md(b: WorkspaceBlock) -> str:
     return (
         f"### Workspace `{b.workspace}` · profile=`{b.profile}` · tier=`{b.tier}`\n"
         "\n"
-        f"- **Stage atual:** `{b.stage_atual}` (`{b.stage_dir}`) · "
+        f"- **Stage current:** `{b.stage_atual}` (`{b.stage_dir}`) · "
         f"**Sub-stage:** `{b.sub_stage}` · **Iteration:** `{b.iteration}`\n"
         f"- **Status:** `{b.status}`\n"
-        f"- **Last action:** `{b.last_action}` em `{b.last_action_at}`\n"
+        f"- **Last action:** `{b.last_action}` at `{b.last_action_at}`\n"
         f"- **Next action:** `{b.next_action}`\n"
         "\n"
-        "**Read order para retomar:**\n"
+        "**Read order to resume:**\n"
         f"1. `workspaces/{b.workspace}/CLAUDE.md` (L0)\n"
         f"2. `workspaces/{b.workspace}/CONTEXT.md` (L1)\n"
         f"3. `workspaces/{b.workspace}/stages/{b.stage_dir}/CONTEXT.md` (L2)\n"
@@ -955,7 +955,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     update.add_argument("--profile", required=True)
     update.add_argument("--tier", required=True)
     update.add_argument("--stage-atual", required=True)
-    update.add_argument("--stage-dir", required=True, help="e.g. 03_wave_planner")
+    update.add_argument("--stage-dir", required=True, help="e.g. 04_implementation_waves")
     update.add_argument("--sub-stage", required=True)
     update.add_argument("--iteration", type=int, default=0)
     update.add_argument("--status", required=True)

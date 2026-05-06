@@ -215,7 +215,7 @@ Starting from v3.9.0, task QA is the responsibility of:
 
 Subagent does NOT write an inline QA checklist in the task report. Self-grading bias documented (ICLR 2024 Huang, arxiv 2510.11822, arxiv 2509.16533) — delegated to orthogonal layers.
 
-Task report (COMPLETE step) is minimal:
+Task report (COMPLETE step) is lead-written from Agent tool output (subagent returns structured results; lead synthesizes `task-<slug>.md` on workspace branch). Minimal format:
 
 ```markdown
 # Task <slug> — COMPLETE

@@ -217,17 +217,18 @@ def test_l2_output_files_match_outputs_section(stage: str):
         )
 
 
+# v4.0: stages 03,05,06,07 deprecated. Pipeline: 00→01→02→04→08
 @pytest.mark.parametrize(
     "stage,expected_next",
     [
         ("00", "01"),
         ("01", "02"),
-        ("02", "03"),
-        ("03", "04"),
-        ("04", "05"),
-        ("05", "06"),
-        ("06", "07"),
-        ("07", "08"),
+        ("02", "04"),
+        ("03", "04"),   # deprecated but kept for backward compat
+        ("04", "08"),
+        ("05", "06"),   # deprecated
+        ("06", "07"),   # deprecated
+        ("07", "08"),   # deprecated
         ("08", None),
     ],
 )

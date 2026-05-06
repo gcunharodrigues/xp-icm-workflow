@@ -1,4 +1,4 @@
-"""Smoke test parsability + estrutura de references/deep-modules.md (v3.4.1)."""
+"""Smoke test parsability + structure de references/deep-modules.md (v3.4.1)."""
 from __future__ import annotations
 
 from pathlib import Path

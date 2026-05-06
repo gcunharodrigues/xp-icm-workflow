@@ -1,4 +1,4 @@
-"""Testes unitarios para profile-merge.py."""
+"""Unit tests for profile-merge.py."""
 from __future__ import annotations
 
 import importlib.util
@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-# Carrega scripts/profile-merge.py como modulo (hifen no nome impede import direto)
+# Loads scripts/profile-merge.py as a module (hifen no nome impede import direto)
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = SKILL_ROOT / "scripts" / "profile-merge.py"
 
@@ -156,12 +156,14 @@ def test_production_defaults():
 def test_experiment_skips_stages_03_05_06_08():
     for tier in CANONICAL_TIERS:
         eff, _ = merge_profile(profile="experiment", tier=tier)
-        assert sorted(eff["stages_skipped"]) == ["03", "05", "06", "08"]
+        assert sorted(eff["stages_skipped"]) == ["02", "04", "08"]  # v4.0: 03/05/06 removed
 
 
 def test_technical_article_skips_stage_03():
+    """v4.0: stage 03 removed; technical_article no longer skips it (doesn't exist)."""
     eff, _ = merge_profile(profile="technical_article", tier="development")
-    assert "03" in eff["stages_skipped"]
+    # v4.0: "03" is NOT in stages_skipped because stage 03 no longer exists
+    assert "03" not in eff["stages_skipped"]
 
 
 def test_framework_library_cap_is_3():
@@ -183,7 +185,7 @@ def test_technical_article_cap_is_5():
 
 
 def test_app_web_security_gate_above_experimental():
-    # Regra: security_gate True para app_web_* + fullstack em qualquer tier != experimental
+    # Rule: security_gate True for app_web_** + fullstack in any tier != experimental
     for profile in ["app_web_backend", "app_web_frontend", "fullstack"]:
         eff_exp, _ = merge_profile(profile=profile, tier="experimental")
         assert eff_exp["security_gate"] is False
@@ -457,7 +459,7 @@ def test_enabling_gate_does_not_require_confirm(tmp_path):
 
 
 # ----------------------------------------------------------------------------
-# 7. Validacao de schema
+# 7. Schema validation
 # ----------------------------------------------------------------------------
 
 def test_invalid_profile_raises():

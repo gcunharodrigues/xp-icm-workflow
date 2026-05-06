@@ -7,14 +7,14 @@ sub-waves when they exceed the cap for the tier/profile, flags
 ambiguities, and renders wave-plan.md (Markdown with YAML frontmatter)
 + ambiguities-resolved.md.
 
-CLI:
+CLI (v4.0: wave-planner runs inline in stage 02, output goes to 02_design/output/):
   python scripts/wave-planner-script.py
       --plan stages/02_design/output/plan.md
       --tier development
       --profile app_web_backend
       --workspace 042-feat-auth
-      --output stages/03_wave_planner/output/wave-plan.md
-      [--ambiguities-output stages/03_wave_planner/output/ambiguities-resolved.md]
+      --output stages/02_design/output/wave-plan.md
+      [--ambiguities-output stages/02_design/output/ambiguities-resolved.md]
 
 Stdout: total_tasks=N total_waves=M total_sub_waves=K ambiguities=A
 Exit 0 = success. Exit 1 = error (cycle, invalid schema, etc).

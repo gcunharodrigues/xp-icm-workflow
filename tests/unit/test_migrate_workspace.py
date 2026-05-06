@@ -133,6 +133,7 @@ def test_plan_migration_from_3_3_0_to_canonical(mw):
         "3.10.0->3.11.0",
         "3.11.0->3.12.0",
         "3.12.0->3.12.1",
+        "3.12.1->4.0.0",
     ]
 
 
@@ -497,7 +498,7 @@ def test_step_functions_includes_v3_12_0(mw):
 
 def test_supported_versions_ends_with_3_12_1(mw):
     """Tuple must include 3.12.1 as the last entry."""
-    assert mw.SUPPORTED_VERSIONS[-1] == "3.12.1"
+    assert mw.SUPPORTED_VERSIONS[-1] == "4.0.0"  # v4.0
 
 
 def test_migrate_3_11_0_to_3_12_0_smoke(mw, tmp_path: Path):

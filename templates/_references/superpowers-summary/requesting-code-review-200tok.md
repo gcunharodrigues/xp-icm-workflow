@@ -8,7 +8,7 @@ purpose: Lead requests review of subagent output before accepting merge — catc
 # Requesting Code Review — 200tok summary
 
 ## When to apply
-- In stage 06 (review) of ICM, lead evaluates subagent output after stage 05 is green.
+- In stage 04 (implementation waves) of ICM — the L3 critic provides orthogonal review, lead evaluates subagent output after stage 05 is green.
 - After each task in subagent-driven development; before merge to main.
 - Optional: when stuck (fresh perspective), before a large refactor.
 

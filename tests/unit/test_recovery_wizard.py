@@ -43,7 +43,7 @@ import pytest
 SCRIPT_DIR = Path(__file__).resolve().parents[2] / "scripts"
 sys.path.insert(0, str(SCRIPT_DIR))
 
-# Import do modulo sob teste — script usa hifen no nome de arquivo,
+# Import of module under test — script usa hifen no nome de arquivo,
 # entao usamos importlib pra carregar.
 import importlib.util  # noqa: E402
 
@@ -72,7 +72,7 @@ ORPHAN_FIXTURE = FIXTURES_DIR / "workspace_orphan"
 # Helpers ----------------------------------------------------------------------
 
 def _copy_orphan(tmp_path: Path) -> Path:
-    """Copia fixture orfa pra tmp_path/orphan e retorna caminho."""
+    """Copies orphan fixture to tmp_path/orphan e retorna caminho."""
     dst = tmp_path / "orphan"
     shutil.copytree(ORPHAN_FIXTURE, dst)
     return dst
@@ -133,7 +133,7 @@ history:
 def mock_git(monkeypatch):
     """Mock subprocess.run para git commands.
 
-    Por padrao: cat-file -e sha -> sucesso (sha existe);
+    By default: cat-file -e sha -> sucesso (sha existe);
                 log -> commit recente em workspaces/;
                 branch --list -> branch existe.
     Tests sobreescrevem.
@@ -392,7 +392,8 @@ class TestApplyRecovery:
         content = (ws / "CONTEXT.md").read_text(encoding="utf-8")
         body = content.split("---")[1]
         data = yaml.safe_load(body)
-        assert data["status"] == "BLOCKED_ERROR"
+        assert data["status"] == "BLOCKED"  # v4.0
+        assert data.get("block_reason") == "error"
         # History append
         assert any(
             ev.get("event") == "recovery_applied"
@@ -540,11 +541,11 @@ def test_claude_md_root_missing_when_no_block(tmp_path, mock_git):
 
 
 def test_claude_md_root_stale_when_stage_diverges(tmp_path, mock_git):
-    """L1.stage_atual=03 mas bloco no CLAUDE.md mostra 02 → STALE."""
-    workspace = _make_minimal_workspace(tmp_path, stage_atual="03")
+    """v4.0: L1.stage_atual=04 mas bloco no CLAUDE.md mostra 02 → STALE."""
+    workspace = _make_minimal_workspace(tmp_path, stage_atual="04")
     project = workspace.parent.parent
 
-    # Lazy import handoff para escrever bloco
+    # Lazy import handoff to write block
     sys.path.insert(0, str(SCRIPT_DIR))
     import handoff
     block = handoff.WorkspaceBlock(
@@ -561,15 +562,15 @@ def test_claude_md_root_stale_when_stage_diverges(tmp_path, mock_git):
 
 
 def test_claude_md_root_consistent_no_inconsistency(tmp_path, mock_git):
-    """L1 and block in sync → detects nothing."""
-    workspace = _make_minimal_workspace(tmp_path, stage_atual="03")
+    """v4.0: L1 and block in sync → detects nothing."""
+    workspace = _make_minimal_workspace(tmp_path, stage_atual="02")
     project = workspace.parent.parent
 
     sys.path.insert(0, str(SCRIPT_DIR))
     import handoff
     block = handoff.WorkspaceBlock(
         workspace="001-test", profile="app_web_backend", tier="development",
-        stage_atual="03", stage_dir="03_wave_planner", sub_stage="03_in_progress",
+        stage_atual="02", stage_dir="02_design", sub_stage="02_in_progress",
         iteration=0, status="IN_PROGRESS", last_action="ok", last_action_at="x",
         next_action="x",
     )

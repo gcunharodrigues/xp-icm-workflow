@@ -1,4 +1,4 @@
-"""Testes unitarios para render do template `_config/stop-points.md`.
+"""Unit tests for render do template `_config/stop-points.md`.
 
 Cobre:
 - `derive_stop_point_placeholders` — extracao de TIER_PAID_MODE/etc do
@@ -86,7 +86,7 @@ def _full_render_vars(tier: str, custom_block: str) -> dict[str, str]:
         "LOGS_ROOT": "null",
         "PROFILE_EFFECTIVE_HASH": "abc123",
         "CREATED_AT": "2026-04-25T10:00:00Z",
-        "SKILL_VERSION": "3.3.0",
+        "SKILL_VERSION": "4.0.0",
         "BOOTSTRAP_COMMIT_SHA": "deadbeef",
         "CUSTOM_STOP_POINTS_BLOCK": custom_block,
         **sp,

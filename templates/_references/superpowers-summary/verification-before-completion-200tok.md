@@ -10,7 +10,7 @@ purpose: Prove work is complete with fresh evidence before any success claim.
 ## When to apply
 - Before any claim of "done", "passes", "works", "fixed".
 - Before commit, PR, merge, or marking task complete.
-- At stage 05 (verification) of ICM — generates `verification-report.md` in stage workspace.
+- At stage 04 (implementation waves) of ICM — verification runs as inline CI+E2E gates after each wave — generates `verification-report.md` in stage workspace.
 - When receiving subagent success report — verify diff, don't trust reports.
 
 ## How to apply

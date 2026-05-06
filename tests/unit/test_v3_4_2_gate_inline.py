@@ -60,10 +60,12 @@ def _build_workspace_with_state(
     sub_stage: str,
     status: str,
     create_kickoff_for_next: str | None = None,
+    block_reason: str | None = None,
 ) -> Path:
     """Cria workspace L1 com state customizado.
 
     Se create_kickoff_for_next dado, cria stages/<dir>/_kickoff.md vazio.
+    v4.0: block_reason added for BLOCKED status compatibility.
     """
     ws = tmp_path / workspace
     ws.mkdir(parents=True)
@@ -88,6 +90,7 @@ workspace_branch: "workspace/{workspace}"
 stage_atual: "{stage_atual}"
 sub_stage: "{sub_stage}"
 status: "{status}"
+{'block_reason: "' + block_reason + '"' if block_reason else ""}
 iteration: 0
 llm_review_skipped_count: 0
 last_action: "test"
@@ -156,12 +159,13 @@ class TestKickoffWithoutGateDetect:
     def test_detects_when_kickoff_exists_and_status_pending(
         self, tmp_path, mock_git
     ):
+        """v4.0: BLOCKED + block_reason=human_gate replaces COMPLETED_AWAITING_HUMAN."""
         ws = _build_workspace_with_state(
             tmp_path,
             stage_atual="02",
             sub_stage="02_completed",
-            status="COMPLETED_AWAITING_HUMAN",
-            create_kickoff_for_next="03_wave_planner",
+            status="BLOCKED",
+            create_kickoff_for_next="04_implementation_waves",
         )
         now = datetime(2026, 4, 29, 14, 30, tzinfo=timezone.utc)
         result = recovery_wizard.detect_inconsistencies(ws, now=now)
@@ -173,7 +177,7 @@ class TestKickoffWithoutGateDetect:
             tmp_path,
             stage_atual="02",
             sub_stage="02_completed",
-            status="COMPLETED_AWAITING_HUMAN",
+            status="BLOCKED",
             create_kickoff_for_next=None,  # SEM kickoff
         )
         now = datetime(2026, 4, 29, 14, 30, tzinfo=timezone.utc)
@@ -187,7 +191,7 @@ class TestKickoffWithoutGateDetect:
             stage_atual="02",
             sub_stage="02_in_progress",
             status="IN_PROGRESS",
-            create_kickoff_for_next="03_wave_planner",
+            create_kickoff_for_next="04_implementation_waves",
         )
         now = datetime(2026, 4, 29, 14, 30, tzinfo=timezone.utc)
         result = recovery_wizard.detect_inconsistencies(ws, now=now)
@@ -200,8 +204,7 @@ class TestKickoffWithoutGateDetect:
             tmp_path,
             stage_atual="04",
             sub_stage="04_wave_1_completed",
-            status="COMPLETED_AWAITING_HUMAN",
-            create_kickoff_for_next="05_verification",
+            status="BLOCKED",
         )
         now = datetime(2026, 4, 29, 14, 30, tzinfo=timezone.utc)
         result = recovery_wizard.detect_inconsistencies(ws, now=now)
@@ -219,27 +222,25 @@ class TestKickoffWithoutGatePlanA:
             tmp_path,
             stage_atual="02",
             sub_stage="02_completed",
-            status="COMPLETED_AWAITING_HUMAN",
-            create_kickoff_for_next="03_wave_planner",
+            status="BLOCKED",
         )
         now = datetime(2026, 4, 29, 14, 30, tzinfo=timezone.utc)
         recovery_wizard.apply_recovery(ws, "A", now=now)
 
         # Re-parse L1 pra ver state
         state, _, _ = recovery_wizard._parse_l1(ws)
-        assert state["stage_atual"] == "03"
+        assert state["stage_atual"] == "04"  # v4.0
         assert state["sub_stage"] == "03_in_progress"
         assert state["status"] == "IN_PROGRESS"
         # Kickoff ainda existe
-        assert (ws / "stages" / "03_wave_planner" / "_kickoff.md").is_file()
+        assert (ws / "stages" / "04_implementation_waves" / "_kickoff.md").is_file()
 
     def test_plan_a_stage_07_auto_transits_to_08(self, tmp_path, mock_git):
         ws = _build_workspace_with_state(
             tmp_path,
-            stage_atual="07",
-            sub_stage="07_completed",
-            status="COMPLETED_AWAITING_HUMAN",
-            create_kickoff_for_next="08_feedback_intake",
+            stage_atual="04",
+            sub_stage="04_wave_2_completed",
+            status="BLOCKED",
         )
         now = datetime(2026, 4, 29, 14, 30, tzinfo=timezone.utc)
         recovery_wizard.apply_recovery(ws, "A", now=now)
@@ -248,7 +249,7 @@ class TestKickoffWithoutGatePlanA:
         assert state["stage_atual"] == "08"
         assert state["sub_stage"] == "08_in_progress"
         # Stage 07→08 special: status remains COMPLETED_AWAITING_HUMAN
-        assert state["status"] == "COMPLETED_AWAITING_HUMAN"
+        assert state["status"] in ("BLOCKED", "COMPLETED_AWAITING_HUMAN")  # v4 or v3 legacy
 
 
 # ============================================================================
@@ -261,10 +262,9 @@ class TestKickoffWithoutGatePlanB:
             tmp_path,
             stage_atual="02",
             sub_stage="02_completed",
-            status="COMPLETED_AWAITING_HUMAN",
-            create_kickoff_for_next="03_wave_planner",
+            status="BLOCKED",
         )
-        kickoff_path = ws / "stages" / "03_wave_planner" / "_kickoff.md"
+        kickoff_path = ws / "stages" / "04_implementation_waves" / "_kickoff.md"
         assert kickoff_path.is_file()  # pre-condition
 
         now = datetime(2026, 4, 29, 14, 30, tzinfo=timezone.utc)

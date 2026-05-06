@@ -28,7 +28,7 @@ from typing import Any
 # Constants
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.12.1"
+CURRENT_SKILL_VERSION = "4.0.0"
 
 # Convergence threshold — drift-checked against canonical doc.
 JACCARD_THRESHOLD = 0.7
@@ -38,7 +38,8 @@ CATASTROPHIC_FILES_OUTSIDE_THRESHOLD = 5
 
 VALID_TIERS = ("experimental", "tool", "development", "production")
 VALID_TRIGGERS = ("T1_cap_exhausted", "T2_convergence_trip", "T3_catastrophic")
-VALID_BUCKETS = ("B1", "B3", "B4")
+# v4.0: RETRY = rewrite spec + 1 final spawn; VOID = terminal
+VALID_ACTIONS = ("RETRY", "VOID")
 
 
 # ============================================================================
@@ -108,7 +109,7 @@ def detect_catastrophic(
         signals.append({
             "name": "massive_scope_creep",
             "evidence": f"forensic+ Check 2: {forensic_files_outside} files outside declared (threshold: {CATASTROPHIC_FILES_OUTSIDE_THRESHOLD})",
-            "bucket_hint": "B3",
+            "action_hint": "VOID",
         })
 
     # Signal 2: test files modified outside declared scope
@@ -125,7 +126,7 @@ def detect_catastrophic(
             signals.append({
                 "name": "tests_broken_outside_scope",
                 "evidence": f"Test files modified outside declared scope: {sorted(test_outside)[:5]}",
-                "bucket_hint": "B3",
+                "action_hint": "VOID",
             })
 
     # Signal 3: build globally broken
@@ -139,13 +140,13 @@ def detect_catastrophic(
                 signals.append({
                     "name": "build_globally_broken",
                     "evidence": f"build command `{build_command}` exit {result.returncode}",
-                    "bucket_hint": "B3",
+                    "action_hint": "VOID",
                 })
         except subprocess.TimeoutExpired:
             signals.append({
                 "name": "build_globally_broken",
                 "evidence": f"build command `{build_command}` timeout > 120s",
-                "bucket_hint": "B3",
+                "action_hint": "VOID",
             })
         except OSError:
             pass  # build command unavailable; treat as not-catastrophic
@@ -154,41 +155,41 @@ def detect_catastrophic(
 
 
 # ============================================================================
-# Bucket recommendation
+# Action recommendation (v4.0: RETRY/VOID)
 # ============================================================================
 
-def recommend_bucket(
+def recommend_action(
     trigger: str,
     catastrophic_signals: list[dict],
     convergence_score: float,
 ) -> tuple[str, str]:
-    """Return (bucket, rationale) tuple."""
+    """Return (action, rationale) tuple. RETRY or VOID."""
     if trigger == "T3_catastrophic":
-        # Use first signal's hint, default B3
-        hint = catastrophic_signals[0]["bucket_hint"] if catastrophic_signals else "B3"
+        # Catastrophic defaults to VOID
+        hint = catastrophic_signals[0].get("action_hint", "VOID") if catastrophic_signals else "VOID"
         names = ", ".join(s["name"] for s in catastrophic_signals)
         return hint, f"catastrophic: {names}"
 
     if trigger == "T2_convergence_trip":
-        return "B1", (
+        return "RETRY", (
             f"Jaccard {convergence_score:.2f} ≥ {JACCARD_THRESHOLD}: writer and critic cycle "
-            "over the same concerns. Spec is ambiguous/insufficient. B1 rewrites spec more rigorously."
+            "over the same concerns. Spec is ambiguous/insufficient. RETRY with revised spec."
         )
 
     if trigger == "T1_cap_exhausted":
-        return "B1", "Cap 3 retries exhausted without convergence trip. Default B1 (rewrite spec)."
+        return "RETRY", "Cap 3 retries exhausted without convergence trip. Default RETRY (rewrite spec)."
 
     raise ValueError(f"unknown trigger: {trigger}")
 
 
 # ============================================================================
-# Surgical brief render (B1 helper)
+# Surgical brief render (RETRY helper)
 # ============================================================================
 
 def render_surgical_brief(
     rounds: list[dict],
 ) -> str:
-    """Build top-3 concerns + acceptance delta brief for B1 spawn."""
+    """Build top-3 concerns + acceptance delta brief for RETRY spawn."""
     # Aggregate all BLOCKING+MAJOR concerns across rounds
     all_concerns: list[dict] = []
     for r in rounds:
@@ -240,7 +241,7 @@ def render_diagnose_md(
     rounds: list[dict],
     convergence_pairs: list[tuple[int, int, float]],
     catastrophic_signals: list[dict],
-    bucket: str,
+    action: str,
     rationale: str,
     surgical_brief: str | None,
 ) -> str:
@@ -270,15 +271,15 @@ def render_diagnose_md(
         lines.append("## Catastrophic signals (T3)")
         lines.append("")
         for s in catastrophic_signals:
-            lines.append(f"- **{s['name']}** — {s['evidence']} (hint: {s['bucket_hint']})")
+            lines.append(f"- **{s['name']}** — {s['evidence']} (hint: {s.get('action_hint', 'VOID')})")
         lines.append("")
 
-    lines.append("## Bucket recommendation")
-    lines.append(f"- bucket: **{bucket}**")
+    lines.append("## Action recommendation")
+    lines.append(f"- action: **{action}**")
     lines.append(f"- rationale: {rationale}")
     lines.append("")
 
-    if bucket == "B1" and surgical_brief:
+    if action == "RETRY" and surgical_brief:
         lines.append("## Surgical brief")
         lines.append("")
         lines.append(surgical_brief)
@@ -303,7 +304,7 @@ def diagnose(
     build_command: str | None,
     explicit_trigger: str | None,
 ) -> dict:
-    """Compute diagnose result. Returns dict with bucket, rationale, signals, etc."""
+    """Compute diagnose result. Returns dict with action, rationale, signals, etc."""
     # Compute convergence pairs (round i vs i-1)
     convergence_pairs: list[tuple[int, int, float]] = []
     for i in range(1, len(rounds)):
@@ -333,7 +334,7 @@ def diagnose(
         # No trigger met; return empty recommendation
         return {
             "trigger": None,
-            "bucket": None,
+            "action": None,
             "rationale": "no trigger met (rounds < 3, no convergence, no catastrophic)",
             "convergence_pairs": convergence_pairs,
             "catastrophic_signals": catastrophic_signals,
@@ -343,13 +344,13 @@ def diagnose(
     convergence_score = max(
         (score for _a, _b, score in convergence_pairs), default=0.0,
     )
-    bucket, rationale = recommend_bucket(trigger, catastrophic_signals, convergence_score)
+    action, rationale = recommend_action(trigger, catastrophic_signals, convergence_score)
 
-    surgical = render_surgical_brief(rounds) if bucket == "B1" else None
+    surgical = render_surgical_brief(rounds) if action == "RETRY" else None
 
     return {
         "trigger": trigger,
-        "bucket": bucket,
+        "action": action,
         "rationale": rationale,
         "convergence_pairs": convergence_pairs,
         "convergence_max_score": convergence_score,
@@ -366,7 +367,7 @@ def diagnose(
 # ============================================================================
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Lead-diagnose: per-task diagnostic + bucket recommendation.")
+    p = argparse.ArgumentParser(description="Lead-diagnose: per-task diagnostic + action recommendation (RETRY/VOID).")
     p.add_argument("--task-slug", required=True)
     p.add_argument("--wave", required=True, type=int)
     p.add_argument("--workspace-num", required=True)
@@ -433,7 +434,7 @@ def main(argv: list[str] | None = None) -> int:
                 rounds=rounds,
                 convergence_pairs=result["convergence_pairs"],
                 catastrophic_signals=result["catastrophic_signals"],
-                bucket=result["bucket"],
+                action=result["action"],
                 rationale=result["rationale"],
                 surgical_brief=result.get("surgical_brief"),
             )

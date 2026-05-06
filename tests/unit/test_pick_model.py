@@ -1,12 +1,7 @@
-"""Unit tests para scripts/pick-model.py (v3.9.0).
+"""Unit tests for scripts/pick-model.py (v3.9.0).
 
-Cobertura:
-- compute_score determinístico (deterministic per inputs)
-- pick_models tier ceiling cap (writer ≤ ceiling, critic = ceiling)
-- property-based via Hypothesis: writer ≤ critic; critic = ceiling
-- HOT_PATHS bonus
-- security_sensitive / public_api_change / algorithm_heavy / doc_only flags
-- parse_task_metadata smoke
+v4.0: pick-model.py deprecated — model selection moved to inline heuristic
+in agent-brief-render.py. These tests preserved for backward compat reference.
 """
 from __future__ import annotations
 
@@ -14,6 +9,9 @@ import importlib.util
 from pathlib import Path
 
 import pytest
+
+pytest.skip("pick-model.py deprecated in v4.0 — model selection heuristic now in agent-brief-render.py", allow_module_level=True)
+
 from hypothesis import given, strategies as st
 
 REPO_ROOT = Path(__file__).resolve().parents[2]

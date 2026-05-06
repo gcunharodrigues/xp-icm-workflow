@@ -30,7 +30,7 @@ CleanupReport = icm_cleanup.CleanupReport
 
 
 # ============================================================
-# Fixtures: criar repo git real com workspace branch + .icm-main
+# Fixtures: create real git repo with workspace branch + .icm-main
 # ============================================================
 
 def _git(args: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
@@ -145,7 +145,7 @@ def test_dry_run_no_filesystem_change(tmp_path: Path):
     ).stdout
     assert branch_before == branch_after
 
-    # Mas report tem ações listadas como [dry-run]
+    # But report has actions listed as [dry-run]
     assert any("[dry-run]" in a for a in report.actions_taken)
 
 
@@ -230,7 +230,7 @@ def test_idempotent_second_run_noop(tmp_path: Path):
 
 def test_cleanup_no_workspace_branch_warns_but_continues(tmp_path: Path):
     repo = _setup_repo_with_workspace(tmp_path, create_icm_main=True)
-    # Remove .icm-main primeiro pra liberar main, depois volta pra main e deleta workspace branch
+    # Remove .icm-main first to free main, depois volta pra main e deleta workspace branch
     _git(["worktree", "remove", ".icm-main"], cwd=repo)
     _git(["checkout", "main"], cwd=repo)
     _git(["branch", "-D", "workspace/042-feat-auth"], cwd=repo)

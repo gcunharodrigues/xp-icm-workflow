@@ -35,7 +35,7 @@ from typing import Sequence
 # Constants
 # ============================================================================
 
-CURRENT_SKILL_VERSION = "3.12.1"
+CURRENT_SKILL_VERSION = "4.0.0"
 FLOOR_VERSION = "3.3.0"
 
 # Supported version sequence. Migration steps are consecutive pairs.
@@ -54,6 +54,7 @@ SUPPORTED_VERSIONS: tuple[str, ...] = (
     "3.11.0",
     "3.12.0",
     "3.12.1",
+    "4.0.0",
 )
 
 
@@ -646,6 +647,99 @@ def migrate_3_11_0_to_3_12_0(workspace_root: Path, project_root: Path) -> None:
             l1.write_text(new_text, encoding="utf-8")
 
 
+def migrate_3_12_1_to_4_0_0(workspace_root: Path, project_root: Path) -> None:
+    """v3.12.1 → v4.0.0: Simplified statuses, stage collapse, handoff simplify.
+
+    Changes:
+    - L1: 7 statuses → 3 (IN_PROGRESS, BLOCKED, COMPLETED)
+    - L1: add block_reason field (if status=BLOCKED)
+    - L1: add prev_outputs and pending fields
+    - L2: update next_stage refs (02→04, 04→08)
+    - Remove _kickoff.md files (replaced by L1 fields)
+    - Bump version to 4.0.0
+    """
+    _bump_version_only(workspace_root, "4.0.0")
+
+    # --- L1 status migration ---
+    l1_path = workspace_root / "CONTEXT.md"
+    if l1_path.is_file():
+        text = l1_path.read_text(encoding="utf-8")
+        # Status mapping: 7→3 with correct block_reason
+        status_map = {
+            "COMPLETED_AWAITING_HUMAN": ("BLOCKED", "human_gate"),
+            "BLOCKED_STOP_POINT": ("BLOCKED", "stop_point"),
+            "BLOCKED_ERROR": ("BLOCKED", "error"),
+            "BLOCKED_HITL": ("BLOCKED", "hitl"),
+            "LEAD_RESOLUTION_IN_PROGRESS": ("IN_PROGRESS", None),
+        }
+        for old, (new_status, reason) in status_map.items():
+            text = text.replace(f"status: {old}", f"status: {new_status}")
+            text = text.replace(f"status: \"{old}\"", f"status: \"{new_status}\"")
+            # Set block_reason based on original v3 status
+            if reason and "block_reason:" not in text:
+                if old in text or f"\"{old}\"" in text:
+                    pass  # already replaced above, now add reason
+            if reason and f"status: {new_status}" in text:
+                text = text.replace(
+                    f"status: {new_status}",
+                    f"status: {new_status}\nblock_reason: {reason}",
+                )
+
+        # Add block_reason if still missing (for pre-existing BLOCKED that maps to itself)
+        if "block_reason:" not in text:
+            text = text.replace(
+                "next_action:",
+                "block_reason: human_gate\nnext_action:",
+            )
+        if "prev_outputs:" not in text:
+            text = text.replace(
+                "next_action:",
+                "prev_outputs: []\npending: []\nnext_action:",
+            )
+        # Update stage list in body text
+        text = text.replace(
+            "| Stage | `00` (Reconnaissance) |",
+            "| Stage | `00` (Reconnaissance, v4.0) |",
+        )
+        l1_path.write_text(text, encoding="utf-8")
+
+    # --- L2 next_stage updates ---
+    for stage_dir in workspace_root.glob("stages/0*/"):
+        l2 = stage_dir / "CONTEXT.md"
+        if not l2.is_file():
+            continue
+        t = l2.read_text(encoding="utf-8")
+        # Handle both quoted and unquoted YAML next_stage formats
+        for old, new in [("03", "04"), ("05", "08")]:
+            if f"next_stage: \"{old}\"" in t:
+                t = t.replace(f"next_stage: \"{old}\"", f"next_stage: \"{new}\"")
+            if f"next_stage: {old}" in t:
+                t = t.replace(f"next_stage: {old}", f"next_stage: {new}")
+        l2.write_text(t, encoding="utf-8")
+
+    # --- Remove _kickoff.md files ---
+    for stage_dir in workspace_root.glob("stages/0*/"):
+        kf = stage_dir / "_kickoff.md"
+        if kf.is_file():
+            kf.unlink()
+
+    # --- Mark deprecated stage dirs ---
+    for dep_stage in ("03_wave_planner", "05_verification", "06_review", "07_merge"):
+        dep_dir = workspace_root / "stages" / dep_stage
+        if dep_dir.is_dir():
+            note = dep_dir / "DEPRECATED.md"
+            note.write_text(
+                f"# Stage {dep_stage} — DEPRECATED in v4.0\n\n"
+                "This stage directory is preserved for historical reference.\n"
+                "v4.0 merges this stage's responsibilities:\n"
+                "- 03_wave_planner → stage 02 design\n"
+                "- 05_verification → stage 04 implementation waves (inline gate)\n"
+                "- 06_review → stage 04 implementation waves (L3 critic + human gate)\n"
+                "- 07_merge → stage 04 implementation waves (step 4 sequential merge)\n",
+                encoding="utf-8",
+            )
+
+
 STEP_FUNCTIONS = {
     "3.3.0->3.4.0": migrate_3_3_to_3_4,
     "3.4.0->3.5.0": migrate_3_4_to_3_5,
@@ -658,6 +752,7 @@ STEP_FUNCTIONS = {
     "3.10.0->3.11.0": migrate_3_10_0_to_3_11_0,
     "3.11.0->3.12.0": migrate_3_11_0_to_3_12_0,
     "3.12.0->3.12.1": migrate_3_12_0_to_3_12_1,
+    "3.12.1->4.0.0": migrate_3_12_1_to_4_0_0,
 }
 
 

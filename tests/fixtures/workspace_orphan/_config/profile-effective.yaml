@@ -11,8 +11,5 @@ mandatory_phases:
   - 00_recon
   - 01_discovery
   - 02_design
-  - 03_wave_planner
-  - 04_implementation
-  - 05_verification
-  - 06_review
-  - 07_merge
+  - 02_design
+  - 04_implementation_waves

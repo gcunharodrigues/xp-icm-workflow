@@ -46,9 +46,9 @@ Initial reconnaissance of the project. Detects workspace type (greenfield, exist
 
 ## Process
 
-1. **Pre-flight:** validate that all Input paths marked `yes` exist; sub_stage `00_in_progress`. If a required path is absent → status `BLOCKED_ERROR`. Also validate:
-   - **CWD and branch:** `cd {{PROJECT_ROOT}}` (all relative paths in this stage resolve from here). `git branch --show-current` MUST show `workspace/{{WORKSPACE}}`. Wrong branch → `BLOCKED_ERROR`.
-   - `{{PROJECT_ROOT}}/.icm-main/` worktree exists and is checked out to `{{BASE_BRANCH}}` (model v3.4.0). Absent → `BLOCKED_ERROR` with suggestion `git worktree add .icm-main {{BASE_BRANCH}}`.
+1. **Pre-flight:** validate that all Input paths marked `yes` exist; sub_stage `00_in_progress`. If a required path is absent → `status: BLOCKED`, `block_reason: error`. Also validate:
+   - **CWD and branch:** `cd {{PROJECT_ROOT}}` (all relative paths in this stage resolve from here). `git branch --show-current` MUST show `workspace/{{WORKSPACE}}`. Wrong branch → `status: BLOCKED, block_reason: error`.
+   - `{{PROJECT_ROOT}}/.icm-main/` worktree exists and is checked out to `{{BASE_BRANCH}}` (model v3.4.0). Absent → `status: BLOCKED, block_reason: error` with suggestion `git worktree add .icm-main {{BASE_BRANCH}}`.
    - `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh` exists and is executable, and `{{PROJECT_ROOT}}/.claude/settings.local.json` contains a `hooks.PostToolUse` entry pointing to `bash workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh`. If absent → warning (does not block bootstrap, but the anti-compact context checkpoint runs without automatic enforcement).
 2. **Detect workspace type:** classify as `greenfield` (no populated `src/`, no ADRs), `existing` (repository with code + prior ADRs), or `external_repo` (read-only clone that will produce a reading/analysis workspace). Decision based on listing `{{PROJECT_ROOT}}/.icm-main/src/` (existence only), `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (file count), and `git remote -v`.
 3. **Validate profile×tier coherence vs actual state:** compare `profile_base` and `tier` from L0/L1 against the FS reality. Mismatch signals — e.g., tier `experimental` in a repo with a release tag; profile `cli_tool` in a repo with a web app — trigger stop point `profile_mismatch`.
@@ -57,7 +57,7 @@ Initial reconnaissance of the project. Detects workspace type (greenfield, exist
 6. **Record inheritance (if `spawn_from`):** if L1 declares `spawn_from: <workspace>`, read `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` and cite applicable inheritable lessons in `recon-report.md`. If absent, note "no inheritance".
 7. **Consult superpowers summaries** (brainstorming + writing-plans 200tok) to frame the report style — direct, factual, no invention.
 8. **Write `output/recon-report.md`** (relative to workspace root `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/`) with fixed sections: Workspace type; Profile×tier check; Active ADRs (index); Inheritable lessons; Pre-triggered stop points (if any); Suggested next steps for 01_discovery.
-9. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`): sub_stage `00_completed`, status `COMPLETED_AWAITING_HUMAN`, append `history` event `stage_transition`. Atomic commit (pre-commit hook validates L1↔outputs atomicity).
+9. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`): `stage_atual = 01`, `sub_stage = 01_in_progress`, `status = BLOCKED`, `block_reason = human_gate`, set `prev_outputs` (recon report path), set `pending` (next: discovery stage), append `history` event `stage_transition`. Atomic commit (pre-commit hook validates L1↔outputs atomicity). Human approval happens inline — reply "proceed" sets `status = IN_PROGRESS`, removes `block_reason`.
 
 ## Outputs
 
@@ -71,14 +71,12 @@ IN_PROGRESS → COMPLETED transition fires when:
 - `output/recon-report.md` exists in the FS.
 - Profile×tier validation ran (result documented in report).
 - Integrity heuristics ran (result documented in report).
-- Human approved via gate (status `COMPLETED_AWAITING_HUMAN` → human replies "proceed").
+- Human approved via gate (status `BLOCKED`, `block_reason = human_gate` → human replies "proceed" → set `status = IN_PROGRESS`, remove `block_reason`).
 
 ## Canonical statuses available in this stage
 
 - `IN_PROGRESS` — recon active, reading repository metadata.
-- `COMPLETED_AWAITING_HUMAN` — recon-report ready, human reviews before transitioning to 01.
-- `BLOCKED_STOP_POINT` — `workspace_corrupt` or `profile_mismatch` triggered; A/B/C menu awaiting response.
-- `BLOCKED_ERROR` — required Input path absent, hook rejected commit, or invalid git config.
+- `BLOCKED` — requires `block_reason`. Values: `human_gate` (recon report ready, awaiting human approval), `stop_point` (workspace_corrupt or profile_mismatch A/B/C menu), `error` (required Input path absent, hook rejected commit, invalid git config).
 
 ## Applicable stop points
 
@@ -87,7 +85,7 @@ Canonical catalogue in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/ru
 - `workspace_corrupt` — inconsistency between L1 frontmatter and actual FS state (hash mismatch, outputs absent in history, missing commit_sha). Always `hard`. Menu proposes Recovery Wizard as option A.
 - `profile_mismatch` — profile/tier declared in L0/L1 do not match the actual project scope detected by recon. Always `hard`. Menu proposes: A) adjust profile/tier, B) spawn new workspace, C) reduce scope.
 
-Trigger: agent pauses, writes A/B/C menu to `output/recon-report.md § Stop points`, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes with `IN_PROGRESS`.
+Trigger: agent pauses, writes A/B/C menu to `output/recon-report.md § Stop points`, updates L1 `status: BLOCKED`, `block_reason = stop_point`. Human responds, session resumes with `IN_PROGRESS`.
 
 ## Skill superpowers reference
 
@@ -109,12 +107,15 @@ Formal skills (escape hatch): `superpowers:brainstorming`, `superpowers:writing-
 Upon completing this stage, session must:
 
 1. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`):
-   - `sub_stage = 00_completed`
-   - `status = COMPLETED_AWAITING_HUMAN` (or `IN_PROGRESS` if auto-transitioning to the next stage)
-   - `last_transition.from = 00_completed`
-   - `last_transition.to = 01_in_progress` (or per `next_stage` in frontmatter)
+   - `stage_atual = 01`
+   - `sub_stage = 01_in_progress`
+   - `status = BLOCKED`, `block_reason = human_gate`
+   - Set `prev_outputs`: `[stages/00_recon/output/recon-report.md]`
+   - Set `pending`: `[next: discovery stage 01]`
+   - `last_transition.from = 00_in_progress`
+   - `last_transition.to = 01_in_progress`
    - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note}`
+   - `history` append: `{at, event: "stage_transition", from: "00_in_progress", to: "01_in_progress", commit_sha, note: "recon complete, awaiting human gate"}`
 
 2. **Render `_kickoff.md`** in the next stage:
    - Path: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/_kickoff.md`

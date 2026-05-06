@@ -92,9 +92,9 @@ def test_l2_qa_loops_tracking(l2_text):
 
 
 def test_l2_blocked_hitl_status(l2_text):
-    """Gap 7: BLOCKED_HITL status canônico presente."""
-    assert "BLOCKED_HITL" in l2_text, \
-        "L2 deve declarar status BLOCKED_HITL"
+    """v4.0: BLOCKED with block_reason: hitl replaces BLOCKED_HITL."""
+    assert "block_reason: hitl" in l2_text.lower() or "BLOCKED_HITL" in l2_text, \
+        "L2 must declare hitl block_reason or legacy BLOCKED_HITL"
     assert "Task-level HITL" in l2_text or \
            "task-level granularity" in l2_text.lower(), \
            "L2 deve documentar HITL task-level"
@@ -148,7 +148,7 @@ def test_wave_execution_protocol_canonical_exists():
     assert "12 passos" in text or "12-passos" in text or \
            "## Pipeline" in text, \
            "wave-execution-protocol deve listar pipeline"
-    for status in ("BLOCKED_HITL", "BLOCKED_ERROR", "IN_PROGRESS"):
+    for status in ("BLOCKED", "IN_PROGRESS", "block_reason"):
         assert status in text, f"wave-execution-protocol falta status {status}"
 
 

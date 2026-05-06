@@ -243,7 +243,7 @@ def cleanup_after_close(
         )
         if not dry_run and result.returncode != 0:
             report.abort(
-                f"git checkout {base_branch} falhou:\n{result.stderr.strip()}"
+                f"git checkout {base_branch} failed:\n{result.stderr.strip()}"
             )
             return report
         report.add_action(f"checkout {base_branch} em project_root")
@@ -263,7 +263,7 @@ def cleanup_after_close(
         else:
             report.add_action(f"deleted branch {workspace_branch}")
     else:
-        report.add_skip(f"branch {workspace_branch} já ausente")
+        report.add_skip(f"branch {workspace_branch} already absent")
 
     # 5. prune final
     _run_git(

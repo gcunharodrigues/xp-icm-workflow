@@ -95,27 +95,18 @@ CANONICAL_ORDER: tuple[str, ...] = (
     CODE_E2E_SUITE_STALE,
 )
 
-# Mapping stage_atual → next stage dir (to detect KICKOFF_WITHOUT_GATE).
+# v4.0: mapping stage_atual → next stage dir. Stages 03/05/06/07 removed.
 # Stage 04 omitted due to complex waves logic; 00 and 08 do not apply.
 _NEXT_STAGE_DIR: dict[str, str] = {
     "01": "02_design",
-    "02": "03_wave_planner",
-    "03": "04_implementation_waves",
-    "05": "06_review",
-    "06": "07_merge",
-    "07": "08_feedback_intake",
+    "02": "04_implementation_waves",
 }
 
-# Mapping for Plan A of KICKOFF_WITHOUT_GATE: stage_atual → (next_stage_id,
-# next_sub_stage, next_status). Stage 07 special (auto-transit to 08 with
-# status=COMPLETED_AWAITING_HUMAN, workspace stays alive waiting for feedback).
+# v4.0: Plan A for KICKOFF_WITHOUT_GATE. Stage 04→08 via BLOCKED/human_gate.
 _GATE_RETRO_TRANSITION: dict[str, tuple[str, str, str]] = {
     "01": ("02", "02_in_progress", "IN_PROGRESS"),
-    "02": ("03", "03_in_progress", "IN_PROGRESS"),
-    "03": ("04", "04_wave_1_in_progress", "IN_PROGRESS"),
-    "05": ("06", "06_in_progress", "IN_PROGRESS"),
-    "06": ("07", "07_in_progress", "IN_PROGRESS"),
-    "07": ("08", "08_in_progress", "COMPLETED_AWAITING_HUMAN"),
+    "02": ("04", "04_wave_1_in_progress", "IN_PROGRESS"),
+    "04": ("08", "08_in_progress", "BLOCKED"),
 }
 
 STALE_THRESHOLD = timedelta(hours=24)
@@ -502,7 +493,7 @@ def detect_inconsistencies(
                     ),
                     proposed_action=(
                         "append 'recovery_applied' to history + status "
-                        "COMPLETED_AWAITING_HUMAN"
+                        "BLOCKED (block_reason: human_gate)"  # v4.0
                     ),
                     severity="warning",
                     context={"age_hours": int(age.total_seconds() // 3600)},
@@ -686,7 +677,8 @@ def detect_inconsistencies(
     next_dir = _NEXT_STAGE_DIR.get(stage_atual)
     if (
         next_dir
-        and status == "COMPLETED_AWAITING_HUMAN"
+        and (status == "COMPLETED_AWAITING_HUMAN"  # v3 legacy
+             or (status == "BLOCKED" and state.get("block_reason") == "human_gate"))  # v4
         and sub_stage.endswith("_completed")
     ):
         kickoff_path = workspace_path / "stages" / next_dir / "_kickoff.md"
@@ -1055,7 +1047,7 @@ def propose_recovery_plan(inconsistencies: list[Inconsistency]) -> str:
             " before the problematic event"
         )
         lines.append(
-            "**Plan C (escalate):** mark status=BLOCKED_ERROR and "
+            "**Plan C (escalate):** set status=BLOCKED (block_reason: error) and "
             "escalate to human (no automated change)"
         )
         lines.append("")
@@ -1139,7 +1131,8 @@ def _apply_plan_a(
             )
 
         elif inc.code == CODE_STALE_IN_PROGRESS:
-            state["status"] = "COMPLETED_AWAITING_HUMAN"
+            state["status"] = "BLOCKED"
+            state["block_reason"] = "human_gate"  # v4.0: replaces COMPLETED_AWAITING_HUMAN
 
         elif inc.code == CODE_BRANCH_MISSING:
             # Plan A for branch missing does not auto-recreate —
@@ -1399,8 +1392,9 @@ def _apply_plan_b(
         pass
 
     if any(i.code == CODE_STALE_IN_PROGRESS for i in inconsistencies):
-        # Plan B identical to A
-        state["status"] = "COMPLETED_AWAITING_HUMAN"
+        # Plan B identical to A (v4.0: BLOCKED + block_reason replaces COMPLETED_AWAITING_HUMAN)
+        state["status"] = "BLOCKED"
+        state["block_reason"] = "human_gate"
 
     # KICKOFF_WITHOUT_GATE: Plan B = deletes kickoff + reverts L1 to in_progress.
     # Workspace continues working on stage NN (redoes outputs).
@@ -1458,9 +1452,10 @@ def _apply_plan_c(
     inconsistencies: list[Inconsistency],
     now: datetime,
 ) -> None:
-    """Plan C — escalate. Marks BLOCKED_ERROR + history append. No other change."""
+    """Plan C — escalate. Marks BLOCKED + block_reason: error + history append (v4.0)."""
     codes = [i.code for i in inconsistencies]
-    state["status"] = "BLOCKED_ERROR"
+    state["status"] = "BLOCKED"
+    state["block_reason"] = "error"  # v4.0: replaces BLOCKED_ERROR
     _append_history(
         state,
         {

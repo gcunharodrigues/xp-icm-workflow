@@ -1,10 +1,10 @@
 ---
 name: xp-icm-workflow
-description: One-shot bootstrap ICM (Interpretable Context Methodology) that creates the L0/L1/L2/L3 structure + git branch + hooks in a project and exits; subsequent sessions read L1+L2 from the current stage. Supports 9 stages (00 recon → 08 feedback intake), 11 profiles × 4 tiers (incl. fullstack), subagents via Agent Tool stage 04, deterministic Wave Planner, Recovery Wizard, AGENT-BRIEF protocol, ubiquitous language layer, ADR 3-criteria gate, diagnose protocol, triage state machine, OUT-OF-SCOPE knowledge base, DESIGN.md format for frontend/fullstack. Use when starting a new ICM workspace, multi-stage project with human review between steps, complex feature requiring discovery+design+implementation+review+merge, or implementation that benefits from parallelism via subagents. Skip when task is trivial (1 file), simple bug fix, cosmetic refinement, or continuing an existing workspace (fresh session reads L1+L2 on its own — do not re-invoke).
+description: One-shot bootstrap ICM (Interpretable Context Methodology) that creates the L0/L1/L2/L3 structure + git branch + hooks in a project and exits; subsequent sessions read L1+L2 from the current stage. Supports 5 active stages (v4.0: 00 recon → 01 discovery → 02 design+plan → 04 implementation waves → 08 feedback intake), 11 profiles × 4 tiers (incl. fullstack), subagents via Agent Tool stage 04, deterministic Wave Planner (runs inline in stage 02), Recovery Wizard, AGENT-BRIEF protocol, ubiquitous language layer, ADR 3-criteria gate, diagnose protocol, triage state machine, OUT-OF-SCOPE knowledge base, DESIGN.md format for frontend/fullstack. Use when starting a new ICM workspace, multi-stage project with human review between steps, complex feature requiring discovery+design+implementation+review+merge, or implementation that benefits from parallelism via subagents. Skip when task is trivial (1 file), simple bug fix, cosmetic refinement, or continuing an existing workspace (fresh session reads L1+L2 on its own — do not re-invoke).
 type: rigid
 ---
 
-# xp-icm-workflow v3.12.1
+# xp-icm-workflow v4.0.0
 
 > **Skill is a midwife, not an orchestrator.** One-shot bootstrap creates the structure. Filesystem governs the cycle. **1 stage = 1 session**: each stage ends with a dual handoff (verbal + `_kickoff.md` file) and the session exits. The next session starts fresh.
 
@@ -46,7 +46,7 @@ Invoke `/xp-icm-workflow` to **start** a new workspace. Typical cases:
 ```
 INPUT  →  Skill invoked with profile + tier + project_root
 OUTPUT →  Workspace ready: folder structure + L0/L1 filled +
-          L2 templates for the 9 stages + superpowers summaries + git
+          L2 templates for the 5 active stages (v4.0) + superpowers summaries + git
           branch created + pre-commit hook installed + initial commit
 EXIT   →  Skill EXITS. New session resumes via L1+L2.
 ```
@@ -177,15 +177,12 @@ Details of the matrix in `templates/_config/profile-matrix.md` (11 × 4 = 44 com
 │       ├── CLAUDE.md               [L0 — immutable identity]
 │       ├── CONTEXT.md              [L1 — single state machine]
 │       ├── stages/
-│       │   ├── 00_recon/           [L2 templates — Wave 3 of skill populates]
+│       │   ├── 00_recon/           [L2 templates — v4.0 active stages]
 │       │   ├── 01_discovery/
 │       │   ├── 02_design/
-│       │   ├── 03_wave_planner/
 │       │   ├── 04_implementation_waves/
-│       │   ├── 05_verification/
-│       │   ├── 06_review/
-│       │   ├── 07_merge/
 │       │   └── 08_feedback_intake/
+│       │   (03_wave_planner, 05_verification, 06_review, 07_merge — deprecated v4.0)
 │       ├── _config/
 │       │   ├── profile-effective.yaml  [profile base + override + hash]
 │       │   └── profile-matrix.md       [human reference 10×4]

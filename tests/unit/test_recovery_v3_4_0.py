@@ -1,4 +1,4 @@
-"""Unit tests para os 3 codes novos do recovery-wizard.py em v3.4.0:
+"""Unit tests for os 3 codes novos do recovery-wizard.py em v3.4.0:
 
   * WORKTREE_MISSING — `.icm-main/` worktree ausente em project_root
   * WORKTREE_WRONG_BRANCH — `.icm-main/` em branch != base_branch

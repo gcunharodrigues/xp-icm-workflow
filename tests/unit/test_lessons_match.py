@@ -308,7 +308,7 @@ def test_match_zero_matches_returns_empty_lists(lm, tmp_path):
     # Lesson 17 still gives score>0 because optionals=None (no restriction).
     # But tags=["xxx"] and no lesson has this tag, so tag overlap=0.
     # Lesson 17: 0 + 0.2 + 0.2 + 0.2 = 0.6 -> enters. Let's test all zeroed:
-    # forçar por todos os campos:
+    # force through all fields:
     result_all_zero = lm.match(
         _write(
             tmp_path,
@@ -397,14 +397,14 @@ severity: medium
         top_n=3,
     )
     ids = [l["id"] for l in result["top_n"]]
-    # Todos têm mesmo score (tag overlap=1, opcionais=None).
+    # All have the same score (tag overlap=1, opcionais=None).
     # Severity desc: 2 e 3 (medium) > 1 (low).
     # Entre 2 e 3 (mesma severity), date desc: 2 (abril) > 3 (março).
     assert ids == [2, 3, 1]
 
 
 def test_critical_capped_at_three_sorted(lm, tmp_path):
-    """Mais de 3 lessons critical: cap em 3 ordenadas por date desc."""
+    """More than 3 critical lessons: cap at 3 ordered by date desc."""
     content = ""
     for i, d in enumerate(["2026-01-01", "2026-02-01", "2026-03-01", "2026-04-01"], start=1):
         content += f"""\
@@ -428,7 +428,7 @@ Body.
     )
     crit_ids = [l["id"] for l in result["critical"]]
     assert len(crit_ids) == 3
-    # Mais recentes primeiro.
+    # Most recent first.
     assert crit_ids == [4, 3, 2]
 
 

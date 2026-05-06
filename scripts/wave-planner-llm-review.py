@@ -18,10 +18,10 @@ does not justify the signal).
 
 CLI:
   python scripts/wave-planner-llm-review.py
-      --wave-plan stages/03_wave_planner/output/wave-plan.md
+      --wave-plan stages/02_design/output/wave-plan.md
       --plan stages/02_design/output/plan.md
-      --ambiguities stages/03_wave_planner/output/ambiguities-resolved.md
-      --output stages/03_wave_planner/output/llm-review-verdict.json
+      --ambiguities stages/02_design/output/ambiguities-resolved.md
+      --output stages/02_design/output/llm-review-verdict.json
       [--mock-response tests/mocks/llm_review_responses/<name>.json]
       [--llm-response path/to/llm_response.json]
 
@@ -73,7 +73,7 @@ class LLMReviewError(Exception):
 
 
 # ----------------------------------------------------------------------------
-# Parser minimal do wave-plan.md (subset do que o companion escreve)
+# Minimal parser of wave-plan.md (subset of what the companion writes)
 # ----------------------------------------------------------------------------
 @dataclass
 class WavePlanSummary:
@@ -119,7 +119,7 @@ def parse_wave_plan(path: Path) -> WavePlanSummary:
 
 
 # ----------------------------------------------------------------------------
-# Decisao de skip
+# Skip decision
 # ----------------------------------------------------------------------------
 def should_skip(summary: WavePlanSummary) -> tuple[bool, str]:
     """Returns (skip?, reason). Skips if total_tasks <= 2 OR total_waves <= 1."""
@@ -213,7 +213,7 @@ def request_review(
 
 
 # ----------------------------------------------------------------------------
-# Validacao do response
+# Response validation
 # ----------------------------------------------------------------------------
 def validate_response(d: Any) -> dict[str, Any]:
     """Validates verdict schema. Aborts with LLMReviewError if invalid.

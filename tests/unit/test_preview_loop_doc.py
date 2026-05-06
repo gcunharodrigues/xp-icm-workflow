@@ -1,4 +1,4 @@
-"""Smoke test do doc canonico references/preview-loop-protocol.md (v3.6.0).
+"""Smoke test for canonical doc references/preview-loop-protocol.md (v3.6.0).
 
 Valida:
 - Doc existe + parsavel.

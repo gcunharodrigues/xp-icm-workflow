@@ -122,9 +122,9 @@ def parse_plan_for_task(plan_path: Path, task_slug: str) -> dict:
     files_touched = _bullets_under("Files touched")
     conventions = _bullets_under("Conventions extras")
     type_field = _bullets_under("Type")
-    nao_quero = _bullets_under("OUT OF SCOPE")
-    validacao = _bullets_under("VALIDATION")
-    adrs_aplicaveis = _bullets_under("Applicable ADRs")
+    out_of_scope = _bullets_under("OUT OF SCOPE")
+    validation = _bullets_under("VALIDATION")
+    applicable_adrs = _bullets_under("Applicable ADRs")
 
     # v3.10.0 — Requires E2E update (auto-emitted by wave-planner)
     e2e_bullets = _bullets_under("Requires E2E update")
@@ -159,9 +159,9 @@ def parse_plan_for_task(plan_path: Path, task_slug: str) -> dict:
         "conventions_extras": conventions,
         "estimated_lines": est_lines,
         "type": type_field[0].upper() if type_field else "AFK",
-        "nao_quero": nao_quero,
-        "validacao": validacao,
-        "adrs_aplicaveis": adrs_aplicaveis,
+        "out_of_scope": out_of_scope,
+        "validation": validation,
+        "applicable_adrs": applicable_adrs,
         "requires_e2e_update": requires_e2e_update,
         "e2e_skip": e2e_skip,
         "e2e_skip_rationale": e2e_skip_rationale,
@@ -267,7 +267,7 @@ TIER_SEVERITY: dict[str, dict[str, str]] = {
     "todo_added":                {"experimental": "SOFT", "tool": "SOFT", "development": "SOFT", "production": "HARD"},
     # v3.9.0 — extended checks
     "acceptance_test_unmapped":  {"experimental": "SOFT", "tool": "SOFT", "development": "HARD", "production": "HARD"},
-    "nao_quero_violation":       {"experimental": "SOFT", "tool": "HARD", "development": "HARD", "production": "HARD"},
+    "out_of_scope_violation":       {"experimental": "SOFT", "tool": "HARD", "development": "HARD", "production": "HARD"},
     "adr_import_drift":          {"experimental": "SOFT", "tool": "HARD", "development": "HARD", "production": "HARD"},
     # v3.10.0 — E2E coverage
     "e2e_coverage_missing":      {"experimental": "SOFT", "tool": "SOFT", "development": "HARD", "production": "HARD"},
@@ -427,7 +427,7 @@ _TEST_NAME_PATTERNS = (
 )
 
 # Bullets matching these patterns are skipped (not test mappings).
-_VALIDACAO_SKIP_PATTERNS = (
+_VALIDATION_SKIP_PATTERNS = (
     re.compile(r"^\s*Cobertura\s+", re.IGNORECASE),
     re.compile(r"^\s*Coverage\s+", re.IGNORECASE),
     re.compile(r"^\s*Performance\s+", re.IGNORECASE),
@@ -447,7 +447,7 @@ def check_acceptance_test_mapping(
     cwd: Path,
     branch: str,
     files_touched: list[str],
-    validacao: list[str],
+    validation: list[str],
     conventions_extras: list[str],
     tier: str,
 ) -> list[dict]:
@@ -464,7 +464,7 @@ def check_acceptance_test_mapping(
     """
     if any(c.lower().strip() in ("doc-only", "config-only") for c in conventions_extras):
         return []
-    if not validacao:
+    if not validation:
         return []
 
     test_files = [p for p in files_touched if _is_test_file(p)]
@@ -479,8 +479,8 @@ def check_acceptance_test_mapping(
             combined_test_content += content + "\n"
 
     violations: list[dict] = []
-    for bullet in validacao:
-        if any(p.search(bullet) for p in _VALIDACAO_SKIP_PATTERNS):
+    for bullet in validation:
+        if any(p.search(bullet) for p in _VALIDATION_SKIP_PATTERNS):
             continue
         candidates = _extract_test_names_from_bullet(bullet)
         if not candidates:
@@ -522,11 +522,11 @@ def _diff_added_lines(cwd: Path, branch: str, base_branch: str) -> str:
     )
 
 
-def check_nao_quero_violations(
+def check_out_of_scope_violations(
     cwd: Path,
     branch: str,
     base_branch: str,
-    nao_quero: list[str],
+    out_of_scope: list[str],
     tier: str,
 ) -> list[dict]:
     """Bullets in OUT OF SCOPE declaring detectable patterns are checked.
@@ -537,7 +537,7 @@ def check_nao_quero_violations(
     - "Import <lib>" → grep diff for import statements with <lib>
     - `KEYWORD` (uppercase, ≥6 chars) → grep diff for literal occurrence
     """
-    if not nao_quero:
+    if not out_of_scope:
         return []
 
     added = _diff_added_lines(cwd, branch, base_branch)
@@ -545,9 +545,9 @@ def check_nao_quero_violations(
         return []
 
     violations: list[dict] = []
-    sev = _severity_for("nao_quero_violation", tier)
+    sev = _severity_for("out_of_scope_violation", tier)
 
-    for bullet in nao_quero:
+    for bullet in out_of_scope:
         m = _MOCK_BULLET_RE.search(bullet)
         if m:
             module = m.group(1)
@@ -560,7 +560,7 @@ def check_nao_quero_violations(
             for pat in patterns:
                 if re.search(pat, added):
                     violations.append({
-                        "check": "nao_quero_violation",
+                        "check": "out_of_scope_violation",
                         "severity": sev,
                         "evidence": f"OUT OF SCOPE violated: mock interno de {module} (pattern: {pat[:40]}...)",
                     })
@@ -578,7 +578,7 @@ def check_nao_quero_violations(
             for pat in patterns:
                 if re.search(pat, added):
                     violations.append({
-                        "check": "nao_quero_violation",
+                        "check": "out_of_scope_violation",
                         "severity": sev,
                         "evidence": f"OUT OF SCOPE violated: import de {lib} detected in diff",
                     })
@@ -590,7 +590,7 @@ def check_nao_quero_violations(
             kw = m.group(1)
             if re.search(rf"\b{re.escape(kw)}\b", added):
                 violations.append({
-                    "check": "nao_quero_violation",
+                    "check": "out_of_scope_violation",
                     "severity": sev,
                     "evidence": f"OUT OF SCOPE violated: keyword `{kw}` present in added lines",
                 })
@@ -635,15 +635,15 @@ def check_adr_import_drift(
     cwd: Path,
     branch: str,
     base_branch: str,
-    adrs_aplicaveis: list[str],
+    applicable_adrs: list[str],
     tier: str,
 ) -> list[dict]:
     """For each ADR with `## Forbidden imports`, grep diff for forbidden libs.
 
-    ADR paths in `adrs_aplicaveis` are relative to project root (cwd).
+    ADR paths in `applicable_adrs` are relative to project root (cwd).
     Backward compat: ADR sem seção = silently skipped.
     """
-    if not adrs_aplicaveis:
+    if not applicable_adrs:
         return []
 
     violations: list[dict] = []
@@ -652,12 +652,12 @@ def check_adr_import_drift(
     if not added:
         return []
 
-    for adr_ref in adrs_aplicaveis:
+    for adr_ref in applicable_adrs:
         # Bullet format: "docs/decisions/0001-stack.md" or with leading whitespace
         adr_path_str = adr_ref.strip()
         if not adr_path_str:
             continue
-        adr_path = cwd / adr_path_str
+        adr_path = cwd / ".icm-main" / adr_path_str  # v4.0: ADRs live in .icm-main worktree, not workspace branch
         forbidden = _parse_adr_forbidden_imports(adr_path)
         if not forbidden:
             continue
@@ -838,7 +838,7 @@ def main(argv: list[str] | None = None) -> int:
         violations.extend(check_acceptance_test_mapping(
             cwd, branch,
             task_meta["files_touched"],
-            task_meta["validacao"],
+            task_meta["validation"],
             task_meta["conventions_extras"],
             args.tier,
         ))
@@ -847,8 +847,8 @@ def main(argv: list[str] | None = None) -> int:
         return 1
 
     try:
-        violations.extend(check_nao_quero_violations(
-            cwd, branch, args.base_branch, task_meta["nao_quero"], args.tier,
+        violations.extend(check_out_of_scope_violations(
+            cwd, branch, args.base_branch, task_meta["out_of_scope"], args.tier,
         ))
     except GitError as e:
         sys.stderr.write(f"forensic-plus: {e}\n")
@@ -856,7 +856,7 @@ def main(argv: list[str] | None = None) -> int:
 
     try:
         violations.extend(check_adr_import_drift(
-            cwd, branch, args.base_branch, task_meta["adrs_aplicaveis"], args.tier,
+            cwd, branch, args.base_branch, task_meta["applicable_adrs"], args.tier,
         ))
     except GitError as e:
         sys.stderr.write(f"forensic-plus: {e}\n")

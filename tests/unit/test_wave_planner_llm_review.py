@@ -1,9 +1,9 @@
-"""Testes unitarios para wave-planner-llm-review.py.
+"""Unit tests for wave-planner-llm-review.py.
 
 Cobertura:
   - Skip threshold (<=2 tasks ou <=1 wave)
   - Pass-through de respostas APPROVE / PROPOSE_CHANGES validas
-  - Validacao de schema (verdict enum, issues, proposed_dag_changes)
+  - Schema validation (verdict enum, issues, proposed_dag_changes)
   - Mock mode (--mock-response), prod mode (--llm-response) e prompt mode
   - CLI canonico (escreve output json, exit 2 em prompt mode)
   - Property: todas as 3 verdict-strings validam OK quando bem formadas
@@ -19,7 +19,7 @@ import pytest
 import yaml
 
 # ----------------------------------------------------------------------------
-# Boot do script como modulo (hifen no nome impede import direto)
+# Boot the script as a module (hifen no nome impede import direto)
 # ----------------------------------------------------------------------------
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = SKILL_ROOT / "scripts" / "wave-planner-llm-review.py"

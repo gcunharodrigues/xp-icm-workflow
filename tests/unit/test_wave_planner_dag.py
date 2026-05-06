@@ -1,4 +1,4 @@
-"""Testes unitarios para wave-planner-script.py.
+"""Unit tests for wave-planner-script.py.
 
 Cobertura:
   - Parse de plan.md (schema canonico)
@@ -24,7 +24,7 @@ import yaml
 from hypothesis import HealthCheck, given, settings, strategies as st
 
 # ----------------------------------------------------------------------------
-# Boot do script como modulo (hifen no nome impede import direto)
+# Boot the script as a module (hifen no nome impede import direto)
 # ----------------------------------------------------------------------------
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = SKILL_ROOT / "scripts" / "wave-planner-script.py"
@@ -483,7 +483,7 @@ def test_render_wave_plan_contains_task_table():
     assert "| Task slug |" in rendered
     # Branch usa workspace
     assert "wave-042-feat-auth" in rendered or "wave-042" in rendered
-    # Todos os 8 slugs aparecem
+    # All 8 slugs appear
     for slug in [
         "auth-middleware", "user-model", "logger-setup", "auth-routes",
         "user-routes", "audit-log", "auth-routes-v2", "dashboard",
@@ -686,7 +686,7 @@ def test_property_no_dep_crosses_into_later_wave(num_tasks, edge_data):
         for slug in wave:
             wave_of[slug] = idx
 
-    # Para cada aresta (u, v), wave(v) > wave(u)
+    # For each edge (u, v), wave(v) > wave(u)
     for (u, v) in edges:
         assert wave_of[v] > wave_of[u], f"aresta {u}->{v} viola ordem ({wave_of[u]} -> {wave_of[v]})"
 
@@ -742,7 +742,7 @@ def test_subdivide_afk_grouped_under_cap():
 
 
 def test_subdivide_no_types_defaults_to_afk():
-    """Sem task_types, comportamento idêntico ao default (todos AFK)."""
+    """Skip task_types, behavior identical to default (todos AFK)."""
     waves = [["a", "b", "c"]]
     sub_with = subdivide_waves(waves, cap=2, task_types={})
     sub_without = subdivide_waves(waves, cap=2)

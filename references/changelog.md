@@ -6,6 +6,21 @@ Version history for the skill. The current version lives in the `SKILL.md` front
 
 ---
 
+## v4.0.0 — Simplified workflow + subagent isolation fix (2026-05-06)
+
+### Changes
+
+- **Stage collapse (9→4):** Stages 03 (wave_planner), 05 (verification), 06 (review), 07 (merge) deprecated. Merged into 02 (design+plan) and 04 (implementation waves). Pipeline: 00→01→02→04→08.
+- **Status simplification (7→3):** `IN_PROGRESS`, `BLOCKED` (with `block_reason` field), `COMPLETED`. Former `COMPLETED_AWAITING_HUMAN`, `BLOCKED_STOP_POINT`, `BLOCKED_ERROR`, `BLOCKED_HITL`, `LEAD_RESOLUTION_IN_PROGRESS` absorbed.
+- **Subagent isolation fix:** CWD corrected to worktree root in all governance files. Task report now lead-written from Agent tool output. Subagent never writes to workspace branch.
+- **Lead-resolution simplified:** B1/B3/B4 bucket cascade → RETRY/VOID (2 options).
+- **Model selection heuristic:** pick-model.py deprecated; inline heuristic in agent-brief-render.py.
+- **Handoff simplified:** No KICKOFF blocks, no Phase 1/2 split (except stage 04 last-wave gate). L1 `prev_outputs`/`pending` replace `_kickoff.md`.
+- **Handoff protocol:** v4.0 simplified handoff in session-handoff-protocol.md.
+- **QA stack:** v4-qa-stack.md consolidates forensic+, critic, e2e, lead-resolution, mocking, CLI ref.
+
+---
+	
 ## v3.12.1 — Script CLI contract hardening + residual pt-BR cleanup (2026-05-05)
 
 ### Changes

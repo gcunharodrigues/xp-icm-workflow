@@ -47,7 +47,7 @@ Guided brainstorming with the human. Refines scope through iterative clarificati
 
 ## Process
 
-1. **Pre-flight:** validate all Input paths marked `yes`; verify L1 `stage_atual: "01"` and `sub_stage: 01_in_progress` (read-only — do NOT change L1 here). If `recon-report.md` is absent → status `BLOCKED_ERROR` (recon needs to run first).
+1. **Pre-flight:** validate all Input paths marked `yes`; verify L1 `stage_atual: "01"` and `sub_stage: 01_in_progress` (read-only — do NOT change L1 here). If `recon-report.md` absent → `status = BLOCKED`, `block_reason = error` (recon needs to run first). If status is `BLOCKED` with `block_reason = human_gate` → human already approved recon → set `status = IN_PROGRESS`, remove `block_reason`, proceed.
 2. **Consult brainstorming 200tok summary** to standardize question format (A/B/C menu with recommendation, clarification questions before assuming).
 3. **Iterative clarification with human:** target audience, objective, functional requirements (what it does), non-functional requirements (perf, security, scale), technical/budget constraints. Each non-trivial decision becomes an A/B/C menu with the agent's recommendation.
 4. **Detect stop points during clarification:** if human describes integration with a paid SaaS, stack change, non-trivial external API, or PII handling → trigger the corresponding stop point per tier calibration in `_config/stop-points.md`.
@@ -76,14 +76,12 @@ Valid enum: `01_in_progress`, `01_completed`.
 IN_PROGRESS → COMPLETED transition fires when:
 - `output/discovery.md` exists with all fixed sections filled.
 - Stop points triggered during the session are resolved (status returns to `IN_PROGRESS` before completing).
-- Human approved via gate (status `COMPLETED_AWAITING_HUMAN` → human replies "approved, proceed to 02").
+- Human approved via gate (status `BLOCKED`, `block_reason = human_gate` → human replies "approved" → set `status = IN_PROGRESS`, remove `block_reason`, transition to stage 02).
 
 ## Canonical statuses available in this stage
 
 - `IN_PROGRESS` — active clarification with human.
-- `COMPLETED_AWAITING_HUMAN` — discovery ready, human reviews/edits before transitioning.
-- `BLOCKED_STOP_POINT` — A/B/C menu awaiting response (stack, external_api, paid_service, or pii).
-- `BLOCKED_ERROR` — recon-report absent or required Input path failed.
+- `BLOCKED` — requires `block_reason`. Values: `human_gate` (discovery ready, awaiting human approval), `stop_point` (A/B/C menu for stack/external_api/paid_service/pii), `error` (recon-report absent, required Input path failed).
 
 ## Applicable stop points
 
@@ -94,7 +92,7 @@ Canonical catalogue in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/ru
 - `paid_service` — recurring SaaS; threshold calibrated by tier (warning R$50 experimental / hard R$200 tool / hard R$500 development / hard R$1000 production).
 - `pii` — handling of personal or sensitive data (LGPD); calibrated by tier (warning experimental / hard tool/development / hard+DPO production).
 
-Trigger: agent pauses, writes A/B/C menu to `output/discovery.md § Stop points` (same as stage 00 convention), updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes with `IN_PROGRESS`. Non-architectural decisions stay noted in discovery.md; architectural ones propagate to 02 design (which may spawn an ADR).
+Trigger: agent pauses, writes A/B/C menu to `output/discovery.md § Stop points` (same as stage 00 convention), updates L1 `status: BLOCKED`, `block_reason = stop_point`. Human responds, session resumes with `IN_PROGRESS`. Non-architectural decisions stay noted in discovery.md; architectural ones propagate to 02 design (which may spawn an ADR).
 
 ## Skill superpowers reference
 
@@ -116,7 +114,7 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
 
 1. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`):
    - `sub_stage = 01_completed`
-   - `status = COMPLETED_AWAITING_HUMAN`
+   - `status = BLOCKED`, `block_reason = human_gate`
    - `last_transition.from = 01_in_progress`
    - `last_transition.to = 01_completed`
    - `last_transition.at = <ISO 8601 UTC now>`
@@ -137,14 +135,14 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
    Outputs ready for review:
      - <list of paths>
 
-   L1: sub_stage=01_completed, status=COMPLETED_AWAITING_HUMAN
+   L1: sub_stage=01_completed, status=BLOCKED, block_reason=human_gate
    Commit 1/2: <sha>
 
    🛑 Human gate: review the outputs above.
    Reply in chat:
      - "approved" / "ok proceed to 02" → I render kickoff and exit
      - "adjust X" → I return to work with your request (status=IN_PROGRESS)
-     - "abort" → I mark workspace BLOCKED_ERROR
+     - "abort" → I set L1 `status: BLOCKED`, `block_reason: error`
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
    ```
 
@@ -221,8 +219,8 @@ If human replies with free text requesting an adjustment:
 ### Response "abort"
 
 If human replies "abort":
-- Update L1: `status = BLOCKED_ERROR`, append history `{event: "blocked_error", error_type: "human_abort", note: "human aborted at gate"}`.
-- Commit + exit. Workspace stays in BLOCKED_ERROR awaiting manual intervention.
+- Update L1: `status = BLOCKED`, `block_reason = error`, append history `{event: "blocked", error_type: "human_abort", note: "human aborted at gate"}`.
+- Commit + exit. Workspace stays in `BLOCKED` (`block_reason: error`) awaiting manual intervention.
 
 ---
 

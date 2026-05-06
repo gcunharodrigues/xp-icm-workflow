@@ -2,6 +2,9 @@
 layer: L2
 stage: "05"
 stage_name: "verification"
+deprecated: true
+deprecated_since: "v4.0"
+deprecated_replacement: "Merged into stage 04 implementation waves. CI, E2E, and coverage checks now run as inline gates in steps 5-6."
 sub_stage_enum:
   - "05_in_progress"
   - "05_completed"

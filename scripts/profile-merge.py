@@ -307,13 +307,11 @@ def _apply_profile_rules(profile: str, tier: str, base: dict[str, Any]) -> dict[
     out = copy.deepcopy(base)
 
     if profile == "experiment":
-        out["stages_skipped"] = ["03", "05", "06", "08"]
+        out["stages_skipped"] = ["02", "04", "08"]  # v4.0: skip design + implementation + feedback for experiment
 
     if profile == "technical_article":
-        # Technical article does not need stage 03 (automated tests/quality)
-        skipped = set(out["stages_skipped"])
-        skipped.add("03")
-        out["stages_skipped"] = sorted(skipped)
+        # v4.0: stage 03 removed; wave-planner runs inline in stage 02
+        # Keep default stages_skipped from tier; override cap only
         out["cap_subagents_per_wave"] = 5
 
     if profile == "framework_library":

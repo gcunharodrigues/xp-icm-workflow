@@ -1,10 +1,10 @@
-"""Unit tests para scripts/lead-diagnose.py (v3.9.0).
+"""Unit tests for scripts/lead-diagnose.py (v3.9.0).
 
 Cobertura:
 - jaccard correctness (set-based similarity)
 - catastrophic detector signals (massive scope creep, tests outside scope)
-- bucket recommendation per trigger condition
-- surgical brief render para B1 (top-3 concerns + acceptance delta)
+- action recommendation per trigger condition
+- surgical brief render for RETRY (top-3 concerns + acceptance delta)
 """
 from __future__ import annotations
 
@@ -88,41 +88,41 @@ def test_normalize_claim_token_extraction(ld):
 # Bucket recommendation
 # ============================================================================
 
-def test_recommend_bucket_t1_cap_exhausted(ld):
-    bucket, rationale = ld.recommend_bucket(
+def test_recommend_action_t1_cap_exhausted(ld):
+    bucket, rationale = ld.recommend_action(
         trigger="T1_cap_exhausted",
         catastrophic_signals=[],
         convergence_score=0.3,
     )
-    assert bucket == "B1"
+    assert bucket == "RETRY"
     assert "Cap" in rationale
 
 
-def test_recommend_bucket_t2_convergence(ld):
-    bucket, rationale = ld.recommend_bucket(
+def test_recommend_action_t2_convergence(ld):
+    bucket, rationale = ld.recommend_action(
         trigger="T2_convergence_trip",
         catastrophic_signals=[],
         convergence_score=0.85,
     )
-    assert bucket == "B1"
+    assert bucket == "RETRY"
     assert "0.85" in rationale or "convergence" in rationale.lower() or "ambígua" in rationale.lower()
 
 
-def test_recommend_bucket_t3_catastrophic_with_b3_hint(ld):
-    bucket, rationale = ld.recommend_bucket(
+def test_recommend_action_t3_catastrophic_with_b3_hint(ld):
+    bucket, rationale = ld.recommend_action(
         trigger="T3_catastrophic",
         catastrophic_signals=[
-            {"name": "build_globally_broken", "evidence": "exit 1", "bucket_hint": "B3"},
+            {"name": "build_globally_broken", "evidence": "exit 1", "action_hint": "VOID"},
         ],
         convergence_score=0.0,
     )
-    assert bucket == "B3"
+    assert bucket == "VOID"
     assert "catastrophic" in rationale.lower()
 
 
-def test_recommend_bucket_unknown_trigger_raises(ld):
+def test_recommend_action_unknown_trigger_raises(ld):
     with pytest.raises(ValueError, match="unknown trigger"):
-        ld.recommend_bucket("T99_invalid", [], 0.0)
+        ld.recommend_action("T99_invalid", [], 0.0)
 
 
 # ============================================================================
@@ -213,7 +213,7 @@ def test_diagnose_no_trigger_when_rounds_below_cap(ld, tmp_path):
         explicit_trigger=None,
     )
     assert result["trigger"] is None
-    assert result["bucket"] is None
+    assert result["action"] is None
 
 
 def test_diagnose_t2_convergence_trip(ld, tmp_path):
@@ -238,7 +238,7 @@ def test_diagnose_t2_convergence_trip(ld, tmp_path):
         explicit_trigger=None,
     )
     assert result["trigger"] == "T2_convergence_trip"
-    assert result["bucket"] == "B1"
+    assert result["action"] == "RETRY"
 
 
 def test_diagnose_t3_catastrophic_overrides_other(ld, tmp_path):
@@ -256,7 +256,7 @@ def test_diagnose_t3_catastrophic_overrides_other(ld, tmp_path):
         explicit_trigger=None,
     )
     assert result["trigger"] == "T3_catastrophic"
-    assert result["bucket"] == "B3"
+    assert result["action"] == "VOID"
 
 
 def test_diagnose_t1_cap_exhausted(ld, tmp_path):
@@ -279,7 +279,7 @@ def test_diagnose_t1_cap_exhausted(ld, tmp_path):
         explicit_trigger=None,
     )
     assert result["trigger"] == "T1_cap_exhausted"
-    assert result["bucket"] == "B1"
+    assert result["action"] == "RETRY"
 
 
 # ============================================================================
@@ -294,13 +294,13 @@ def test_render_diagnose_md_b1_includes_surgical_brief(ld):
         rounds=[{"concerns": [{"claim": "x", "severity": "BLOCKING"}]}],
         convergence_pairs=[(1, 2, 0.85)],
         catastrophic_signals=[],
-        bucket="B1",
+        action="RETRY",
         rationale="test rationale",
         surgical_brief="(brief content)",
     )
     assert "# Diagnose" in md
     assert "## Trigger" in md
-    assert "## Bucket recommendation" in md
+    assert "## Action recommendation" in md
     assert "## Surgical brief" in md
     assert "(brief content)" in md
 
@@ -313,9 +313,9 @@ def test_render_diagnose_md_b3_no_surgical_brief(ld):
         rounds=[{"concerns": []}],
         convergence_pairs=[],
         catastrophic_signals=[
-            {"name": "build_globally_broken", "evidence": "exit 1", "bucket_hint": "B3"},
+            {"name": "build_globally_broken", "evidence": "exit 1", "action_hint": "VOID"},
         ],
-        bucket="B3",
+        action="VOID",
         rationale="catastrophic",
         surgical_brief=None,
     )

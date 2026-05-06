@@ -1,4 +1,4 @@
-"""Unit tests para scripts/migrate-v3.3-to-v3.4.py.
+"""Unit tests for scripts/migrate-v3.3-to-v3.4.py.
 
 Cobre detect/idempotencia/update-paths em workspaces tmp.
 """

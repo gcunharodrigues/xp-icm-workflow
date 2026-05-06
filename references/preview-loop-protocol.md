@@ -1,6 +1,6 @@
-# Preview Loop Protocol — build-iterate visual (v3.12.1)
+# Preview Loop Protocol — build-iterate visual (v4.0.0)
 
-> **Version:** v3.12.1 (preview loop introduced in v3.6.0; v3.7.0 migrated
+> **Version:** v4.0.0 (preview loop introduced in v3.6.0; v4.0.0 simplified
 > dev-server PID file → runtime-registry, see `runtime-cleanup-protocol.md`)
 > **Skill:** `xp-icm-workflow`
 > **Applies when:** effective profile has `preview_loop_enabled: True`

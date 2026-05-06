@@ -1,9 +1,9 @@
-"""Testes unitarios para scripts/bootstrap.py (backend testavel do bootstrap).
+"""Unit tests for scripts/bootstrap.py (backend bootstrap).
 
-Foco: funcoes puras de templating, validacao e manipulacao de arquivos de
+Focus: pure templating, validation and file manipulation functions de
 indice/.gitignore. NAO toca FS real fora de tmp_path/tmp_workspace.
 
-Bootstrap end-to-end (criacao de branch, commit, scaffold de estagios) e
+Bootstrap end-to-end (branch creation, commit, stage scaffolding) e
 testado em tests/integration/test_bootstrap.bats (CI-only).
 """
 from __future__ import annotations
@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pytest
 
-# Carrega scripts/bootstrap.py como modulo
+# Loads scripts/bootstrap.py as a module
 SKILL_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = SKILL_ROOT / "scripts" / "bootstrap.py"
 
@@ -353,7 +353,7 @@ class TestParseProfileMergeOutput:
 class TestScaffoldWorkspaceDirs:
     """Verifica que scaffold copia summaries 200tok + runtime refs do skill_root."""
 
-    def test_creates_all_9_stage_dirs(self, tmp_path: Path) -> None:
+    def test_creates_all_v4_stage_dirs(self, tmp_path: Path) -> None:
         ws = tmp_path / "workspaces" / "001-foo"
         project_root = tmp_path / "project"
         project_root.mkdir(parents=True)
@@ -429,8 +429,8 @@ class TestScaffoldWorkspaceDirs:
 class TestL2ContextRendering:
     """Verifies that bootstrap renders L2 CONTEXT.md for each stage."""
 
-    def test_renders_all_9_l2_context_files(self, tmp_path: Path) -> None:
-        """Bootstrap deve criar CONTEXT.md em cada stage com placeholders resolvidos."""
+    def test_renders_all_v4_l2_context_files(self, tmp_path: Path) -> None:
+        """Bootstrap must create CONTEXT.md in each stage with resolved placeholders."""
         project_root = tmp_path / "project"
         project_root.mkdir()
         (project_root / ".git").mkdir()
@@ -453,19 +453,19 @@ class TestL2ContextRendering:
             "LOGS_ROOT": "null",
             "PROFILE_EFFECTIVE_HASH": "abc123",
             "CREATED_AT": "2026-01-01T00:00:00Z",
-            "SKILL_VERSION": "3.3.0",
+            "SKILL_VERSION": "4.0.0",
             "SKILL_DIR": str(SKILL_ROOT).replace("\\", "/"),
             "BOOTSTRAP_COMMIT_SHA": "deadbeef",
         }
 
-        # Criar dirs primeiro (como _scaffold_workspace_dirs faria)
+        # Create dirs first (como _scaffold_workspace_dirs faria)
         ws_dir.mkdir(parents=True)
         stages_dir = ws_dir / "stages"
         stages_dir.mkdir()
         for s in bootstrap.STAGES:
             (stages_dir / s).mkdir()
 
-        # Renderizar L2 templates como bootstrap faria
+        # Render L2 templates as bootstrap would
         tpl_dir = SKILL_ROOT / "templates" / "workspace" / "stages"
         for stage_dir_name in bootstrap.STAGES:
             l2_tpl = tpl_dir / stage_dir_name / "CONTEXT.md.tpl"
@@ -483,7 +483,7 @@ class TestL2ContextRendering:
             assert "layer: L2" in content, f"stage {s}: missing layer: L2"
 
     def test_l2_placeholders_resolved(self) -> None:
-        """Placeholders PROJECT_ROOT e WORKSPACE devem estar resolvidos em todos os L2s."""
+        """Placeholders PROJECT_ROOT and WORKSPACE must be resolved in all L2s."""
         project_root_str = "/tmp/test-project"
         placeholders = {
             "WORKSPACE": "001-test-l2",
@@ -495,7 +495,7 @@ class TestL2ContextRendering:
             "LOGS_ROOT": "null",
             "PROFILE_EFFECTIVE_HASH": "abc123",
             "CREATED_AT": "2026-01-01T00:00:00Z",
-            "SKILL_VERSION": "3.3.0",
+            "SKILL_VERSION": "4.0.0",
             "SKILL_DIR": "/skill/root",
             "BOOTSTRAP_COMMIT_SHA": "deadbeef",
         }

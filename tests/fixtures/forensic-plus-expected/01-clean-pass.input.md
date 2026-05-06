@@ -1,7 +1,7 @@
 ## Task add-greet:
 
 ### WHAT
-- saudação parametrizável
+- parameterized greeting
 
 ### Files touched
 - src/greet.py

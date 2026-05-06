@@ -35,7 +35,7 @@ main (= BASE_BRANCH)         ← stable, lead merges here
 | 2 Spawn | Pre-flight complete; branches created | All Agent calls dispatched; subagents report `Status: IN_PROGRESS` |
 | 3 Channel 2 | Subagents spawned | ADRs + lessons + design subset injected into each prompt |
 | 4 TDD 7 steps | Subagent in worktree on correct branch | Task report written; tracer test ≥1; CI green; REFACTOR done or skipped with Dirt Check |
-| 5 Stop points | Subagent detects trigger signal | A/B/C menu written; L1 `BLOCKED_STOP_POINT`; human responds |
+| 5 Stop points | Subagent detects trigger signal | A/B/C menu written; L1 `BLOCKED` with `block_reason: stop_point`; human responds |
 | 6 Cap 3 loops | Subagent returned result | `qa_loops_used` ≤ 3; L2+L3 passed OR cap exhausted → step 9 |
 | 7 Lead receives | All subagents returned | Results buffered in `{task_slug: result}`; sorted by plan order |
 | 8 Wave-reviewer | All task reports present; branches exist | Per task: forensic+ JSON + critic JSON; decision APPROVE/REJECT per task |
@@ -44,7 +44,7 @@ main (= BASE_BRANCH)         ← stable, lead merges here
 | 11 L4 wave gate | All merges complete | CI global green; E2E green (if applicable); cross-task coherence PASS (if applicable) |
 | 12 Cleanup | Wave gate green | Worktrees removed; branches deleted; `.icm-main` synced |
 | 13 Wave-summary | Cleanup complete | `wave-summary.md` written with all sections |
-| 14 Handoff | Wave-summary written | Case A: kickoff for wave N+1, EXIT. Case B: gate-inline, human approves → kickoff for stage 05, EXIT |
+| 14 Handoff | Wave-summary written | Case A: kickoff for wave N+1, EXIT. Case B: human gate approved → transition to stage 08 (feedback), EXIT |
 
 1. **Pre-flight** — lead reads wave-plan.md, identifies current wave, records `pre_wave_sha` in L1 history.
 2. **Spawn** — lead creates branches + invokes `Agent(isolation: "worktree")` in parallel (multi tool-use).
@@ -63,13 +63,10 @@ main (= BASE_BRANCH)         ← stable, lead merges here
 11. **Cleanup** — `git worktree remove` (decision matrix `--force`) + `git branch -d` (never `-D`); conditional `.icm-main` sync.
 12. **Handoff** — mid-wave automatic or last wave human gate (see L2 § End of stage handoff).
 
-## Canonical statuses
+## Canonical statuses (v4.0)
 
-- `IN_PROGRESS`
-- `COMPLETED_AWAITING_HUMAN` (last wave)
-- `BLOCKED_STOP_POINT`
-- `BLOCKED_ERROR` (merge conflict, CI red, cap 3 loops, cleanup unsafe)
-- `BLOCKED_HITL` (mixed wave, HITL task pending)
+- `IN_PROGRESS` — active wave executing
+- `BLOCKED` — requires `block_reason`: `human_gate` (last wave awaiting approval), `stop_point` (A/B/C menu), `error` (merge conflict, CI red, cap exhausted, cleanup unsafe), `hitl` (mixed wave, HITL task pending)
 
 ## Cross-references
 

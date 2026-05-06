@@ -1,5 +1,21 @@
 # Session Handoff Protocol
 
+> **Version:** v4.0 simplified. Previous v3.x protocol (Phase 1/2 gate, KICKOFF blocks, dashboard updates) preserved below as legacy reference.
+
+## v4.0 Simplified Handoff
+
+**1-stage-1-session + 1-wave-1-session** remains. Key changes from v3:
+
+1. **L1 is the handoff mechanism.** `prev_outputs` (list of output paths) and `pending` (list of next tasks/concerns) in L1 frontmatter carry session state forward. `_kickoff.md` is being phased out — new v4 workspaces use L1 fields; v3 workspaces may still have legacy kickoff files.
+2. **Statuses simplified.** `BLOCKED` with `block_reason` replaces `COMPLETED_AWAITING_HUMAN`, `BLOCKED_STOP_POINT`, `BLOCKED_ERROR`, `BLOCKED_HITL`. `LEAD_RESOLUTION_IN_PROGRESS` absorbed into `IN_PROGRESS`.
+3. **Human gate uses `BLOCKED` + `human_gate`.** Work done → set `BLOCKED`/`human_gate` → commit → print gate → wait for human → set `IN_PROGRESS` → commit → EXIT.
+4. **Stage 04 last-wave gate → 08.** No separate stages 05/06/07. CI/E2E/merge happen as inline gates within stage 04. Last wave transitions directly to stage 08 (feedback).
+5. **Project-root CLAUDE.md** maintained by `handoff.py update-project-md` as external dashboard.
+
+Stages 00/01/02 may still generate `_kickoff.md` for backward compatibility with v3 workspaces. The canonical source of session state is L1 `prev_outputs`/`pending`.
+
+## Legacy v3.x Protocol (preserved for reference)
+
 > Canonical: **1 stage = 1 session**. Each stage ends with a dual handoff (verbal + persisted file) and the current session EXITS. The next session starts fresh — lean context, cache miss accepted as cost.
 
 ## Why 1-stage-1-session (supersedes Q3 batched)
@@ -236,10 +252,9 @@ Applies after the LAST wave completes (no more waves in wave-plan.md).
 3. **Gate inline.** Lead pauses and presents to human:
    - Wave-summary.md summary
    - Pending items (if any)
-   - Next stage (05_verification)
+   - Next stage (08_feedback_intake)
 4. Human approves → Phase 2 GATE_APPROVED:
-   - Render `_kickoff.md` in `stages/05_verification/_kickoff.md`.
-   - Update L1: `stage_atual = 05`, `sub_stage = 05_in_progress`, `status = IN_PROGRESS`.
+   - Update L1: `stage_atual = 08`, `sub_stage = 08_in_progress`, `status = IN_PROGRESS`. (v4.0: skips 05/06/07 — goes directly to feedback intake)
    - Atomic commit.
    - Print KICKOFF block.
 5. EXIT the session. Stage 05 starts in a fresh session.

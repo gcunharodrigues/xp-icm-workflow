@@ -29,7 +29,7 @@ from typing import Any
 # Constants
 # ============================================================================
 
-SKILL_VERSION = "3.12.1"  # template prepends `v`
+SKILL_VERSION = "4.0.0"  # v4.0: simplified stages, statuses, handoff
 
 SLUG_RE = re.compile(r"^[a-z0-9-]+$")
 # Bootstrap auto-prefixes NNN- to the slug. A slug that already starts with NNN-
@@ -40,29 +40,24 @@ INDEX_ROW_RE = re.compile(
     r"^\|\s*(\d{3})\s*\|\s*([a-z0-9-]+)\s*\|"
 )
 
+# v4.0: stages 03, 05, 06, 07 deprecated — merged into 02 and 04
 STAGES: tuple[str, ...] = (
     "00_recon",
     "01_discovery",
     "02_design",
-    "03_wave_planner",
     "04_implementation_waves",
-    "05_verification",
-    "06_review",
-    "07_merge",
     "08_feedback_intake",
 )
 
 STAGE_NAMES: dict[int, str] = {
     0: "recon",
     1: "discovery",
-    2: "design",
-    3: "wave_planner",
-    4: "implementation_waves",
-    5: "verification",
-    6: "review",
-    7: "merge",
+    2: "design",          # v4.0: includes wave-planner (was stage 03)
+    4: "implementation_waves",  # v4.0: includes verification+review+merge (were stages 05/06/07)
     8: "feedback_intake",
 }
+# Deprecated stage dirs (not created, but may exist in v3 workspaces):
+#   03_wave_planner, 05_verification, 06_review, 07_merge
 
 GITIGNORE_LINES: tuple[str, ...] = (
     ".icm-profile.local.yaml",
@@ -589,7 +584,7 @@ def _setup_main_worktree(project_root: Path, base_branch: str) -> None:
 
 
 def _scaffold_workspace_dirs(workspace_dir: Path, skill_root: Path, project_root: Path) -> None:
-    """Creates stages/00..08 (with output/), _config/, _references/.
+    """Creates stages/ (v4: 00,01,02,04,08 with output/), _config/, _references/.
 
     v3.4.0: docs/decisions/, docs/lessons.md, docs/tech_debt.md are NOT
     created here. They live in the base branch (created by
@@ -1303,7 +1298,9 @@ def bootstrap(
 
     # Stages skipped: derive from profile-effective and write SKIP.md markers
     stages_skipped: list[str] = effective.get("stages_skipped", [])
-    for skip_id in stages_skipped:
+    # v4.0: filter out v3 stage IDs (3,5,6,7) that no longer exist
+    valid_skip_ids = [s for s in stages_skipped if int(s) in STAGE_NAMES]
+    for skip_id in valid_skip_ids:
         skip_dir = workspace_dir / "stages" / f"{skip_id}_{STAGE_NAMES[int(skip_id)]}"
         if skip_dir.exists():
             skip_file = skip_dir / "SKIP.md"

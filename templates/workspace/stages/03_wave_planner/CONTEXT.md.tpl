@@ -2,6 +2,9 @@
 layer: L2
 stage: "03"
 stage_name: "wave_planner"
+deprecated: true
+deprecated_since: "v4.0"
+deprecated_replacement: "Merged into stage 02_design. Design stage now runs wave-planner inline as step 10."
 sub_stage_enum:
   - "03_in_progress"
   - "03_completed"

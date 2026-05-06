@@ -1,4 +1,4 @@
-"""Unit tests do protocolo de session handoff (1 stage = 1 sessao).
+"""Unit tests for the session handoff protocol (1 stage = 1 session).
 
 Cobertura:
 

@@ -82,7 +82,7 @@ def test_count_active_zero_when_all_completed(tmp_path: Path):
 def test_count_active_counts_in_progress(tmp_path: Path):
     _seed_workspace(tmp_path, "001-alpha", status="COMPLETED")
     _seed_workspace(tmp_path, "002-beta", status="IN_PROGRESS")
-    _seed_workspace(tmp_path, "003-gamma", status="COMPLETED_AWAITING_HUMAN")
+    _seed_workspace(tmp_path, "003-gamma", status="BLOCKED")
     assert _count_active_workspaces(tmp_path) == 2
 
 

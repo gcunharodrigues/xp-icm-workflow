@@ -867,8 +867,8 @@ def _make_plan_v3_9_0(
     task_slug,
     files_touched,
     *,
-    validacao=None,
-    nao_quero=None,
+    validation=None,
+    out_of_scope=None,
     adrs_aplicaveis=None,
     conventions_extras=None,
     estimated_lines=None,
@@ -876,14 +876,14 @@ def _make_plan_v3_9_0(
     """Write a plan.md with v3.9.0 blocks (OUT OF SCOPE, VALIDATION, Applicable ADRs sections)."""
     plan = repo / "plan.md"
     body = f"## Task {task_slug}:\n\n### WHAT\n- placeholder\n\n"
-    if nao_quero:
+    if out_of_scope:
         body += "### OUT OF SCOPE\n"
-        for b in nao_quero:
+        for b in out_of_scope:
             body += f"- {b}\n"
         body += "\n"
-    if validacao:
+    if validation:
         body += "### VALIDATION\n"
-        for b in validacao:
+        for b in validation:
             body += f"- {b}\n"
         body += "\n"
     body += "### Files touched\n"
@@ -922,7 +922,7 @@ def test_check5_acceptance_unmapped_hard_in_dev(tmp_path):
     _make_plan_v3_9_0(
         repo, "auth-mw",
         files_touched=["src/auth/mw.py", "tests/test_mw.py"],
-        validacao=[
+        validation=[
             "Test `test_missing_header_returns_401`: header ausente → 401",
         ],
     )
@@ -952,7 +952,7 @@ def test_check5_acceptance_unmapped_soft_in_tool(tmp_path):
     _make_plan_v3_9_0(
         repo, "foo",
         files_touched=["src/foo.py", "tests/test_foo.py"],
-        validacao=["Test `test_specific_unmapped`: missing test."],
+        validation=["Test `test_specific_unmapped`: missing test."],
     )
     rc, stdout, _ = _run([
         "--workspace-num", "001", "--wave", "1",
@@ -967,7 +967,7 @@ def test_check5_acceptance_unmapped_soft_in_tool(tmp_path):
 
 
 # Check 6: OUT OF SCOPE violations
-def test_check6_nao_quero_mock_violation_hard_in_dev(tmp_path):
+def test_check6_out_of_scope_mock_violation_hard_in_dev(tmp_path):
     """OUT OF SCOPE declares 'Mock interno de jose'; diff uses jest.mock("jose") → HARD."""
     test_content = (
         'jest.mock("jose");\n'
@@ -986,7 +986,7 @@ def test_check6_nao_quero_mock_violation_hard_in_dev(tmp_path):
     _make_plan_v3_9_0(
         repo, "auth",
         files_touched=["src/auth.ts", "tests/auth.test.ts"],
-        nao_quero=["Mock interno de jose"],
+        out_of_scope=["Mock interno de jose"],
     )
     rc, stdout, _ = _run([
         "--workspace-num", "001", "--wave", "1",
@@ -995,7 +995,7 @@ def test_check6_nao_quero_mock_violation_hard_in_dev(tmp_path):
     ], cwd=repo)
     assert rc == 0
     result = json.loads(stdout)
-    violations = [v for v in result["violations"] if v["check"] == "nao_quero_violation"]
+    violations = [v for v in result["violations"] if v["check"] == "out_of_scope_violation"]
     assert len(violations) >= 1
     assert violations[0]["severity"] == "HARD"
 
@@ -1014,7 +1014,7 @@ def test_check6_nao_quero_no_violation_when_pattern_absent(tmp_path):
     _make_plan_v3_9_0(
         repo, "foo",
         files_touched=["src/foo.ts", "tests/foo.test.ts"],
-        nao_quero=["Cachear resultados em memória", "Implementar refresh-token"],
+        out_of_scope=["Cachear resultados em memória", "Implementar refresh-token"],
     )
     rc, stdout, _ = _run([
         "--workspace-num", "001", "--wave", "1",
@@ -1034,7 +1034,7 @@ def test_check7_adr_import_drift_hard_in_prod(tmp_path):
         tmp_path,
         base_files={
             "src/auth.ts": "// stub\n",
-            "docs/decisions/0001-stack.md": (
+            ".icm-main/docs/decisions/0001-stack.md": (  # v4.0: ADRs in .icm-main worktree
                 "# ADR 0001 — Stack\n\n"
                 "## Forbidden imports\n"
                 "- `jsonwebtoken` (use `jose`)\n"
@@ -1069,7 +1069,7 @@ def test_check7_adr_no_forbidden_section_skip_silently(tmp_path):
         tmp_path,
         base_files={
             "src/auth.ts": "// stub\n",
-            "docs/decisions/0001-stack.md": "# ADR 0001\n\n## Decision\n- Use TS.\n",
+            ".icm-main/docs/decisions/0001-stack.md": "# ADR 0001\n\n## Decision\n- Use TS.\n",  # v4.0
         },
         branch_files={
             "src/auth.ts": "import jwt from 'jsonwebtoken';\n",

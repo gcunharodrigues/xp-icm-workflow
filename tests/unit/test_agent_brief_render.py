@@ -1,4 +1,4 @@
-"""Testes para scripts/agent-brief-render.py (T1.2)."""
+"""Tests for scripts/agent-brief-render.py (T1.2)."""
 
 from __future__ import annotations
 
@@ -86,10 +86,10 @@ def test_parse_4block_extracts_all_sections():
     parsed = agent_brief_render.parse_4block(section)
     assert parsed["type"] == "AFK"
     assert "src/auth/jwt.ts" in parsed["files_touched"]
-    assert "Implementar refresh tokens" in parsed["o_que"]
-    assert "POST /auth/refresh" in parsed["como"]
-    assert "session existente" in parsed["nao_quero"]
-    assert "200 com novo" in parsed["validacao"]
+    assert "Implementar refresh tokens" in parsed["what"]
+    assert "POST /auth/refresh" in parsed["how"]
+    assert "session existente" in parsed["out_of_scope"]
+    assert "200 com novo" in parsed["validation"]
 
 
 def test_parse_4block_hitl_type():

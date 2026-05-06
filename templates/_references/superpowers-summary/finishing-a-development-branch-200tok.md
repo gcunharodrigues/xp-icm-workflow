@@ -8,7 +8,7 @@ purpose: Decide how to integrate completed work — local merge, PR, or tag — 
 # Finishing a Development Branch — 200tok summary
 
 ## When to apply
-- At stage 07 (merge) of ICM, after stage 05 verification and stage 06 review are APPROVED.
+- At stage 04 (implementation waves) of ICM, after the last wave completes and passes CI+E2E gates are APPROVED.
 - When implementation is complete, tests pass, and you need to decide the branch destination.
 
 ## How to apply

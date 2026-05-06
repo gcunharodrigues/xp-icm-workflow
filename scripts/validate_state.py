@@ -29,11 +29,7 @@ VALID_TIERS: frozenset[str] = frozenset(
 VALID_STATUSES: frozenset[str] = frozenset(
     {
         "IN_PROGRESS",
-        "COMPLETED_AWAITING_HUMAN",
-        "BLOCKED_STOP_POINT",
-        "BLOCKED_ERROR",
-        "BLOCKED_HITL",
-        "LEAD_RESOLUTION_IN_PROGRESS",  # v3.9.0
+        "BLOCKED",
         "COMPLETED",
     }
 )
@@ -43,7 +39,7 @@ VALID_STATUSES: frozenset[str] = frozenset(
 ALLOWED_STATUSES: frozenset[str] = VALID_STATUSES
 
 VALID_STAGES: frozenset[str] = frozenset(
-    {"00", "01", "02", "03", "04", "05", "06", "07", "08"}
+    {"00", "01", "02", "04", "08"}
 )
 
 # Simple sub-stage enums (stages without variable N)
@@ -51,21 +47,10 @@ SIMPLE_SUB_STAGE_ENUMS: dict[str, frozenset[str]] = {
     "00": frozenset({"00_in_progress", "00_completed"}),
     "01": frozenset({"01_in_progress", "01_completed"}),
     "02": frozenset({"02_in_progress", "02_completed"}),
-    "03": frozenset({"03_in_progress", "03_completed"}),
-    "05": frozenset({"05_in_progress", "05_completed"}),
-    "06": frozenset({"06_in_progress", "06_completed"}),
-    "07": frozenset({"07_in_progress", "07_completed"}),
-    "08": frozenset(
-        {
-            "08_in_progress",
-            "08_decided_A",
-            "08_decided_B",
-            "08_decided_C",
-        }
-    ),
+    "08": frozenset({"08_in_progress", "08_decided_A", "08_decided_B", "08_decided_C"}),
 }
 
-# Stage 04 has variable N — regex
+# Stage 04 (implementation waves) has variable N — regex
 SUB_STAGE_04_PATTERN = re.compile(r"^04_wave_(\d+)_(in_progress|completed)$")
 
 REQUIRED_FIELDS: tuple[str, ...] = (
@@ -144,6 +129,11 @@ def _validate_tier(state: dict[str, Any]) -> None:
         )
 
 
+VALID_BLOCK_REASONS: frozenset[str] = frozenset(
+    {"human_gate", "stop_point", "error", "hitl", "lead_resolution"}
+)
+
+
 def _validate_status(state: dict[str, Any]) -> None:
     status = state["status"]
     if status not in VALID_STATUSES:
@@ -151,6 +141,14 @@ def _validate_status(state: dict[str, Any]) -> None:
             f"Invalid status: '{status}'. Expected one of: "
             f"{sorted(VALID_STATUSES)}"
         )
+    # v4.0: BLOCKED requires block_reason
+    if status == "BLOCKED":
+        reason = state.get("block_reason")
+        if reason not in VALID_BLOCK_REASONS:
+            raise StateValidationError(
+                f"status=BLOCKED requires valid 'block_reason', got: {reason!r}. "
+                f"Expected one of: {sorted(VALID_BLOCK_REASONS)}"
+            )
 
 
 def _validate_stage_atual(state: dict[str, Any]) -> None:

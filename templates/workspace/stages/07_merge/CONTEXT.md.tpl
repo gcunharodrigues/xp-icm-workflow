@@ -2,6 +2,9 @@
 layer: L2
 stage: "07"
 stage_name: "merge"
+deprecated: true
+deprecated_since: "v4.0"
+deprecated_replacement: "Merged into stage 04 implementation waves. Merge now happens in step 4 (sequential merge into BASE_BRANCH) within each wave."
 sub_stage_enum:
   - "07_in_progress"
   - "07_completed"

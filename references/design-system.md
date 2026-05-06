@@ -1,6 +1,6 @@
-# Design System — DESIGN.md format (v3.12.1)
+# Design System — DESIGN.md format (v4.0.0)
 
-> **Version:** v3.12.1
+> **Version:** v4.0.0
 > **Skill:** `xp-icm-workflow`
 > **Applies when:** effective profile has `design_system_required: True`
 > (currently: `app_web_frontend` and `fullstack`).
@@ -21,6 +21,7 @@ Reasons:
 2. **Open spec + community** — 69 ready-made examples at
    [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md)
    (airbnb, apple, claude, figma, framer, ferrari, etc.).
+3. **UI UX Pro Max Skill** - Intelligent Design System Generation, ui-ux-pro-max plugin installed.
 3. **File-based ≡ ICM philosophy** — lives alongside ADRs in
    `<project_root>/.icm-main/`. Same authoring pattern (worktree-mediated
    commits on base branch).

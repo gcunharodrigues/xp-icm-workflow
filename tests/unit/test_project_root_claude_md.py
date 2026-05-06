@@ -1,4 +1,4 @@
-"""Testes para gerência do `<project_root>/CLAUDE.md` (T1.1).
+"""Tests for gerência do `<project_root>/CLAUDE.md` (T1.1).
 
 Cobertura:
   - Greenfield (arquivo ausente)
@@ -295,7 +295,7 @@ def test_round_trip_preserves_all_fields(tmp_path: Path):
         stage_dir="04_implementation_waves",
         sub_stage="04_in_progress",
         iteration=2,
-        status="BLOCKED_STOP_POINT",
+        status="BLOCKED",
         last_action="stop point disparado",
         last_action_at="2026-04-29T16:30:00Z",
         next_action="aguardar humano",

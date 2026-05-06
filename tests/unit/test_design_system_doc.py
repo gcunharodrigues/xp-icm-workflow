@@ -1,4 +1,4 @@
-"""Smoke test para references/design-system.md (v3.4.4).
+"""Smoke test for references/design-system.md (v3.4.4).
 
 Verifica:
   - Arquivo existe e é parseável

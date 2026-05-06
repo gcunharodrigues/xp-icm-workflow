@@ -2,6 +2,9 @@
 layer: L2
 stage: "06"
 stage_name: "review"
+deprecated: true
+deprecated_since: "v4.0"
+deprecated_replacement: "Merged into stage 04 implementation waves. Review across 7 dimensions now covered by L3 critic + human gate in step 5."
 sub_stage_enum:
   - "06_in_progress"
   - "06_completed"

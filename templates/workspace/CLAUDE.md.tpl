@@ -67,9 +67,8 @@ NEVER use `git commit --no-verify` in this workspace. The pre-commit hook valida
 
 Each session starts by reading its L2 (`stages/<NN>/CONTEXT.md`). The L2 declares the expected CWD:
 
-- Sessions 00–03, 05–08: CWD = `{{PROJECT_ROOT}}` (workspace branch checkout).
-- Session 04 (lead): CWD = `{{PROJECT_ROOT}}` (workspace branch).
-- Subagent in wave: CWD = `{{PROJECT_ROOT}}` (branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`).
+- Sessions 00, 01, 02, 04, 08 (lead): CWD = `{{PROJECT_ROOT}}` (workspace branch checkout).
+- Subagent in wave: CWD = isolated worktree root (NOT `{{PROJECT_ROOT}}`). Branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. Subagent writes code ONLY in this worktree. Lead writes all workspace state files (task reports, L1) from workspace branch.
 
 ### 3. Branches + parallel worktree
 
@@ -87,7 +86,7 @@ Worktree:
 
 The pre-commit hook at `{{PROJECT_ROOT}}/` rejects commits on `workspace/*` that touch paths outside `workspaces/*`, `workspaces/.index.md`, `.gitignore`, `CLAUDE.md` (dashboard). ADRs / lessons / tech_debt are **not** in the hook whitelist — they must be committed via `cd .icm-main && git commit ...` (which operates on the base branch automatically).
 
-Canonical model doc: `_references/runtime/worktree-model.md`.
+Canonical model doc: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/worktree-model.md`.
 
 ### 4. Profile + Tier calibrate rigor
 
@@ -103,7 +102,7 @@ Local override in `.icm-profile.local.yaml` (at `{{PROJECT_ROOT}}`). Hash recomp
 
 ### 5. Stop Points
 
-15 canonical stop points in `_config/stop-points.md`. Trigger: agent pauses, writes A/B/C menu, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes.
+15 canonical stop points in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md`. Trigger: agent pauses, writes A/B/C menu, updates L1 `status: BLOCKED`, `block_reason: stop_point`. Human responds, session resumes.
 
 ### 6. ADRs
 
@@ -160,10 +159,10 @@ Runtime side-effects (dev servers, background tasks, docker containers, orphan w
 - **NEVER kills a process, deletes a branch, or forces cleanup automatically.** Destructive actions require explicit human decision.
 
 If human cancels checklist mid-confirmation or cleanup command fails:
-- Status stays `BLOCKED_STOP_POINT` with stop point `runtime_cleanup_failed` (#15).
+- Status stays `BLOCKED` with `block_reason: stop_point` with stop point `runtime_cleanup_failed` (#15).
 - Session pauses, writes A/B/C menu; human resolves outside ICM and resumes.
 
-Canonical doc: `_references/runtime/runtime-cleanup-protocol.md`.
+Canonical doc: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/runtime-cleanup-protocol.md`.
 Helpers: `runtime-registry.py` (CRUD), `runtime-status.py` (checklist).
 
 ## Read order for any agent

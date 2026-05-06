@@ -96,7 +96,7 @@ test_specs:
 
 ### `technical_article`
 
-- `stages_skipped = ["03"]` (article does not run CI/test automation; tier `experimental` inherits `["03", "05", "06", "08"]` with `03` already included — deduplicated automatically by `profile-merge.py`).
+- `stages_skipped = []  # v4.0: stage 03 removed` (article does not run CI/test automation; tier `experimental` inherits `["03", "05", "06", "08"]` with `03` already included — deduplicated automatically by `profile-merge.py`).
 - `cap_subagents_per_wave` = 5 (long article can parallelize review).
 
 ### `framework_library`

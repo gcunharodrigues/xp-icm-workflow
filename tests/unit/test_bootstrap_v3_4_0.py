@@ -1,4 +1,4 @@
-"""Unit tests para funcoes novas v3.4.0 do scripts/bootstrap.py.
+"""Unit tests for funcoes novas v3.4.0 do scripts/bootstrap.py.
 
 Cobre:
   * _ensure_base_branch_docs — cria docs/ scaffolding na base branch
