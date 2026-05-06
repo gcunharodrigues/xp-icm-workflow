@@ -16,7 +16,7 @@ next_stage: null
 
 # Stage 08 — feedback_intake (L2)
 
-Universal iteration gate of the ICM cycle. Workspace transitions here after stage 04 (last wave approved). When the human opens a new session and pastes free-form feedback (loose text, no menu), the session **infers intent** and maps it to one of 3 outputs: A) close workspace + lessons in `docs/lessons.md`, B) restart stage X (X ∈ {01, 02, 04}) with `iteration++`, C) spawn new workspace via human pasting command in a new session. Session confirms the inference with the human before executing (mini-menu y/n/adjust). Collects logs (if `logs_root` is declared), extracts 4 blocks from the free-form feedback, calculates top-N error patterns. Does NOT write new code — only analyzes, infers, and transitions state. Literal protocol in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-stage08.md`.
+Universal iteration gate of the ICM cycle. Workspace transitions here after stage 04 (last wave approved). When the human opens a new session and pastes free-form feedback (loose text, no menu), the session **infers intent** and maps it to one of 3 outputs: A) close workspace + lessons in `.icm-main/docs/lessons.md`, B) restart stage X (X ∈ {01, 02, 04}) with `iteration++`, C) spawn new workspace via human pasting command in a new session. Session confirms the inference with the human before executing (mini-menu y/n/adjust). Collects logs (if `logs_root` is declared), extracts 4 blocks from the free-form feedback, calculates top-N error patterns. Does NOT write new code — only analyzes, infers, and transitions state. Literal protocol in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-stage08.md`.
 
 ## Inputs (reads ONLY these, in order)
 
@@ -135,7 +135,7 @@ Canonical doc: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/ru
 Valid enum: `08_in_progress`, `08_decided_A`, `08_decided_B`, `08_decided_C`.
 
 Transitions:
-- `08_in_progress → 08_decided_A`: human chooses A. `status: COMPLETED`. Lessons appended to `docs/lessons.md`.
+- `08_in_progress → 08_decided_A`: human chooses A. `status: COMPLETED`. Lessons appended to `.icm-main/docs/lessons.md`.
 - `08_in_progress → <XX>_in_progress` (output B): human chooses B with X ∈ {01, 02, 04}. `iteration++`. `status: IN_PROGRESS`. Old outputs moved to `output-iteration-<N>/`. Note: the sub_stage transitions DIRECTLY to the stage X — there is no stable persistent `08_decided_B`; it appears only as an event in `history`. (Spec requires the enum `08_decided_B` for compatibility; sessions transition through it and then move to `<XX>_in_progress`.)
 - `08_in_progress → 08_decided_C`: human chooses C. `status: COMPLETED`. `spawn_to` set. Bootstrap of the new workspace is the human's responsibility in a separate session.
 
@@ -227,7 +227,7 @@ This is the local copy (in the workspace) of the canonical reference `references
 ## Gates
 
 - **Human:** triggers stage 08 manually (never automatic). Provides the 4 feedback blocks inline. Chooses A/B/C in the menu (may disagree with the recommendation).
-- **Automatic (CI):** pre-commit hook validates L1 ↔ outputs ↔ `docs/lessons.md` atomicity (in output A). Pre-commit validates that `output-iteration-<N>/` (output B) is only created in commits with prefix `intake:` or `feedback:`.
+- **Automatic (CI):** pre-commit hook validates L1 ↔ outputs ↔ `.icm-main/docs/lessons.md` atomicity (in output A). Pre-commit validates that `output-iteration-<N>/` (output B) is only created in commits with prefix `intake:` or `feedback:`.
 - **Approval to transition:** human explicitly states A/B/C choice; sub_stage transitions per choice in the commit that records the decision. Outputs A and C take `status: COMPLETED`; output B takes stage X with `status: IN_PROGRESS` and `iteration: N+1`.
 
 ## End of stage handoff (1-stage-1-session)
@@ -300,7 +300,7 @@ Detail per output:
    This ensures the /init-regenerated CLAUDE.md survives cleanup (which deletes the workspace branch).
 
 8. Print for user — varies per exit code from step 5:
-   - exit `2`: `✅ Workspace <NNN-slug> CLOSED (output A). Lessons recorded in docs/lessons.md. Was last active (last active) → /init triggered to regenerate CLAUDE.md root + ICM cleanup <executed/skipped/dry-run per choice>.` (+ "Tech debt recorded in docs/tech_debt.md." if step 3 executed).
+   - exit `2`: `✅ Workspace <NNN-slug> CLOSED (output A). Lessons recorded in .icm-main/docs/lessons.md. Was last active (last active) → /init triggered to regenerate CLAUDE.md root + ICM cleanup <executed/skipped/dry-run per choice>.` (+ "Tech debt recorded in docs/tech_debt.md." if step 3 executed).
    - exit `0`: `✅ Workspace <NNN-slug> CLOSED (output A). Lessons recorded in docs/lessons.md. <K> workspace(s) still active — /init and cleanup NOT triggered.`
 9. **Do NOT generate `_kickoff.md`.** EXIT the session.
 
