@@ -99,6 +99,7 @@ Canonical doc: `_references/runtime/runtime-cleanup-protocol.md`.
 ## Process
 
 1. **Pre-flight — mandatory pre-condition:** L1 must declare `stage_atual: "08"` with `sub_stage: 08_in_progress` (automatic transition from stage 07) and `status: COMPLETED_AWAITING_HUMAN`. If status ∈ {`IN_PROGRESS`, `BLOCKED_*`} → inconsistent workspace (recovery wizard). If `stage_atual ≠ 08` → refuse with "workspace has not yet reached 08 (finish 07 first)". If status undefined → stop point 11 `workspace_corrupt`.
+   - **CWD and branch:** `cd {{PROJECT_ROOT}}` (all relative paths resolve from here). `git branch --show-current` MUST show `workspace/{{WORKSPACE}}`. Wrong branch → `BLOCKED_ERROR`.
 
    **Step 0 (v3.7.0 — strict universal):** run Runtime Cleanup Checklist (§above) BEFORE step 1. Blocks transition if any category is non-clean and human has not confirmed cleanup. Status may trigger stop point #15 `runtime_cleanup_failed` if human cancels.
 2. **Set `status: IN_PROGRESS`** in L1 (exits `COMPLETED_AWAITING_HUMAN` while session works). Append `history` event `feedback_session_started`.

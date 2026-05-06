@@ -111,7 +111,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
       - REFACTOR → mandatory after every GREEN. Skip ONLY when all three Dirt Check questions (duplication, naming, function/file size — see `_config/xp-conventions.md`) answer NO.
    3. **Anti-horizontal slicing** — forbidden to write all tests at once OR all impl at once. Forensic+ Check 5 detects acceptance bullets without test mapping; if diff > 100 LOC without new test → stop and re-pace.
    4. **Commit verify gate** — before COMPLETE, confirm `git log --oneline {{BASE_BRANCH}}..HEAD` shows ≥1 commit. Zero = return to loop.
-   5. **COMPLETE** — writes `output/wave-<N>/task-<slug>.md` minimalist (summary, modified files, tests, ADRs applied — NO inline Akita checklist, QA delegated to L2/L3).
+   5. **COMPLETE** — writes task report at `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/task-<slug>.md` (absolute path — subagent worktree CWD ≠ `{{PROJECT_ROOT}}`, use full path). Minimalist: summary, modified files, tests, ADRs applied — NO inline Akita checklist, QA delegated to L2/L3.
 5. **Stop points within the cycle:** if subagent detects `new_dep`, `irreversible`, `over_eng`, `prod_migration`, or `adr_drift` → pauses current state, writes A/B/C menu, returns signal to lead via Agent tool output, lead sets L1 `status: BLOCKED_STOP_POINT`. Human responds, cycle resumes from where it paused.
 6. **Per-task QA loop** (cap 3 attempts):
    1. **L2 forensic+ extended** runs first (step 8b). HARD ≥ 1 → skip L3, surgical brief retry (does not waste tokens on code rejected by a cheap gate).
@@ -195,7 +195,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 
    Cap: 1 attempt per bucket per task. Sequence B1→B3→B4. Skipping a bucket is OK; revisiting a used bucket is forbidden. All exhausted → `BLOCKED_ERROR error_type: lead_resolution_all_buckets_failed`.
 
-10. **Sequential merge:** lead merges each branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` (OR `-lead-resolved` when B3) into `{{BASE_BRANCH}}` using the buffered order from step 7 (= plan order). Command: `git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>` per task. `--no-ff` preserves commit group (auditable). **Merge conflict → STOP — NEVER resolve autonomously.** Merge code is high risk. Follow `references/conflict-resolution-protocol.md`: human must decide (rebase/abort/manual resolution). Autonomous merge conflict resolution = `BLOCKED_ERROR`.
+10. **Sequential merge:** lead merges each branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` (OR `-lead-resolved` when B3) into `{{BASE_BRANCH}}` using the buffered order from step 7 (= plan order). Command per task: `git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>`. `--no-ff` preserves commit group (auditable). **After ALL merges complete: `git checkout workspace/{{WORKSPACE}}`** — lead MUST return to workspace branch before steps 11-14. **Merge conflict → STOP — NEVER resolve autonomously.** Merge code is high risk. Follow `references/conflict-resolution-protocol.md`: human must decide (rebase/abort/manual resolution). Autonomous merge conflict resolution = `BLOCKED_ERROR`.
 11. **L4 wave gate (CI global + E2E + coherence):** sub-gates after all merges:
 
     11a. **CI global green** (always, all tiers) — runs the project's full CI. Red → `references/ci-rollback-protocol.md`.

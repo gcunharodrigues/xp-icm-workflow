@@ -179,7 +179,17 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
    ```
    Files: next stage `_kickoff.md` + updated L1.
 
-8. **Print verbal KICKOFF block** for user (copy-paste for next session):
+8. **Update project root CLAUDE.md dashboard:**
+   ```bash
+   python {{SKILL_DIR}}/scripts/handoff.py update-project-md \
+       --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} \
+       --profile {{PROFILE}} --tier {{TIER}} \
+       --stage-atual 06 --stage-dir 06_review \
+       --sub-stage 06_in_progress --status IN_PROGRESS \
+       --skill-dir {{SKILL_DIR}}
+   ```
+
+9. **Print verbal KICKOFF block** for user (copy-paste for next session):
 
    ```
    ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -204,7 +214,7 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
    at the project_root, then paste the prompt above.
    ```
 
-9. **EXIT** the session. Do NOT continue to the next stage in the same session.
+10. **EXIT** the session. Do NOT continue to the next stage in the same session.
 
 ### Response "adjust X" (gate rejected)
 

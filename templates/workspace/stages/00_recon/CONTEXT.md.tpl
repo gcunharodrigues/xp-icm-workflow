@@ -47,16 +47,17 @@ Initial reconnaissance of the project. Detects workspace type (greenfield, exist
 ## Process
 
 1. **Pre-flight:** validate that all Input paths marked `yes` exist; sub_stage `00_in_progress`. If a required path is absent → status `BLOCKED_ERROR`. Also validate:
+   - **CWD and branch:** `cd {{PROJECT_ROOT}}` (all relative paths in this stage resolve from here). `git branch --show-current` MUST show `workspace/{{WORKSPACE}}`. Wrong branch → `BLOCKED_ERROR`.
    - `{{PROJECT_ROOT}}/.icm-main/` worktree exists and is checked out to `{{BASE_BRANCH}}` (model v3.4.0). Absent → `BLOCKED_ERROR` with suggestion `git worktree add .icm-main {{BASE_BRANCH}}`.
    - `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh` exists and is executable, and `{{PROJECT_ROOT}}/.claude/settings.local.json` contains a `hooks.PostToolUse` entry pointing to `bash workspaces/{{WORKSPACE}}/.claude/hooks/context-check.sh`. If absent → warning (does not block bootstrap, but the anti-compact context checkpoint runs without automatic enforcement).
 2. **Detect workspace type:** classify as `greenfield` (no populated `src/`, no ADRs), `existing` (repository with code + prior ADRs), or `external_repo` (read-only clone that will produce a reading/analysis workspace). Decision based on listing `{{PROJECT_ROOT}}/.icm-main/src/` (existence only), `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (file count), and `git remote -v`.
 3. **Validate profile×tier coherence vs actual state:** compare `profile_base` and `tier` from L0/L1 against the FS reality. Mismatch signals — e.g., tier `experimental` in a repo with a release tag; profile `cli_tool` in a repo with a web app — trigger stop point `profile_mismatch`.
-4. **Validate workspace integrity:** run heuristics from `references/state-machine-schema.md` §R2.7 (hash mismatch, inconsistent history, missing commit_sha). Any failure → stop point `workspace_corrupt` proposing Recovery Wizard.
+4. **Validate workspace integrity:** run heuristics from `{{SKILL_DIR}}/references/state-machine-schema.md` §R2.7 (hash mismatch, inconsistent history, missing commit_sha). Any failure → stop point `workspace_corrupt` proposing Recovery Wizard.
 5. **List active ADRs:** glob `{{PROJECT_ROOT}}/.icm-main/docs/decisions/*.md` → record filename + title (first line) without reading body. List will feed stage 02.
 6. **Record inheritance (if `spawn_from`):** if L1 declares `spawn_from: <workspace>`, read `{{PROJECT_ROOT}}/.icm-main/docs/lessons.md` and cite applicable inheritable lessons in `recon-report.md`. If absent, note "no inheritance".
 7. **Consult superpowers summaries** (brainstorming + writing-plans 200tok) to frame the report style — direct, factual, no invention.
-8. **Write `output/recon-report.md`** with fixed sections: Workspace type; Profile×tier check; Active ADRs (index); Inheritable lessons; Pre-triggered stop points (if any); Suggested next steps for 01_discovery.
-9. **Update L1:** sub_stage `00_completed`, status `COMPLETED_AWAITING_HUMAN`, append `history` event `stage_transition`. Atomic commit (pre-commit hook validates L1↔outputs atomicity).
+8. **Write `output/recon-report.md`** (relative to workspace root `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/00_recon/`) with fixed sections: Workspace type; Profile×tier check; Active ADRs (index); Inheritable lessons; Pre-triggered stop points (if any); Suggested next steps for 01_discovery.
+9. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`): sub_stage `00_completed`, status `COMPLETED_AWAITING_HUMAN`, append `history` event `stage_transition`. Atomic commit (pre-commit hook validates L1↔outputs atomicity).
 
 ## Outputs
 
@@ -81,12 +82,12 @@ IN_PROGRESS → COMPLETED transition fires when:
 
 ## Applicable stop points
 
-Canonical catalogue in `references/stop-points-canonical.md`. IDs triggerable in stage 00 recon:
+Canonical catalogue in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md`. IDs triggerable in stage 00 recon:
 
 - `workspace_corrupt` — inconsistency between L1 frontmatter and actual FS state (hash mismatch, outputs absent in history, missing commit_sha). Always `hard`. Menu proposes Recovery Wizard as option A.
 - `profile_mismatch` — profile/tier declared in L0/L1 do not match the actual project scope detected by recon. Always `hard`. Menu proposes: A) adjust profile/tier, B) spawn new workspace, C) reduce scope.
 
-Trigger: agent pauses, writes A/B/C menu in the output, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes with `IN_PROGRESS`.
+Trigger: agent pauses, writes A/B/C menu to `output/recon-report.md § Stop points`, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes with `IN_PROGRESS`.
 
 ## Skill superpowers reference
 
@@ -127,6 +128,16 @@ Upon completing this stage, session must:
    workspace <NNN>: stage 00 complete + kickoff stage 01
    ```
    Files in commit: current stage outputs + L1 + `_kickoff.md` of the next stage.
+
+3b. **Update project root CLAUDE.md dashboard:**
+   ```bash
+   python {{SKILL_DIR}}/scripts/handoff.py update-project-md \
+       --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} \
+       --profile {{PROFILE}} --tier {{TIER}} \
+       --stage-atual 01 --stage-dir 01_discovery \
+       --sub-stage 01_in_progress --status IN_PROGRESS \
+       --skill-dir {{SKILL_DIR}}
+   ```
 
 4. **Print verbal KICKOFF block** for user (copy-paste). Template (replace placeholders):
 
