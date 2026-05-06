@@ -54,6 +54,15 @@ cases and error conditions.
 **Out of scope:**
 - Thing that should NOT be changed or addressed in this issue
 - Adjacent feature that might seem related but is separate
+
+**Isolation rules (MANDATORY — this brief executes in an isolated worktree):**
+- [ ] You are in an isolated git worktree on branch `wave-<NNN>-<N>/<task-slug>`. Your CWD is the worktree root — NOT `{{PROJECT_ROOT}}`.
+- [ ] Write code ONLY in this worktree. NEVER write to `{{PROJECT_ROOT}}` via absolute paths.
+- [ ] NEVER write to `.icm-main/`. That is the base-branch linked worktree — read-only for docs.
+- [ ] Read workspace state (L0/L1/L2) from the workspace branch via `git show workspace/<NNN-slug>:<path>`.
+- [ ] Read base-branch files (ADRs, lessons, tech_debt, DESIGN.md) from `.icm-main/` via `Read` tool with absolute path `{{PROJECT_ROOT}}/.icm-main/<path>`.
+- [ ] Verify on startup: `git branch --show-current` MUST show `wave-<NNN>-<N>/<task-slug>`. If wrong → STOP, report `Status: BLOCKED`.
+- [ ] Write task output to `stages/04_implementation_waves/output/wave-<N>/task-<slug>.md` (on workspace branch via `git show` + write to workspace worktree).
 ```
 
 ## Mapping to 4-block in plan.md

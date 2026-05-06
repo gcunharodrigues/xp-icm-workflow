@@ -127,6 +127,9 @@ def render_brief(
     parsed: dict[str, str],
     adrs: list[str],
     model_info: dict | None = None,
+    *,
+    workspace_num: str = "",
+    wave_num: int = 0,
 ) -> str:
     """Render AGENT-BRIEF markdown from parsed 4-block + applicable ADRs.
 
@@ -135,6 +138,7 @@ def render_brief(
 
     v3.9.0: model_info dict (from pick-model.py) injects writer/critic/score
     into header when provided.
+    v3.12.1: isolation rules injected for every brief (workspace_num + wave_num).
     """
     adrs_block = ""
     if adrs:
@@ -147,6 +151,28 @@ def render_brief(
             f"**Model recommended (writer):** {model_info['model_recommended_writer']}\n"
             f"**Model recommended (critic):** {model_info['model_recommended_critic']}\n"
             f"**Complexity score:** {model_info['complexity_score']}\n"
+        )
+
+    isolation_block = ""
+    if workspace_num and wave_num:
+        branch = f"wave-{workspace_num}-{wave_num}/{slug}"
+        isolation_block = (
+            "\n"
+            "**Isolation rules (MANDATORY — you are in an isolated worktree):**\n"
+            f"- [ ] You are in an isolated git worktree on branch `{branch}`.\n"
+            "      Your CWD is the worktree root — NOT the project root.\n"
+            "- [ ] Write code ONLY in this worktree. NEVER write via absolute paths to the project.\n"
+            "- [ ] NEVER write to `.icm-main/`. It is the base-branch linked worktree (read-only).\n"
+            "- [ ] Read workspace state (L0/L1/L2) from the workspace branch via\n"
+            "      `git show workspace/<NNN-slug>:<path>`.\n"
+            "- [ ] Read base-branch docs (ADRs, lessons, tech_debt) from `.icm-main/` via\n"
+            "      Read tool with absolute path `<project>/.icm-main/<path>`.\n"
+            "- [ ] Verify on startup: `git branch --show-current` MUST show `{branch}`.\n"
+            "      If wrong -> STOP, report `Status: BLOCKED`.\n"
+            "- [ ] Write task output to workspace branch path:\n"
+            "      `stages/04_implementation_waves/output/wave-{wave_num}/task-{slug}.md`\n"
+            f"      (use `git show workspace/<NNN-slug>:workspaces/<NNN-slug>/stages/04_implementation_waves/output/wave-{wave_num}/` to find the file, then write via workspace worktree).\n"
+            "\n"
         )
 
     return (
@@ -170,6 +196,7 @@ def render_brief(
         "\n"
         "**Out of scope:**\n"
         f"{parsed['nao_quero']}\n"
+        f"{isolation_block}"
     )
 
 
@@ -228,6 +255,14 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help="if provided, integrates pick-model.py and injects model_recommended_writer/critic into header",
     )
+    parser.add_argument(
+        "--workspace-num", default=None,
+        help="workspace number (e.g. 001) — enables isolation rules block",
+    )
+    parser.add_argument(
+        "--wave", type=int, default=None,
+        help="wave number — enables isolation rules block",
+    )
     args = parser.parse_args(argv)
 
     try:
@@ -274,7 +309,11 @@ def main(argv: list[str] | None = None) -> int:
         except (AgentBriefError, OSError) as exc:
             print(f"warning: pick-model integration failed: {exc}", file=sys.stderr)
 
-    brief = render_brief(args.task, parsed, adrs, model_info=model_info)
+    brief = render_brief(
+        args.task, parsed, adrs, model_info=model_info,
+        workspace_num=args.workspace_num or "",
+        wave_num=args.wave or 0,
+    )
 
     warnings = warn_if_brittle(brief)
     if warnings:

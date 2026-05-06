@@ -413,7 +413,9 @@ After last wave completed, human gate is MANDATORY before transitioning to 05. B
   python {{SKILL_DIR}}/scripts/agent-brief-render.py \
       --task <slug> \
       --plan stages/02_design/output/plan.md \
-      --adrs {{PROJECT_ROOT}}/.icm-main/docs/decisions
+      --adrs {{PROJECT_ROOT}}/.icm-main/docs/decisions \
+      --workspace-num {{WORKSPACE_NUM}} \
+      --wave <N>
   ```
 
   Output (markdown) is injected into the Agent tool prompt. Anti-patterns
