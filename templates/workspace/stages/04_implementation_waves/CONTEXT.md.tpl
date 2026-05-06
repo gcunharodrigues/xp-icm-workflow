@@ -222,7 +222,9 @@ Each wave executes the pipeline below. `<N>` = current wave number.
    - `git branch -d` refuses if not merged → NEVER use `-D`. Non-merged branch after merge step indicates a bug in sequential merge; investigate first.
    - Non-fatal cleanup failure (after valid force): record warning in `wave-summary.md` (next step).
 
-13. **Lead writes:** `output/wave-<N>/wave-summary.md` (completed tasks, conflicts, decisions made, **cleanup warnings** if any, **§ L2/L3 summary** with SOFT violations + critic MINOR concerns, **§ Lead resolutions** with bucket table applied if any).
+   **B3 DIRECT_IMPL branch cleanup note:** For B3 DIRECT_IMPL branches (`-lead-resolved` suffix): no worktree was created (lead wrote directly). Skip `git worktree remove` for these — only `git branch -d` applies.
+
+13. **Lead writes:** `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/wave-summary.md` (completed tasks, conflicts, decisions made, **cleanup warnings** if any, **§ L2/L3 summary** with SOFT violations + critic MINOR concerns, **§ Lead resolutions** with bucket table applied if any).
 14. **End-of-wave/stage handoff:** follow protocol in the `## End of stage handoff` section of this L2. Mid-wave (wave <N> → <N+1>): automatic handoff without human gate (Case A). Last wave → stage 05: mandatory gate-inline (Case B — Phase 1 WORK_DONE → human gate → Phase 2 GATE_APPROVED).
 
 CWD: lead at `{{PROJECT_ROOT}}` (workspace branch). Subagent at `{{PROJECT_ROOT}}` on branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
@@ -302,7 +304,7 @@ Mid-wave handoff is automatic (no gate) when merge + global CI green + wave-summ
    workspace <NNN>: wave <N> complete + kickoff wave <N+1>
    ```
 
-4. **Print verbal KICKOFF block** for user (copy-paste). EXIT the session.
+4. **Print verbal KICKOFF block** for user (copy-paste). EXIT the session (Ctrl+D or /exit). Open a NEW Claude session at `{{PROJECT_ROOT}}` for the next wave.
 
 ### Case B: last wave handoff → stage 05 — WITH human gate (gate inline)
 

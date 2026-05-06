@@ -47,7 +47,7 @@ Finalizes the implementation cycle: integrates the `workspace_branch` rebased in
    - Irreversible operations in the merge (force-push, drop) → `irreversible` (always `hard`).
    - Schema migration with production data → `prod_migration` (always `hard`).
 4. **Human A/B/C menu** (written in chat, not in a file):
-   - **A) Direct merge** into `base_branch` (`git merge --no-ff` or `--squash`, per project convention declared in xp-conventions or git config).
+   - **A) Direct merge** into `base_branch`. Sequence: `git checkout {{BASE_BRANCH}} && git merge --no-ff workspace/{{WORKSPACE}} && git push origin {{BASE_BRANCH}}` (or `--squash`, per project convention declared in xp-conventions or git config).
    - **B) Open PR** via `gh pr create` (or equivalent), awaits external human review before final merge.
    - **C) Tag-only** — creates release tag without automated merge (used for deliveries that go through an external deploy gate).
 5. **Execute the human's choice:**
@@ -222,6 +222,7 @@ If human replies with free text requesting adjustment in the merge-report (re-ru
 - Update L1: `status = IN_PROGRESS`, append history `{event: "gate_rejected", note: "human requested adjustment in merge: X"}`. Sub_stage stays `07_completed`.
 - Return to work as requested. May involve re-execution of Process step 5 (execute new A/B/C choice).
 - When outputs are redone, return to Phase 1.
+- **If merge was already executed and human requests 'adjust X' (e.g., change from direct merge to PR):** the merge commit can be reverted via `git revert -m 1 <merge_sha>` on `{{BASE_BRANCH}}`. Then re-execute with the new choice.
 
 ### Response "abort"
 

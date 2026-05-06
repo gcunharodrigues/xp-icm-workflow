@@ -40,18 +40,18 @@ Guided brainstorming with the human. Refines scope through iterative clarificati
 ## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/.icm-main/src/ — discovery does NOT inspect source code. If code context is necessary, cite the dependency in recon-report and revisit 00.
-- {{PROJECT_ROOT}}/.icm-main/tests/ — exception: if a legacy project exists, the recon-report (stage 00) should have indexed the existing suite; discovery reads only the index from the recon-report, not the directory.
+- {{PROJECT_ROOT}}/.icm-main/tests/ — discovery does NOT read test code directly. It reads only the test index from recon-report.md (stage 00).
 - {{PROJECT_ROOT}}/.icm-main/docs/decisions/ — detailed ADRs are consumed in stage 02. Here only the index already listed in recon-report.md is used.
 - Outputs of stages 02+ — they do not exist yet.
 - {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md — tech debt scope appears in design (02), not in discovery.
 
 ## Process
 
-1. **Pre-flight:** validate all Input paths marked `yes`; sub_stage `01_in_progress`. If `recon-report.md` is absent → status `BLOCKED_ERROR` (recon needs to run first).
+1. **Pre-flight:** validate all Input paths marked `yes`; verify L1 `stage_atual: "01"` and `sub_stage: 01_in_progress` (read-only — do NOT change L1 here). If `recon-report.md` is absent → status `BLOCKED_ERROR` (recon needs to run first).
 2. **Consult brainstorming 200tok summary** to standardize question format (A/B/C menu with recommendation, clarification questions before assuming).
 3. **Iterative clarification with human:** target audience, objective, functional requirements (what it does), non-functional requirements (perf, security, scale), technical/budget constraints. Each non-trivial decision becomes an A/B/C menu with the agent's recommendation.
 4. **Detect stop points during clarification:** if human describes integration with a paid SaaS, stack change, non-trivial external API, or PII handling → trigger the corresponding stop point per tier calibration in `_config/stop-points.md`.
-5. **Map macro A/B/C options** for approach (high-level, without detailed architecture). Justify recommendation considering the profile/tier from L0.
+5. **Map macro A/B/C options** for approach (high-level, without detailed architecture). Justify recommendation considering the profile/tier from `_config/profile-effective.yaml` (merged from L0 + local overrides).
 6. **Define MVP IN/OUT:** what goes into this delivery vs what stays for later. Explicit list.
 7. **List risks** (technical, scope, timeline) with proposed mitigation for each.
 8. **Define success metrics** — how the human will know the MVP delivered value.
@@ -67,7 +67,7 @@ Guided brainstorming with the human. Refines scope through iterative clarificati
 
 ## Outputs
 
-- `output/discovery.md` — refined scope: audience, requirements, chosen macro options, MVP IN/OUT, risks, metrics. Document the human edits directly if they disagree.
+- `output/discovery.md` — refined scope: audience, requirements, chosen macro options, MVP IN/OUT, risks, metrics. If human disagrees with any item, they edit `output/discovery.md` directly. Do NOT overwrite their edits — they are the authority.
 
 ## Sub_stage transitions
 
@@ -94,7 +94,7 @@ Canonical catalogue in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/ru
 - `paid_service` — recurring SaaS; threshold calibrated by tier (warning R$50 experimental / hard R$200 tool / hard R$500 development / hard R$1000 production).
 - `pii` — handling of personal or sensitive data (LGPD); calibrated by tier (warning experimental / hard tool/development / hard+DPO production).
 
-Trigger: agent pauses, writes A/B/C menu in the output, updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes with `IN_PROGRESS`. Non-architectural decisions stay noted in discovery.md; architectural ones propagate to 02 design (which may spawn an ADR).
+Trigger: agent pauses, writes A/B/C menu to `output/discovery.md § Stop points` (same as stage 00 convention), updates L1 `status: BLOCKED_STOP_POINT`. Human responds, session resumes with `IN_PROGRESS`. Non-architectural decisions stay noted in discovery.md; architectural ones propagate to 02 design (which may spawn an ADR).
 
 ## Skill superpowers reference
 
@@ -164,7 +164,7 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
 6. **Render `_kickoff.md`** in the next stage:
    - Path: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md`
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render` or function `render_kickoff` from `{{SKILL_DIR}}/scripts/handoff.py`
-   - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
+   - **Script CLI reference:** `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
    - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`
    - Body: prev_outputs + prev_decisions + pending for next stage
 
@@ -230,7 +230,7 @@ If human replies "abort":
 
 - **Ubiquitous Language (`_config/CONTEXT.md`):** stage 01 = grilling session.
   Each domain term resolved during discovery → update
-  `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/CONTEXT.md` **inline** (do not batch at the end).
+  `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/CONTEXT.md` **inline** (glossary — NOT L1 `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md` state machine; do not batch at the end).
   Canonical format: `_references/runtime/context-format.md`.
 - **Additional output:** glossary populated in `_config/CONTEXT.md` is a
   mandatory input for stage 02 (design).

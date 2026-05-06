@@ -232,7 +232,7 @@ Loopback is auto-transition (per Gates section): reviewer classified P0/P1 → L
 
 1. **Update L1**:
    - `stage_atual = 04`
-   - `sub_stage = 04_wave_<N+1>_in_progress` (new fix wave) OR regeneration of current wave per severity
+   - `sub_stage = 04_wave_<N+1>_in_progress` (new fix wave). P0 issues → new fix wave (`sub_stage = 04_wave_<N+1>_in_progress`). P1 issues → regenerate current wave (same `sub_stage`).
    - `status = IN_PROGRESS`
    - `last_transition.from = 06_in_progress`
    - `last_transition.to = 04_wave_<N+1>_in_progress`

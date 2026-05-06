@@ -66,7 +66,7 @@ Detailed technical design from the scope refined in discovery. Produces `plan.md
 6. **Spawn new ADRs** when an architectural decision is irreversible or diverges from what was declared: canonical v3.4.0 workflow via `.icm-main/` worktree:
    ```
    1. Write {{PROJECT_ROOT}}/.icm-main/docs/decisions/NNNN-<slug>.md
-      (canonical format — see `_references/runtime/adr-format.md`)
+      (canonical format — see `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/adr-format.md`)
    2. cd {{PROJECT_ROOT}}/.icm-main
    3. git add docs/decisions/NNNN-*.md
    4. git commit -m "docs(decisions): <slug> (workspace {{WORKSPACE}})"
@@ -80,7 +80,7 @@ Detailed technical design from the scope refined in discovery. Produces `plan.md
      - **A) Create from scratch** — designer proposes initial tokens based on brand voice + audience captured in discovery.md.
      - **B) Inspire from example** — choose a reference brand from the [VoltAgent/awesome-design-md](https://github.com/VoltAgent/awesome-design-md) gallery (airbnb, apple, claude, figma, framer, ferrari, etc.).
      - **C) Extract from existing URL** — human provides URL and runs `npx designlang <url>` externally. Designer adapts the base output.
-   - After choice, designer writes/updates `<project_root>/.icm-main/DESIGN.md` following the canonical Google Stitch schema (YAML frontmatter + section order: Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts).
+   - After choice, designer writes/updates `{{PROJECT_ROOT}}/.icm-main/DESIGN.md` following the canonical Google Stitch schema (YAML frontmatter + section order: Overview → Colors → Typography → Layout → Elevation & Depth → Shapes → Components → Do's and Don'ts).
    - Commit to base branch via worktree:
      ```
      cd {{PROJECT_ROOT}}/.icm-main
@@ -95,7 +95,7 @@ Detailed technical design from the scope refined in discovery. Produces `plan.md
    - **Mock data strategy** read from effective (`preview_loop.mock_data_strategy`):
      - `fixtures` (experimental/tool): designer does NOT write a formal schema; plan.md only mentions expected `fixtures/*.json` paths.
      - `msw_faker` (development): designer describes in plan.md the `/api/*` endpoints expected by the frontend + payload shape (in pseudo-TS), sufficient for lead/subagent in stage 04 to write `mocks/handlers.ts` using MSW + Faker.
-     - `msw_faker_zod` (production): designer writes a complete **Zod** schema in plan.md (code block), saved as `mocks/schema.ts` in stage 04. Schema is the source of truth for the API contract the real backend will implement later — refactoring mock → real = replacing MSW handler with a real HTTP call, without touching the component.
+     - `msw_faker_zod` (production): designer writes a complete **Zod** schema in plan.md (code block), saved as `{{PROJECT_ROOT}}/mocks/schema.ts` in stage 04. Schema is the source of truth for the API contract the real backend will implement later — refactoring mock → real = replacing MSW handler with a real HTTP call, without touching the component.
    - **Reusable components** get flag `requires_preview_page: true` in task metadata. Indicates to the subagent in stage 04 that along with the component it should write `preview/<component>/page.tsx` (Next.js app router) or equivalent for the detected build tool, with ≥4 states (Default/Hover/Active/Disabled). Canonical path in `preview_loop.preview_pages_path` (default `preview/`).
    - **Routes map (CDP fallback):** designer populates `output/routes.md` listing planned routes + main component per route + associated fixture/handler. Activates automatic fallback when CDP is unavailable in stage 04.
    - **Optional ASCII wireframe:** plan.md task with non-trivial layout (e.g., multi-grid dashboard) includes an ASCII wireframe in the `HOW` block. Stage 04 lead injects the wireframe in the subagent's channel 2. Wireframe does NOT replace DESIGN.md tokens; it is aux for layout coords.
@@ -108,12 +108,12 @@ Detailed technical design from the scope refined in discovery. Produces `plan.md
    - **Test file location**: convention for where test files live (co-located vs `tests/`)
    - If profile == `agent_ia`: include **Eval Strategy** (golden_output, eval_threshold, determinism seed)
    - If profile == `ml_project`: include **Model Regression** (dataset fixtures, performance baseline)
-9. **Write `output/plan.md`** with sections: Overview (5-10 lines); **Test Strategy** (section 8 above); Tasks (list, each with 4-block + metadata); ADRs created in this session; Triggered stop points (if any); Inherited tech debt (if any); Acceptance metrics (linked to discovery.md).
+9. **Write `output/plan.md`** (resolves to `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md`) with sections: Overview (5-10 lines); **Test Strategy** (section 8 above); Tasks (list, each with 4-block + metadata); ADRs created in this session; Triggered stop points (if any); Inherited tech debt (if any); Acceptance metrics (linked to discovery.md).
 10. **End-of-stage handoff:** follow the gate-inline protocol in the `## End of stage handoff` section of this L2 (Phase 1 WORK_DONE → human gate → Phase 2 GATE_APPROVED).
 
 ## Outputs
 
-- `output/plan.md` — technical design with **global Test Strategy** + list of tasks in the 4-block schema (each task with ≥1 test file in `Files touched`), consumed by the Wave Planner in 03. ADRs live in `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (base branch worktree) — plan.md cites created filenames as path relative to `.icm-main/`.
+- `output/plan.md` — technical design with **global Test Strategy** + list of tasks in the 4-block schema (each task with ≥1 test file in `Files touched`), consumed by the Wave Planner in 03. ADRs live in `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` (base branch worktree) — plan.md cites ADR filenames as path relative to `.icm-main/`: e.g. `docs/decisions/0001-stack.md` (NOT the full absolute path).
 
 ## Sub_stage transitions
 
