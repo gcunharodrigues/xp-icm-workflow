@@ -8,6 +8,8 @@ sub_stage_enum:
 applicable_stop_points: []
 output_files:
   - "output/wave-plan.md"
+  - "output/ambiguities-resolved.md"
+  - "output/llm-review-verdict.json"
 next_stage: "04"
 ---
 
@@ -85,7 +87,7 @@ IN_PROGRESS → COMPLETED transition fires when:
 
 ## Applicable stop points
 
-Canonical catalogue in `references/stop-points-canonical.md`. **No stop points applicable in this stage** — wave-planner is deterministic. Failures (cycle, unresolvable ambiguity) become `BLOCKED_ERROR`, human fixes `plan.md` and re-runs.
+Canonical catalogue in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md`. **No stop points applicable in this stage** — wave-planner is deterministic. Failures (cycle, unresolvable ambiguity) become `BLOCKED_ERROR`, human fixes `plan.md` and re-runs.
 
 ## Skill superpowers reference
 
@@ -101,11 +103,11 @@ Formal skill: `superpowers:dispatching-parallel-agents` (escape hatch — only i
 
 ## End of stage handoff (gate inline + 1-stage-1-session)
 
-Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `<skill_root>/references/session-handoff-protocol.md`.
+Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `{{SKILL_DIR}}/references/session-handoff-protocol.md`.
 
 ### Phase 1: WORK_DONE (after outputs are ready)
 
-1. **Update L1** (`<workspace>/CONTEXT.md`):
+1. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`):
    - `sub_stage = 03_completed`
    - `status = COMPLETED_AWAITING_HUMAN`
    - `last_transition.from = 03_in_progress`
@@ -153,7 +155,7 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
    - `history` append: `{at, event: "stage_transition", from: "03_completed", to: "04_wave_1_in_progress", commit_sha, note: "gate approved by human"}`
 
 6. **Render `_kickoff.md`** in the next stage:
-   - Path: `<workspace>/stages/04_implementation_waves/_kickoff.md`
+   - Path: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/_kickoff.md`
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render` or function `render_kickoff` from `{{SKILL_DIR}}/scripts/handoff.py`
    - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
    - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`

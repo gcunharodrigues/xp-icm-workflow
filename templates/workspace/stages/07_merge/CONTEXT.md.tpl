@@ -173,6 +173,16 @@ Stage 07 is unique: after gate approved, workspace IMMEDIATELY TRANSITIONS to st
    ```
    Files: L1 + `stages/08_feedback_intake/_kickoff.md`.
 
+7b. **Update project root CLAUDE.md dashboard:**
+   ```bash
+   python {{SKILL_DIR}}/scripts/handoff.py update-project-md \
+       --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} \
+       --profile {{PROFILE}} --tier {{TIER}} \
+       --stage-atual 08 --stage-dir 08_feedback_intake \
+       --sub-stage 08_in_progress --status COMPLETED_AWAITING_HUMAN \
+       --skill-dir {{SKILL_DIR}}
+   ```
+
 8. **Print verbal KICKOFF block** for user. Canonical text (no A/B/C menu — session 08 will infer from the feedback intent):
 
    ```

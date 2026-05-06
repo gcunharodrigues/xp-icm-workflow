@@ -364,6 +364,16 @@ After last wave completed, human gate is MANDATORY before transitioning to 05. B
    workspace <NNN>: gate approved, kickoff stage 05
    ```
 
+7b. **Update project root CLAUDE.md dashboard:**
+   ```bash
+   python {{SKILL_DIR}}/scripts/handoff.py update-project-md \
+       --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} \
+       --profile {{PROFILE}} --tier {{TIER}} \
+       --stage-atual 05 --stage-dir 05_verification \
+       --sub-stage 05_in_progress --status IN_PROGRESS \
+       --skill-dir {{SKILL_DIR}}
+   ```
+
 8. **Print verbal KICKOFF block** for user (copy-paste for next session):
 
    ```

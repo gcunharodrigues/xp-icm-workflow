@@ -136,7 +136,7 @@ IN_PROGRESS → COMPLETED transition fires when:
 
 ## Applicable stop points
 
-Canonical catalogue in `references/stop-points-canonical.md`. IDs triggerable in stage 02 design:
+Canonical catalogue in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md`. IDs triggerable in stage 02 design:
 
 - `stack` — proposal changes language/framework/runtime vs active ADR. Always `hard`.
 - `db` — new engine or schema design. Always `hard`.
@@ -163,11 +163,11 @@ Formal skill: `superpowers:writing-plans` (escape hatch — actual invocation on
 
 ## End of stage handoff (gate inline + 1-stage-1-session)
 
-Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `<skill_root>/references/session-handoff-protocol.md`.
+Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `{{SKILL_DIR}}/references/session-handoff-protocol.md`.
 
 ### Phase 1: WORK_DONE (after outputs are ready)
 
-1. **Update L1** (`<workspace>/CONTEXT.md`):
+1. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`):
    - `sub_stage = 02_completed`
    - `status = COMPLETED_AWAITING_HUMAN`
    - `last_transition.from = 02_in_progress`
@@ -215,7 +215,7 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
    - `history` append: `{at, event: "stage_transition", from: "02_completed", to: "03_in_progress", commit_sha, note: "gate approved by human"}`
 
 6. **Render `_kickoff.md`** in the next stage:
-   - Path: `<workspace>/stages/03_wave_planner/_kickoff.md`
+   - Path: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/03_wave_planner/_kickoff.md`
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render` or function `render_kickoff` from `{{SKILL_DIR}}/scripts/handoff.py`
    - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
    - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`
@@ -286,7 +286,7 @@ If human replies "abort":
   surprising without context, (3) result of real trade-off. Fail on any
   → goes to `decisions.md` as a note, NOT an ADR.
 - **OUT-OF-SCOPE check (`_references/runtime/out-of-scope-kb.md`):** if
-  `iteration > 0` in L1, read `<workspace>/_out-of-scope/*.md` before
+  `iteration > 0` in L1, read `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_out-of-scope/*.md` before
   proposing design. Match with prior rejection → surface to human before
   re-proposing.
 - **HITL/AFK in plan.md (`_references/runtime/task-types-hitl-afk.md`):**

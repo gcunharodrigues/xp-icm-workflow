@@ -16,7 +16,7 @@ next_stage: null
 
 # Stage 08 — feedback_intake (L2)
 
-Universal iteration gate of the ICM cycle. Workspace transitions here automatically after stage 07 and stays in `COMPLETED_AWAITING_HUMAN` waiting for the human to return with free-form feedback after real use of the project (weeks/months with no deadline). When the human opens a new session and pastes free-form feedback (loose text, no menu), the session **infers intent** and maps it to one of 3 outputs: A) close workspace + lessons in `docs/lessons.md`, B) restart stage X (X ∈ 01..07) with `iteration++`, C) spawn new workspace via human pasting command in a new session. Session confirms the inference with the human before executing (mini-menu y/n/adjust). Collects logs (if `logs_root` is declared), extracts 4 blocks from the free-form feedback, calculates top-N error patterns. Does NOT write new code — only analyzes, infers, and transitions state. Literal protocol in `_references/runtime/feedback-intake-stage08.md`.
+Universal iteration gate of the ICM cycle. Workspace transitions here automatically after stage 07 and stays in `COMPLETED_AWAITING_HUMAN` waiting for the human to return with free-form feedback after real use of the project (weeks/months with no deadline). When the human opens a new session and pastes free-form feedback (loose text, no menu), the session **infers intent** and maps it to one of 3 outputs: A) close workspace + lessons in `docs/lessons.md`, B) restart stage X (X ∈ 01..07) with `iteration++`, C) spawn new workspace via human pasting command in a new session. Session confirms the inference with the human before executing (mini-menu y/n/adjust). Collects logs (if `logs_root` is declared), extracts 4 blocks from the free-form feedback, calculates top-N error patterns. Does NOT write new code — only analyzes, infers, and transitions state. Literal protocol in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/feedback-intake-stage08.md`.
 
 ## Inputs (reads ONLY these, in order)
 
@@ -94,7 +94,7 @@ python {{SKILL_DIR}}/scripts/runtime-status.py \
 
 **Output reported in `output/intake-report.md`:** section §"Runtime cleanup pre-output (v3.7+)" with final checklist snapshot + resolved categories + warnings (if any cleanup was skipped via explicit human menu C).
 
-Canonical doc: `_references/runtime/runtime-cleanup-protocol.md`.
+Canonical doc: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/runtime-cleanup-protocol.md`.
 
 ## Process
 
@@ -157,7 +157,7 @@ Transitions:
 
 ## Applicable stop points
 
-`applicable_stop_points: []` — stage 08 does NOT trigger stop points by design. It is analysis + inference + direct A/B/C decision; there is no architectural trade-off to escalate. Stops detected during use of the workspace output roll to the next workspace via output C (or to the restart via output B).
+`applicable_stop_points: ["runtime_cleanup_failed"]` — only stop point triggerable in stage 08 is #15 runtime_cleanup_failed (during exit checklist). It is analysis + inference + direct A/B/C decision; there is no architectural trade-off to escalate. Stops detected during use of the workspace output roll to the next workspace via output C (or to the restart via output B).
 
 The only exception is stop point 11 `workspace_corrupt`, which may appear in pre-flight if the workspace state is inconsistent — but that is treated as a pre-condition error, not a regular stage stop point.
 
@@ -272,7 +272,7 @@ Detail per output:
 5. **CLAUDE.md root + last-active detection:** run `python {{SKILL_DIR}}/scripts/handoff.py remove-block --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} --skill-dir {{SKILL_DIR}} --closed-at <ISO> --outcome A --exit-2-if-last-active`. Capture exit code:
    - `0` = other active workspaces remain (ICM region remains populated).
    - `2` = was the last active (ICM region replaced with idle msg + persisted in base via `.icm-main/`).
-6. **(v3.7.0) Auto-invoke `/init` if was último ativo (last active):** if exit code from step 5 = `2`, invoke `Skill(skill: "init")` in the SAME session before step 7 (cleanup). Justification: after output A of the last workspace, ICM region is idle and the codebase region needs to be regenerated with info about built code (last merge stage 07). If exit = `0`, **DO NOT invoke** `/init` — other workspaces still active, ICM region populated, `/init` would overwrite signaling (forbidden — see `_references/runtime/project-root-claude-md.md` §"Contract with /init"). Skip to step 8 in that case (no cleanup).
+6. **(v3.7.0) Auto-invoke `/init` if was último ativo (last active):** if exit code from step 5 = `2`, invoke `Skill(skill: "init")` in the SAME session before step 7 (cleanup). Justification: after output A of the last workspace, ICM region is idle and the codebase region needs to be regenerated with info about built code (last merge stage 07). If exit = `0`, **DO NOT invoke** `/init` — other workspaces still active, ICM region populated, `/init` would overwrite signaling (forbidden — see `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/project-root-claude-md.md` §"Contract with /init"). Skip to step 8 in that case (no cleanup).
 7. **(v3.7.2) Opt-in cleanup menu (only if exit=2):** AFTER `/init`, offer complete ICM-ephemeral state cleanup (delete workspace branch, remove `.icm-main/` worktree, clean orphan subagent worktrees). Print literal:
 
    ```
@@ -293,7 +293,7 @@ Detail per output:
 
    Cleanup is **opt-in with confirmation** because it is destructive (deletes branch + worktrees). Pre-checks in the script automatically abort if there are uncommitted changes — human can investigate first.
 
-   Canonical doc: `_references/runtime/icm-cleanup-protocol.md`.
+   Canonical doc: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/icm-cleanup-protocol.md`.
 
 8. Print for user — varies per exit code from step 5:
    - exit `2`: `✅ Workspace <NNN-slug> CLOSED (output A). Lessons recorded in docs/lessons.md. Was last active (último ativo) → /init triggered to regenerate CLAUDE.md root + ICM cleanup <executed/skipped/dry-run per choice>.` (+ "Tech debt recorded in docs/tech_debt.md." if step 3 executed).
@@ -303,7 +303,7 @@ Detail per output:
 ### Exit B — Restart stage X
 
 1. Validate `X ∈ {01, 02, 03, 04, 05, 06, 07}` (refuse `00` and `08`).
-2. Move old outputs: `stages/<XX>/output/` → `stages/<XX>/output-iteration-<N>/` (N = iteration BEFORE increment).
+2. Move old outputs: `stages/<XX>_<name>/output/` → `stages/<XX>_<name>/output-iteration-<N>/` (N = iteration BEFORE increment).
 3. **Update L1**:
    - `iteration = N+1`
    - `stage_atual = <XX>`
@@ -412,7 +412,7 @@ Detail per output:
    - If human replies `[s]`: invoke `Bash(python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}})`. Print output.
    - If human replies `[n]`: skip cleanup, print `ICM state kept. For manual cleanup later: python {{SKILL_DIR}}/scripts/icm-cleanup.py --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}}`.
 
-   Canonical doc: `_references/runtime/icm-cleanup-protocol.md`.
+   Canonical doc: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/icm-cleanup-protocol.md`.
 
 8. Print for user — explicit instruction for next session:
 
@@ -459,16 +459,16 @@ Details in `<skill_root>/references/session-handoff-protocol.md`.
 
 ## v3.3.0 references applicable to this stage
 
-- **Triage state machine (`_references/runtime/triage-state-machine.md`):**
+- **Triage state machine (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/triage-state-machine.md`):**
   BEFORE A/B/C inference, classify feedback in (category, state):
   - bug → Output B (restart stage X)
   - accepted enhancement → Output C (spawn new workspace)
   - rejected enhancement → wontfix → append to `_out-of-scope/` + Output A
   - all OK → Output A
   Each B/C item produces AGENT-BRIEF (format:
-  `_references/runtime/agent-brief-template.md`).
+  `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/agent-brief-template.md`).
 
-- **OUT-OF-SCOPE wontfix (`_references/runtime/out-of-scope-kb.md`):**
+- **OUT-OF-SCOPE wontfix (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/out-of-scope-kb.md`):**
   rejected enhancement → create/update `<workspace>/_out-of-scope/<concept-kebab>.md`
   with decision + durable reason + prior requests.
 

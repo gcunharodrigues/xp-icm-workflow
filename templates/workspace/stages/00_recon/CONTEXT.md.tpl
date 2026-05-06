@@ -108,7 +108,7 @@ Formal skills (escape hatch): `superpowers:brainstorming`, `superpowers:writing-
 
 Upon completing this stage, session must:
 
-1. **Update L1** (`<workspace>/CONTEXT.md`):
+1. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`):
    - `sub_stage = 00_completed`
    - `status = COMPLETED_AWAITING_HUMAN` (or `IN_PROGRESS` if auto-transitioning to the next stage)
    - `last_transition.from = 00_completed`
@@ -117,7 +117,7 @@ Upon completing this stage, session must:
    - `history` append: `{at, event: "stage_transition", from, to, commit_sha, note}`
 
 2. **Render `_kickoff.md`** in the next stage:
-   - Path: `<workspace>/stages/01_discovery/_kickoff.md`
+   - Path: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/_kickoff.md`
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render` or function `render_kickoff` from `{{SKILL_DIR}}/scripts/handoff.py`
    - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
    - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`
@@ -167,7 +167,7 @@ Upon completing this stage, session must:
 
 5. **EXIT** the session. Do NOT continue to the next stage in the same session.
 
-Details in `<skill_root>/references/session-handoff-protocol.md`.
+Details in `{{SKILL_DIR}}/references/session-handoff-protocol.md`.
 
 ---
 

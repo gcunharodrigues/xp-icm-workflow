@@ -66,8 +66,8 @@ Technical audit of what was delivered in stage 04. No new code. Verifies that ou
 
    Skip entirely when profile has `user_facing_paths: []` (data_analysis, technical_article, experiment). Canonical doc: `references/e2e-coverage-protocol.md`.
 
-5. **Sample-check ADRs:** select 3 random ADRs from `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`. For each, `grep` in directory `stages/04/output/` for a mention (ADR slug or number). ≥1 mention = ok; 0 mentions = warning in report.
-5.5 **Audit lead resolutions (v3.9.0):** read `stages/04/output/wave-*/wave-summary.md` and extract section `## Lead resolutions` (table with bucket applied per voided/resolved task). For each entry, apply deterministic meta-check:
+5. **Sample-check ADRs:** select 3 random ADRs from `{{PROJECT_ROOT}}/.icm-main/docs/decisions/`. For each, `grep` in directory `stages/04_implementation_waves/output/` for a mention (ADR slug or number). ≥1 mention = ok; 0 mentions = warning in report.
+5.5 **Audit lead resolutions (v3.9.0):** read `stages/04_implementation_waves/output/wave-*/wave-summary.md` and extract section `## Lead resolutions` (table with bucket applied per voided/resolved task). For each entry, apply deterministic meta-check:
    - **B1 (REWRITE_SPEC):** compare plan.md task before vs after rewrite. Spec rewrite must TIGHTEN (more specific VALIDATION bullets OR more OUT OF SCOPE bullets). LOOSEN (removing criteria) without evidence in diagnose.md → FAIL.
    - **B3 (DIRECT_IMPL):** read critic concerns accumulated in `task-<slug>-critic-round*.json`. Lead diff in branch `-lead-resolved` must address real concerns (heuristic: BLOCKING claims in concerns must appear as files_modified OR test names in lead diff). Lead that merely silenced critic without fix → FAIL.
    - **B4 (VOID_TASK):** read block `### VOIDED` in plan.md. Rationale must cite concrete ADR conflict OR concrete upstream blocker. Vague reason ("complexity too high", "out of scope") without evidence → FAIL.
@@ -99,7 +99,7 @@ IN_PROGRESS → COMPLETED transition fires when:
 
 ## Applicable stop points
 
-Canonical catalogue in `references/stop-points-canonical.md`. **No stop points applicable in this stage** — verification is deterministic. CI failure = `BLOCKED_ERROR`, not a stop point. Late-detected architectural decisions roll to stage 06 (review) or to the next workspace via stage 08 output C.
+Canonical catalogue in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md`. **No stop points applicable in this stage** — verification is deterministic. CI failure = `BLOCKED_ERROR`, not a stop point. Late-detected architectural decisions roll to stage 06 (review) or to the next workspace via stage 08 output C.
 
 ## Skill superpowers reference
 
@@ -115,11 +115,11 @@ Formal skill: `superpowers:verification-before-completion` (escape hatch).
 
 ## End of stage handoff (gate inline + 1-stage-1-session)
 
-Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `<skill_root>/references/session-handoff-protocol.md`.
+Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `{{SKILL_DIR}}/references/session-handoff-protocol.md`.
 
 ### Phase 1: WORK_DONE (after outputs are ready)
 
-1. **Update L1** (`<workspace>/CONTEXT.md`):
+1. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`):
    - `sub_stage = 05_completed`
    - `status = COMPLETED_AWAITING_HUMAN`
    - `last_transition.from = 05_in_progress`
@@ -167,7 +167,7 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
    - `history` append: `{at, event: "stage_transition", from: "05_completed", to: "06_in_progress", commit_sha, note: "gate approved by human"}`
 
 6. **Render `_kickoff.md`** in the next stage:
-   - Path: `<workspace>/stages/06_review/_kickoff.md`
+   - Path: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/06_review/_kickoff.md`
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render` or function `render_kickoff` from `{{SKILL_DIR}}/scripts/handoff.py`
    - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
    - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`

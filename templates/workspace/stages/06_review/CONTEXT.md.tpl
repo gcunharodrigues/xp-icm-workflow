@@ -184,6 +184,16 @@ Stage 06 has two paths: loopback to 04 (automatic, no gate) and transition to 07
    workspace <NNN>: gate approved, kickoff stage 07
    ```
 
+7b. **Update project root CLAUDE.md dashboard:**
+   ```bash
+   python {{SKILL_DIR}}/scripts/handoff.py update-project-md \
+       --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} \
+       --profile {{PROFILE}} --tier {{TIER}} \
+       --stage-atual 07 --stage-dir 07_merge \
+       --sub-stage 07_in_progress --status IN_PROGRESS \
+       --skill-dir {{SKILL_DIR}}
+   ```
+
 8. **Print verbal KICKOFF block** for user:
 
    ```
@@ -233,6 +243,16 @@ Loopback is auto-transition (per Gates section): reviewer classified P0/P1 → L
 3. **Atomic commit** (outputs + L1 + kickoff):
    ```
    workspace <NNN>: stage 06 fix loop + kickoff wave <N+1>
+   ```
+
+3b. **Update project root CLAUDE.md dashboard:**
+   ```bash
+   python {{SKILL_DIR}}/scripts/handoff.py update-project-md \
+       --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} \
+       --profile {{PROFILE}} --tier {{TIER}} \
+       --stage-atual 04 --stage-dir 04_implementation_waves \
+       --sub-stage 04_wave_<N+1>_in_progress --status IN_PROGRESS \
+       --skill-dir {{SKILL_DIR}}
    ```
 
 4. **Print verbal KICKOFF block** + EXIT:

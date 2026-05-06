@@ -12,6 +12,7 @@ applicable_stop_points:
   - "pii"
 output_files:
   - "output/discovery.md"
+  - "_config/CONTEXT.md"
 next_stage: "02"
 ---
 
@@ -61,7 +62,7 @@ Guided brainstorming with the human. Refines scope through iterative clarificati
    - For `agent_ia`/`ml_project`: is there an eval framework in use? How is non-deterministic output tested today?
    - Record conclusions in `discovery.md §Test Context`; absence of an answer → record "not raised" (stage 02 defines profile defaults).
    - If `_references/test-recipes/{{PROFILE}}.md` exists: consult it to contextualize questions to the human.
-10. **Write `output/discovery.md`** with fixed sections: Executive summary (3-5 sentences); Target audience; Functional requirements; Non-functional requirements; Macro options A/B/C + choice; MVP IN/OUT; Risks and mitigations; Success metrics; **Test Context** (section 9 above); Triggered stop points (if any).
+10. **Write `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/discovery.md`** with fixed sections: Executive summary (3-5 sentences); Target audience; Functional requirements; Non-functional requirements; Macro options A/B/C + choice; MVP IN/OUT; Risks and mitigations; Success metrics; **Test Context** (section 9 above); Triggered stop points (if any).
 11. **End-of-stage handoff:** follow the gate-inline protocol in the `## End of stage handoff` section of this L2 (Phase 1 WORK_DONE → human gate → Phase 2 GATE_APPROVED).
 
 ## Outputs
@@ -86,7 +87,7 @@ IN_PROGRESS → COMPLETED transition fires when:
 
 ## Applicable stop points
 
-Canonical catalogue in `references/stop-points-canonical.md`. IDs triggerable in stage 01 discovery:
+Canonical catalogue in `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md`. IDs triggerable in stage 01 discovery:
 
 - `stack` — human describes a language/framework/runtime not yet declared in an ADR. Always `hard`.
 - `external_api` — integration with an external API (paid? rate-limited? privacy?). Always `hard`.
@@ -109,11 +110,11 @@ Formal skill: `superpowers:brainstorming` (escape hatch — actual invocation on
 
 ## End of stage handoff (gate inline + 1-stage-1-session)
 
-Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `<skill_root>/references/session-handoff-protocol.md`.
+Handoff is split into TWO phases within the SAME session. Human gate sits between them — `_kickoff.md` is only rendered AFTER approval. Bug v3.4.2 fixed: premature render+exit before approval created loop "kickoff → user approves in new session → kickoff again". Canonical doc: `{{SKILL_DIR}}/references/session-handoff-protocol.md`.
 
 ### Phase 1: WORK_DONE (after outputs are ready)
 
-1. **Update L1** (`<workspace>/CONTEXT.md`):
+1. **Update L1** (`{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md`):
    - `sub_stage = 01_completed`
    - `status = COMPLETED_AWAITING_HUMAN`
    - `last_transition.from = 01_in_progress`
@@ -161,7 +162,7 @@ Handoff is split into TWO phases within the SAME session. Human gate sits betwee
    - `history` append: `{at, event: "stage_transition", from: "01_completed", to: "02_in_progress", commit_sha, note: "gate approved by human"}`
 
 6. **Render `_kickoff.md`** in the next stage:
-   - Path: `<workspace>/stages/02_design/_kickoff.md`
+   - Path: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/_kickoff.md`
    - Use `python {{SKILL_DIR}}/scripts/handoff.py render` or function `render_kickoff` from `{{SKILL_DIR}}/scripts/handoff.py`
    - **Script CLI reference:** `references/script-cli-reference.md` — exact format for `--prev-outputs`, `--pending`, and all other flags.
    - L4-kickoff YAML frontmatter per schema in `references/session-handoff-protocol.md`
@@ -229,7 +230,7 @@ If human replies "abort":
 
 - **Ubiquitous Language (`_config/CONTEXT.md`):** stage 01 = grilling session.
   Each domain term resolved during discovery → update
-  `<workspace>/_config/CONTEXT.md` **inline** (do not batch at the end).
+  `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/CONTEXT.md` **inline** (do not batch at the end).
   Canonical format: `_references/runtime/context-format.md`.
 - **Additional output:** glossary populated in `_config/CONTEXT.md` is a
   mandatory input for stage 02 (design).
