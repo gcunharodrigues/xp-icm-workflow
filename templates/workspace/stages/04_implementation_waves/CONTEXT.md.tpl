@@ -107,6 +107,15 @@ Each wave executes the pipeline below. `<N>` = current wave number.
    - [ ] `git branch --list "wave-{{WORKSPACE_NUM}}-*"` → verify branch naming pattern matches `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`
    - [ ] `python {{SKILL_DIR}}/scripts/forensic-plus.py --help` → script is callable (catches import errors early)
    - [ ] **Detect worktree topology:** `test -f .git && echo "NESTED" || echo "STANDARD"`. NESTED → manual `git worktree add` required (Agent tool rejects `.git` files). STANDARD → `Agent(isolation: "worktree")` expected to work. **If STANDARD still fails → use manual worktree fallback, NEVER isolation=none at project root** (§ "Isolation fallback" below).
+   - [ ] **Clean up orphaned worktrees from previous waves:**
+       ```bash
+       git worktree list
+       ```
+       If any path contains `icm-wave` or `.icm-wave` → orphan from a previous wave. Remove:
+       ```bash
+       git worktree list --porcelain | awk '/^worktree /{p=$2} /icm-wave/{print p}' | xargs -I {} git worktree remove {} --force
+       ```
+       Then delete orphaned wave branches: `git branch --list "wave-{{WORKSPACE_NUM}}-*" | sed 's/^..//' | xargs -I {} git branch -d {}`. Clean start = clean wave.
    - [ ] For each task: determine model via heuristic (doc/config/css → haiku, security/public-api/large → opus, default → sonnet). Record `writer_model` per task.
    - [ ] **For each task: render AGENT-BRIEF** via `python {{SKILL_DIR}}/scripts/agent-brief-render.py --task <slug> --plan stages/02_design/output/plan.md --workspace-num {{WORKSPACE_NUM}} --wave <N> --project-root {{PROJECT_ROOT}} --base-branch {{BASE_BRANCH}}`. **HARD GATE — NEVER spawn Agent without AGENT-BRIEF.** If isolation-mode auto detects nested → auto-switches to manual-worktree isolation block. Store output, inject as Agent prompt.
 
@@ -277,33 +286,52 @@ Each wave executes the pipeline below. `<N>` = current wave number.
     11c. **Cross-task coherence** (production tier, ≥2 tasks sharing file/API change) — subagent fresh context, mandatory v3.12.1. Skip only when tier < production OR all tasks in wave touch disjoint file sets with no shared APIs. Canonical doc: `references/e2e-coverage-protocol.md`.
 
     Canonical doc for E2E reinforcement: `references/e2e-coverage-protocol.md`.
-12. **Cleanup wave worktrees + branches (v3.4.3):** after successful merge + green CI, lead removes ephemeral worktrees created by subagents AND deletes already-merged branches. Bug pre-v3.4.3: worktrees in `<project_root>/.icm-wave-*` (or path returned by Agent tool) were orphaned after each wave; branches `wave-<NNN>-<N>/<task-slug>` polluted `git branch` listing.
+12. **Cleanup wave worktrees + branches (v4.0.x — unified, MANDATORY):** after successful merge + green CI, lead removes ALL wave worktrees and deletes merged branches. Accumulated worktrees degrade `git worktree list` performance and cause confusion. This step is NOT optional — proceed to step 13 ONLY after cleanup succeeds.
+
+   **Step 12a — Remove ALL wave worktrees (both standard and manual mode):**
 
    ```bash
-   # For each task in the wave:
-   # Standard mode: Agent tool returns worktree path → capture and remove
-   # Manual mode: worktree is at .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>
-
-   # Remove manual worktrees (safe if already merged --no-ff):
-   for _wt in .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-*; do
-       git worktree remove "$_wt" 2>/dev/null || true
+   # Method 1: Remove by path pattern (catches both .claude/worktrees/ AND .icm-wave-*):
+   for _wt in .claude/worktrees/icm-wave-* .icm-wave-*; do
+       [ -d "$_wt" ] && git worktree remove "$_wt" 2>/dev/null || true
    done
-   rmdir .claude/worktrees 2>/dev/null || true   # remove dir if empty
+   rmdir .claude/worktrees 2>/dev/null || true
 
-   # Delete merged branches:
-   git branch -d wave-{{WORKSPACE_NUM}}-<N>/<task-slug>   # safe: already merged --no-ff
-
-   # Robust fallback (if path was lost — search by branch pattern):
+   # Method 2: Remove by branch pattern (robust fallback — catches any path):
    git worktree list --porcelain | awk '/^worktree /{p=$2} /^branch refs\/heads\/wave-{{WORKSPACE_NUM}}-<N>/{print p}' \
-     | xargs -I {} git worktree remove {}
+     | while read -r _wt; do git worktree remove "$_wt" 2>/dev/null || true; done
+
+   # Method 3: Force-remove stubborn worktrees (dirty working tree, lock file):
+   git worktree list --porcelain | awk '/^worktree /{p=$2} /icm-wave/{print p}' \
+     | while read -r _wt; do git worktree remove "$_wt" --force 2>/dev/null || true; done
    ```
 
+   **Step 12b — Delete merged wave branches:**
+
+   ```bash
+   # Delete branches for this wave (safe: already merged --no-ff into {{BASE_BRANCH}}):
+   for _slug in <task-slug-1> <task-slug-2> ...; do
+       git branch -d wave-{{WORKSPACE_NUM}}-<N>/$_slug 2>/dev/null || true
+   done
+
+   # Delete any remaining wave branches from previous waves (orphaned):
+   git branch --list "wave-{{WORKSPACE_NUM}}-*" | sed 's/^..//' | while read -r _b; do
+       git branch -d "$_b" 2>/dev/null || true
+   done
+   ```
+
+   **Step 12c — Verify cleanup:**
+
+   ```bash
+   echo "=== Remaining worktrees ===" && git worktree list
+   echo "=== Remaining wave branches ===" && git branch --list "wave-{{WORKSPACE_NUM}}-*"
+   ```
+   After cleanup: `git worktree list` should show ONLY `.icm-main/` and the main worktree. No `icm-wave` paths. `git branch --list "wave-*"` should be empty. If not → investigate before proceeding.
+
    **Decision matrix `--force`:**
-   - `git worktree remove <path>` fails if working tree is not clean → lead reads task report `output/wave-<N>/task-<slug>.md`:
-     - L2 + L3 PASS in frontmatter (`forensic_passed: true` AND `critic_decision: APPROVE`) → safe to use `git worktree remove --force <path>` (orphan lock file is the only remaining cause).
-     - Otherwise → do NOT force. set L1 `status: BLOCKED`, `block_reason: error`, record in `wave-summary.md`, human inspects manually.
+   - `git worktree remove --force <path>` is safe when L2 + L3 PASS (worktree is already merged, lock file is the only remaining cause).
    - `git branch -d` refuses if not merged → NEVER use `-D`. Non-merged branch after merge step indicates a bug in sequential merge; investigate first.
-   - Non-fatal cleanup failure (after valid force): record warning in `wave-summary.md` (next step).
+   - Non-fatal cleanup failure: record warning in `wave-summary.md`, proceed.
 
    **Cleanup note:** For RETRY/VOID resolved tasks: no worktree was created (lead wrote directly). Skip `git worktree remove` — only `git branch -d` applies.
 
