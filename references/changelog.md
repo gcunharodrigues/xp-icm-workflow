@@ -6,6 +6,19 @@ Version history for the skill. The current version lives in the `SKILL.md` front
 
 ---
 
+## v4.0.1 — Stage 04 isolation fallback + AGENT-BRIEF hard gate (2026-05-06)
+
+### Changes
+
+- **Isolation fallback (nested worktree):** `Agent(isolation: "worktree")` fails when `.git` is a file (linked worktree) or due to Agent tool bugs. Lead now detects topology in pre-flight (`test -f .git`). Two spawn paths: standard (`Agent(isolation: "worktree")`) and manual (`git worktree add` + `Agent(isolation=None, cwd=<worktree>)`). NEVER fall back to `isolation=none` at project root for code tasks.
+- **AGENT-BRIEF hard gate:** `agent-brief-render.py` call now mandatory in pre-flight checklist before any Agent spawn. New common violation #29 for skipping it.
+- **3 isolation modes in agent-brief-render.py:** `worktree`, `manual-worktree`, `direct` (reviewer/critic only). `--isolation-mode auto` detects `.git` type and picks correct mode. New `detect_isolation_mode()` function.
+- **New common violation #30:** isolation=none fallback for code tasks — files bleed into project dir.
+- **Docs updated:** worktree-model.md §3b, subagent-protocol.md §2.2a, agent-brief-template.md (3 isolation rule variants), wave-execution-protocol.md (step 1/2 entry criteria + global invariants), stage 04 CONTEXT.md.tpl (pre-flight + Path A/B spawn + References section).
+- **Tests:** +14 tests across test_agent_brief_render.py (3 new classes) and test_subagent_isolation_rules.py (3 new assertions + 3 new tests). 38/38 pass.
+
+---
+
 ## v4.0.0 — Simplified workflow + subagent isolation fix (2026-05-06)
 
 ### Changes

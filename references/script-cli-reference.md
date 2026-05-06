@@ -192,19 +192,25 @@ ADR import drift, E2E coverage.
 
 ## agent-brief-render.py
 
-Generates AGENT-BRIEF for stage 04 subagent dispatch.
+Generates AGENT-BRIEF for stage 04 subagent dispatch. Supports 3 isolation modes
+(worktree, manual-worktree, direct) with auto-detection via `--isolation-mode auto`.
 
 ```
 python scripts/agent-brief-render.py \
-  --plan stages/02_design/output/plan.md \
   --task <task-slug> \
-  --workspace <NNN-slug> \
+  --plan stages/02_design/output/plan.md \
+  --workspace-num <NNN> \
   --wave <N> \
+  --project-root <path> \
   --base-branch main \
-  [--tier development]
+  [--adrs <project>/.icm-main/docs/decisions] \
+  [--tier development] \
+  [--isolation-mode auto|worktree|manual-worktree|direct] \
+  [--strict]
 ```
 
-Output: markdown brief with behavioral instructions and acceptance criteria.
+Output: markdown brief with behavioral instructions, acceptance criteria, and
+mode-specific isolation rules. Exit 1 if task not found or `--strict` with warnings.
 
 ---
 
