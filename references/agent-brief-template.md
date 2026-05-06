@@ -65,7 +65,7 @@ cases and error conditions.
 - [ ] Return results in Agent tool output: summary, modified files (`git diff --name-only <BASE>...HEAD`), tests written, ADRs applied. The lead writes all workspace state files (task report, L1 updates). NEVER write to workspace branch paths — you cannot reach them from this worktree.
 
 **Isolation rules — manual-worktree mode (MANDATORY — Agent(isolation=none, cwd=<worktree>)):**
-- [ ] You are in a manually-created git worktree at a path like `/tmp/icm-wave-<NNN>-<N>/<task-slug>`. Your CWD is the worktree root — NOT `{{PROJECT_ROOT}}`.
+- [ ] You are in a manually-created git worktree at a path like `.claude/worktrees/icm-wave-<NNN>-<N>/<task-slug>`. Your CWD is the worktree root — NOT `{{PROJECT_ROOT}}`.
 - [ ] Your CWD IS the isolation. Write code ONLY in this worktree. NEVER write to `{{PROJECT_ROOT}}` via absolute paths.
 - [ ] NEVER write to `{{PROJECT_ROOT}}/.icm-main/` or any path under it — that is the base-branch linked worktree, read-only for docs.
 - [ ] Read base-branch files (ADRs, lessons, tech_debt, DESIGN.md) from `{{PROJECT_ROOT}}/.icm-main/<path>`.

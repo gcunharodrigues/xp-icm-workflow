@@ -87,6 +87,7 @@ a retry cycle or a wasted wave.
 | 28  **Parallel = simple assumption** — all root tasks spawned in parallel without verifying per-task preconditions | Blocked on first script error, agents idle, wasted spawns. | Verify forensic-plus callable + branch names correct BEFORE first Agent spawn. |
 | 29  **No AGENT-BRIEF** — hand-written prompt instead of running `agent-brief-render.py` | No behavioral contract, no acceptance criteria, no isolation rules. Subagent doesn't know when it's done. | Run `agent-brief-render.py` BEFORE every Agent spawn. Output injected as prompt. Hard gate — do NOT spawn without it. |
 | 30  **isolation=none fallback for code tasks** — `Agent(isolation: "worktree")` failed, lead used `isolation=none` at project root | Files bleed into project dir (`.venv/`, `egg-info/`, `src/` scattered outside worktree). No git isolation. | NEVER fall back to no-isolation for writer tasks. If worktree fails → manual `git worktree add` + `Agent(isolation=none, cwd=<worktree>)` (§ "Isolation fallback" below). |
+| 31  **isolation=none destroys workspace files** — subagent with `isolation=none` at project root runs `git checkout <wave-branch>`. Working tree switches from workspace branch to wave branch. `workspaces/` directory vanishes from disk. Parallel subagents race on branch checkout. | Workspace state files (L0, L1, L2, plan.md, wave-plan.md) disappear from working tree. Lead must reconstruct from `git show`. Parallel subagents corrupt each other's branches. | NEVER use `isolation=none` at project root for writer tasks. The project root MUST stay on `workspace/{{WORKSPACE}}` for the entire wave. Subagents MUST work in isolated worktrees — their `git checkout` must NOT affect the project root. |
 
 ## Process
 
@@ -109,19 +110,56 @@ Each wave executes the pipeline below. `<N>` = current wave number.
    - [ ] For each task: determine model via heuristic (doc/config/css → haiku, security/public-api/large → opus, default → sonnet). Record `writer_model` per task.
    - [ ] **For each task: render AGENT-BRIEF** via `python {{SKILL_DIR}}/scripts/agent-brief-render.py --task <slug> --plan stages/02_design/output/plan.md --workspace-num {{WORKSPACE_NUM}} --wave <N> --project-root {{PROJECT_ROOT}} --base-branch {{BASE_BRANCH}}`. **HARD GATE — NEVER spawn Agent without AGENT-BRIEF.** If isolation-mode auto detects nested → auto-switches to manual-worktree isolation block. Store output, inject as Agent prompt.
 
-2. **Lead spawns subagents via Agent tool:** for each task in the wave (up to cap):
+2. **Lead spawns subagents via Agent tool:** for each task in the wave (up to cap).
+
+   **WHY isolation is mandatory (READ BEFORE SPAWNING):**
+   The project root MUST stay on `workspace/{{WORKSPACE}}` for the entire wave.
+   A subagent running with `isolation=none` at project root that runs `git checkout <wave-branch>`
+   switches the project root's working tree to the wave branch. This destroys workspace files on disk:
+   `workspaces/` disappears (it only exists on `workspace/{{WORKSPACE}}`). Parallel subagents then
+   race on branch checkout — each checkout wipes the previous subagent's branch. L0, L1, L2, plan.md,
+   wave-plan.md are GONE from the working tree. Recovery requires `git show workspace/{{WORKSPACE}}:<path>`.
+   **Isolation is not optional. It protects the workspace files from being destroyed.**
+
+   ---
+
+   **Pre-spawn verification (MANDATORY — for EACH Agent call, before dispatch):**
+   - [ ] Read the AGENT-BRIEF for this task. Note the `**Isolation mode:**` field.
+   - [ ] If `Isolation mode: worktree` → Agent call MUST use `isolation="worktree"`.
+   - [ ] If `Isolation mode: manual-worktree` → Agent call MUST use `isolation=None` + `cwd=<worktree>`.
+   - [ ] If `Isolation mode: direct` → reviewer/critic only. NEVER for writer tasks.
+   - [ ] **Verify the `isolation` parameter in your Agent() call matches the AGENT-BRIEF Isolation mode.**
+   - [ ] **If `Agent(isolation: "worktree")` fails:** DO NOT fall back to `isolation=none`. Use Path B instead.
+   - [ ] **If both paths fail:** `status: BLOCKED, block_reason: error`. Diagnose. Never proceed without isolation.
+
+   ---
 
    **Path A — Standard (`.git` is directory):**
    1. Lead creates branch BEFORE spawn: `git branch wave-{{WORKSPACE_NUM}}-<N>/<task-slug> {{BASE_BRANCH}}`. Lead stays on workspace branch (no checkout).
    2. Lead invokes `Agent(isolation: "worktree", subagent_type: "general-purpose", model: <writer_model>, description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + channel-2>)`. Harness creates ephemeral worktree.
+   3. **If Agent returns error about worktree creation:** DO NOT retry with `isolation=none`. Switch to Path B.
 
    **Path B — Nested worktree (`.git` is FILE) OR Agent tool worktree failed:**
    1. Lead creates branch: `git branch wave-{{WORKSPACE_NUM}}-<N>/<task-slug> {{BASE_BRANCH}}`.
-   2. Lead creates manual worktree: `git worktree add /tmp/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug> wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`.
-   3. Lead invokes `Agent(isolation=None, cwd="/tmp/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>", subagent_type="general-purpose", model: <writer_model>, description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + channel-2>)`. The manual worktree IS the isolation.
-   4. After subagent returns: `git worktree remove /tmp/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>`.
+   2. Lead creates manual worktree in `.claude/worktrees/`:
+      ```bash
+      mkdir -p .claude/worktrees
+      git worktree add .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug> wave-{{WORKSPACE_NUM}}-<N>/<task-slug>
+      ```
+      `.claude/` is gitignored by ICM bootstrap. The worktree is project-relative, visible, and cleaned up after merge.
+   3. Lead invokes `Agent(isolation=None, cwd="{{PROJECT_ROOT}}/.claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>", subagent_type="general-purpose", model: <writer_model>, description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + channel-2>)`. The manual worktree IS the isolation.
+   4. After subagent returns, lead cleans up:
+      ```bash
+      git worktree remove .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>
+      ```
 
-   **NEVER fall back to `Agent(isolation=None)` at project root** for code-writing tasks. This bleeds files (`.venv/`, `egg-info/`, etc.) into `{{PROJECT_ROOT}}`. If both worktree paths fail → `status: BLOCKED, block_reason: error`, diagnose root cause.
+   **Anti-pattern — NEVER do this:**
+   ```python
+   Agent(isolation=None, description="wave 2 task foo", prompt=...)   # ← DESTROYS workspace files
+   ```
+   This runs the subagent at project root. Subagent's `git checkout` switches the working tree
+   to a wave branch. `workspaces/` vanishes. Parallel subagents race. This is the #1 cause of
+   workspace corruption in stage 04.
 
    3. Parallel tasks: multiple `Agent` calls in ONE message (multi tool-use). Sequential tasks (HITL or dependent): sequential calls.
 3. **Lead injects channel 2:** injects into the subagent prompt only the subset of ADRs + critical lessons + extra conventions declared in plan.md for that task. Subagent does NOT read the project's global `docs/`. **If task has flag `requires_design_system: true`** (profile `app_web_frontend` or `fullstack`): lead also injects relevant DESIGN.md subset (applicable tokens + task's components section) — subagent reads via `Read {{PROJECT_ROOT}}/.icm-main/DESIGN.md` if it needs additional detail. Doc: `_references/runtime/design-system.md`.
@@ -242,8 +280,17 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 12. **Cleanup wave worktrees + branches (v3.4.3):** after successful merge + green CI, lead removes ephemeral worktrees created by subagents AND deletes already-merged branches. Bug pre-v3.4.3: worktrees in `<project_root>/.icm-wave-*` (or path returned by Agent tool) were orphaned after each wave; branches `wave-<NNN>-<N>/<task-slug>` polluted `git branch` listing.
 
    ```bash
-   # For each task in the wave (paths captured from Agent tool results):
-   git worktree remove <path-to-worktree>           # removes ephemeral worktree
+   # For each task in the wave:
+   # Standard mode: Agent tool returns worktree path → capture and remove
+   # Manual mode: worktree is at .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>
+
+   # Remove manual worktrees (safe if already merged --no-ff):
+   for _wt in .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-*; do
+       git worktree remove "$_wt" 2>/dev/null || true
+   done
+   rmdir .claude/worktrees 2>/dev/null || true   # remove dir if empty
+
+   # Delete merged branches:
    git branch -d wave-{{WORKSPACE_NUM}}-<N>/<task-slug>   # safe: already merged --no-ff
 
    # Robust fallback (if path was lost — search by branch pattern):
@@ -263,7 +310,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 13. **Lead writes:** `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/wave-summary.md` (completed tasks, conflicts, decisions made, **cleanup warnings** if any, **§ L2/L3 summary** with SOFT violations + critic MINOR concerns, **§ Lead resolutions** with action table applied if any).
 14. **End-of-wave/stage handoff:** follow protocol in the `## End of stage handoff` section of this L2. Mid-wave (wave <N> → <N+1>): automatic handoff without human gate (Case A). Last wave → stage 08 (feedback): mandatory human gate. No separate verification/review/merge stages — CI, E2E, and merge run as inline gates within stage 04.
 
-CWD: lead at `{{PROJECT_ROOT}}` (workspace branch). Subagent at isolated worktree root (NOT `{{PROJECT_ROOT}}`) on branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. Standard mode: Agent(isolation: "worktree"). Nested/fallback: Agent(isolation=None, cwd=<manual-worktree>).
+CWD: lead at `{{PROJECT_ROOT}}` (workspace branch) — MUST stay on `workspace/{{WORKSPACE}}` for entire wave. Subagent in isolated worktree (NOT `{{PROJECT_ROOT}}`) on branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. Standard: Agent(isolation: "worktree"). Fallback: Agent(isolation=None, cwd=.claude/worktrees/icm-wave-*). NEVER subagent at project root — `git checkout` destroys `workspaces/` on disk.
 
 ## Outputs
 
@@ -465,8 +512,8 @@ After last wave completed, human gate is MANDATORY before transitioning to stage
   - **Standard (`.git` directory):** `Agent(isolation: "worktree")` — harness
     creates ephemeral worktree.
   - **Nested (`.git` FILE) or Agent tool fails:** manual `git worktree add
-    /tmp/icm-wave-*` + `Agent(isolation=None, cwd=<worktree>)`. The manual
-    worktree IS the isolation.
+    .claude/worktrees/icm-wave-*` + `Agent(isolation=None, cwd=<worktree>)`. The manual
+    worktree IS the isolation. Worktrees live in `.claude/worktrees/` (gitignored).
   - **NEVER fall back to `isolation=none` at project root** for code tasks.
     If both paths fail → `BLOCKED_ERROR`.
 

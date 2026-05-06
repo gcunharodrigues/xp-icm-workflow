@@ -143,7 +143,7 @@ fi
 
 1. Lead creates manual worktree BEFORE Agent spawn:
    ```bash
-   _wt="/tmp/icm-wave-<NNN>-<N>-<task-slug>"
+   _wt=".claude/worktrees/icm-wave-<NNN>-<N>-<task-slug>"
    git worktree add "$_wt" wave-<NNN>-<N>/<task-slug>
    ```
 
@@ -152,7 +152,7 @@ fi
    ```python
    Agent(
        isolation=None,       # NO worktree — manual worktree = isolation
-       cwd="/tmp/icm-wave-<NNN>-<N>-<task-slug>",
+       cwd=".claude/worktrees/icm-wave-<NNN>-<N>-<task-slug>",
        description="wave <N> task <slug>",
        prompt=<AGENT-BRIEF>,
    )
@@ -160,7 +160,7 @@ fi
 
 3. After subagent returns, lead cleans up:
    ```bash
-   git worktree remove /tmp/icm-wave-<NNN>-<N>-<task-slug>
+   git worktree remove .claude/worktrees/icm-wave-<NNN>-<N>-<task-slug>
    git branch -d wave-<NNN>-<N>/<task-slug>     # after merge
    ```
 

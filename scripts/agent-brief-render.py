@@ -290,7 +290,7 @@ def _render_isolation_block(
             "\n"
             "**Isolation rules — manual-worktree mode (MANDATORY — Agent(isolation=none, cwd=<worktree>)):**\n"
             f"- [ ] You are in a manually-created git worktree on branch `{branch}`.\n"
-            "      Your CWD is a path like `/tmp/icm-wave-<NNN>-<N>/<slug>` — NOT `{{PROJECT_ROOT}}`.\n"
+            "      Your CWD is a path like `.claude/worktrees/icm-wave-<NNN>-<N>/<slug>` — NOT `{{PROJECT_ROOT}}`.\n"
             "      Run `pwd` to confirm your worktree path.\n"
             "- [ ] Your CWD IS the isolation. Write code ONLY in this worktree.\n"
             "      NEVER write via absolute paths to the project.\n"

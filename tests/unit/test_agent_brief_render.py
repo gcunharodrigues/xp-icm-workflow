@@ -223,9 +223,9 @@ class TestRenderIsolationBlock:
         assert "wave-001-1/test-task" in block
         assert "Your CWD IS the isolation" in block
 
-    def test_manual_worktree_mode_mentions_tmp_path(self):
+    def test_manual_worktree_mode_mentions_claude_worktrees_path(self):
         block = self._call(mode="manual-worktree")
-        assert "/tmp/icm-wave-" in block
+        assert ".claude/worktrees/icm-wave-" in block
 
     def test_direct_mode_forbids_code_writing(self):
         block = self._call(mode="direct")
