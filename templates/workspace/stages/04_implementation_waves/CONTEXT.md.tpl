@@ -98,6 +98,10 @@ a retry cycle or a wasted wave.
 
 ## Process
 
+**Preview Loop (conditional):** if `preview_loop.preview_loop_enabled: true` in
+`_config/profile-effective.yaml`, execute the Preview Loop entry hook (see
+§ "Preview Loop entry/exit hooks" at the bottom of this document) BEFORE step 1.
+
 Each wave executes the pipeline below. `<N>` = current wave number.
 
 1. **Lead pre-flight:** if L1 `status: BLOCKED` → check `block_reason`:
@@ -110,7 +114,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
    Reads wave-plan.md; identifies current wave via L1 `waves.current`. Sub_stage transitions to `04_wave_<N>_in_progress`. Lead records in L1 history event `{event: "wave_started", wave: <N>, pre_wave_sha: <git rev-parse {{BASE_BRANCH}}>}`.
 
    **Pre-flight verification checklist (MANDATORY — do NOT skip):**
-   - [ ] Read `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/wave-plan.md` — identify current wave N, tasks, dependencies
+   - [ ] Read `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/wave-plan.md` — identify current wave N, tasks, dependencies. If wave has 0 tasks → `status: BLOCKED, block_reason: error`, wave-plan.md corruption.
    - [ ] `git branch --show-current` → MUST show `workspace/{{WORKSPACE}}`. Lead stays on workspace branch (NEVER checkout {{BASE_BRANCH}} until merge step 10)
    - [ ] `git branch --list "wave-{{WORKSPACE_NUM}}-*"` → verify branch naming pattern matches `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`
    - [ ] `python {{SKILL_DIR}}/scripts/forensic-plus.py --help` → script is callable (catches import errors early)
@@ -347,7 +351,7 @@ Each wave executes the pipeline below. `<N>` = current wave number.
    are NOT in the working tree. Buffer merge order, task status, and plan.md data
    in memory BEFORE switching branches.
 
-   Then for each task:
+   Then for each task, **in plan order** (from step 7):
    ```bash
    git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>
    ```
@@ -359,7 +363,9 @@ Each wave executes the pipeline below. `<N>` = current wave number.
        Do NOT proceed with un-popped stash — L1 updates in stash will be lost.
 11. **L4 wave gate (CI global + E2E + coherence):** sub-gates after all merges:
 
-    11a. **CI global green** (always, all tiers) — runs the project's full CI. Red → `references/ci-rollback-protocol.md`.
+    11a. **CI global green** (always, all tiers) — runs the project's full CI.
+        Red → revert merge (`git reset --hard HEAD~1` on {{BASE_BRANCH}}), diagnose, retry wave.
+        Full protocol: `references/ci-rollback-protocol.md`.
     11b. **E2E suite green** (v3.10.0, tier dev/prod with non-empty `user_facing_paths` in profile) — runs E2E suite via `_config/profile-effective.yaml:e2e.e2e_command` (default lookup `npm run test:e2e`/`pnpm test:e2e`/`pytest tests/e2e/`). Red → `BLOCKED_ERROR error_type: e2e_suite_failed` → diagnose protocol → human gate A/B/C. Skip when profile has `user_facing_paths: []` (data_analysis, technical_article, experiment) OR tier exp/tool without declared `e2e_command`.
     11c. **Cross-task coherence** (production tier, ≥2 tasks sharing file/API change) — subagent fresh context, mandatory v3.12.1. Skip only when tier < production OR all tasks in wave touch disjoint file sets with no shared APIs. Canonical doc: `references/e2e-coverage-protocol.md`.
 
@@ -590,6 +596,10 @@ After last wave completed, human gate is MANDATORY before transitioning to stage
 
 ## References applicable to this stage (v3.3.0+, consolidated through v3.12.1)
 
+**This section contains both reference CLI signatures and process instructions**
+(HITL handling, Diagnose protocol, Preview Loop hooks). Process instructions
+here are authoritative — read them before executing the relevant steps.
+
 - **AGENT-BRIEF (`_references/runtime/agent-brief-template.md` +
   `<skill_root>/scripts/agent-brief-render.py`):** lead session generates
   structured brief per task BEFORE spawning Agent tool. CLI:
@@ -792,7 +802,7 @@ printing the KICKOFF block.
    tabs open for next workspace; recovery wizard cleans up when
    it detects a persistent orphan.
 
-Stage 05 (verification) does NOT depend on the dev server. Stage 06+ likewise.
+Stage 08 (feedback intake) does NOT depend on the dev server.
 
 **Legacy (v3.6.0):** pre-v3.7.0 workspaces still use
 `.icm-main/.dev-server.pid` directly. Migration via
