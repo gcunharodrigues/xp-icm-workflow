@@ -129,8 +129,8 @@ Each wave executes the pipeline below. `<N>` = current wave number.
        git worktree list --porcelain | awk '/^worktree /{p=$2} /icm-wave/{print p}' | xargs -I {} git worktree remove {} --force
        ```
        Then delete orphaned wave branches: `git branch --list "wave-{{WORKSPACE_NUM}}-*" | sed 's/^..//' | while read -r _b; do git branch -d "$_b" 2>/dev/null || true; done`. Clean start = clean wave.
-   - [ ] For each task: determine model via heuristic (doc/config/css → haiku, security/public-api/large → opus, default → sonnet). Record `writer_model` per task.
-   - [ ] **For each task: render AGENT-BRIEF** via `python {{SKILL_DIR}}/scripts/agent-brief-render.py --task <slug> --plan stages/02_design/output/plan.md --workspace-num {{WORKSPACE_NUM}} --wave <N> --project-root {{PROJECT_ROOT}} --base-branch {{BASE_BRANCH}}`. **HARD GATE — NEVER spawn Agent without AGENT-BRIEF.** If isolation-mode auto detects nested → auto-switches to manual-worktree isolation block. Store output, inject as Agent prompt.
+   - [ ] For each task (sequential, not parallel): determine model via heuristic (doc/config/css → haiku, security/public-api/large → opus, default → sonnet). Record `writer_model` per task.
+   - [ ] For each task (sequential): render AGENT-BRIEF via `cd {{PROJECT_ROOT}} && python {{SKILL_DIR}}/scripts/agent-brief-render.py --task <slug> --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md --workspace-num {{WORKSPACE_NUM}} --wave <N> --project-root {{PROJECT_ROOT}} --base-branch {{BASE_BRANCH}} --isolation-mode auto > {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/task-<slug>-brief.md`. **HARD GATE — NEVER spawn Agent without AGENT-BRIEF.** Save to file — step 2 pre-spawn verification reads it back. If `--isolation-mode auto` detects nested → auto-switches to `manual-worktree` isolation block.
 
 2. **Lead spawns subagents via Agent tool:** for each task in the wave (up to cap).
 
@@ -211,6 +211,9 @@ Each wave executes the pipeline below. `<N>` = current wave number.
          --top 3
      ```
    - DESIGN.md subset (if task has `requires_design_system: true` — profile `app_web_frontend` or `fullstack`)
+   - TDD 7-step cycle contract (`4-block-contract-template.md` — tracer-first, RED→GREEN→CI→REFACTOR, cap 3)
+     and mocking guidelines (`mocking-guidelines.md` — boundaries only). Subagent gets HOW (TDD protocol),
+     not just WHAT (acceptance criteria).
 
    Channel 2 is injected INTO the prompt BEFORE dispatch. It is NOT a separate step after spawning.
    Subagent does NOT read the project's global `docs/` directly — the lead pre-processes and injects.
@@ -263,6 +266,8 @@ Each wave executes the pipeline below. `<N>` = current wave number.
        - HARD in ≥1 check → skip 8c (do not run L3 on code rejected by cheap gate), surgical brief for retry. Per-task cap = 3 attempts; forensic-plus internal cap `MAX_FORENSIC_RETRIES = 2` (hardcoded in scripts/forensic-plus.py — drift-checked) is semantically equivalent (3 attempts total = 1 original + 2 retries). Exhausted → escalate lead-resolution.
 
    8c. **L3 Orthogonal Critic (always, all tiers — v3.9.0):** for each AFK task that passed 8b, lead renders critic prompt then invokes critic via Agent tool with fresh context:
+
+       **Critic round counter:** start at R=1 per task. Increment on retry (cap 3 → R ∈ {1,2,3}).
 
        **Critic model (v4.0 inline, replaces deprecated pick-model.py):**
        | tier | critic model |
@@ -333,7 +338,8 @@ Each wave executes the pipeline below. `<N>` = current wave number.
    **Stash pre-flight (mandatory — workspace branch may have uncommitted L1 updates):**
 
    **WARNING:** `.claude/worktrees/` may contain active git worktrees. Stashing them
-   corrupts worktree state. Clean up manual worktrees BEFORE stash:
+   corrupts worktree state. This is a PRE-STASH SAFETY CLEAN — step 12 does the final
+   comprehensive cleanup. Remove manual worktrees BEFORE stash:
 
    ```bash
    cd {{PROJECT_ROOT}}  # ensure CWD before relative paths
@@ -364,8 +370,14 @@ Each wave executes the pipeline below. `<N>` = current wave number.
 11. **L4 wave gate (CI global + E2E + coherence):** sub-gates after all merges:
 
     11a. **CI global green** (always, all tiers) — runs the project's full CI.
-        Red → revert merge (`git reset --hard HEAD~1` on {{BASE_BRANCH}}), diagnose, retry wave.
-        Full protocol: `references/ci-rollback-protocol.md`.
+        Red → revert ALL wave merges on {{BASE_BRANCH}}:
+        ```bash
+        git checkout {{BASE_BRANCH}}
+        _merge_count=$(<number of tasks merged in this wave>)
+        git reset --hard HEAD~$_merge_count   # undo all wave merge commits
+        git checkout workspace/{{WORKSPACE}}
+        ```
+        Diagnose root cause, retry wave. Full protocol: `references/ci-rollback-protocol.md`.
     11b. **E2E suite green** (v3.10.0, tier dev/prod with non-empty `user_facing_paths` in profile) — runs E2E suite via `_config/profile-effective.yaml:e2e.e2e_command` (default lookup `npm run test:e2e`/`pnpm test:e2e`/`pytest tests/e2e/`). Red → `BLOCKED_ERROR error_type: e2e_suite_failed` → diagnose protocol → human gate A/B/C. Skip when profile has `user_facing_paths: []` (data_analysis, technical_article, experiment) OR tier exp/tool without declared `e2e_command`.
     11c. **Cross-task coherence** (production tier, ≥2 tasks sharing file/API change) — subagent fresh context, mandatory v3.12.1. Skip only when tier < production OR all tasks in wave touch disjoint file sets with no shared APIs. Canonical doc: `references/e2e-coverage-protocol.md`.
 
@@ -747,7 +759,7 @@ here are authoritative — read them before executing the relevant steps.
 
 ### Tier-aware verification during implementation
 
-Replace/complement Auto-QA Akita from step 4.6:
+Subagent-level verification (runs inside subagent's TDD cycle, step 4):
 
 - **Each Edit** in a `.ts/.tsx/.vue/.svelte` file → subagent runs
   `tsc --noEmit` (~1s). Failure = do NOT declare task done, immediate fix.
