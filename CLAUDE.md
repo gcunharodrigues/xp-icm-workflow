@@ -2,6 +2,10 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Language
+
+All documents and code must be written in English (en-US). This includes templates, references, scripts, comments, commit messages, and inline documentation. No exceptions.
+
 ## Modification workflow
 
 **Every non-trivial change follows this flow:**

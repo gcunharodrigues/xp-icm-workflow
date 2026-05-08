@@ -11,6 +11,7 @@ applicable_stop_points:
   - "paid_service"
   - "pii"
 output_files:
+  - "output/research.md"
   - "output/discovery.md"
   - "_config/CONTEXT.md"
 next_stage: "02"
@@ -18,7 +19,7 @@ next_stage: "02"
 
 # Stage 01 — discovery (L2)
 
-Guided brainstorming with the human. Refines scope through iterative clarification, maps audience, functional and non-functional requirements, lists risks, and proposes macro options A/B/C for approach (without detailing architecture yet — that is stage 02). Defines MVP IN/OUT and success metrics. Output feeds design (stage 02) with a well-defined scope.
+Guided brainstorming with the human. Begins with web research to ground decisions in current data (not training memory), then refines scope through iterative clarification, maps audience, functional and non-functional requirements, lists risks, and proposes macro options A/B/C for approach (without detailing architecture yet — that is stage 02). Defines MVP IN/OUT and success metrics. Output feeds design (stage 02) with a well-defined scope.
 
 ## Inputs (reads ONLY these, in order)
 
@@ -48,32 +49,46 @@ Guided brainstorming with the human. Refines scope through iterative clarificati
 ## Process
 
 1. **Pre-flight:** validate all Input paths marked `yes`; verify L1 `stage_atual: "01"` and `sub_stage: 01_in_progress` (read-only — do NOT change L1 here). If `recon-report.md` absent → `status = BLOCKED`, `block_reason = error` (recon needs to run first). If status is `BLOCKED` with `block_reason = human_gate` → human already approved recon → set `status = IN_PROGRESS`, remove `block_reason`, proceed.
-2. **Consult brainstorming 200tok summary** to standardize question format (A/B/C menu with recommendation, clarification questions before assuming).
-3. **Iterative clarification with human:** target audience, objective, functional requirements (what it does), non-functional requirements (perf, security, scale), technical/budget constraints. Each non-trivial decision becomes an A/B/C menu with the agent's recommendation.
-4. **Detect stop points during clarification:** if human describes integration with a paid SaaS, stack change, non-trivial external API, or PII handling → trigger the corresponding stop point per tier calibration in `_config/stop-points.md`.
-5. **Map macro A/B/C options** for approach (high-level, without detailed architecture). Justify recommendation considering the profile/tier from `_config/profile-effective.yaml` (merged from L0 + local overrides).
-6. **Define MVP IN/OUT:** what goes into this delivery vs what stays for later. Explicit list.
-7. **List risks** (technical, scope, timeline) with proposed mitigation for each.
-8. **Define success metrics** — how the human will know the MVP delivered value.
-9. **Raise Test Context** — capture existing test information and team expectations:
-   - Is there an existing test suite? Framework used? Estimated current coverage?
-   - Is there a minimum coverage policy declared by the team?
-   - Are there integration, e2e, or only unit tests?
-   - For `agent_ia`/`ml_project`: is there an eval framework in use? How is non-deterministic output tested today?
-   - Record conclusions in `discovery.md §Test Context`; absence of an answer → record "not raised" (stage 02 defines profile defaults).
-   - If `_references/test-recipes/{{PROFILE}}.md` exists: consult it to contextualize questions to the human.
-10. **Write `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/discovery.md`** with fixed sections: Executive summary (3-5 sentences); Target audience; Functional requirements; Non-functional requirements; Macro options A/B/C + choice; MVP IN/OUT; Risks and mitigations; Success metrics; **Test Context** (section 9 above); Triggered stop points (if any).
-11. **End-of-stage handoff:** follow the gate-inline protocol in the `## End of stage handoff` section of this L2 (Phase 1 WORK_DONE → human gate → Phase 2 GATE_APPROVED).
+2. **Web research (mandatory):** search the web to ground the discovery in current data, not training memory. Use `WebSearch` and `WebFetch` tools. Read `recon-report.md` to identify stacks, APIs, and services already present. For each category below, perform ≥1 search and record findings with sources:
+
+   a. **Stacks & versions:** current stable version, recent breaking changes, EOL dates, compatibility matrix between chosen pieces.
+   b. **External APIs:** current pricing, rate limits, SDK quality, status page, recent incidents.
+   c. **Libraries & dependencies:** npm/PyPI stats (weekly downloads, last publish, open issues), known alternatives, community size.
+   d. **Paid services:** real current price (not training data), free tier limits, competitor pricing.
+   e. **Security & compliance:** known CVEs for the stack, relevant OWASP top-10, LGPD/GDPR requirements if PII is in scope.
+   f. **Similar projects:** GitHub repos, blog posts, tech talks — how others solved similar problems, architecture patterns used, pitfalls reported.
+   g. **Hosting & infrastructure:** pricing, region support, cold start, scaling limits, GPU availability (if ML).
+
+   Write all findings to `output/research.md` with sections per category above + `## Sources` subsection with URLs. Use concrete numbers (prices, dates, versions) — no vague summaries. This document feeds the A/B/C menus in the clarification phase (step 4) so the human gets data-backed options, not memory-based guesses.
+
+3. **Consult brainstorming 200tok summary** to standardize question format (A/B/C menu with recommendation, clarification questions before assuming).
+4. **Iterative clarification with human:** target audience, objective, functional requirements (what it does), non-functional requirements (perf, security, scale), technical/budget constraints. Each non-trivial decision becomes an A/B/C menu with the agent's recommendation. **Cite research data from `research.md`** — every A/B/C option includes concrete numbers (price, version, benchmark) with source URLs, not memory-based assertions.
+5. **Detect stop points during clarification:** if human describes integration with a paid SaaS, stack change, non-trivial external API, or PII handling → trigger the corresponding stop point per tier calibration in `_config/stop-points.md`.
+6. **Map macro A/B/C options** for approach (high-level, without detailed architecture). Justify recommendation considering the profile/tier from `_config/profile-effective.yaml` (merged from L0 + local overrides) and **research data from `research.md`**.
+7. **Define MVP IN/OUT:** what goes into this delivery vs what stays for later. Explicit list.
+8. **List risks** (technical, scope, timeline) with proposed mitigation for each. Include risks surfaced by web research (e.g., dependency with low maintenance, API with history of incidents).
+9. **Define success metrics** — how the human will know the MVP delivered value.
+10. **Raise Test Context** — capture existing test information and team expectations:
+    - Is there an existing test suite? Framework used? Estimated current coverage?
+    - Is there a minimum coverage policy declared by the team?
+    - Are there integration, e2e, or only unit tests?
+    - For `agent_ia`/`ml_project`: is there an eval framework in use? How is non-deterministic output tested today?
+    - Record conclusions in `discovery.md §Test Context`; absence of an answer → record "not raised" (stage 02 defines profile defaults).
+    - If `_references/test-recipes/{{PROFILE}}.md` exists: consult it to contextualize questions to the human.
+11. **Write `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/01_discovery/output/discovery.md`** with fixed sections: Executive summary (3-5 sentences); Target audience; Functional requirements; Non-functional requirements; Macro options A/B/C + choice; MVP IN/OUT; Risks and mitigations; Success metrics; **Test Context** (section 10 above); Triggered stop points (if any). Each A/B/C recommendation cites specific research data with source URLs from `research.md`.
+12. **End-of-stage handoff:** follow the gate-inline protocol in the `## End of stage handoff` section of this L2 (Phase 1 WORK_DONE → human gate → Phase 2 GATE_APPROVED).
 
 ## Outputs
 
-- `output/discovery.md` — refined scope: audience, requirements, chosen macro options, MVP IN/OUT, risks, metrics. If human disagrees with any item, they edit `output/discovery.md` directly. Do NOT overwrite their edits — they are the authority.
+- `output/research.md` — web research findings: stacks, APIs, libraries, services, security, similar projects, hosting. Categorized sections with concrete data (prices, versions, dates) and source URLs. Written BEFORE human clarification; feeds data-backed A/B/C menus.
+- `output/discovery.md` — refined scope: audience, requirements, chosen macro options, MVP IN/OUT, risks, metrics. Recommendations cite research data with sources. If human disagrees with any item, they edit `output/discovery.md` directly. Do NOT overwrite their edits — they are the authority.
 
 ## Sub_stage transitions
 
 Valid enum: `01_in_progress`, `01_completed`.
 
 IN_PROGRESS → COMPLETED transition fires when:
+- `output/research.md` exists with all categories filled and source URLs.
 - `output/discovery.md` exists with all fixed sections filled.
 - Stop points triggered during the session are resolved (status returns to `IN_PROGRESS` before completing).
 - Human approved via gate (status `BLOCKED`, `block_reason = human_gate` → human replies "approved" → set `status = IN_PROGRESS`, remove `block_reason`, transition to stage 02).
