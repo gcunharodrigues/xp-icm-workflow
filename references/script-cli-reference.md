@@ -282,6 +282,40 @@ python scripts/wave-planner-llm-review.py \
 
 ---
 
+## wave-preflight.py
+
+Deterministic pre-flight checks before Agent spawn in stage 04 (9 checks). Replaces
+the ~150-line manual pre-flight checklist. All checks are git + filesystem + script
+`--help` — zero token cost.
+
+```
+python scripts/wave-preflight.py \
+  --workspace-num <NNN> \
+  --workspace-slug <slug> \
+  --wave <N> \
+  --project-root <path> \
+  --base-branch main \
+  [--skill-dir <path>] \
+  [--json]
+```
+
+| Flag | Required | Format | Notes |
+|------|----------|--------|-------|
+| `--workspace-num` | yes | NNN | Numeric part of workspace ID (e.g. `001`) |
+| `--workspace-slug` | yes | string | Slug part (e.g. `flap-bird-clone`). Combined: `NNN-slug` |
+| `--wave` | yes | N | Wave number (e.g. `3`) |
+| `--project-root` | yes | path | Project root directory |
+| `--base-branch` | no | string | Default `main` |
+| `--skill-dir` | no | path | Auto-detected from script location if omitted |
+| `--json` | no | flag | Output JSON instead of text |
+
+**Checks:** workspace_branch, wave_plan_exists, branch_naming, skill_dir_callable,
+output_dir, worktree_topology, orphan_worktrees, orphan_branches, clean_working_tree.
+
+**Output:** JSON to stdout (with `--json`). Exit 0: all pass. Exit 1: failures present.
+
+---
+
 ## recovery-wizard.py
 
 Detects and repairs 7 workspace inconsistency types.

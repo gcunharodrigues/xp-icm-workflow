@@ -38,7 +38,7 @@ main (= BASE_BRANCH)              ← stable, lead merges here via .icm-main/
 ### PHASE 1: PREPARE
 
 1. Read L0, L1, L2, wave-plan.md, plan.md. Identify current wave N.
-2. Run `wave-preflight.py --json` (deterministic, 0 token). Failures → fix before proceeding.
+2. Run `wave-preflight.py --workspace-num <NNN> --workspace-slug <slug> --wave <N> --project-root <path> --base-branch main --json` (deterministic, 0 token). Failures → fix before proceeding.
 3. For each task: render AGENT-BRIEF via `agent-brief-render.py`. HARD GATE — never spawn without it.
 4. Channel 2 injection: ADR subset + top-3 lessons + design subset INTO AGENT-BRIEF prompt.
 5. Record `pre_wave_sha` in L1 history.
