@@ -1,11 +1,11 @@
 # v4 QA Stack — Consolidated Reference
 
-> **Version:** v4.0
-> **Replaces:** forensic-plus-protocol.md, critic-protocol.md, e2e-coverage-protocol.md, lead-resolution-protocol.md, mocking-guidelines.md, 4-block-contract-template.md (QA sections), script-cli-reference.md
+> **Version:** v4.0.x
+> **Replaces:** forensic-plus-protocol.md, critic-protocol.md, e2e-coverage-protocol.md, lead-resolution-protocol.md, mocking-guidelines.md
 
 ## Overview
 
-Stage 04 (implementation waves) uses a 3-layer QA stack per task:
+Stage 04 (PHASE 3 VERIFY) uses a 3-layer QA stack per task:
 
 | Layer | Name | Tokens | What |
 |-------|------|--------|------|
@@ -55,8 +55,8 @@ Critic output: JSON triplet per concern — claim, evidence (file:line), counter
 
 ## L4: Wave Gate
 
-After all tasks merged:
-- **CI green** (always, all tiers)
+After all tasks merged (PHASE 4 MERGE):
+- **CI green** (always, all tiers) — run from `.icm-main/`
 - **E2E green** (tier dev/prod with user_facing_paths)
 - **Cross-task coherence** (production tier, ≥2 tasks sharing file/API)
 
@@ -86,7 +86,7 @@ Inline in `agent-brief-render.py`:
 
 ## Mocking Guidelines
 
-Boundaries only. Mock at system edges (HTTP, DB, filesystem, external APIs). Never mock internal domain objects. Aligned with mattpocock/skills boundary-mocking pattern.
+Boundaries only. Mock at system edges (HTTP, DB, filesystem, external APIs). Never mock internal domain objects.
 
 ## Task Report Format
 

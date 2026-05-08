@@ -21,28 +21,27 @@ output_files:
   - "output/wave-<N>/task-<slug>-critic-round<R>.json"
   - "output/wave-<N>/task-<slug>-diagnose.md"
   - "output/wave-<N>/task-<slug>-lead-decision.md"
-# v4.0: verification/review/merge merged into stage 04 gates; next is feedback
 next_stage: "08"
 ---
 
 # Stage 04 — implementation_waves (L2)
 
-Parallel execution in waves. Lead session orchestrates subagents via Agent tool respecting the cap per tier (2/3/5/5). Each subagent works on a task in isolated branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` (from `{{BASE_BRANCH}}`), follows vertical TDD cycle (tracer-first + RED→GREEN→CI scope→REFACTOR loop). Per-task loop has cap 3 attempts, validated by L2 forensic+ extended (8 deterministic checks) + L3 orthogonal critic (Agent fresh context, anti-sycophancy, model = tier ceiling). When cap is exhausted OR convergence trip OR catastrophic detected → lead-resolution tier (RETRY or VOID). Lead does sequential merge into `{{BASE_BRANCH}}` after approve. One sub_stage per wave: `04_wave_<N>_in_progress` → `04_wave_<N>_completed`. Repeats until `wave-plan.md` is exhausted.
+Parallel execution in waves. Lead orchestrates subagents in manual worktrees at `.claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>/<slug>/` on branches `wave-{{WORKSPACE_NUM}}-<N>/<slug>` (from `{{BASE_BRANCH}}`). Subagent follows vertical TDD cycle + HARD GATES. Per-task QA: L2 forensic+ (8 checks, 0 token) → L3 orthogonal critic (fresh-context Agent, anti-sycophancy). Cap 3 attempts. When cap exhausted or convergence detected → lead-resolution (RETRY or VOID). Lead merges via `.icm-main/` — project root never leaves `workspace/{{WORKSPACE}}`. One sub_stage per wave: `04_wave_<N>_in_progress` → `04_wave_<N>_completed`. Repeats until `wave-plan.md` exhausted.
 
 **Consolidated canonical docs:**
-- `references/wave-execution-protocol.md` — 14-step pipeline
-- `references/critic-protocol.md` — L3 critic (v3.9.0)
-- `references/lead-resolution-protocol.md` — RETRY/VOID (v4.0)
-- `references/forensic-plus-protocol.md` — 8 checks (extended v3.10.0)
-- `references/4-block-contract-template.md` — vertical TDD + tracer-first (v3.9.0)
-- `references/mocking-guidelines.md` — boundaries only (v3.9.0)
-- `references/script-cli-reference.md` — exact CLI format for all scripts (v3.12.1)
+- `references/wave-execution-protocol.md` — 5-phase pipeline
+- `references/isolation-protocol.md` — single manual worktree path, merge via .icm-main
+- `references/agent-brief-template.md` — HARD GATES + isolation rules
+- `references/forensic-plus-protocol.md` — 8 checks
+- `references/critic-protocol.md` — L3 critic
+- `references/lead-resolution-protocol.md` — RETRY/VOID
+- `references/4-block-contract-template.md` — TDD 7-step cycle
 
 ## SKILL_DIR resolution
 
 {{SKILL_DIR}} in this document refers to the xp-icm-workflow skill installation directory.
 To resolve it: `python -c "import xp_icm_workflow; print(xp_icm_workflow.__path__[0])" 2>/dev/null`
-or check the L0 `CLAUDE.md` frontmatter for `skill_dir`. If neither works, search:
+or check L0 `CLAUDE.md` frontmatter for `skill_dir`. If neither works:
 `find ~/.claude/skills -name 'agent-brief-render.py' -path '*/xp-icm-workflow/*' | head -1 | xargs dirname`.
 
 ## Inputs (reads ONLY these, in order)
@@ -52,10 +51,10 @@ or check the L0 `CLAUDE.md` frontmatter for `skill_dir`. If neither works, searc
 | 1  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CLAUDE.md | L0 | yes |
 | 2  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/CONTEXT.md | L1 | yes |
 | 3  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/CONTEXT.md | L2 | yes |
-| 4  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/wave-plan.md | L4 | yes (v4.0: wave-planner runs inline in stage 02, output stored in 02_design/output/) |
+| 4  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/wave-plan.md | L4 | yes |
 | 5  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md | L4 | yes |
-| 6  {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | conditional: read ONLY ADRs listed in "Applicable ADRs" of the task in plan.md |
-| 7  {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | conditional: lessons-match.py pre-extracts relevant lessons; lead injects via channel 2 |
+| 6  {{PROJECT_ROOT}}/.icm-main/docs/decisions/ | L3 | conditional: only ADRs listed in task's "Applicable ADRs" |
+| 7  {{PROJECT_ROOT}}/.icm-main/docs/lessons.md | L3 | conditional: lead pre-extracts via lessons-match.py |
 | 8  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/test-driven-development-200tok.md | L3 | yes |
 | 9  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/subagent-driven-development-200tok.md | L3 | yes |
 | 10  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/4-block-contract-template.md | L3 | yes |
@@ -63,760 +62,364 @@ or check the L0 `CLAUDE.md` frontmatter for `skill_dir`. If neither works, searc
 | 12  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/profile-effective.yaml | L3 | yes |
 | 13  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_config/stop-points.md | L3 | yes |
 | 14  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/subagent-protocol.md | L3 | yes |
-| 15  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/_kickoff.md | L4-kickoff | conditional: generated by the previous session. Absent in beta1/beta2 workspaces (4B legacy) or if this is the first session of the stage. |
-| 16  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | conditional: required for the stage's final handoff |
-| 17  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional: canonical catalogue of IDs, complementary to _config/stop-points.md for thresholds |
-| 18  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/critic-protocol.md | L3 | yes — L3 orthogonal critic (v3.9.0) |
-| 19  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/lead-resolution-protocol.md | L3 | yes — RETRY/VOID (v4.0) |
-| 20  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/forensic-plus-protocol.md | L3 | yes — 8 checks extended (v3.10.0) |
-| 21  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/mocking-guidelines.md | L3 | yes — boundaries only (v3.9.0) |
-| 22  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/e2e-coverage-protocol.md | L3 | yes — Check 8 + L4 wave gate e2e (v3.10.0) |
+| 15  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/_kickoff.md | L4-kickoff | conditional |
+| 16  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/session-handoff-protocol.md | L3 | conditional: final handoff |
+| 17  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/stop-points-canonical.md | L3 | conditional |
+| 18  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/critic-protocol.md | L3 | yes |
+| 19  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/lead-resolution-protocol.md | L3 | yes |
+| 20  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/forensic-plus-protocol.md | L3 | yes |
+| 21  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/mocking-guidelines.md | L3 | yes |
+| 22  {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/runtime/e2e-coverage-protocol.md | L3 | yes |
 
 ## Does Not Read (negative constraint)
 
 - {{PROJECT_ROOT}}/workspaces/ (other workspaces — workspace isolation)
-- ADRs in {{PROJECT_ROOT}}/.icm-main/docs/decisions/ NOT listed in "Applicable ADRs" of the current task
+- ADRs NOT listed in "Applicable ADRs" of the current task
 - Outputs of other stages in the same workspace (00, 01) — only plan.md and wave-plan.md from stage 02
 - {{PROJECT_ROOT}}/.icm-main/docs/tech_debt.md directly — enters via lead's channel 2 if applicable
 
-## Common protocol violations (READ FIRST — avoid these)
+## Critical invariants (READ FIRST)
 
-These are the most frequent lead mistakes observed across workspace sessions. Each costs
-a retry cycle or a wasted wave.
+| # | Invariant | Violation consequence |
+|---|-----------|----------------------|
+| 1 | **HARD GATES must be at TOP of every AGENT-BRIEF.** `agent-brief-render.py` renders them. NEVER hand-write prompt without it. | Subagent skips branch verify, exits without commit (sessao-recorrencia) |
+| 2 | **Single isolation path.** All subagents: `.claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<slug>/`. No `Agent(isolation="worktree")`. No `isolation=none` at project root. | `workspaces/` vanishes from disk |
+| 3 | **Merge via `.icm-main/`.** `cd .icm-main && git merge --no-ff <branch> && cd ..`. Never switch project root off `workspace/{{WORKSPACE}}`. | Stash complexity, L1 update loss risk |
+| 4 | **Project root stays on `workspace/{{WORKSPACE}}` for entire wave.** Switches to `main` only after stage 08. | State files destroyed |
+| 5 | **AGENT-BRIEF HARD GATE.** NEVER spawn Agent without AGENT-BRIEF rendered and saved to `output/wave-<N>/task-<slug>-brief.md`. | No behavioral contract, no isolation rules, no acceptance criteria |
+| 6 | **Model selection.** Use heuristic: doc/config/CSS-only → haiku, security/public-API/large → opus, default → sonnet. Set `model:` on every `Agent()` call. | Mechanical tasks waste tokens; architecture tasks under-modeled |
+| 7 | **Branch naming.** Exact format: `wave-{{WORKSPACE_NUM}}-<N>/<slug>`. forensic-plus.py and lead-diagnose.py depend on this pattern. | Scripts crash with "branch not found" |
 
-| # | Violation | Consequence | Correct behavior |
-|---|-----------|-------------|------------------|
-| 23  **Skipping L3 critic** — forensic or other script fails, lead proceeds without critic | Unreviewed code merges. Violates "always, all tiers" rule. | Fix root cause (branch name, missing commit, script bug). Never skip L3. If script crashes → `status: BLOCKED, block_reason: error`, diagnose, retry. |
-| 24  **No model selection** — all agents spawned with default model | Mechanical tasks waste tokens. Architecture tasks under-modeled. | Use heuristic: doc/config/CSS-only → haiku, security/public API/large → opus, default → sonnet. Set `model:` on every `Agent()` call. |
-| 25  **Merge from wrong branch** — merge executed from workspace branch, not main | Wrong base for merge commit. Confused history. | Always: `git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>`. Verify with `git branch --show-current` before merge. |
-| 26  **Branch naming mismatch** — branch doesn't match `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` | forensic-plus.py, lead-diagnose.py fail with "ambiguous argument" or "branch not found" | Use exact format: `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. Pre-flight verifies with `git branch --list`. |
-| 27  **Racing to execution** — skipping pre-flight because "3 root tasks, parallel, simple" | Hit errors mid-wave (script crash, wrong branch, wrong model). Cost > pre-flight cost. | Pre-flight checklist is mandatory. 30s verification saves 5-10min retry cycles. |
-| 28  **Parallel = simple assumption** — all root tasks spawned in parallel without verifying per-task preconditions | Blocked on first script error, agents idle, wasted spawns. | Verify forensic-plus callable + branch names correct BEFORE first Agent spawn. |
-| 29  **No AGENT-BRIEF** — hand-written prompt instead of running `agent-brief-render.py` | No behavioral contract, no acceptance criteria, no isolation rules. Subagent doesn't know when it's done. | Run `agent-brief-render.py` BEFORE every Agent spawn. Output injected as prompt. Hard gate — do NOT spawn without it. |
-| 30  **isolation=none fallback for code tasks** — `Agent(isolation: "worktree")` failed, lead used `isolation=none` at project root | Files bleed into project dir (`.venv/`, `egg-info/`, `src/` scattered outside worktree). No git isolation. | NEVER fall back to no-isolation for writer tasks. If worktree fails → manual `git worktree add` + `Agent(isolation=none, cwd=<worktree>)` (§ "Isolation fallback" below). |
-| 31  **isolation=none destroys workspace files** — subagent with `isolation=none` at project root runs `git checkout <wave-branch>`. Working tree switches from workspace branch to wave branch. `workspaces/` directory vanishes from disk. Parallel subagents race on branch checkout. | Workspace state files (L0, L1, L2, plan.md, wave-plan.md) disappear from working tree. Lead must reconstruct from `git show`. Parallel subagents corrupt each other's branches. | NEVER use `isolation=none` at project root for writer tasks. The project root MUST stay on `workspace/{{WORKSPACE}}` for the entire wave. Subagents MUST work in isolated worktrees — their `git checkout` must NOT affect the project root. |
-
-## Process
+## Process — 5 Phases
 
 **Preview Loop (conditional):** if `preview_loop.preview_loop_enabled: true` in
-`_config/profile-effective.yaml`, execute the Preview Loop entry hook (see
-§ "Preview Loop entry/exit hooks" at the bottom of this document) BEFORE step 1.
+`_config/profile-effective.yaml`, execute Preview Loop entry hook (see § "Preview Loop")
+BEFORE Phase 1.
 
-Each wave executes the pipeline below. `<N>` = current wave number.
+### PHASE 1: PREPARE
 
-1. **Lead pre-flight:** if L1 `status: BLOCKED` → check `block_reason`:
-   - `human_gate` → human approved, set `status: IN_PROGRESS`, remove `block_reason`
-   - `hitl` → HITL task completed by human, set `status: IN_PROGRESS`, resume wave
-   - `stop_point` → human resolved A/B/C menu, set `status: IN_PROGRESS`, resume
-   - `error` → unresolved error, human must intervene before proceeding
-   - `lead_resolution` → RETRY/VOID in progress, resume from where lead left off
+1. **Read:** L0, L1, L2, wave-plan.md, plan.md. Identify current wave N via L1 `waves.current`.
+   If L1 `status: BLOCKED` → check `block_reason`:
+   - `human_gate` → human approved, set `status: IN_PROGRESS`, resume
+   - `hitl` → HITL task completed, set `status: IN_PROGRESS`, resume
+   - `stop_point` → human resolved A/B/C menu, resume
+   - `error` → unresolved, human must intervene
 
-   Reads wave-plan.md; identifies current wave via L1 `waves.current`. Sub_stage transitions to `04_wave_<N>_in_progress`. Lead records in L1 history event `{event: "wave_started", wave: <N>, pre_wave_sha: <git rev-parse {{BASE_BRANCH}}>}`.
-
-   **Pre-flight verification checklist (MANDATORY — do NOT skip):**
-   - [ ] Read `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/wave-plan.md` — identify current wave N, tasks, dependencies. If wave has 0 tasks → `status: BLOCKED, block_reason: error`, wave-plan.md corruption.
-   - [ ] `git branch --show-current` → MUST show `workspace/{{WORKSPACE}}`. Lead stays on workspace branch (NEVER checkout {{BASE_BRANCH}} until merge step 10)
-   - [ ] `git branch --list "wave-{{WORKSPACE_NUM}}-*"` → verify branch naming pattern matches `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`
-   - [ ] `python {{SKILL_DIR}}/scripts/forensic-plus.py --help` → script is callable (catches import errors early)
-   - [ ] `mkdir -p {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>` → output directory exists before any writes
-   - [ ] **Detect worktree topology:** `test -f .git && echo "NESTED" || echo "STANDARD"`. NESTED → manual `git worktree add` required (Agent tool rejects `.git` files). STANDARD → `Agent(isolation: "worktree")` SHOULD work, but Agent tool bugs can still reject it (session 825aa29c: `.git` dir, still got "not in a git repository"). **Regardless of detection result: if worktree creation fails → Path B (manual worktree), NEVER isolation=none at project root.** (§ "Isolation fallback" below).
-   - [ ] **Clean up orphaned worktrees from previous waves:**
-       ```bash
-       git worktree list
-       ```
-       If any path contains `icm-wave` or `.icm-wave` → orphan from a previous wave. Remove:
-       ```bash
-       git worktree list --porcelain | awk '/^worktree /{p=$2} /icm-wave/{print p}' | xargs -I {} git worktree remove {} --force
-       ```
-       Then delete orphaned wave branches: `git branch --list "wave-{{WORKSPACE_NUM}}-*" | sed 's/^..//' | while read -r _b; do git branch -d "$_b" 2>/dev/null || true; done`. Clean start = clean wave.
-   - [ ] For each task (sequential, not parallel): determine model via heuristic (doc/config/css → haiku, security/public-api/large → opus, default → sonnet). Record `writer_model` per task.
-   - [ ] For each task (sequential): render AGENT-BRIEF via `cd {{PROJECT_ROOT}} && python {{SKILL_DIR}}/scripts/agent-brief-render.py --task <slug> --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md --workspace-num {{WORKSPACE_NUM}} --wave <N> --project-root {{PROJECT_ROOT}} --base-branch {{BASE_BRANCH}} --isolation-mode auto > {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/task-<slug>-brief.md`. **HARD GATE — NEVER spawn Agent without AGENT-BRIEF.** Save to file — step 2 pre-spawn verification reads it back. If `--isolation-mode auto` detects nested → auto-switches to `manual-worktree` isolation block.
-
-2. **Lead spawns subagents via Agent tool:** for each task in the wave (up to cap).
-
-   **WHY isolation is mandatory (READ BEFORE SPAWNING):**
-   The project root MUST stay on `workspace/{{WORKSPACE}}` for the entire wave.
-   A subagent running with `isolation=none` at project root that runs `git checkout <wave-branch>`
-   switches the project root's working tree to the wave branch. This destroys workspace files on disk:
-   `workspaces/` disappears (it only exists on `workspace/{{WORKSPACE}}`). Parallel subagents then
-   race on branch checkout — each checkout wipes the previous subagent's branch. L0, L1, L2, plan.md,
-   wave-plan.md are GONE from the working tree. Recovery requires `git show workspace/{{WORKSPACE}}:<path>`.
-   **Isolation is not optional. It protects the workspace files from being destroyed.**
-
-   ---
-
-   **Pre-spawn verification (MANDATORY — verify ALL Agent calls BEFORE multi-call dispatch):**
-
-   For each task in the wave, verify the Agent() call matches the AGENT-BRIEF:
-
-   - [ ] Read the AGENT-BRIEF for this task. Note the `**Isolation mode:**` field.
-   - [ ] **Cross-check pre-flight detection vs AGENT-BRIEF mode:**
-         STANDARD (`.git` dir) + `Isolation mode: worktree` → CORRECT.
-         NESTED (`.git` file) + `Isolation mode: manual-worktree` → CORRECT.
-         STANDARD + `Isolation mode: manual-worktree` → MISMATCH. Re-render.
-         NESTED + `Isolation mode: worktree` → MISMATCH. Re-render with `--isolation-mode auto`.
-   - [ ] If `Isolation mode: worktree` → Agent call MUST use `isolation="worktree"`.
-   - [ ] If `Isolation mode: manual-worktree` → Agent call MUST use `isolation=None` + `cwd=<worktree>`.
-   - [ ] If `Isolation mode: direct` → reviewer/critic only. NEVER for writer tasks.
-   - [ ] **Verify the `isolation` parameter in your Agent() call matches the AGENT-BRIEF Isolation mode.**
-   - [ ] **If `Agent(isolation: "worktree")` fails:** DO NOT fall back to `isolation=none`. Use Path B instead.
-   - [ ] **If both paths fail:** `status: BLOCKED, block_reason: error`. Diagnose. Never proceed without isolation.
-
-   When ALL Agent calls are verified, dispatch them in ONE message (multi tool-use for parallel tasks).
-   Do NOT dispatch first and fix later — the `isolation` parameter is locked at dispatch time.
-
-   ---
-
-   **Path A — Standard (`.git` is directory):**
-   1. Lead creates branch BEFORE spawn: `git branch wave-{{WORKSPACE_NUM}}-<N>/<task-slug> {{BASE_BRANCH}}`. Lead stays on workspace branch (no checkout).
-   2. Lead invokes `Agent(isolation: "worktree", subagent_type: "general-purpose", model: <writer_model>, description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + channel-2>)`. Harness creates ephemeral worktree. **Capture the returned path:**
-       the Agent tool result includes the worktree path. Store it in a local variable
-       or shell array for step 12 cleanup. Example: after Agent returns, note
-       `_wt_paths+=("<returned-path>")`. If the path is not returned, search via
-       `git worktree list --porcelain | awk '/icm-wave/{print $2}'`.
-   3. **If Agent returns error about worktree creation:** DO NOT retry with `isolation=none`. Switch to Path B.
-
-   **Path B — Nested worktree (`.git` is FILE) OR Agent tool worktree failed:**
-   1. Lead creates branch (skip if coming from failed Path A — branch already exists): `git branch wave-{{WORKSPACE_NUM}}-<N>/<task-slug> {{BASE_BRANCH}} 2>/dev/null || true`.
-   2. Lead creates manual worktree in `.claude/worktrees/`:
-      ```bash
-      mkdir -p .claude/worktrees
-      git worktree add .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug> wave-{{WORKSPACE_NUM}}-<N>/<task-slug>
-      ```
-      `.claude/` is gitignored by ICM bootstrap. The worktree is project-relative, visible, and cleaned up after merge.
-   3. Lead invokes `Agent(isolation=None, cwd="{{PROJECT_ROOT}}/.claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<task-slug>", subagent_type="general-purpose", model: <writer_model>, description: "wave <N> task <slug>", prompt: <AGENT-BRIEF + channel-2>)`. The manual worktree IS the isolation.
-
-   **Do NOT remove the worktree yet.** Keep it until step 12 (cleanup). The worktree's
-   working tree may be needed for debugging if forensic+ or critic REJECT the task.
-   Commits are on the branch — the worktree checkout is just for inspection. Defer cleanup.
-
-   **Anti-pattern — NEVER do this:**
-   ```python
-   Agent(isolation=None, description="wave 2 task foo", prompt=...)   # ← DESTROYS workspace files
-   ```
-   This runs the subagent at project root. Subagent's `git checkout` switches the working tree
-   to a wave branch. `workspaces/` vanishes. Parallel subagents race. This is the #1 cause of
-   workspace corruption in stage 04.
-
-   **Parallel dispatch:** multiple `Agent` calls in ONE message (multi tool-use). Sequential tasks (HITL or dependent): sequential calls.
-
-3. **Channel 2 injection (ADRs + lessons + design subset):** the `prompt: <AGENT-BRIEF + channel-2>`
-   in the Agent calls above means the AGENT-BRIEF was already augmented with:
-   - Applicable ADR content (from `{{PROJECT_ROOT}}/.icm-main/docs/decisions/` — only those listed in plan.md task's "Applicable ADRs")
-   - Top-3 relevant lessons (from `lessons-match.py` pre-extraction):
-     ```bash
-     python {{SKILL_DIR}}/scripts/lessons-match.py \
-         --task <slug> --plan stages/02_design/output/plan.md \
-         --lessons {{PROJECT_ROOT}}/.icm-main/docs/lessons.md \
-         --top 3
-     ```
-   - DESIGN.md subset (if task has `requires_design_system: true` — profile `app_web_frontend` or `fullstack`)
-   - TDD 7-step cycle contract (`4-block-contract-template.md` — tracer-first, RED→GREEN→CI→REFACTOR, cap 3)
-     and mocking guidelines (`mocking-guidelines.md` — boundaries only). Subagent gets HOW (TDD protocol),
-     not just WHAT (acceptance criteria).
-
-   Channel 2 is injected INTO the prompt BEFORE dispatch. It is NOT a separate step after spawning.
-   Subagent does NOT read the project's global `docs/` directly — the lead pre-processes and injects.
-4. **Subagent (CWD = isolated worktree root, NOT `{{PROJECT_ROOT}}`, branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`):** executes vertical TDD cycle (`references/4-block-contract-template.md` § 3). Writes code ONLY in this worktree. Returns structured results in Agent tool output — NEVER writes to workspace branch.
-   1. **Tracer-first** — writes 1 E2E golden path test (minimum viable, expected to be red). Commit as first of the task.
-   2. **Loop per feature unit** (each iteration = 1 commit):
-      - RED → 1 test (1 acceptance bullet OR edge case)
-      - GREEN → minimal impl to make the test pass
-      - CI scope → tests + types + lint on files touched (fast feedback)
-      - REFACTOR → mandatory after every GREEN. Skip ONLY when all three Dirt Check questions (duplication, naming, function/file size — see `_config/xp-conventions.md`) answer NO.
-   3. **Anti-horizontal slicing** — forbidden to write all tests at once OR all impl at once. Forensic+ Check 5 detects acceptance bullets without test mapping; if diff > 100 LOC without new test → stop and re-pace.
-   4. **Commit verify gate** — before COMPLETE, confirm `git log --oneline {{BASE_BRANCH}}..HEAD` shows ≥1 commit. Zero = return to loop.
-   5. **COMPLETE** — returns structured output via Agent tool result: summary, modified files (`git diff --name-only {{BASE_BRANCH}}...HEAD`), tests written, ADRs applied. NO inline Akita checklist. **Lead writes task report** at `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/task-<slug>.md` from Agent tool output — subagent NEVER writes workspace state files.
-5. **Stop points within the cycle:** if subagent detects `new_dep`, `irreversible`, `over_eng`, `prod_migration`, or `adr_drift` → pauses current state, writes A/B/C menu, returns signal to lead via Agent tool output, lead sets L1 `status: BLOCKED`, `block_reason = stop_point`. Human responds, cycle resumes with `IN_PROGRESS`.
-6. **Per-task QA loop** (cap 3 attempts):
-   1. **L2 forensic+ extended** runs first (step 8b). HARD ≥ 1 → skip L3, surgical brief retry (does not waste tokens on code rejected by a cheap gate).
-   2. **L3 orthogonal critic** (step 8c) always runs when L2 passed. REJECT → diagnose (step 8d) decides surgical retry OR escalate.
-   3. **Cap 3 attempts** total. Exhausted → lead-resolution tier (step 9).
-   4. **Convergence trip** (Jaccard ≥ 0.7 between rounds N and N-1) → immediate escalate without waiting for cap.
-   5. **Catastrophic detected** (tests broken outside scope, globally broken build, scope creep > 5×) → immediate escalate bypassing cap.
-7. **Lead receives each subagent's result and writes task reports:** lead waits for COMPLETE return from each subagent in the wave. Results arrive directly via Agent tool output — no directory polling. Return order is non-deterministic (parallelism).
-
-       For each returned subagent:
-       1. Buffer the result in structure `{task_slug: agent_result}`.
-       2. **Write task report** at `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/task-<slug>.md` with the subagent's summary, modified files, tests written, and ADRs applied (from Agent tool output). Subagent NEVER writes this — lead writes it.
-       3. Record in memory: status, files_touched, any stop-point signals.
-
-       Before step 8, all task reports for the wave must exist at `output/wave-<N>/task-<slug>.md`. Before step 10 (sequential merge), lead orders tasks by index in `plan.md > tasks[]` of the current wave — merge order = plan order, NOT return order. Auditable: `wave-summary.md` lists tasks in plan order.
-8. **Wave-reviewer L2 + L3 (Agent sem worktree, sub-steps 8a-8e):**
-
-   8a. **Pre-audit:** first, verify lead is on workspace branch:
-       ```bash
-       git branch --show-current   # MUST show workspace/{{WORKSPACE}}
-       ```
-       If wrong → `git checkout workspace/{{WORKSPACE}}`. If workspace files missing → subagent destroyed
-       them via `isolation=none` at project root. Recover via `git show workspace/{{WORKSPACE}}:<path>`.
-       Then capture real `files_touched` (`git diff --name-only {{BASE_BRANCH}}...wave-{{WORKSPACE_NUM}}-<N>/<slug>`)
-       for all AFK tasks. Skip cross-task audit in 1-task wave (flag `skip_cross_task_audit: true` in wave-plan.md).
-
-   8b. **L2 Forensic+ extended (8 checks, deterministic, 0 token):** for each AFK task in the wave (skip `type: HITL`), reviewer Agent invokes:
-       ```bash
-       python {{SKILL_DIR}}/scripts/forensic-plus.py \
-           --workspace-num {{WORKSPACE_NUM}} --wave <N> --task-slug <slug> \
-           --base-branch {{BASE_BRANCH}} --tier <T> \
-           --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \
-           --output json
-       ```
-       Parse JSON. Update `output/wave-<N>/task-<slug>.md` frontmatter with fields `forensic_violations`, `forensic_passed`, `forensic_max_severity`, `forensic_respawn_count`. Canonical doc: `references/forensic-plus-protocol.md`. Script crash (exit 1) → reviewer emits `forensic_error` + treats as HARD; lead → `BLOCKED_ERROR error_type: forensic_script_crash`.
-
-       - HARD in ≥1 check → skip 8c (do not run L3 on code rejected by cheap gate), surgical brief for retry. Per-task cap = 3 attempts; forensic-plus internal cap `MAX_FORENSIC_RETRIES = 2` (hardcoded in scripts/forensic-plus.py — drift-checked) is semantically equivalent (3 attempts total = 1 original + 2 retries). Exhausted → escalate lead-resolution.
-
-   8c. **L3 Orthogonal Critic (always, all tiers — v3.9.0):** for each AFK task that passed 8b, lead renders critic prompt then invokes critic via Agent tool with fresh context:
-
-       **Critic round counter:** start at R=1 per task. Increment on retry (cap 3 → R ∈ {1,2,3}).
-
-       **Critic model (v4.0 inline, replaces deprecated pick-model.py):**
-       | tier | critic model |
-       |------|-------------|
-       | experimental | sonnet |
-       | tool | sonnet |
-       | development | opus |
-       | production | opus |
-
-       1. **Render critic prompt** (automated — script captures diff + test output):
-          ```bash
-          _ws_out="{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output"
-          mkdir -p "$_ws_out"/wave-<N>
-          python {{SKILL_DIR}}/scripts/render-critic-prompt.py \
-              --task-slug <slug> --wave <N> --tier <TIER> \
-              --workspace-num {{WORKSPACE_NUM}} --base-branch {{BASE_BRANCH}} \
-              --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \
-              --critic-model <from table above> \
-              --output "$_ws_out"/wave-<N>/task-<slug>-critic-prompt-round<R>.md
-          ```
-       2. **Spawn critic** with the rendered prompt (isolation=None — reviewer uses direct mode):
-          ```python
-          Agent(
-              isolation=None,
-              description="L3 critic task <slug> wave <N>",
-              subagent_type="general-purpose",
-              model=<from table above>,
-              # Pre-read the critic prompt file content and pass as string:
-              prompt=<contents of {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/task-<slug>-critic-prompt-round<R>.md>,
-          )
-          ```
-
-   8d. **Diagnose (deterministic, 0 token):** when 8b HARD OR 8c REJECT, lead invokes:
-       ```bash
-       _ws_out="{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output"
-       python {{SKILL_DIR}}/scripts/lead-diagnose.py \
-           --task-slug <slug> --wave <N> --workspace-num {{WORKSPACE_NUM}} \
-           --base-branch {{BASE_BRANCH}} \
-           --critic-rounds "$_ws_out"/wave-<N>/task-<slug>-critic-round1.json[,round2.json,...] \
-           --files-touched <comma-sep from step 8a: `git diff --name-only {{BASE_BRANCH}}...wave-{{WORKSPACE_NUM}}-<N>/<slug>`> \
-           --forensic-files-outside <int from 8b Check 2> \
-           --output "$_ws_out"/wave-<N>/task-<slug>-diagnose.md
-       ```
-       Renders diagnose.md with trigger condition (T1/T2/T3) + Jaccard table + catastrophic signals + action recommendation (RETRY/VOID) + surgical brief (if RETRY).
-
-   8e. **Decision per task:**
-       - **Cap not exhausted AND not convergence AND not catastrophic** → surgical retry: lead re-spawns writer with concise brief (top-3 concerns + acceptance delta from critic triplets). Subagent re-runs TDD cycle (step 4). Lead then re-does step 7 (receive + write task report) and step 8 (reviewer). Attempt counter ++.
-       - **Cap 3 exhausted OR convergence trip OR catastrophic** → escalate lead-resolution tier (step 9).
-       - **Only SOFT in 8b + APPROVE in 8c** → `approved_pending_ci: true`, warnings logged in `wave-summary.md` § L2/L3 summary. Task passes — skip step 9 (lead-resolution is only for escalated tasks). Proceed to step 10 (merge).
-
-9. **Lead-resolution tier (RETRY/VOID) — when step 8 escalated:**
-   Lead reads `output/wave-<N>/task-<slug>-diagnose.md` recommended action. Lead may override ONLY with explicit justification recorded in `output/wave-<N>/task-<slug>-lead-decision.md` (schema: `diagnose_recommended`, `lead_chose`, `rationale` — MUST explain why override). Override without documented rationale = `BLOCKED_ERROR error_type: lead_override_unjustified`. Canonical doc: `references/lead-resolution-protocol.md`.
-
-   - **RETRY:** lead rewrites task spec in plan.md (more specific VALIDATION, additional OUT OF SCOPE, prescriptive HOW). Commit plan update. 1 final writer spawn with revised brief. Output passes L2+L3 (return to step 8). APPROVE → merge. REJECT → VOID.
-   - **VOID:** lead rewrites task with VOIDED block (MUST include all 3 fields):
-     ```markdown
-     ### VOIDED — wave <N> attempt <date>
-     - Reason: <ADR conflict | scope invalid | upstream blocker | other>
-     - Evidence: <file:line OR critic concern OR external constraint>
-     - Action proposed: <new task slug OR defer to v.NEXT OR remove from scope>
-     ```
-     Commit plan update. Re-run `wave-planner-script.py` with updated plan.md to re-derive DAG without the voided task. Wave continues with remaining tasks. L1 history append `event: task_voided`.
-
-   Cap: 1 RETRY → VOID (terminal). May skip RETRY if diagnose recommends VOID. All exhausted → `BLOCKED_ERROR error_type: lead_resolution_failed`.
-
-10. **Sequential merge:** lead merges each branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` into `{{BASE_BRANCH}}` using the buffered order from step 7 (= plan order). VOIDed tasks are skipped (no branch to merge).
-
-   **Stash pre-flight (mandatory — workspace branch may have uncommitted L1 updates):**
-
-   **WARNING:** `.claude/worktrees/` may contain active git worktrees. Stashing them
-   corrupts worktree state. This is a PRE-STASH SAFETY CLEAN — step 12 does the final
-   comprehensive cleanup. Remove manual worktrees BEFORE stash:
-
+2. **Run wave-preflight.py** (deterministic, 0 token):
    ```bash
-   cd {{PROJECT_ROOT}}  # ensure CWD before relative paths
-   # Remove manual worktrees before stash (commits already on wave branches):
-   for _wt in .claude/worktrees/icm-wave-*; do
-       [ -d "$_wt" ] && git worktree remove "$_wt" 2>/dev/null || true
-   done
-   rmdir .claude/worktrees 2>/dev/null || true
-
-   # Now safe to stash:
-   git stash push -m "icm-merge-preflight" --include-untracked
+   python {{SKILL_DIR}}/scripts/wave-preflight.py \
+       --workspace-num {{WORKSPACE_NUM}} --wave <N> \
+       --project-root {{PROJECT_ROOT}} --base-branch {{BASE_BRANCH}} --json
    ```
+   If `all_pass: false` → fix violations before proceeding. Pre-flight checks:
+   - Lead on `workspace/{{WORKSPACE}}` branch
+   - wave-plan.md exists and non-empty
+   - Output directory exists
+   - No orphan worktrees or branches
+   - Working tree clean
 
-   **NOTE:** after `git checkout {{BASE_BRANCH}}`, workspace files (L0, L1, L2, plan.md)
-   are NOT in the working tree. Buffer merge order, task status, and plan.md data
-   in memory BEFORE switching branches.
-
-   Then for each task, **in plan order** (from step 7):
+3. **Render AGENT-BRIEF per task** (HARD GATE — never spawn without it):
    ```bash
-   git checkout {{BASE_BRANCH}} && git merge --no-ff <branch>
+   python {{SKILL_DIR}}/scripts/agent-brief-render.py \
+       --task <slug> --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \
+       --workspace-num {{WORKSPACE_NUM}} --wave <N> \
+       --project-root {{PROJECT_ROOT}} --base-branch {{BASE_BRANCH}} \
+       --tier <T> > {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/task-<slug>-brief.md
    ```
-   `--no-ff` preserves commit group (auditable). **After ALL merges complete:**
+   Output MUST contain HARD GATES at top. Verify with: `head -5 <file> | grep -q "HARD GATES"`.
+
+4. **Channel 2 injection** (do BEFORE spawn — merge INTO AGENT-BRIEF prompt):
+   - Applicable ADR content (from `.icm-main/docs/decisions/` — only those listed in task's "Applicable ADRs")
+   - Top-3 lessons via `lessons-match.py`
+   - DESIGN.md subset (if frontend/fullstack)
+   - TDD 7-step contract + mocking guidelines
+
+5. Record `pre_wave_sha = git rev-parse {{BASE_BRANCH}}` in L1 history:
+   `{event: "wave_started", wave: <N>, pre_wave_sha: <sha>}`
+
+### PHASE 2: EXECUTE
+
+1. **Create branches from main:**
    ```bash
-   git checkout workspace/{{WORKSPACE}} && git stash pop
+   git branch wave-{{WORKSPACE_NUM}}-<N>/<slug> {{BASE_BRANCH}}
    ```
-       If stash pop fails: `git stash list` → `git stash show -p` → resolve manually.
-       Do NOT proceed with un-popped stash — L1 updates in stash will be lost.
-11. **L4 wave gate (CI global + E2E + coherence):** sub-gates after all merges:
 
-    11a. **CI global green** (always, all tiers) — runs the project's full CI.
-        Red → revert ALL wave merges on {{BASE_BRANCH}}:
-        ```bash
-        git checkout {{BASE_BRANCH}}
-        _merge_count=$(<number of tasks merged in this wave>)
-        git reset --hard HEAD~$_merge_count   # undo all wave merge commits
-        git checkout workspace/{{WORKSPACE}}
-        ```
-        Diagnose root cause, retry wave. Full protocol: `references/ci-rollback-protocol.md`.
-    11b. **E2E suite green** (v3.10.0, tier dev/prod with non-empty `user_facing_paths` in profile) — runs E2E suite via `_config/profile-effective.yaml:e2e.e2e_command` (default lookup `npm run test:e2e`/`pnpm test:e2e`/`pytest tests/e2e/`). Red → `BLOCKED_ERROR error_type: e2e_suite_failed` → diagnose protocol → human gate A/B/C. Skip when profile has `user_facing_paths: []` (data_analysis, technical_article, experiment) OR tier exp/tool without declared `e2e_command`.
-    11c. **Cross-task coherence** (production tier, ≥2 tasks sharing file/API change) — subagent fresh context, mandatory v3.12.1. Skip only when tier < production OR all tasks in wave touch disjoint file sets with no shared APIs. Canonical doc: `references/e2e-coverage-protocol.md`.
-
-    Canonical doc for E2E reinforcement: `references/e2e-coverage-protocol.md`.
-12. **Cleanup wave worktrees + branches (v4.0.x — unified, MANDATORY):** after successful merge + green CI, lead removes ALL wave worktrees and deletes merged branches. Accumulated worktrees degrade `git worktree list` performance and cause confusion. This step is NOT optional — proceed to step 13 ONLY after cleanup succeeds.
-
-   **Step 12a — Remove ALL wave worktrees (both standard and manual mode):**
-
+2. **Create manual worktrees:**
    ```bash
-   # Method 1: Remove by path pattern (catches both .claude/worktrees/ AND .icm-wave-*):
-   for _wt in .claude/worktrees/icm-wave-* .icm-wave-*; do
-       [ -d "$_wt" ] && git worktree remove "$_wt" 2>/dev/null || true
-   done
-   rmdir .claude/worktrees 2>/dev/null || true
-
-   # Method 2: Remove by branch pattern (robust fallback — catches any path):
-   git worktree list --porcelain | awk '/^worktree /{p=$2} /^branch refs\/heads\/wave-{{WORKSPACE_NUM}}-<N>/{print p}' \
-     | while read -r _wt; do git worktree remove "$_wt" 2>/dev/null || true; done
-
-   # Method 3: Force-remove stubborn worktrees (dirty working tree, lock file):
-   git worktree list --porcelain | awk '/^worktree /{p=$2} /icm-wave/{print p}' \
-     | while read -r _wt; do git worktree remove "$_wt" --force 2>/dev/null || true; done
+   mkdir -p .claude/worktrees
+   git worktree add .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<slug> wave-{{WORKSPACE_NUM}}-<N>/<slug>
    ```
 
-   **Step 12b — Delete merged wave branches:**
+3. **Spawn ALL subagents in ONE message** (parallel dispatch for independent tasks):
+   ```
+   Agent(
+       isolation=None,
+       cwd="{{PROJECT_ROOT}}/.claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<slug>",
+       subagent_type="general-purpose",
+       model=<writer_model>,
+       description="wave <N> task <slug>",
+       prompt=<AGENT-BRIEF + channel-2>,
+   )
+   ```
+   `.claude/` is gitignored. Worktree path is deterministic. Manual worktree IS the isolation.
 
+4. **Subagent executes TDD 7-step cycle + HARD GATES:**
+   - **GATE 1** (first action): `git branch --show-current` → must match `wave-{{WORKSPACE_NUM}}-<N>/<slug>`. Wrong → STOP.
+   - **GATE 2**: use synchronous Bash for tests. NEVER Monitor for <5min tasks.
+   - **Tracer-first** → RED → GREEN → CI scope → REFACTOR → repeat. 1 commit per iteration.
+   - **Anti-horizontal slicing**: forbidden to write all tests at once or all impl at once.
+   - **GATE 3** (before COMPLETE): `git log --oneline {{BASE_BRANCH}}..HEAD` ≥1 commit + clean working tree.
+
+5. **Stop points within cycle:** subagent detects `new_dep`/`irreversible`/`over_eng`/`prod_migration`/`adr_drift` → A/B/C menu → L1 `BLOCKED, block_reason: stop_point`.
+
+6. **Lead receives results, writes task reports:**
+   Lead buffers result from Agent tool output. Lead writes task report at `output/wave-<N>/task-<slug>.md` with summary, modified files, tests, ADRs applied. Subagent NEVER writes workspace state files.
+
+### PHASE 3: VERIFY
+
+Pre-condition: lead on `workspace/{{WORKSPACE}}` branch. All task reports exist.
+
+For each AFK task (skip `type: HITL`):
+
+1. **L2 Forensic+ (0 token):**
    ```bash
-   # Delete branches for this wave (safe: already merged --no-ff into {{BASE_BRANCH}}):
-   for _slug in <task-slug-1> <task-slug-2> ...; do
-       git branch -d wave-{{WORKSPACE_NUM}}-<N>/$_slug 2>/dev/null || true
-   done
-
-   # Delete any remaining wave branches from previous waves (orphaned):
-   git branch --list "wave-{{WORKSPACE_NUM}}-*" | sed 's/^..//' | while read -r _b; do
-       git branch -d "$_b" 2>/dev/null || true
-   done
+   python {{SKILL_DIR}}/scripts/forensic-plus.py \
+       --workspace-num {{WORKSPACE_NUM}} --wave <N> --task-slug <slug> \
+       --base-branch {{BASE_BRANCH}} --tier <T> \
+       --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \
+       --output json
    ```
+   Parse JSON. HARD in any check → skip L3, go to step 3 (diagnose). SOFT only → proceed to L3. Internal cap: `MAX_FORENSIC_RETRIES = 2` (3 attempts total = 1 original + 2 retries).
 
-   **Step 12c — Verify cleanup:**
-
+2. **L3 Orthogonal Critic (~3-8k tokens):**
    ```bash
-   echo "=== Remaining worktrees ===" && git worktree list
-   echo "=== Remaining wave branches ===" && git branch --list "wave-{{WORKSPACE_NUM}}-*"
+   python {{SKILL_DIR}}/scripts/render-critic-prompt.py \
+       --task-slug <slug> --wave <N> --tier <T> \
+       --workspace-num {{WORKSPACE_NUM}} --base-branch {{BASE_BRANCH}} \
+       --plan {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/02_design/output/plan.md \
+       --critic-model <model> \
+       --output output/wave-<N>/task-<slug>-critic-prompt-round<R>.md
    ```
-   After cleanup: `git worktree list` should show ONLY `.icm-main/` and the main worktree. No `icm-wave` paths. `git branch --list "wave-*"` should be empty. If not → investigate before proceeding.
+   Spawn critic via `Agent(isolation=None, ...)` — fresh context, anti-sycophancy hardcoded. Output: APPROVE/REJECT/ABSTAIN with triplets. Critic model = tier ceiling (experimental→haiku, tool→sonnet, dev/prod→opus).
 
-   **Decision matrix `--force`:**
-   - `git worktree remove --force <path>` is safe when L2 + L3 PASS (worktree is already merged, lock file is the only remaining cause).
-   - `git branch -d` refuses if not merged → NEVER use `-D`. Non-merged branch after merge step indicates a bug in sequential merge; investigate first.
-   - Non-fatal cleanup failure: record warning in `wave-summary.md`, proceed.
+3. **Diagnose (if HARD or REJECT):**
+   ```bash
+   python {{SKILL_DIR}}/scripts/lead-diagnose.py \
+       --task-slug <slug> --wave <N> --workspace-num {{WORKSPACE_NUM}} \
+       --base-branch {{BASE_BRANCH}} \
+       --critic-rounds output/wave-<N>/task-<slug>-critic-round1.json \
+       --files-touched <comma-sep from git diff> \
+       --forensic-files-outside <int from check 2> \
+       --output output/wave-<N>/task-<slug>-diagnose.md
+   ```
+   Detects trigger: T1 (cap 3 exhausted), T2 (Jaccard convergence ≥0.7), T3 (catastrophic). Recommends RETRY or VOID.
 
-   **Cleanup note:** For RETRY/VOID resolved tasks: no worktree was created (lead wrote directly). Skip `git worktree remove` — only `git branch -d` applies.
+4. **Decision per task:**
+   - **APPROVE** (forensic+ passed + critic APPROVE) → task passes, proceed to merge.
+   - **RETRY** (cap 3, not convergence, not catastrophic) → surgical brief re-spawn. Return to PHASE 2 step 4.
+   - **Escalate to lead-resolution** (cap exhausted, convergence, or catastrophic) → RETRY or VOID.
 
-13. **Lead writes:** `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/stages/04_implementation_waves/output/wave-<N>/wave-summary.md` (completed tasks, conflicts, decisions made, **cleanup warnings** if any, **§ L2/L3 summary** with SOFT violations + critic MINOR concerns, **§ Lead resolutions** with action table applied if any).
-14. **End-of-wave/stage handoff:** follow protocol in the `## End of stage handoff` section of this L2. Mid-wave (wave <N> → <N+1>): automatic handoff without human gate (Case A). Last wave → stage 08 (feedback): mandatory human gate. No separate verification/review/merge stages — CI, E2E, and merge run as inline gates within stage 04.
+   **Lead-resolution:** Lead reads diagnose.md. May override with justification in `lead-decision.md`.
+   - RETRY: rewrite task spec in plan.md, 1 final spawn. APPROVE → merge. REJECT → VOID.
+   - VOID: declare task unmergeable with VOIDED block. Re-run wave-planner. Continue with remaining.
+   - Cap: 1 RETRY → VOID (terminal).
 
-CWD: lead at `{{PROJECT_ROOT}}` (workspace branch) — MUST stay on `workspace/{{WORKSPACE}}` for entire wave. Subagent in isolated worktree (NOT `{{PROJECT_ROOT}}`) on branch `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>`. Standard: Agent(isolation: "worktree"). Fallback: Agent(isolation=None, cwd={{PROJECT_ROOT}}/.claude/worktrees/icm-wave-*). NEVER subagent at project root — `git checkout` destroys `workspaces/` on disk.
+### PHASE 4: MERGE
+
+1. **Merge via `.icm-main/`** — project root NEVER leaves `workspace/{{WORKSPACE}}`:
+   ```bash
+   cd {{PROJECT_ROOT}}/.icm-main
+   git merge --no-ff wave-{{WORKSPACE_NUM}}-<N>/<slug>
+   cd {{PROJECT_ROOT}}
+   ```
+   Repeat for each APPROVED task in plan order. Skip VOIDed tasks. No stash. No buffer.
+
+2. **L4 Wave Gate:**
+   - CI green (run from `.icm-main/`) — always, all tiers
+   - E2E green — tier dev/prod with `user_facing_paths`
+   - Cross-task coherence — production tier, ≥2 tasks sharing files
+
+   CI red → revert merges on main (`git reset --hard pre_wave_sha`). Diagnose. Retry. See `references/ci-rollback-protocol.md`.
+
+### PHASE 5: CLOSE
+
+1. **Cleanup worktrees + branches:**
+   ```bash
+   git worktree remove .claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<slug>
+   git branch -d wave-{{WORKSPACE_NUM}}-<N>/<slug>
+   ```
+   Repeat for all tasks. Paths deterministic — always known. `git branch -d` refuses unmerged (intentional) — never use `-D`.
+
+2. **Sync `.icm-main/`:**
+   ```bash
+   cd {{PROJECT_ROOT}}/.icm-main
+   if git remote get-url origin >/dev/null 2>&1; then
+       git fetch origin main 2>/dev/null && git merge --ff-only FETCH_HEAD || true
+   else
+       git merge --ff-only main 2>/dev/null || true
+   fi
+   cd {{PROJECT_ROOT}}
+   ```
+
+3. **Write `wave-summary.md`** with: completed tasks, decisions, § L2/L3 summary (SOFT violations + critic MINOR concerns), § Lead resolutions, cleanup warnings.
+
+CWD: lead at `{{PROJECT_ROOT}}` on `workspace/{{WORKSPACE}}` — MUST stay here for entire wave. Subagent in `.claude/worktrees/icm-wave-{{WORKSPACE_NUM}}-<N>-<slug>/` on `wave-{{WORKSPACE_NUM}}-<N>/<slug>`.
 
 ## Outputs
 
-- `output/wave-<N>/task-<slug>.md` — task report from subagent (summary, Auto-QA Akita 15-items, cycles consumed).
-- `output/wave-<N>/wave-summary.md` — lead synthesis post wave-reviewer + merge.
-- `output/wave-<N>/task-<slug>-blocked.md` — conditional: MUST be written when subagent triggers stop point or exhausts 3-attempt cap. Contains stop point ID, A/B/C menu presented, human choice, and resolution.
+- `output/wave-<N>/task-<slug>.md` — task report (lead-written from Agent tool output)
+- `output/wave-<N>/wave-summary.md` — lead synthesis post merge
+- `output/wave-<N>/task-<slug>-blocked.md` — conditional: stop point triggered or cap exhausted
+- `output/wave-<N>/task-<slug>-critic-round<R>.json` — L3 critic output (PHASE 3)
+- `output/wave-<N>/task-<slug>-diagnose.md` — diagnose report (lead-diagnose.py output)
+- `output/wave-<N>/task-<slug>-lead-decision.md` — lead decision (RETRY/VOID, when diagnose escalated)
 
 ## Sub_stage transitions
 
 Valid enum: `04_wave_<N>_in_progress`, `04_wave_<N>_completed` (`<N>` positive integer). Pattern: `^04_wave_\d+_(in_progress|completed)$`.
 
-`04_wave_<N>_in_progress` → `04_wave_<N>_completed` transition fires when:
-- All subagents in the wave delivered `task-<slug>.md` COMPLETE.
+`04_wave_<N>_in_progress` → `04_wave_<N>_completed` fires when:
+- All subagents delivered COMPLETE.
 - Wave-reviewer approved.
-- Sequential merge green + global CI green.
+- Sequential merge + CI green.
 - `wave-summary.md` written.
 
-`04_wave_<N>_completed` → `04_wave_<N+1>_in_progress` (if more waves remain) is internal to the stage. Last wave → `next_stage: 08`.
+`04_wave_<N>_completed` → `04_wave_<N+1>_in_progress` (more waves) internal to stage. Last wave → `next_stage: 08`.
 
-## Canonical statuses available in this stage (v4.0)
+## Canonical statuses (v4.0)
 
-- `IN_PROGRESS` — wave executing (lead orchestrating, subagents working, lead resolution active).
-- `BLOCKED` — requires L1 `block_reason` field. Values: `human_gate` (last wave awaiting approval), `stop_point` (A/B/C menu triggered), `error` (merge conflict, CI red, cap exhausted, critic abstain loop, cleanup unsafe), `hitl` (HITL task awaiting human — not a failure), `lead_resolution` (RETRY/VOID in progress).
+- `IN_PROGRESS` — wave executing (lead orchestrating, subagents working, lead resolution active)
+- `BLOCKED` — requires `block_reason`: `human_gate`, `stop_point`, `error`, `hitl`, `lead_resolution`
 
 ## Applicable stop points
 
-Canonical catalogue in `references/stop-points-canonical.md`. IDs triggerable in stage 04:
-
-- `new_dep` — new npm/pip/cargo dependency added during implementation that was not in plan.md.
-- `irreversible` — `DROP TABLE`, `git push --force`, hard-delete without prior soft-delete.
-- `over_eng` — 3+ new abstraction layers without requirement (calibrated: warning experimental/tool, hard development/production).
-- `prod_migration` — migration touches a production-volume table without an agreed maintenance window.
-- `adr_drift` — implementation diverges from active ADR without declared superseding.
-- `ambiguous_feedback` — (preview loop v3.6.0) human visual feedback with low confidence: vague description, screenshot without clear annotation, contradiction between text and visual. Always `hard`.
-- `design_system_cascade` — (preview loop v3.6.0) token change affects > `preview_loop.design_cascade_threshold` components. Always `hard`.
+Canonical catalogue: `references/stop-points-canonical.md`. Triggerable in stage 04:
+- `new_dep` — new dependency not in plan.md
+- `irreversible` — destructive operation without safety net
+- `over_eng` — 3+ new abstraction layers without requirement
+- `prod_migration` — production-volume table migration without maintenance window
+- `adr_drift` — implementation diverges from active ADR
+- `ambiguous_feedback` — (preview loop) vague human visual feedback
+- `design_system_cascade` — (preview loop) token change affects > threshold components
 
 ## Skill superpowers reference
 
 TDD summary: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/test-driven-development-200tok.md`
-
 Subagent summary: `{{PROJECT_ROOT}}/workspaces/{{WORKSPACE}}/_references/superpowers-summary/subagent-driven-development-200tok.md`
-
 Formal skills: `superpowers:test-driven-development` + `superpowers:subagent-driven-development` (escape hatch).
 
 ## Gates
 
-- **Human:** approves last wave transition to stage 08; responds to A/B/C stop point menus; resolves merge conflicts when they occur.
-- **Automatic (CI):** commit-msg hook validates prefix `workspace {{WORKSPACE_NUM}}:` on workspace branch (R6); wave branches and base branch use Conventional Commits (`feat:`, `fix:`, etc.) without hook validation; global CI runs after each wave merge; L2 forensic+ + L3 critic validate per task.
-- **Approval to transition:** wave closes automatically when merge + global CI green + wave-summary written. Last wave needs explicit human approval to transition to stage 08 (feedback intake).
+- **Human:** approves last wave → stage 08; responds to A/B/C stop point menus; resolves merge conflicts
+- **Automatic (CI):** commit-msg hook validates prefix `workspace {{WORKSPACE_NUM}}:` on workspace branch; global CI runs after each wave merge; L2 forensic+ + L3 critic validate per task
+- **Approval to transition:** wave closes when merge + CI green + wave-summary written. Last wave needs human approval → stage 08
 
-## End of stage handoff (v4.0 simplified + wave-aware)
+## End of stage handoff (v4.0 wave-aware)
 
-**Stage 04 exception (wave-aware):** each wave = 1 lead session. Lead closes wave updating L1 with `prev_outputs` and `pending` for the next wave (same stage 04, sub_stage `04_wave_<N+1>_in_progress`) OR for stage 08 (after last wave). Sub-waves do NOT trigger handoff — lead persists through sub-waves within the same session.
+Each wave = 1 lead session. Lead closes wave updating L1 for next wave or stage 08.
 
-### Case A: mid-wave handoff (wave <N> → wave <N+1>) — WITHOUT human gate
+### Case A: mid-wave handoff (wave N → N+1) — automatic
 
-Mid-wave handoff is automatic (no human gate) when merge + global CI green + wave-summary written. Intermediate wave has no human gate by design (gate only at transition to stage 08).
-
-1. **Update L1**:
-   - `sub_stage = 04_wave_<N+1>_in_progress` (transition through `04_wave_<N>_completed` is implicit — wave completed, next wave begins)
+1. **Update L1:**
+   - `sub_stage = 04_wave_<N+1>_in_progress`
    - `status = IN_PROGRESS`
-   - Update `waves`: set `waves.current = <N+1>`, append `<N>` to `waves.completed`
-   - Set `prev_outputs`: list of output file paths from wave <N>.
-   - Set `pending`: list of task slugs for wave <N+1>.
-   - `last_transition.from = 04_wave_<N>_in_progress`
-   - `last_transition.to = 04_wave_<N+1>_in_progress`
+   - `waves.current = <N+1>`, append `<N>` to `waves.completed`
+   - Set `prev_outputs` (wave N output paths) and `pending` (wave N+1 task slugs)
+   - `last_transition.from = 04_wave_<N>_in_progress`, `last_transition.to = 04_wave_<N+1>_in_progress`
    - `history` append: `{event: "stage_transition", note: "mid-wave auto-handoff, waves.current = <N+1>"}`
 
-2. **Atomic commit** (outputs + L1).
+2. **Atomic commit** (outputs + L1). EXIT session.
 
-3. **Print handoff message** for user. EXIT the session. Open a NEW Claude session at `{{PROJECT_ROOT}}` for the next wave. Next session reads L0+L1 — `prev_outputs` and `pending` tell the agent what was done and what's next.
+### Case B: last wave → stage 08 — human gate
 
-### Case B: last wave handoff → stage 08 (feedback) — WITH human gate
+**Phase 1: WORK_DONE**
 
-After last wave completed, human gate is MANDATORY before transitioning to stage 08. Canonical doc: `references/session-handoff-protocol.md`.
+1. Update L1: `sub_stage = 04_wave_<N>_completed`, `status = BLOCKED`, `block_reason = human_gate`. Set `prev_outputs`.
+2. Commit: `workspace <NNN>: stage 04 work done (last wave), awaiting human gate`
+3. Print gate prompt for human. WAIT in same session.
 
-#### Phase 1: WORK_DONE (after last wave merged + global CI green)
+**Phase 2: HUMAN_APPROVED**
 
-1. **Update L1**:
-   - `sub_stage = 04_wave_<N>_completed` (N = last wave)
-   - `status = BLOCKED`
-   - `block_reason = human_gate`
-   - Set `prev_outputs`: list of all task report paths + wave-summary path.
-   - `last_transition.from = 04_wave_<N>_in_progress`
-   - `last_transition.to = 04_wave_<N>_completed`
-   - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append: `{event: "wave_completed", note: "last wave, awaiting human gate"}`
+4. Human replies "approved" → update L1: `stage_atual = 08`, `sub_stage = 08_in_progress`, `status = IN_PROGRESS`
+5. Commit: `workspace <NNN>: gate approved, transitioning to stage 08 (feedback)`
+6. Run `handoff.py update-project-md` to update project root CLAUDE.md dashboard
+7. Print handoff message. EXIT session.
 
-2. **Atomic commit** (wave outputs + L1):
-   ```
-   workspace <NNN>: stage 04 work done (last wave), awaiting human gate
-   ```
-
-3. **Print gate prompt** for human. Do NOT exit:
-
-   ```
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ✅ Stage 04 (implementation_waves) work COMPLETE — workspace <NNN-slug>
-   Last wave (<N>) merged + global CI green.
-
-   Outputs ready for review:
-     - <task reports + wave-summary>
-
-   L1: sub_stage=04_wave_<N>_completed, status=BLOCKED, block_reason=human_gate
-   Commit: <sha>
-
-   🛑 Human gate: review wave-summary + task reports.
-   Reply in chat:
-     - "approved" / "proceed to 08" → I update state and exit
-     - "adjust X" → I return to work with your request
-     - "abort" → I mark workspace BLOCKED (block_reason: error)
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ```
-
-4. **WAIT for human response** in the SAME session.
-
-#### Phase 2: HUMAN_APPROVED (after human replies "approved")
-
-5. **Update L1** (second transition):
-   - `stage_atual = 08`
-   - `sub_stage = 08_in_progress`
-   - `status = IN_PROGRESS` (remove block_reason)
-   - `last_transition.from = 04_wave_<N>_completed`
-   - `last_transition.to = 08_in_progress`
-   - `last_transition.at = <ISO 8601 UTC now>`
-   - `history` append: `{event: "stage_transition", from: "04_wave_<N>_completed", to: "08_in_progress", note: "human approved"}`
-
-6. **Atomic commit** (L1):
-   ```
-   workspace <NNN>: gate approved, transitioning to stage 08 (feedback)
-   ```
-
-7. **Update project root CLAUDE.md dashboard:**
-   ```bash
-   python {{SKILL_DIR}}/scripts/handoff.py update-project-md \
-       --project-root {{PROJECT_ROOT}} --workspace {{WORKSPACE}} \
-       --profile {{PROFILE}} --tier {{TIER}} \
-       --stage-atual 08 --stage-dir 08_feedback_intake \
-       --sub-stage 08_in_progress --status IN_PROGRESS \
-       --skill-dir {{SKILL_DIR}}
-   ```
-
-8. **Print handoff message** for user:
-
-   ```
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ✅ Stage 04 (implementation_waves) APPROVED — workspace <NNN-slug>
-
-   Workspace updated at commit <sha>:
-     - L1: stage_atual=08, sub_stage=08_in_progress, status=IN_PROGRESS
-     - prev_outputs: <list of task reports + wave-summary>
-
-   🔄 Next: close this session and open a new Claude session at the project_root
-      to continue at stage 08 (feedback_intake).
-      Read order: L0 → L1 → stages/08_feedback_intake/CONTEXT.md
-   ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-   ```
-
-9. **EXIT** the session.
-
-#### Response "adjust X" (gate rejected)
-
-- Update L1: `status = IN_PROGRESS`, remove `block_reason`, append history `{event: "gate_rejected"}`. Sub_stage stays `04_wave_<N>_completed`.
-- Return to work as requested. When outputs are redone, return to Phase 1.
-
-#### Response "abort"
-
-- Update L1: `status = BLOCKED`, `block_reason = error`, append history `{event: "blocked", error_type: "human_abort"}`. Commit + exit.
+"adjust X" → return to work. "abort" → `BLOCKED, block_reason: error`, exit.
 
 ---
 
-## References applicable to this stage (v3.3.0+, consolidated through v3.12.1)
+## Reference CLI signatures
 
-**This section contains both reference CLI signatures and process instructions**
-(HITL handling, Diagnose protocol, Preview Loop hooks). Process instructions
-here are authoritative — read them before executing the relevant steps.
+### agent-brief-render.py (PHASE 1)
 
-- **AGENT-BRIEF (`_references/runtime/agent-brief-template.md` +
-  `<skill_root>/scripts/agent-brief-render.py`):** lead session generates
-  structured brief per task BEFORE spawning Agent tool. CLI:
+```bash
+python {{SKILL_DIR}}/scripts/agent-brief-render.py \
+    --task <slug> --plan stages/02_design/output/plan.md \
+    --adrs {{PROJECT_ROOT}}/.icm-main/docs/decisions \
+    --workspace-num {{WORKSPACE_NUM}} --wave <N> \
+    --project-root {{PROJECT_ROOT}} --base-branch {{BASE_BRANCH}}
+```
 
-  ```bash
-  python {{SKILL_DIR}}/scripts/agent-brief-render.py \
-      --task <slug> \
-      --plan stages/02_design/output/plan.md \
-      --adrs {{PROJECT_ROOT}}/.icm-main/docs/decisions \
-      --workspace-num {{WORKSPACE_NUM}} \
-      --wave <N> \
-      --project-root {{PROJECT_ROOT}} \
-      --base-branch {{BASE_BRANCH}} \
-      --isolation-mode auto
-  ```
+### forensic-plus.py (PHASE 3)
 
-  `--isolation-mode auto` detects nested worktree (`.git` file) and renders
-  correct isolation block. Output (markdown) injected into Agent tool prompt.
-  Anti-patterns (absolute paths, line numbers) generate warnings.
-  **HARD GATE: never spawn Agent without AGENT-BRIEF.**
+```bash
+python {{SKILL_DIR}}/scripts/forensic-plus.py \
+    --workspace-num {{WORKSPACE_NUM}} --wave <N> --task-slug <slug> \
+    --base-branch {{BASE_BRANCH}} --tier <T> \
+    --plan stages/02_design/output/plan.md --output json
+```
 
-- **Subagent worktree (v3.4.0 + v4.0.x isolation fallback):** lead spawns
-  subagents via `Agent(isolation: "worktree")` for wave branches
-  `wave-{{WORKSPACE_NUM}}-<N>/<task-slug>` derived from `{{BASE_BRANCH}}`.
-  Two paths:
-  - **Standard (`.git` directory):** `Agent(isolation: "worktree")` — harness
-    creates ephemeral worktree.
-  - **Nested (`.git` FILE) or Agent tool fails:** manual `git worktree add
-    .claude/worktrees/icm-wave-*` + `Agent(isolation=None, cwd=<worktree>)`. The manual
-    worktree IS the isolation. Worktrees live in `.claude/worktrees/` (gitignored).
-  - **NEVER fall back to `isolation=none` at project root** for code tasks.
-    If both paths fail → `BLOCKED_ERROR`.
+### render-critic-prompt.py (PHASE 3)
 
-  **Sync `.icm-main` (conditional v3.5.0):** after merge, lead checks if
-      `{{PROJECT_ROOT}}/.icm-main` exists AND is a linked worktree:
-      ```bash
-      if git worktree list --porcelain | grep -q "worktree {{PROJECT_ROOT}}/.icm-main"; then
-          cd {{PROJECT_ROOT}}/.icm-main
-          # Try fetch from remote first; if no remote, merge local main directly:
-          if git remote get-url origin >/dev/null 2>&1; then
-              git fetch origin main 2>/dev/null && git merge --ff-only FETCH_HEAD || true
-          else
-              git merge --ff-only main 2>/dev/null || true
-          fi
-          cd {{PROJECT_ROOT}}
-      fi
-      ```
-      If absent: silent skip (`.icm-main` is an optional convention set up
-      by recovery wizard / bootstrap in some workspaces). Failure of
-      `pull --ff-only` (e.g., divergence): non-fatal warning in
-      `wave-summary.md`, lead continues.
+```bash
+python {{SKILL_DIR}}/scripts/render-critic-prompt.py \
+    --task-slug <slug> --wave <N> --tier <T> \
+    --workspace-num {{WORKSPACE_NUM}} --base-branch {{BASE_BRANCH}} \
+    --plan stages/02_design/output/plan.md --critic-model <model> \
+    --output output/wave-<N>/task-<slug>-critic-prompt-round<R>.md
+```
 
-    - **HITL handling (task-level granularity):**
-      - **Wave-level HITL** (all tasks in the wave have `type: HITL`, or
-        wave-planner isolated HITL tasks in sub-wave cap=1): lead does NOT spawn
-        Agent for any task. Generates AGENT-BRIEF for each, displays to human,
-        updates L1 `status=BLOCKED`, `block_reason=hitl`,
-        sub_stage=04_wave_N_hitl_pending`, EXIT. Next session (after human
-        resolves) reads task reports filled by human and proceeds.
-      - **Task-level HITL** (mixed wave — some tasks `type: HITL`, others
-        not): lead spawns Agents for non-HITL tasks IN PARALLEL; for each
-        HITL task generates AGENT-BRIEF + writes `output/wave-<N>/task-<slug>.md`
-        with frontmatter `status: AWAITING_HITL` + inline brief. Lead waits
-        for non-HITL Agents to return. After return: if there are still tasks
-        AWAITING_HITL, lead updates L1 `status=BLOCKED, block_reason=hitl,
-        sub_stage=04_wave_N_partial_hitl_pending`, EXIT. Next session
-        validates that HITL tasks became `status: COMPLETE` (human edited) and
-        resumes step 8 (wave-reviewer) with the entire wave.
-      - v4.0: `BLOCKED` with `block_reason: hitl` (distinct from `error` —
-        not a failure, it is external waiting).
+### lead-diagnose.py (PHASE 3)
 
-    - **Diagnose protocol note (`_references/runtime/diagnose-protocol.md`):**
-      subagent that detects a recurring bug in its task MAY activate diagnose
-      protocol (build feedback loop → reproduce → hypothesise → fix) before
-      declaring BLOCKED. Report result in `task-<slug>.md`.
+```bash
+python {{SKILL_DIR}}/scripts/lead-diagnose.py \
+    --task-slug <slug> --wave <N> --workspace-num {{WORKSPACE_NUM}} \
+    --base-branch {{BASE_BRANCH}} \
+    --critic-rounds output/wave-<N>/task-<slug>-critic-round1.json[,round2.json,...] \
+    --files-touched <comma-sep> --forensic-files-outside <int> \
+    --output output/wave-<N>/task-<slug>-diagnose.md
+```
 
-    ## Preview Loop entry/exit hooks (v3.6.0)
+### lessons-match.py (Channel 2)
 
-    Applies ONLY when effective profile has
-    `preview_loop.preview_loop_enabled: true` (read from
-    `_config/profile-effective.yaml`). Canonical doc:
-    `_references/runtime/preview-loop-protocol.md`.
+```bash
+python {{SKILL_DIR}}/scripts/lessons-match.py \
+    --task <slug> --plan stages/02_design/output/plan.md \
+    --lessons {{PROJECT_ROOT}}/.icm-main/docs/lessons.md --top 3
+```
 
-    ### Entry hook (1st session of wave 1, OR fresh session of wave>1)
+### HITL handling (task-level)
 
-    Lead executes BEFORE step 1 (pre-flight) above:
+Mixed wave (some tasks HITL, others AFK): lead spawns Agents for AFK tasks in parallel; for HITL tasks generates AGENT-BRIEF + writes `output/wave-<N>/task-<slug>.md` with frontmatter `status: AWAITING_HITL`. After AFK Agents return, if HITL tasks still pending: L1 `status=BLOCKED, block_reason=hitl, sub_stage=04_wave_N_partial_hitl_pending`, EXIT. Next session validates HITL tasks completed (human edited) and resumes PHASE 3.
 
-    1. **Detect package manager** via lockfile in `{{PROJECT_ROOT}}`:
-       - `bun.lockb` or `bun.lock` → `bun dev`
-       - `pnpm-lock.yaml` → `pnpm dev`
-       - `yarn.lock` → `yarn dev`
-       - `package-lock.json` → `npm run dev`
-       - Multiple: priority `bun > pnpm > yarn > npm`.
-       - None: stop point — L1 `status: BLOCKED`, `block_reason: error` — missing initial scaffold (should
-         have been created in wave 1 task 1).
+---
 
-    2. **Verify runtime registry** (v3.7.0):
-       ```bash
-       python {{SKILL_DIR}}/scripts/runtime-registry.py list \
-           --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
-           --kind dev_server
-       ```
-   - Entry with alive PID → reuse, skip start.
-   - Entry with dead PID → unregister (stale registry; auto-recovery via
-     `recovery-wizard.py` `RUNTIME_REGISTRY_STALE`).
-   - No entries → start new (step 3).
+## Preview Loop entry/exit hooks (v3.6.0)
 
-   **Legacy (v3.6.0):** if workspace was created pre-v3.7.0 and has
-   `.icm-main/.dev-server.pid` instead of the registry, run
-   `migrate-workspace.py --workspace-root <ws>` BEFORE proceeding.
+Applies ONLY when `preview_loop.preview_loop_enabled: true` in `_config/profile-effective.yaml`.
+Canonical doc: `_references/runtime/preview-loop-protocol.md`.
 
-3. **Start dev server in background + register:**
-   ```bash
-   cd {{PROJECT_ROOT}}
-   <pm> run dev > .icm-main/.dev-server.log 2>&1 &
-   PID=$!
-   python {{SKILL_DIR}}/scripts/runtime-registry.py register \
-       --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
-       --kind dev_server --pid $PID --port <PORT> --command "<pm> run dev"
-   ```
-   Wait 3-5s for Vite/Next to boot (read stderr from log until "ready"
-   or "Local:" appears). Failure → L1 `status: BLOCKED`, `block_reason: error`.
+### Entry hook (before PHASE 1)
 
-   **Custom dev server** (non-default): register with appropriate kind
-   (`background_task` if daemon worker, etc.) with extra `--metadata`. Doc:
-   `_references/runtime/runtime-cleanup-protocol.md`.
+1. Detect package manager via lockfile (bun > pnpm > yarn > npm). None → BLOCKED.
+2. Verify runtime registry: `runtime-registry.py list --kind dev_server`. Alive → reuse. Dead → unregister. None → start new.
+3. Start dev server + register: `<pm> run dev > .icm-main/.dev-server.log 2>&1 &` + `runtime-registry.py register`.
+4. Print kickoff priming for human visual feedback.
 
-4. **Print kickoff priming** to human:
+### Exit hook (after Case B Phase 2 GATE_APPROVED)
 
-   ```
-   🎨 Preview loop active — workspace {{WORKSPACE}}
+1. List dev_server entries from registry. Kill alive PIDs. Unregister entries.
+2. Delete `.dev-server.log`. Do NOT delete `.icm-chrome-profile/`.
 
-   Dev server: http://localhost:3000 (PID <pid>)
-   Chrome CDP helper: scripts/launch-chrome-cdp.{bat,sh}
-   Preview pages: localhost:3000/preview/<component>
-
-   For visual feedback, any combo works:
-     - Text: "right button, more padding"
-     - Annotated screenshot (Win+Shift+S Snipping or ShareX): paste PNG
-     - URL: "/checkout, header misaligned"
-     - HTML: paste outerHTML of the problematic element
-
-   If ambiguous, I'll ask before making changes (stop point ambiguous_feedback).
-   ```
-
-### Tier-aware verification during implementation
-
-Subagent-level verification (runs inside subagent's TDD cycle, step 4):
-
-- **Each Edit** in a `.ts/.tsx/.vue/.svelte` file → subagent runs
-  `tsc --noEmit` (~1s). Failure = do NOT declare task done, immediate fix.
-- **Wave end** (after step 9 merge) → lead runs full lint + headless Playwright
-  sample-check (1 click on each new component in the wave, validates render
-  without crash).
-- **On human request** ("ok test" / "validate") → lead runs full suite +
-  relevant e2e.
-- **Always active:** native Vite/Next overlay shows compile errors
-  on the human's screen directly.
-
-### New stop point: `ambiguous_feedback`
-
-Triggerable during the wave when human gives visual feedback with low
-confidence (vague description, screenshot without clear annotation, contradiction
-between text and visual). Lead/subagent does NOT speculate and make changes: pause,
-write A/B/C menu with candidate interpretations, update L1
-`status: BLOCKED`, `block_reason = stop_point`. Calibration: always `hard` (any tier).
-
-### New stop point: `design_system_cascade`
-
-Triggerable when a token change affects > `preview_loop.design_cascade_threshold`
-(default 5) components. Menu A/B/C: global cascade / limit scope /
-cancel. Always `hard`.
-
-### Exit hook (final stage 04 handoff — Case B Phase 2 GATE_APPROVED)
-
-Lead executes AFTER commit 2/2 of the approved gate (Case B step 7), before
-printing the KICKOFF block.
-
-**v3.7.0 (registry-based):**
-
-1. **List dev_server entries** from registry:
-   ```bash
-   python {{SKILL_DIR}}/scripts/runtime-registry.py list \
-       --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
-       --kind dev_server --format json
-   ```
-2. **For each entry with alive PID**, kill the process:
-   - POSIX: `kill <pid>` (or `kill -9 <pid>` if unresponsive).
-   - Windows: `taskkill /PID <pid> /F`.
-   Silent failure is OK (process already dead).
-3. **Unregister entries** (regardless of PID alive/dead):
-   ```bash
-   python {{SKILL_DIR}}/scripts/runtime-registry.py unregister \
-       --workspace-root {{PROJECT_ROOT}}/workspaces/{{WORKSPACE}} \
-       --id <entry_id>
-   ```
-   Or batch via `purge-dead` if all PIDs already dead.
-4. **Delete `.dev-server.log`** (housekeeping).
-5. **Do NOT delete** `.icm-chrome-profile/` — human may want to keep
-   tabs open for next workspace; recovery wizard cleans up when
-   it detects a persistent orphan.
-
-Stage 08 (feedback intake) does NOT depend on the dev server.
-
-**Legacy (v3.6.0):** pre-v3.7.0 workspaces still use
-`.icm-main/.dev-server.pid` directly. Migration via
-`migrate-workspace.py` moves to registry. After migration, this exit hook
-works uniformly.
+Stage 08 does NOT depend on the dev server.

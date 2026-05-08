@@ -138,34 +138,33 @@ def test_agent_brief_isolation_rules_consistent():
         "agent-brief-template.md still has 'write via workspace worktree'"
     )
 
-    # v4.0.x: both must document all three isolation modes
-    for mode in ("worktree", "manual-worktree", "direct"):
-        assert mode in render_content.lower(), (
-            f"agent-brief-render.py missing isolation mode '{mode}'"
-        )
-        assert mode in template_content.lower(), (
-            f"agent-brief-template.md missing isolation mode '{mode}'"
-        )
+    # v4.0.x: single isolation mode — always manual worktree
+    assert "claude/worktrees/icm-wave" in render_content.lower(), (
+        "agent-brief-render.py missing .claude/worktrees/icm-wave- path"
+    )
+    assert "claude/worktrees/icm-wave" in template_content.lower(), (
+        "agent-brief-template.md missing .claude/worktrees/icm-wave- path"
+    )
 
 
-def test_agent_brief_render_has_detect_isolation_mode():
-    """agent-brief-render.py must have detect_isolation_mode function."""
+def test_agent_brief_render_has_hard_gates():
+    """agent-brief-render.py must have _render_hard_gates function."""
     render_path = SKILL_ROOT / "scripts/agent-brief-render.py"
     content = _read(render_path)
-    assert "def detect_isolation_mode" in content, (
-        "agent-brief-render.py missing detect_isolation_mode() function"
+    assert "def _render_hard_gates" in content, (
+        "agent-brief-render.py missing _render_hard_gates() function"
+    )
+    assert "GATE 1" in content, (
+        "agent-brief-render.py missing GATE 1 in hard gates"
     )
 
 
-def test_stage04_preflight_has_worktree_topology_detection():
-    """Stage 04 pre-flight MUST include worktree topology detection."""
+def test_stage04_preflight_has_single_worktree_path():
+    """Stage 04 pre-flight must use single manual worktree path."""
     l2_path = SKILL_ROOT / "templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl"
     content = _read(l2_path)
-    assert "test -f .git" in content, (
-        "Stage 04 L2 pre-flight missing worktree topology detection"
-    )
-    assert "NESTED" in content, (
-        "Stage 04 L2 pre-flight missing NESTED keyword for worktree detection"
+    assert ".claude/worktrees/icm-wave" in content, (
+        "Stage 04 L2 missing .claude/worktrees/icm-wave- path"
     )
 
 
@@ -181,15 +180,12 @@ def test_stage04_has_agend_brief_hard_gate():
     )
 
 
-def test_worktree_model_documents_agent_tool_incompatibility():
-    """worktree-model.md must document Agent tool incompatibility with .git files."""
+def test_worktree_model_documents_single_isolation_path():
+    """worktree-model.md must document single manual worktree path."""
     wt_path = SKILL_ROOT / "references/worktree-model.md"
     content = _read(wt_path)
-    assert "Cannot create agent worktree" in content, (
-        "worktree-model.md missing Agent tool error message documentation"
-    )
-    assert "manual-worktree" in content.lower() or "manual worktree add" in content.lower(), (
-        "worktree-model.md missing manual worktree fallback procedure"
+    assert ".claude/worktrees/icm-wave" in content.lower() or "manual worktree add" in content.lower(), (
+        "worktree-model.md missing manual worktree path documentation"
     )
 
 

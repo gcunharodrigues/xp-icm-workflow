@@ -39,14 +39,14 @@ def test_task_report_output_path_is_on_workspace_branch():
 
 
 def test_lead_merge_step_returns_to_workspace_branch():
-    """After merge, lead must return to workspace branch before writing state."""
+    """v4.0.x: project root NEVER switches off workspace branch. Merge via .icm-main."""
     sp = SKILL_ROOT / "references/subagent-protocol.md"
     assert sp.exists()
     content = sp.read_text()
 
-    # Lead returns to workspace branch after merge
-    assert "git checkout workspace" in content, (
-        "subagent-protocol.md must instruct lead to return to workspace branch after merge"
+    # Lead never switches off workspace branch — merge happens via .icm-main/
+    assert ".icm-main" in content, (
+        "subagent-protocol.md must document merge via .icm-main (project root never switches)"
     )
 
 

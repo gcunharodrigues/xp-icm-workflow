@@ -139,7 +139,7 @@ This is a **filesystem-based project orchestration skill** for Claude Code imple
 
 Stages 03 (wave_planner), 05 (verification), 06 (review), 07 (merge) deprecated — merged into 02 and 04. Stage 02 runs wave-planner inline. Stage 04 gates include CI, E2E, and merge.
 
-Stage 04: each wave = 1 lead session; subagents via `Agent(isolation: "worktree")`, branch `wave-<NNN>-<N>/<task-slug>` from `BASE_BRANCH`. Canonical doc: `references/wave-execution-protocol.md`.
+Stage 04: each wave = 1 lead session; subagents via manual worktrees at `.claude/worktrees/icm-wave-<NNN>-<N>/<slug>/` (`Agent(isolation=None, cwd=<worktree>)`), branch `wave-<NNN>-<N>/<task-slug>` from `BASE_BRANCH`. Merge via `.icm-main/` — project root never switches off workspace branch. Canonical docs: `references/wave-execution-protocol.md`, `references/isolation-protocol.md`.
 
 ### v4.0 L1 State Machine (3 statuses)
 
@@ -188,10 +188,11 @@ Templates in `/templates/` use `{{WORKSPACE}}`, `{{PROFILE}}`, `{{TIER}}`, `{{PR
 - `SKILL.md` — Skill entry point, CLI args, intent inference protocol
 - `references/session-handoff-protocol.md` — 1-stage-1-session flow (v4 simplified section)
 - `references/state-machine-schema.md` — L1 YAML spec (v4: 3 statuses + block_reason)
-- `references/wave-execution-protocol.md` — 14-step stage 04 pipeline
+- `references/wave-execution-protocol.md` — 5-phase stage 04 pipeline
+- `references/isolation-protocol.md` — Single manual worktree path, merge via .icm-main
 - `references/v4-qa-stack.md` — Consolidated forensic+, critic, e2e, lead-resolution
 - `references/lead-resolution-protocol.md` — RETRY/VOID (v4 simplified)
-- `references/subagent-protocol.md` — Subagent isolation, worktree model, branch verification
+- `references/subagent-protocol.md` — Subagent orchestration, wave-reviewer, coordination
 - `references/agent-brief-template.md` — AGENT-BRIEF format + isolation rules
 - `references/wave-planner-algorithm.md` — DAG construction details
 - `references/stop-points-canonical.md` — 15 stop points + tier thresholds

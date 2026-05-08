@@ -25,10 +25,60 @@ and independently verifiable.
 Explicitly state what is out of scope. Prevents gold-plating and
 assumptions about adjacent features.
 
+## HARD GATES — canonical (v4.0.x)
+
+Every AGENT-BRIEF rendered by `scripts/agent-brief-render.py` must include the
+following 3 gates at the TOP, before Summary. Subagent MUST execute them in order.
+Skip any = task BLOCKED.
+
+**GATE 1 — Branch verification (first action after spawn):**
+```bash
+git branch --show-current
+```
+Must show `wave-<NNN>-<N>/<task-slug>`. Wrong → STOP, report `Status: BLOCKED`.
+Do NOT run `git checkout`. Do NOT create a branch.
+
+**GATE 2 — Synchronous-first (every test/lint/typecheck):**
+Use `Bash: "<command>"` — synchronous, blocks, returns exit code.
+NEVER `Bash(run_in_background=true)` + `Monitor` for commands under 5 minutes.
+
+**GATE 3 — Commit verify (before declaring COMPLETE):**
+```bash
+git log --oneline <BASE_BRANCH>..HEAD  # ≥1 commit required
+git status --short                      # must be clean
+```
+Zero commits → return to TDD loop. Dirty tree → commit or stash.
+
+## Isolation rules — canonical (v4.0.x)
+
+All subagents use manual worktrees in `.claude/worktrees/icm-wave-<NNN>-<N>-<slug>/`
+on branch `wave-<NNN>-<N>-<slug>`. Single isolation mode — no Path A / Path B branching.
+
+- [ ] Your CWD is `.claude/worktrees/icm-wave-<NNN>-<N>-<slug>/` — a git worktree on branch `wave-<NNN>-<N>-<slug>`. Run `pwd` to confirm. NOT the project root.
+- [ ] Write code ONLY in this worktree. NEVER write via absolute paths to the project.
+- [ ] NEVER write to `<PROJECT_ROOT>/.icm-main/` or any path under it. It is the base-branch linked worktree — read-only for docs.
+- [ ] NEVER run `git checkout`, `git switch`, `git rebase`, or `git push`. Branch is pre-created.
+- [ ] Read base-branch docs (ADRs, lessons, tech_debt) from `<PROJECT_ROOT>/.icm-main/<path>`.
+- [ ] Verify on startup: `git branch --show-current` MUST show correct branch. `git status --short` MUST be clean. Wrong → STOP, report `Status: BLOCKED`.
+- [ ] Workspace state (L0/L1/L2) is injected into the brief by the lead. Do NOT read separately.
+- [ ] Return results in Agent tool output. Lead writes all workspace state files. MUST NOT write to workspace branch paths.
+
 ## Template
 
 ```markdown
-## Agent Brief
+### HARD GATES — execute in order. Skip any = task BLOCKED.
+
+**GATE 1 — Branch verification:**
+...(rendered by agent-brief-render.py)
+
+**GATE 2 — Synchronous-first:**
+...(rendered by agent-brief-render.py)
+
+**GATE 3 — Commit verify:**
+...(rendered by agent-brief-render.py)
+
+### Isolation rules (MANDATORY)
+...(rendered by agent-brief-render.py)
 
 **Category:** bug / enhancement
 **Summary:** one-line description of what needs to happen
@@ -54,36 +104,9 @@ cases and error conditions.
 **Out of scope:**
 - Thing that should NOT be changed or addressed in this issue
 - Adjacent feature that might seem related but is separate
-
-**Isolation rules — worktree mode (MANDATORY — Agent(isolation: "worktree")):**
-- [ ] You are in an isolated git worktree on branch `wave-<NNN>-<N>/<task-slug>`. Your CWD is the worktree root — NOT `{{PROJECT_ROOT}}`.
-- [ ] Write code ONLY in this worktree. NEVER write to `{{PROJECT_ROOT}}` via absolute paths.
-- [ ] NEVER write to `.icm-main/`. That is the base-branch linked worktree — read-only for docs.
-- [ ] Read base-branch files (ADRs, lessons, tech_debt, DESIGN.md) from `.icm-main/` via `Read` tool with absolute path `<project>/.icm-main/<path>`. Workspace state (L0/L1/L2) is injected into this brief by the lead — do NOT read it separately.
-- [ ] Verify on startup: `git branch --show-current` MUST show `wave-<NNN>-<N>/<task-slug>`. If wrong → STOP, report `Status: BLOCKED`.
-- [ ] NEVER run `git checkout` or `git checkout -b`. You are already on the correct branch.
-- [ ] Return results in Agent tool output: summary, modified files (`git diff --name-only <BASE>...HEAD`), tests written, ADRs applied. The lead writes all workspace state files (task report, L1 updates). NEVER write to workspace branch paths — you cannot reach them from this worktree.
-
-**Isolation rules — manual-worktree mode (MANDATORY — Agent(isolation=none, cwd=<worktree>)):**
-- [ ] You are in a manually-created git worktree at a path like `.claude/worktrees/icm-wave-<NNN>-<N>/<task-slug>`. Your CWD is the worktree root — NOT `{{PROJECT_ROOT}}`.
-- [ ] Your CWD IS the isolation. Write code ONLY in this worktree. NEVER write to `{{PROJECT_ROOT}}` via absolute paths.
-- [ ] NEVER write to `{{PROJECT_ROOT}}/.icm-main/` or any path under it — that is the base-branch linked worktree, read-only for docs.
-- [ ] Read base-branch files (ADRs, lessons, tech_debt, DESIGN.md) from `{{PROJECT_ROOT}}/.icm-main/<path>`.
-- [ ] Verify on startup: `git branch --show-current` MUST show `wave-<NNN>-<N>/<task-slug>`. If wrong → STOP, report `Status: BLOCKED`.
-- [ ] NEVER run `git checkout`, `git switch`, `git rebase`, or `git push`. Your branch is pre-created.
-- [ ] Return results in Agent tool output. The lead writes all workspace state files.
-
-**Isolation rules — direct mode (reviewer/critic ONLY — NOT for code-writing tasks):**
-- [ ] You run WITHOUT worktree isolation. CWD = `{{PROJECT_ROOT}}` on `workspace/<NNN-slug>` branch.
-- [ ] You are a REVIEWER/CRITIC only. NEVER write code, NEVER modify `src/` or `tests/`.
-- [ ] Read code via `git show <branch>:<path>` or `git diff`. Write outputs to workspace state paths only.
-- [ ] NEVER use this mode for implementation tasks (TDD cycle).
 ```
 
 ## Mapping to 4-block in plan.md
-
-The existing 4-block from plan.md (`WHAT / HOW / OUT OF SCOPE / VALIDATION`)
-maps to AGENT-BRIEF as follows:
 
 | 4-block | AGENT-BRIEF |
 |---|---|
@@ -92,28 +115,12 @@ maps to AGENT-BRIEF as follows:
 | **OUT OF SCOPE** | Out of scope |
 | **VALIDATION** | Acceptance criteria |
 
-Stage 02 (design) writes plan.md in 4-block format. Stage 04 (lead session)
-generates the AGENT-BRIEF from the task section in plan.md via
-`scripts/agent-brief-render.py`.
-
-## Before returning summary to lead
-
-Subagent (AFK) MUST verify before declaring Status COMPLETE in the task report:
-
-- [ ] `git log --oneline main..HEAD` shows ≥1 commit (≠ zero).
-- [ ] working tree clean OR remaining files explicitly declared.
-- [ ] results returned via Agent tool output (lead writes task report from output).
-
-Origin: sessao-recorrencia incident (workspace 001 wave 6) — subagent completed
-TDD 7 steps without `git commit`, branch HEAD = main HEAD, working tree dirty.
-Lead recovery had to save the work manually. Explicit gate prevents recurrence.
-
 ## Anti-patterns
 
-- **Absolute file paths** (`src/triage/handler.ts:42`) — go stale.
+- **Absolute file paths** — go stale after first refactor.
 - **Line numbers** — same reason.
-- **Vagueness** ("the triage thing is broken", "fix it") — agent does not know what to do.
+- **Vagueness** — "the triage thing is broken" — agent does not know what to do.
 - **No acceptance criteria** — agent does not know when it is done.
 - **No scope boundary** — agent gold-plates or modifies adjacent features.
-- **Procedural** ("open file X, line Y, change Z") — breaks on the first refactor.
-- **Unnecessary async pytest**: `Bash run_in_background=true + Monitor` for pytest <5min is overkill; use synchronous Bash. Reserve async for long builds/dev-servers.
+- **Procedural** — "open file X, line Y, change Z" — breaks on first refactor.
+- **Unnecessary async** — `Bash run_in_background=true + Monitor` for pytest <5min is overkill; use synchronous Bash.

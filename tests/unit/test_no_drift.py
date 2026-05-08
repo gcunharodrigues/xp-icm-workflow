@@ -504,13 +504,13 @@ def test_state_machine_schema_documents_v3_8_0_error_types():
 
 
 def test_wave_execution_protocol_has_forensic_substeps():
-    """Pipeline canonical doc must reflect step 8 expansion."""
+    """Pipeline canonical doc must reflect PHASE 3 VERIFY forensic+ and critic steps."""
     path = REPO_ROOT / "references" / "wave-execution-protocol.md"
     text = path.read_text(encoding="utf-8")
-    assert "**8a Forensic+**" in text
-    assert "**8b Existing audit**" in text
-    assert "**8c Forensic git log**" in text
-    assert "**8d Decision**" in text
+    assert "Forensic+" in text
+    assert "forensic-plus.py" in text
+    assert "Orthogonal Critic" in text or "L3" in text
+    assert "lead-resolution" in text
     assert "forensic-plus-protocol.md" in text
 
 

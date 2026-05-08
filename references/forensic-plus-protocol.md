@@ -2,7 +2,7 @@
 
 > **Version:** v3.10.0
 > **Skill:** `xp-icm-workflow`
-> **Consumer stage:** `04_implementation_waves` (step 8b — L2 deterministic gate)
+> **Consumer stage:** `04_implementation_waves` (PHASE 3 VERIFY — L2 deterministic gate)
 > **Purpose:** canonical document for Forensic+ — structural anti-fraud audit per task in the wave-reviewer. Describes the 8 checks (4 original v3.8.0 + 3 v3.9.0 + 1 v3.10.0), tier × severity matrix, HARD/SOFT actions, re-spawn cap, edge cases, and JSON schema for `scripts/forensic-plus.py`.
 
 ## Summary (1 paragraph)
@@ -274,7 +274,7 @@ python scripts/forensic-plus.py \
 
 ## Cross-references
 
-- 14-step pipeline consumer: `references/wave-execution-protocol.md` step 8a-8d.
+- 5-phase pipeline consumer: `references/wave-execution-protocol.md` PHASE 3 VERIFY.
 - Task plan.md schema: `references/4-block-contract-template.md` (`### Estimated lines`).
 - L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`.
 - State machine: `references/state-machine-schema.md` (`error_type: forensic_max_retries|forensic_script_crash`).

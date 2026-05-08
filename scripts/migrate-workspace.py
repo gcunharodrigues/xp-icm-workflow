@@ -398,7 +398,7 @@ def migrate_3_12_0_to_3_12_1(workspace_root: Path, project_root: Path) -> None:
             "e2e-coverage-protocol.md", "ci-rollback-protocol.md",
             "conflict-resolution-protocol.md", "icm-cleanup-protocol.md",
             "script-cli-reference.md", "wave-execution-protocol.md",
-            "worktree-model.md",
+            "isolation-protocol.md", "worktree-model.md",
         )
         for fname in _RUNTIME_REFS:
             src = refs_src / fname

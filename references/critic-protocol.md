@@ -2,7 +2,7 @@
 
 > **Version:** v3.9.0
 > **Skill:** `xp-icm-workflow`
-> **Consumer stage:** `04_implementation_waves` (step 8c — L3 critic, always, all tiers)
+> **Consumer stage:** `04_implementation_waves` (PHASE 3 VERIFY — L3 critic, always, all tiers)
 > **Purpose:** canonical document for the L3 orthogonal LLM critic — fresh-context, anti-sycophancy, triplet-output. Runs on every AFK task after forensic+ extended pass (L2). Binary output APPROVE/REJECT consumed by lead-diagnose.
 
 ## Summary (1 paragraph)
@@ -178,7 +178,7 @@ Stdout: rendered prompt ready for `Agent(prompt=...)` injection.
 
 - Lead-resolution canonical: `references/lead-resolution-protocol.md`
 - Forensic+ canonical: `references/forensic-plus-protocol.md`
-- 14-step pipeline: `references/wave-execution-protocol.md` step 8c
+- 5-phase pipeline: `references/wave-execution-protocol.md` PHASE 3 VERIFY
 - Pick-model heuristic: `scripts/pick-model.py`
 - L2 runtime: `templates/workspace/stages/04_implementation_waves/CONTEXT.md.tpl`
 - State machine: `references/state-machine-schema.md` (`error_type: critic_unavailable|critic_abstain_loop`)
